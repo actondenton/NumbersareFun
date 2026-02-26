@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Numbers is Fun</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Curtain Animation -->
+    <div id="curtain" class="curtain">
+        <div class="valance"></div>
+        <div class="curtain-left"></div>
+        <div class="curtain-right"></div>
+    </div>
+
+    <!-- Left Sidebar Navigation -->
+    <div id="sidebar">
+        <button class="nav-btn" data-mode="1">1</button>
+        <button class="nav-btn" data-mode="2">2</button>
+        <button class="nav-btn" data-mode="3">3</button>
+        <button class="nav-btn" data-mode="5">5</button>
+        <button class="nav-btn" data-mode="7">7</button>
+    </div>
+
+    <!-- Top Right Menu + Objectives -->
+    <div id="top-right">
+        <button id="menu-btn">Menu</button>
+
+        <div id="objectives">
+            <h3>Objectives</h3>
+            <ul id="objective-list"></ul>
+        </div>
+    </div>
+
+    <!-- Global Incremental Counter -->
+	<div class="incremental-count-countainer">
+	<div id="incremental-count-label">Total Count</div>
+    <div id="incremental-count">1</div>
+
+    <!-- Hands Grid -->
+    <div id="hands-container" class="hands-grid"></div>
+
+    <script>
+    /* ---------------------------------------------------------
+       ASCII HANDS (1–10)
+    --------------------------------------------------------- */
+    const hands1 = [
+
+`
+       _	
+      | |
+      | |
+ _ _ _| |
+| | | | |  
+|       |_   
+|         \\ 
+|          \\
+|          |
+ \\        /
+  |      /
+  |  1  |  
+`, // 1
+
+`     _  
+    | |_	
+    | | |
+    | | |
+ _ _| | |
+| | | | |  
+|       |_   
+|         \\  
+|          \\
+|          |
+ \\        /
+  |      /
+  |  2  | 
+  `, // 2
+
+`     _  
+   _| |_	
+  | | | |
+  | | | |
+ _| | | |
+| | | | |  
+|       |_   
+|         \\ 
+|          |
+|          |
+ \\        /
+  |      /
+  |  3  | 
+  `, // 3
+
+`     _  
+   _| |_	
+ _| | | |
+| | | | |
+| | | | |
+| | | | |  
+|       |_  
+|         \\ 
+|          |
+|          |
+ \\        /
+  |      /
+  |  4  |  
+  `, // 4
+
+`     _  
+   _| |_	
+ _| | | |
+| | | | |
+| | | | |
+| | | | |    _
+|       |  /  /
+|        \\/  /
+|           /
+|          / 
+ \\        /
+  |      /
+  |  5  |  
+  `, // 5
+
+`
+
+ _    
+| |  
+| |_ _ _ 
+| | | | |   _
+|       |  /  /
+|        \\/  /
+|           /
+|          / 
+ \\        /
+  |      /
+  |  6  |  
+  `, // 6 
+
+`
+   _  
+ _| | 
+| | |
+| | |_ _ 
+| | | | |   _
+|       |  /  /
+|        \\/  /
+|           /
+|          / 
+ \\        /
+  |      /
+  |  7  | 
+  `, // 7
+
+`     _ 
+   _| |
+ _| | |
+| | | |
+| | | |_ 
+| | | | |    _
+|       |  /  /
+|        \\/  /
+|           /
+|          / 
+ \\        /
+  |      /
+  |  8  |
+  `, // 8
+
+`
+
+        __
+       /   \\
+ _ _ _/  /\\_\\
+| | | | |    _
+|       |   / /
+|        \\/  /
+|           /
+|          / 
+ \\        /
+  |      /
+  |  9  | 
+  `, // 9 
+
+`
+
+
+
+ _ _ _ _  
+| | | | |     
+|       |      
+|        \\_   
+|          | 
+|          / 
+ \\        /
+  |      /
+  |  10 |  
+  ` // 10  
+    ];
+
+/* ---------------------------------------------------------
+       GLOBAL STATE
+    --------------------------------------------------------- */
+    let totalChanges = 0;
+    let unlockedHands = 1;
+    const maxHands = 10;
+
+    const incrementalEl = document.getElementById("incremental-count");
+    const handsContainer = document.getElementById("hands-container");
+    const objectiveList = document.getElementById("objective-list");
+
+    /* ---------------------------------------------------------
+       OBJECTIVES
+    --------------------------------------------------------- */
+    const objectives = [
+        { goal: 10, achieved: false },
+        { goal: 100, achieved: false },
+        { goal: 1000, achieved: false }
+    ];
+
+    function updateObjectives() {
+        objectiveList.innerHTML = "";
+
+        objectives.forEach(obj => {
+            const li = document.createElement("li");
+            li.textContent = `Reach ${obj.goal}`;
+
+            if (totalChanges >= obj.goal) {
+                obj.achieved = true;
+                li.style.textDecoration = "line-through";
+                li.style.color = "#4CAF50";
+            }
+
+            objectiveList.appendChild(li);
+        });
+    }
+
+    /* ---------------------------------------------------------
+       HAND CLASS
+    --------------------------------------------------------- */
+    class HandCounter {
+        constructor(id, speed) {
+            this.id = id;
+            this.count = 1;
+            this.speed = speed;
+
+            this.el = document.createElement("div");
+            this.el.className = "hand curtain-reveal";
+            this.el.style.whiteSpace = "pre";
+            this.el.style.fontFamily = "monospace";
+
+            handsContainer.appendChild(this.el);
+
+            this.render();
+
+            setTimeout(() => {
+                this.el.classList.add("visible");
+            }, 300);
+
+            this.timer = setInterval(() => this.update(), this.speed);
+        }
+
+        update() {
+            this.count++;
+            if (this.count > 10) this.count = 1;
+
+            this.render();
+
+            totalChanges++;
+            incrementalEl.textContent = totalChanges;
+
+            updateObjectives();
+        }
+
+        render() {
+            this.el.textContent = hands1[this.count - 1];
+        }
+    }
+
+    /* ---------------------------------------------------------
+       HAND MANAGEMENT
+    --------------------------------------------------------- */
+    const hands = [];
+
+    function unlockHand() {
+        if (unlockedHands >= maxHands) return;
+
+        unlockedHands++;
+
+        const speed = 700 + Math.random() * 1300;
+
+        const hand = new HandCounter(unlockedHands, speed);
+        hands.push(hand);
+    }
+
+    /* ---------------------------------------------------------
+       INITIALIZE FIRST HAND
+    --------------------------------------------------------- */
+    hands.push(new HandCounter(1, 1000));
+
+    /* ---------------------------------------------------------
+       AUTO-UNLOCK HANDS
+    --------------------------------------------------------- */
+    setInterval(() => {
+        if (totalChanges > 0 && totalChanges % 20 === 0) {
+            unlockHand();
+        }
+    }, 500);
+
+    </script>
+
+</body>
+</html>
