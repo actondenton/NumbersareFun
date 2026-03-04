@@ -310,7 +310,7 @@
     }
     function getUpgradeCost(nextLevel) {
         const base = Math.max(0.17, 1.17 - 0.1 * cheapenLevel);
-        return Math.max(1, Math.floor(Math.pow(base, nextLevel)));
+        return Math.max(1, 10 + Math.floor(Math.pow(base, nextLevel)));
     }
     const upgradeContainer = document.getElementById("upgrade-container");
     const speedUpgradeBtn = document.getElementById("speed-upgrade-btn");
