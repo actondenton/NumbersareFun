@@ -309,7 +309,7 @@
         return getSpeedMultiplierForLevel(speedLevel);
     }
     function getUpgradeCost(nextLevel) {
-        const base = Math.max(0.34, 1.34 - 0.1 * cheapenLevel);
+        const base = Math.max(1, 2.25 - 0.01 * cheapenLevel);
         return Math.max(1, 10 + Math.floor(Math.pow(base, nextLevel)));
     }
     const upgradeContainer = document.getElementById("upgrade-container");
