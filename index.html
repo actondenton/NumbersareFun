@@ -238,7 +238,7 @@
 /* ---------------------------------------------------------
        GLOBAL STATE
     --------------------------------------------------------- */
-    let totalChanges = 0;
+    let totalChanges = 1;
     let unlockedHands = 1;
     const maxHands = 10;
 
@@ -442,7 +442,7 @@
             const intervalMs = getTickIntervalMs(h.baseSpeed);
             cps += intervalMs > 0 ? 1000 / intervalMs : 0;
         });
-        incrementalRateEl.textContent = cps.toFixed(2);
+        incrementalRateEl.textContent = formatCount(cps < 1e6 ? Math.round(cps * 100) / 100 : cps);
     }
 
     function maybeAutoBuySpeedUpgrade() {
