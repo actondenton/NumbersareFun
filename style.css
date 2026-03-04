@@ -338,16 +338,17 @@ CURTAINS
 
 /* =========================
    Dev tools (toggle on/off)
+   Above curtain (z 10000), top-right so always visible
    ========================= */
 .dev-tools-toggle {
     position: fixed;
-    bottom: 8px;
-    left: 8px;
-    z-index: 9998;
-    padding: 4px 10px;
-    font-size: 12px;
+    top: 8px;
+    right: 8px;
+    z-index: 10000;
+    padding: 6px 12px;
+    font-size: 13px;
     background: #333;
-    color: #aaa;
+    color: #ccc;
     border: 1px solid #555;
     border-radius: 4px;
     cursor: pointer;
@@ -360,9 +361,9 @@ CURTAINS
 
 .dev-tools-panel {
     position: fixed;
-    bottom: 36px;
-    left: 8px;
-    z-index: 9998;
+    top: 40px;
+    right: 8px;
+    z-index: 10000;
     padding: 10px 12px;
     min-width: 220px;
     background: #1e1e1e;

@@ -338,8 +338,8 @@
         const percent = (factor - 1) * 100;
         speedUpgradeEffectEl.textContent = "Next upgrade: +" + percent.toFixed(1) + "% speed";
 
-        // Autobuy UI (unlocks when incremental count >= 100)
-        if (totalChanges >= 100) {
+        // Autobuy UI: show when count >= 100 (to unlock) or once already unlocked
+        if (totalChanges >= 100 || autoBuyUnlocked) {
             speedAutoBuyBtn.style.display = "block";
             const unlockCost = 100;
             if (!autoBuyUnlocked) {
@@ -429,16 +429,19 @@
     }
 
     /* ---------------------------------------------------------
-       RATE DISPLAY (counts per second, theoretical)
-       Stable value: sum of each hand's ticks per second at current
-       speed multiplier. Equals amount added to incremental count
-       per second when not spending. Updates when hands or speed change.
+       RATE DISPLAY (counts per second)
+       Browsers clamp setInterval to ~4ms min, so we use the same
+       effective interval in both timer and CPS so display matches reality.
     --------------------------------------------------------- */
+    const MIN_TICK_MS = 4;
+    function getTickIntervalMs(baseSpeed) {
+        return Math.max(MIN_TICK_MS, baseSpeed / getSpeedMultiplier());
+    }
     function updateRateDisplay() {
-        const mult = getSpeedMultiplier();
         let cps = 0;
         hands.forEach(h => {
-            cps += (1000 * mult) / h.baseSpeed;
+            const intervalMs = getTickIntervalMs(h.baseSpeed);
+            cps += 1000 / intervalMs;
         });
         incrementalRateEl.textContent = cps.toFixed(2);
     }
@@ -474,12 +477,12 @@
                 this.el.classList.add("visible");
             }, 300);
 
-            this.timer = setInterval(() => this.update(), this.baseSpeed / getSpeedMultiplier());
+            this.timer = setInterval(() => this.update(), getTickIntervalMs(this.baseSpeed));
         }
 
         restartTimer() {
             clearInterval(this.timer);
-            this.timer = setInterval(() => this.update(), this.baseSpeed / getSpeedMultiplier());
+            this.timer = setInterval(() => this.update(), getTickIntervalMs(this.baseSpeed));
         }
 
         update() {
