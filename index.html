@@ -268,7 +268,15 @@
         { goal: 1000, text: "Unlock speed increase Cheapen", achieved: false }
     ];
     const longTermObjectives = [
-        { goal: 1e9, text: "Unlock a second hand", achieved: false }
+        { goal: 1e9, text: "Unlock a second hand", achieved: false },
+        { goal: 1e12, text: "Unlock a third hand", achieved: false },
+        { goal: 1e15, text: "Unlock a fourth hand", achieved: false },
+        { goal: 1e18, text: "Unlock a fifth hand", achieved: false },
+        { goal: 1e21, text: "Unlock a sixth hand", achieved: false },
+        { goal: 1e24, text: "Unlock a seventh hand", achieved: false },
+        { goal: 1e27, text: "Unlock a eighth hand", achieved: false },
+        { goal: 1e30, text: "Unlock a ninth hand", achieved: false },
+        { goal: 1e33, text: "Unlock a tenth hand", achieved: false }
     ];
 
     function renderObjective(obj, totalChanges) {
@@ -283,12 +291,20 @@
     }
 
     function updateObjectives() {
+        objectives.forEach(obj => { if (totalChanges >= obj.goal) obj.achieved = true; });
+        const lastCompleted = objectives.filter(o => o.achieved).pop();
+        const nextUncompleted = objectives.find(o => !o.achieved);
+        const shortTermToShow = [lastCompleted, nextUncompleted].filter(Boolean);
         objectiveList.innerHTML = "";
-        objectives.forEach(obj => {
+        shortTermToShow.forEach(obj => {
             objectiveList.appendChild(renderObjective(obj, totalChanges));
         });
+        longTermObjectives.forEach(obj => { if (totalChanges >= obj.goal) obj.achieved = true; });
+        const longLastCompleted = longTermObjectives.filter(o => o.achieved).pop();
+        const longNextUncompleted = longTermObjectives.find(o => !o.achieved);
+        const longTermToShow = [longLastCompleted, longNextUncompleted].filter(Boolean);
         longObjectiveList.innerHTML = "";
-        longTermObjectives.forEach(obj => {
+        longTermToShow.forEach(obj => {
             longObjectiveList.appendChild(renderObjective(obj, totalChanges));
         });
     }
@@ -303,7 +319,7 @@
     let autoBuyEnabled = false;
     function getSpeedMultiplierForLevel(level) {
         if (level === 0) return 1;
-        return Math.pow(1.2, level); //increase speed by 20%
+        return Math.pow(1.4, level); //increase speed by 40%
     }
     function getSpeedMultiplier() {
         return getSpeedMultiplierForLevel(speedLevel);
