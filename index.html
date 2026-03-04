@@ -35,16 +35,18 @@
 
     <!-- Global Incremental Counter -->
 	<div class="incremental-count-countainer">
-	    <div id="incremental-count-label" class="incremental-count-label">Total Count</div>
-        <div id="incremental-count" class="incremental-count">1</div>
-        <div id="incremental-rate-label" class="incremental-count-label">Count per second</div>
-        <div id="incremental-rate" class="incremental-count">0.00</div>
+	    <div id="incremental-count-label">Total Count</div>
+        <div id="incremental-count">1</div>
+        <div id="incremental-rate-label">Count per second</div>
+        <div id="incremental-rate">0.00</div>
 	</div>
 
     <!-- Speed Upgrade -->
     <div id="upgrade-container" class="upgrade-container" style="display: none;">
         <button id="speed-upgrade-btn" class="upgrade-btn">Increase count speed</button>
         <div id="speed-upgrade-cost" class="upgrade-cost"></div>
+        <div id="speed-upgrade-level" class="upgrade-cost"></div>
+        <button id="speed-autobuy-btn" class="upgrade-btn" style="display: none;"></button>
     </div>
 
     <!-- Cheapen Speed Cost Upgrade -->
@@ -267,6 +269,8 @@
        Cost: level 1 = 10, level 2 = 20, then 10*level (log-friendly scaling)
     --------------------------------------------------------- */
     let speedLevel = 0;
+    let autoBuyUnlocked = false;
+    let autoBuyEnabled = false;
     function getSpeedMultiplier() {
         if (speedLevel === 0) return 1;
         return 1.4 * Math.pow(1.2, speedLevel - 1);
@@ -278,6 +282,8 @@
     const upgradeContainer = document.getElementById("upgrade-container");
     const speedUpgradeBtn = document.getElementById("speed-upgrade-btn");
     const speedUpgradeCostEl = document.getElementById("speed-upgrade-cost");
+    const speedUpgradeLevelEl = document.getElementById("speed-upgrade-level");
+    const speedAutoBuyBtn = document.getElementById("speed-autobuy-btn");
 
     function updateSpeedUpgradeUI() {
         if (totalChanges >= 10 && upgradeContainer.style.display === "none") {
@@ -286,6 +292,24 @@
         const cost = getUpgradeCost(speedLevel + 1);
         speedUpgradeCostEl.textContent = "Cost: " + formatCount(cost);
         speedUpgradeBtn.disabled = totalChanges < cost;
+
+        // Show current speed level
+        speedUpgradeLevelEl.textContent = "Speed level: " + speedLevel;
+
+        // Autobuy UI
+        if (speedLevel >= 10) {
+            speedAutoBuyBtn.style.display = "block";
+            const unlockCost = 100;
+            if (!autoBuyUnlocked) {
+                speedAutoBuyBtn.textContent = "Unlock speed autobuy (Cost: " + formatCount(unlockCost) + ")";
+                speedAutoBuyBtn.disabled = totalChanges < unlockCost;
+            } else {
+                speedAutoBuyBtn.textContent = "Autobuy speed upgrades: " + (autoBuyEnabled ? "ON" : "OFF");
+                speedAutoBuyBtn.disabled = false;
+            }
+        } else {
+            speedAutoBuyBtn.style.display = "none";
+        }
     }
 
     function buySpeedUpgrade() {
@@ -298,6 +322,22 @@
         updateSpeedUpgradeUI();
         updateCheapenUpgradeUI();
         updateRateDisplay();
+    }
+
+    function handleSpeedAutoBuyClick() {
+        const unlockCost = 100;
+        if (!autoBuyUnlocked) {
+            if (totalChanges < unlockCost) return;
+            totalChanges -= unlockCost;
+            autoBuyUnlocked = true;
+            autoBuyEnabled = true;
+            incrementalEl.textContent = formatCount(totalChanges);
+            updateSpeedUpgradeUI();
+            updateCheapenUpgradeUI();
+        } else {
+            autoBuyEnabled = !autoBuyEnabled;
+            updateSpeedUpgradeUI();
+        }
     }
 
     /* ---------------------------------------------------------
@@ -351,6 +391,15 @@
         incrementalRateEl.textContent = cps.toFixed(2);
     }
 
+    function maybeAutoBuySpeedUpgrade() {
+        if (!autoBuyEnabled || !autoBuyUnlocked) return;
+        let cost = getUpgradeCost(speedLevel + 1);
+        while (totalChanges >= cost) {
+            buySpeedUpgrade();
+            cost = getUpgradeCost(speedLevel + 1);
+        }
+    }
+
     /* ---------------------------------------------------------
        HAND CLASS
     --------------------------------------------------------- */
@@ -394,6 +443,7 @@
             checkUnlockHands();
             updateSpeedUpgradeUI();
             updateCheapenUpgradeUI();
+            maybeAutoBuySpeedUpgrade();
         }
 
         render() {
@@ -444,6 +494,7 @@
     updateRateDisplay();
 
     speedUpgradeBtn.addEventListener("click", buySpeedUpgrade);
+    speedAutoBuyBtn.addEventListener("click", handleSpeedAutoBuyClick);
     cheapenUpgradeBtn.addEventListener("click", buyCheapenUpgrade);
     updateSpeedUpgradeUI();
     updateCheapenUpgradeUI();
