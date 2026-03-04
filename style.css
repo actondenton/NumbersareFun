@@ -58,50 +58,6 @@ body {
   white-space: nowrap;
 }
 
-/* Speed upgrade */
-.upgrade-container {
-  position: relative;
-  z-index: 1000;
-  margin-top: 12px;
-  padding: 14px 20px;
-  min-width: 200px;
-  text-align: center;
-  background: linear-gradient(180deg, #1b1f3a, #11142a);
-  border-radius: 14px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
-}
-
-.upgrade-btn {
-  display: block;
-  width: 100%;
-  padding: 12px 20px;
-  font-size: 1rem;
-  background: linear-gradient(180deg, #3f6cff, #1f4fd8);
-  color: white;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  font-weight: 600;
-  box-shadow: 0 4px 12px rgba(31, 79, 216, 0.4);
-}
-
-.upgrade-btn:hover:not(:disabled) {
-  background: linear-gradient(180deg, #5a82ff, #3f6cff);
-  box-shadow: 0 6px 16px rgba(31, 79, 216, 0.5);
-}
-
-.upgrade-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.upgrade-cost {
-  margin-top: 8px;
-  font-size: 0.85rem;
-  color: #9aa0ff;
-  font-family: monospace;
-}
-
 /*
 
 

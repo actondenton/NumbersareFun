@@ -46,6 +46,7 @@
         <button id="speed-upgrade-btn" class="upgrade-btn">Increase count speed</button>
         <div id="speed-upgrade-cost" class="upgrade-cost"></div>
         <div id="speed-upgrade-level" class="upgrade-cost"></div>
+        <div id="speed-upgrade-effect" class="upgrade-cost"></div>
         <button id="speed-autobuy-btn" class="upgrade-btn" style="display: none;"></button>
     </div>
 
@@ -238,6 +239,10 @@
         return mantissa + " " + name;
     }
 
+    // For empirical counts-per-second measurement
+    let lastCpsSampleTime = Date.now();
+    let lastCpsTotalChanges = 0;
+
     /* ---------------------------------------------------------
        OBJECTIVES
     --------------------------------------------------------- */
@@ -265,15 +270,20 @@
     }
 
     /* ---------------------------------------------------------
-       SPEED UPGRADE (level 0 = none; level 1: +40%, level 2+: +20% each)
+       SPEED UPGRADE (level 0 = none; level 1: 2x speed,
+       later upgrades give diminishing additional effect)
        Cost: level 1 = 10, level 2 = 20, then 10*level (log-friendly scaling)
     --------------------------------------------------------- */
     let speedLevel = 0;
     let autoBuyUnlocked = false;
     let autoBuyEnabled = false;
+    function getSpeedMultiplierForLevel(level) {
+        if (level === 0) return 1;
+        const r = 0.5; // geometric decay for diminishing returns
+        return 1 + (1 - Math.pow(r, level)) / (1 - r);
+    }
     function getSpeedMultiplier() {
-        if (speedLevel === 0) return 1;
-        return 1.4 * Math.pow(1.2, speedLevel - 1);
+        return getSpeedMultiplierForLevel(speedLevel);
     }
     function getUpgradeCost(nextLevel) {
         const base = 10 * nextLevel;
@@ -283,18 +293,27 @@
     const speedUpgradeBtn = document.getElementById("speed-upgrade-btn");
     const speedUpgradeCostEl = document.getElementById("speed-upgrade-cost");
     const speedUpgradeLevelEl = document.getElementById("speed-upgrade-level");
+    const speedUpgradeEffectEl = document.getElementById("speed-upgrade-effect");
     const speedAutoBuyBtn = document.getElementById("speed-autobuy-btn");
 
     function updateSpeedUpgradeUI() {
         if (totalChanges >= 10 && upgradeContainer.style.display === "none") {
             upgradeContainer.style.display = "block";
         }
-        const cost = getUpgradeCost(speedLevel + 1);
+        const nextLevel = speedLevel + 1;
+        const cost = getUpgradeCost(nextLevel);
         speedUpgradeCostEl.textContent = "Cost: " + formatCount(cost);
         speedUpgradeBtn.disabled = totalChanges < cost;
 
         // Show current speed level
         speedUpgradeLevelEl.textContent = "Speed level: " + speedLevel;
+
+        // Show effect of next upgrade
+        const currentMult = getSpeedMultiplier();
+        const nextMult = getSpeedMultiplierForLevel(nextLevel);
+        const factor = nextMult / currentMult;
+        const percent = (factor - 1) * 100;
+        speedUpgradeEffectEl.textContent = "Next upgrade: +" + percent.toFixed(1) + "% speed";
 
         // Autobuy UI
         if (speedLevel >= 10) {
@@ -380,14 +399,18 @@
     }
 
     /* ---------------------------------------------------------
-       RATE DISPLAY (counts per second, theoretical)
+       RATE DISPLAY (counts per second, measured)
+       Uses change in totalChanges over real time so it matches
+       what the Total Count is actually doing (including spending).
     --------------------------------------------------------- */
     function updateRateDisplay() {
-        let cps = 0;
-        const multiplier = getSpeedMultiplier();
-        hands.forEach(h => {
-            cps += (1000 * multiplier) / h.baseSpeed;
-        });
+        const now = Date.now();
+        const dt = (now - lastCpsSampleTime) / 1000;
+        if (dt <= 0) return;
+        const diff = totalChanges - lastCpsTotalChanges;
+        const cps = diff / dt;
+        lastCpsSampleTime = now;
+        lastCpsTotalChanges = totalChanges;
         incrementalRateEl.textContent = cps.toFixed(2);
     }
 
@@ -478,7 +501,6 @@
 
         const hand = new HandCounter(unlockedHands, speed);
         hands.push(hand);
-        updateRateDisplay();
     }
 
     function checkUnlockHands() {
@@ -491,13 +513,16 @@
        INITIALIZE FIRST HAND (appears immediately)
     --------------------------------------------------------- */
     hands.push(new HandCounter(1, 1000));
-    updateRateDisplay();
 
     speedUpgradeBtn.addEventListener("click", buySpeedUpgrade);
     speedAutoBuyBtn.addEventListener("click", handleSpeedAutoBuyClick);
     cheapenUpgradeBtn.addEventListener("click", buyCheapenUpgrade);
     updateSpeedUpgradeUI();
     updateCheapenUpgradeUI();
+
+    // Sample counts per second regularly so it matches the
+    // actual Total Count behavior over time.
+    setInterval(updateRateDisplay, 500);
 
     /* ---------------------------------------------------------
        AUTO-UNLOCK HANDS (driven by checkUnlockHands in update())
