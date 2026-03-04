@@ -483,21 +483,10 @@
 
         restartTimer() { /* speed applied in game loop */ }
 
-        update() {
-            this.count++;
-            if (this.count > 10) this.count = 1;
-
+        applyTicks(n) {
+            if (n <= 0) return;
+            this.count = ((this.count - 1 + n) % 10) + 1;
             this.render();
-
-            totalChanges++;
-            incrementalEl.textContent = formatCount(totalChanges);
-
-            updateObjectives();
-            checkUnlockHands();
-            updateSpeedUpgradeUI();
-            updateCheapenUpgradeUI();
-            maybeAutoBuySpeedUpgrade();
-            updateRateDisplay();
         }
 
         render() {
@@ -545,15 +534,26 @@
     function gameLoopTick() {
         const dt = GAME_LOOP_MS;
         const mult = getSpeedMultiplier();
+        let ticksThisFrame = 0;
         hands.forEach(h => {
             const intervalMs = h.baseSpeed / mult;
             if (intervalMs <= 0) return;
             h.accumulatorMs = (h.accumulatorMs || 0) + dt;
-            while (h.accumulatorMs >= intervalMs) {
-                h.accumulatorMs -= intervalMs;
-                h.update();
-            }
+            const n = Math.floor(h.accumulatorMs / intervalMs);
+            h.accumulatorMs -= n * intervalMs;
+            ticksThisFrame += n;
+            h.applyTicks(n);
         });
+        if (ticksThisFrame > 0) {
+            totalChanges += ticksThisFrame;
+            incrementalEl.textContent = formatCount(totalChanges);
+            updateObjectives();
+            checkUnlockHands();
+            updateSpeedUpgradeUI();
+            updateCheapenUpgradeUI();
+            maybeAutoBuySpeedUpgrade();
+            updateRateDisplay();
+        }
     }
     if (!gameLoopTimer) gameLoopTimer = setInterval(gameLoopTick, GAME_LOOP_MS);
 
