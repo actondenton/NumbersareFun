@@ -429,19 +429,18 @@
     }
 
     /* ---------------------------------------------------------
-       RATE DISPLAY (counts per second)
-       Browsers clamp setInterval to ~4ms min, so we use the same
-       effective interval in both timer and CPS so display matches reality.
+       RATE DISPLAY and TICK INTERVAL
+       Effective interval = baseSpeed / multiplier (no minimum cap in formula;
+       game loop below drives actual ticks so speed scales with level)
     --------------------------------------------------------- */
-    const MIN_TICK_MS = 4;
     function getTickIntervalMs(baseSpeed) {
-        return Math.max(MIN_TICK_MS, baseSpeed / getSpeedMultiplier());
+        return baseSpeed / getSpeedMultiplier();
     }
     function updateRateDisplay() {
         let cps = 0;
         hands.forEach(h => {
             const intervalMs = getTickIntervalMs(h.baseSpeed);
-            cps += 1000 / intervalMs;
+            cps += intervalMs > 0 ? 1000 / intervalMs : 0;
         });
         incrementalRateEl.textContent = cps.toFixed(2);
     }
@@ -458,11 +457,15 @@
     /* ---------------------------------------------------------
        HAND CLASS
     --------------------------------------------------------- */
+    const GAME_LOOP_MS = 50;
+    let gameLoopTimer = null;
+
     class HandCounter {
         constructor(id, speed) {
             this.id = id;
             this.count = 1;
             this.baseSpeed = speed;
+            this.accumulatorMs = 0;
 
             this.el = document.createElement("div");
             this.el.className = "hand curtain-reveal";
@@ -476,14 +479,9 @@
             setTimeout(() => {
                 this.el.classList.add("visible");
             }, 300);
-
-            this.timer = setInterval(() => this.update(), getTickIntervalMs(this.baseSpeed));
         }
 
-        restartTimer() {
-            clearInterval(this.timer);
-            this.timer = setInterval(() => this.update(), getTickIntervalMs(this.baseSpeed));
-        }
+        restartTimer() { /* speed applied in game loop */ }
 
         update() {
             this.count++;
@@ -543,6 +541,21 @@
        INITIALIZE FIRST HAND (appears immediately)
     --------------------------------------------------------- */
     hands.push(new HandCounter(1, HAND_BASE_SPEED));
+
+    function gameLoopTick() {
+        const dt = GAME_LOOP_MS;
+        const mult = getSpeedMultiplier();
+        hands.forEach(h => {
+            const intervalMs = h.baseSpeed / mult;
+            if (intervalMs <= 0) return;
+            h.accumulatorMs = (h.accumulatorMs || 0) + dt;
+            while (h.accumulatorMs >= intervalMs) {
+                h.accumulatorMs -= intervalMs;
+                h.update();
+            }
+        });
+    }
+    if (!gameLoopTimer) gameLoopTimer = setInterval(gameLoopTick, GAME_LOOP_MS);
 
     speedUpgradeBtn.addEventListener("click", buySpeedUpgrade);
     speedAutoBuyBtn.addEventListener("click", handleSpeedAutoBuyClick);
