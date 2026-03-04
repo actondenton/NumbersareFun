@@ -280,25 +280,21 @@
     }
 
     /* ---------------------------------------------------------
-       SPEED UPGRADE (level 0 = none; level 1: 2x speed,
-       later upgrades give diminishing additional effect)
-       Cost: level 1 = 10, level 2 = 20, then 10*level (log-friendly scaling)
+       SPEED UPGRADE: each level doubles speed, cost triples per level
+       Multiplier: 2^level. Cost: 10 * 3^(level-1), then * cheapen
     --------------------------------------------------------- */
     let speedLevel = 0;
     let autoBuyUnlocked = false;
     let autoBuyEnabled = false;
     function getSpeedMultiplierForLevel(level) {
         if (level === 0) return 1;
-        const r = 0.3; // decay per level; first 10 levels sum to ~1000% (10x total)
-        const first10 = 9 * (1 - Math.pow(r, Math.min(level, 10))) / (1 - Math.pow(r, 10));
-        const beyond10 = level > 10 ? 2 * Math.log(1 + level - 10) : 0;
-        return 1 + first10 + beyond10;
+        return Math.pow(2, level); // each upgrade doubles speed
     }
     function getSpeedMultiplier() {
         return getSpeedMultiplierForLevel(speedLevel);
     }
     function getUpgradeCost(nextLevel) {
-        const base = 10 * nextLevel;
+        const base = 10 * Math.pow(3, nextLevel - 1); // level 1: 10, 2: 30, 3: 90, ...
         return Math.max(1, Math.floor(base * getCheapenMultiplier()));
     }
     const upgradeContainer = document.getElementById("upgrade-container");
@@ -327,8 +323,8 @@
         const percent = (factor - 1) * 100;
         speedUpgradeEffectEl.textContent = "Next upgrade: +" + percent.toFixed(1) + "% speed";
 
-        // Autobuy UI
-        if (speedLevel >= 10) {
+        // Autobuy UI (unlocks when incremental count >= 100)
+        if (totalChanges >= 100) {
             speedAutoBuyBtn.style.display = "block";
             const unlockCost = 100;
             if (!autoBuyUnlocked) {
@@ -504,15 +500,12 @@
         1e33   // hand 10: 1 decillion
     ];
 
+    const HAND_BASE_SPEED = 1000; // ms per tick; same for all hands
+
     function unlockHand() {
         if (unlockedHands >= maxHands) return;
-
         unlockedHands++;
-
-        const speed = 700 + Math.random() * 1300;
-
-        const hand = new HandCounter(unlockedHands, speed);
-        hands.push(hand);
+        hands.push(new HandCounter(unlockedHands, HAND_BASE_SPEED));
     }
 
     function checkUnlockHands() {
@@ -524,7 +517,7 @@
     /* ---------------------------------------------------------
        INITIALIZE FIRST HAND (appears immediately)
     --------------------------------------------------------- */
-    hands.push(new HandCounter(1, 1000));
+    hands.push(new HandCounter(1, HAND_BASE_SPEED));
 
     speedUpgradeBtn.addEventListener("click", buySpeedUpgrade);
     speedAutoBuyBtn.addEventListener("click", handleSpeedAutoBuyClick);
