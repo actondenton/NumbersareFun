@@ -37,10 +37,24 @@
 	<div class="incremental-count-countainer">
 	<div id="incremental-count-label">Total Count</div>
     <div id="incremental-count">1</div>
+	</div>
+
+    <!-- Speed Upgrade -->
+    <div id="upgrade-container" class="upgrade-container" style="display: none;">
+        <button id="speed-upgrade-btn" class="upgrade-btn">Increase count speed</button>
+        <div id="speed-upgrade-cost" class="upgrade-cost"></div>
+    </div>
+
+    <!-- Cheapen Speed Cost Upgrade -->
+    <div id="cheapen-container" class="upgrade-container" style="display: none;">
+        <button id="cheapen-upgrade-btn" class="upgrade-btn">Cheapen speed upgrade</button>
+        <div id="cheapen-upgrade-cost" class="upgrade-cost"></div>
+    </div>
 
     <!-- Hands Grid -->
     <div id="hands-container" class="hands-grid"></div>
 
+    <script src="game.js"></script>
     <script>
     /* ---------------------------------------------------------
        ASCII HANDS (1–10)
@@ -209,6 +223,16 @@
     const handsContainer = document.getElementById("hands-container");
     const objectiveList = document.getElementById("objective-list");
 
+    const NAMES = ["", "thousand", "million", "billion", "trillion", "quadrillion", "quintillion", "sextillion", "septillion", "octillion", "nonillion", "decillion"];
+    function formatCount(n) {
+        if (n < 1e6) return String(n);
+        const exp = Math.floor(Math.log10(n));
+        const tier = Math.floor(exp / 3);
+        const mantissa = (n / Math.pow(10, tier * 3)).toFixed(2).replace(/\.?0+$/, "");
+        const name = NAMES[tier] || "e" + (tier * 3);
+        return mantissa + " " + name;
+    }
+
     /* ---------------------------------------------------------
        OBJECTIVES
     --------------------------------------------------------- */
@@ -236,13 +260,89 @@
     }
 
     /* ---------------------------------------------------------
+       SPEED UPGRADE (level 0 = none; level 1: +40%, level 2+: +20% each)
+       Cost: level 1 = 10, level 2 = 20, then 10*level (log-friendly scaling)
+    --------------------------------------------------------- */
+    let speedLevel = 0;
+    function getSpeedMultiplier() {
+        if (speedLevel === 0) return 1;
+        return 1.4 * Math.pow(1.2, speedLevel - 1);
+    }
+    function getUpgradeCost(nextLevel) {
+        const base = 10 * nextLevel;
+        return Math.max(1, Math.floor(base * getCheapenMultiplier()));
+    }
+    const upgradeContainer = document.getElementById("upgrade-container");
+    const speedUpgradeBtn = document.getElementById("speed-upgrade-btn");
+    const speedUpgradeCostEl = document.getElementById("speed-upgrade-cost");
+
+    function updateSpeedUpgradeUI() {
+        if (totalChanges >= 10 && upgradeContainer.style.display === "none") {
+            upgradeContainer.style.display = "block";
+        }
+        const cost = getUpgradeCost(speedLevel + 1);
+        speedUpgradeCostEl.textContent = "Cost: " + formatCount(cost);
+        speedUpgradeBtn.disabled = totalChanges < cost;
+    }
+
+    function buySpeedUpgrade() {
+        const cost = getUpgradeCost(speedLevel + 1);
+        if (totalChanges < cost) return;
+        totalChanges -= cost;
+        speedLevel++;
+        incrementalEl.textContent = formatCount(totalChanges);
+        hands.forEach(h => h.restartTimer());
+        updateSpeedUpgradeUI();
+        updateCheapenUpgradeUI();
+    }
+
+    /* ---------------------------------------------------------
+       CHEAPEN SPEED UPGRADE (reduces speed upgrade cost)
+       Appears at 1000. Level 1: cost 1000, cheapen by 9%; level 2: 10k, 99%; level 3: 100k, 99.9%; ...
+    --------------------------------------------------------- */
+    let cheapenLevel = 0;
+    function getCheapenMultiplier() {
+        if (cheapenLevel === 0) return 1;
+        let mult = 1;
+        for (let L = 1; L <= cheapenLevel; L++) {
+            mult *= (L === 1) ? 0.91 : Math.pow(10, -L);
+        }
+        return mult;
+    }
+    function getCheapenUpgradeCost(nextLevel) {
+        return 1000 * Math.pow(10, nextLevel - 1);
+    }
+    const cheapenContainer = document.getElementById("cheapen-container");
+    const cheapenUpgradeBtn = document.getElementById("cheapen-upgrade-btn");
+    const cheapenUpgradeCostEl = document.getElementById("cheapen-upgrade-cost");
+
+    function updateCheapenUpgradeUI() {
+        if (totalChanges >= 1000 && cheapenContainer.style.display === "none") {
+            cheapenContainer.style.display = "block";
+        }
+        const cost = getCheapenUpgradeCost(cheapenLevel + 1);
+        cheapenUpgradeCostEl.textContent = "Cost: " + formatCount(cost);
+        cheapenUpgradeBtn.disabled = totalChanges < cost;
+    }
+
+    function buyCheapenUpgrade() {
+        const cost = getCheapenUpgradeCost(cheapenLevel + 1);
+        if (totalChanges < cost) return;
+        totalChanges -= cost;
+        cheapenLevel++;
+        incrementalEl.textContent = formatCount(totalChanges);
+        updateSpeedUpgradeUI();
+        updateCheapenUpgradeUI();
+    }
+
+    /* ---------------------------------------------------------
        HAND CLASS
     --------------------------------------------------------- */
     class HandCounter {
         constructor(id, speed) {
             this.id = id;
             this.count = 1;
-            this.speed = speed;
+            this.baseSpeed = speed;
 
             this.el = document.createElement("div");
             this.el.className = "hand curtain-reveal";
@@ -257,7 +357,12 @@
                 this.el.classList.add("visible");
             }, 300);
 
-            this.timer = setInterval(() => this.update(), this.speed);
+            this.timer = setInterval(() => this.update(), this.baseSpeed / getSpeedMultiplier());
+        }
+
+        restartTimer() {
+            clearInterval(this.timer);
+            this.timer = setInterval(() => this.update(), this.baseSpeed / getSpeedMultiplier());
         }
 
         update() {
@@ -267,9 +372,12 @@
             this.render();
 
             totalChanges++;
-            incrementalEl.textContent = totalChanges;
+            incrementalEl.textContent = formatCount(totalChanges);
 
             updateObjectives();
+            checkUnlockHands();
+            updateSpeedUpgradeUI();
+            updateCheapenUpgradeUI();
         }
 
         render() {
@@ -279,8 +387,21 @@
 
     /* ---------------------------------------------------------
        HAND MANAGEMENT
+       Hand 1: immediate. Hand 2: 1e9, 3: 1e12, 4: 1e15, 5: 1e18,
+       6: 1e21, 7: 1e24, 8: 1e27, 9: 1e30, 10: 1e33
     --------------------------------------------------------- */
     const hands = [];
+    const UNLOCK_THRESHOLDS = [
+        1e9,   // hand 2: 1 billion
+        1e12,  // hand 3: 1 trillion
+        1e15,  // hand 4: 1 quadrillion
+        1e18,  // hand 5: 1 quintillion
+        1e21,  // hand 6: 1 sextillion
+        1e24,  // hand 7: 1 septillion
+        1e27,  // hand 8: 1 octillion
+        1e30,  // hand 9: 1 nonillion
+        1e33   // hand 10: 1 decillion
+    ];
 
     function unlockHand() {
         if (unlockedHands >= maxHands) return;
@@ -293,19 +414,25 @@
         hands.push(hand);
     }
 
+    function checkUnlockHands() {
+        while (unlockedHands <= maxHands && unlockedHands - 1 < UNLOCK_THRESHOLDS.length && totalChanges >= UNLOCK_THRESHOLDS[unlockedHands - 1]) {
+            unlockHand();
+        }
+    }
+
     /* ---------------------------------------------------------
-       INITIALIZE FIRST HAND
+       INITIALIZE FIRST HAND (appears immediately)
     --------------------------------------------------------- */
     hands.push(new HandCounter(1, 1000));
 
+    speedUpgradeBtn.addEventListener("click", buySpeedUpgrade);
+    cheapenUpgradeBtn.addEventListener("click", buyCheapenUpgrade);
+    updateSpeedUpgradeUI();
+    updateCheapenUpgradeUI();
+
     /* ---------------------------------------------------------
-       AUTO-UNLOCK HANDS
+       AUTO-UNLOCK HANDS (driven by checkUnlockHands in update())
     --------------------------------------------------------- */
-    setInterval(() => {
-        if (totalChanges > 0 && totalChanges % 20 === 0) {
-            unlockHand();
-        }
-    }, 500);
 
     </script>
 
