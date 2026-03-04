@@ -289,7 +289,7 @@
     let autoBuyEnabled = false;
     function getSpeedMultiplierForLevel(level) {
         if (level === 0) return 1;
-        const r = 0.6; // decay per level; first 10 levels sum to ~1000% (10x total)
+        const r = 0.3; // decay per level; first 10 levels sum to ~1000% (10x total)
         const first10 = 9 * (1 - Math.pow(r, Math.min(level, 10))) / (1 - Math.pow(r, 10));
         const beyond10 = level > 10 ? 2 * Math.log(1 + level - 10) : 0;
         return 1 + first10 + beyond10;
@@ -541,3 +541,4 @@
 
 </body>
 </html>
+
