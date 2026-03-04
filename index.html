@@ -77,6 +77,12 @@
         </div>
     </div>
 
+    <!-- Action log (bottom, expandable) -->
+    <div id="action-log" class="action-log">
+        <div id="action-log-lines" class="action-log-lines"></div>
+        <button type="button" id="action-log-toggle" class="action-log-toggle">Show more</button>
+    </div>
+
     <script src="game.js"></script>
     <script>
     /* ---------------------------------------------------------
@@ -247,6 +253,48 @@
     const handsContainer = document.getElementById("hands-container");
     const objectiveList = document.getElementById("objective-list");
     const longObjectiveList = document.getElementById("long-objective-list");
+    const actionLogEl = document.getElementById("action-log-lines");
+    const actionLogToggle = document.getElementById("action-log-toggle");
+    const actionLogContainer = document.getElementById("action-log");
+
+    const ACTION_LOG_MAX = 50;
+    const ACTION_LOG_VISIBLE = 3;
+    const ACTION_LOG_EXPANDED = 15;
+    const actionLogEntries = [];
+    let actionLogExpanded = false;
+    const LOG_MESSAGES = [
+        "Keep counting!",
+        "How fast can you count?",
+        "Have you ever counted on your fingers?",
+        "What about counting with multiple hands?",
+        "Every number counts.",
+        "Speed is key."
+    ];
+
+    function addToLog(msg) {
+        actionLogEntries.push(msg);
+        if (actionLogEntries.length > ACTION_LOG_MAX) actionLogEntries.shift();
+        renderActionLog();
+    }
+    function renderActionLog() {
+        const n = actionLogExpanded ? ACTION_LOG_EXPANDED : ACTION_LOG_VISIBLE;
+        const toShow = actionLogEntries.slice(-n);
+        actionLogEl.innerHTML = "";
+        toShow.forEach(msg => {
+            const line = document.createElement("div");
+            line.className = "action-log-line";
+            line.textContent = msg;
+            actionLogEl.appendChild(line);
+        });
+    }
+    if (actionLogToggle) {
+        actionLogToggle.addEventListener("click", () => {
+            actionLogExpanded = !actionLogExpanded;
+            actionLogToggle.textContent = actionLogExpanded ? "Show less" : "Show more";
+            if (actionLogContainer) actionLogContainer.classList.toggle("expanded", actionLogExpanded);
+            renderActionLog();
+        });
+    }
 
     const NAMES = ["", "thousand", "million", "billion", "trillion", "quadrillion", "quintillion", "sextillion", "septillion", "octillion", "nonillion", "decillion"];
     function formatCount(n) {
@@ -310,9 +358,7 @@
     }
 
     /* ---------------------------------------------------------
-       SPEED UPGRADE: each level doubles speed
-       Cost: (1.17 - cheapen_variable)^owned_variable
-       Uses existing vars: cheapenLevel (→ base), nextLevel = speedLevel+1 (→ exponent)
+       SPEED UPGRADE: 
     --------------------------------------------------------- */
     let speedLevel = 0;
     let autoBuyUnlocked = false;
@@ -325,7 +371,7 @@
         return getSpeedMultiplierForLevel(speedLevel);
     }
     function getUpgradeCost(nextLevel) {
-        const base = Math.max(1, 2.25 - 0.01 * cheapenLevel);
+        const base = Math.max(1, 1.35 - 0.01 * cheapenLevel);
         return Math.max(1, 10 + Math.floor(Math.pow(base, nextLevel)));
     }
     const upgradeContainer = document.getElementById("upgrade-container");
@@ -375,6 +421,7 @@
         if (totalChanges < cost) return;
         totalChanges -= cost;
         speedLevel++;
+        addToLog("Speed upgrade purchased (level " + speedLevel + ")");
         incrementalEl.textContent = formatCount(totalChanges);
         hands.forEach(h => h.restartTimer());
         updateSpeedUpgradeUI();
@@ -389,6 +436,7 @@
             totalChanges -= unlockCost;
             autoBuyUnlocked = true;
             autoBuyEnabled = true;
+            addToLog("Speed autobuy unlocked");
             incrementalEl.textContent = formatCount(totalChanges);
             updateSpeedUpgradeUI();
             updateCheapenUpgradeUI();
@@ -400,17 +448,12 @@
 
     /* ---------------------------------------------------------
        CHEAPEN SPEED UPGRADE (reduces speed upgrade cost), max 8
-       Appears at 1000. Level 1: cost 1000, cheapen by 9%; level 2: 10k, 99%; ...
+       Appears at 1000. Level 1: cost 1000, cheapen by 99%; 
     --------------------------------------------------------- */
     const MAX_CHEAPEN_LEVEL = 8;
     let cheapenLevel = 0;
     function getCheapenMultiplier() {
-        if (cheapenLevel === 0) return 1;
-        let mult = 1;
-        for (let L = 1; L <= cheapenLevel; L++) {
-            mult *= (L === 1) ? 0.91 : Math.pow(10, -L);
-        }
-        return mult;
+    return Math.pow(10, -cheapenLevel); //reduces cost by 99%
     }
     function getCheapenUpgradeCost(nextLevel) {
         return 1000 * Math.pow(10, nextLevel - 1);
@@ -439,6 +482,7 @@
         if (totalChanges < cost) return;
         totalChanges -= cost;
         cheapenLevel++;
+        addToLog("Speed cheapen purchased (level " + cheapenLevel + ")");
         incrementalEl.textContent = formatCount(totalChanges);
         updateSpeedUpgradeUI();
         updateCheapenUpgradeUI();
@@ -533,6 +577,7 @@
     function unlockHand() {
         if (unlockedHands >= maxHands) return;
         unlockedHands++;
+        addToLog("Hand " + unlockedHands + " unlocked");
         hands.push(new HandCounter(unlockedHands, HAND_BASE_SPEED));
     }
 
@@ -572,6 +617,13 @@
         }
     }
     if (!gameLoopTimer) gameLoopTimer = setInterval(gameLoopTick, GAME_LOOP_MS);
+
+    setInterval(() => {
+        const msg = LOG_MESSAGES[Math.floor(Math.random() * LOG_MESSAGES.length)];
+        addToLog(msg);
+    }, 45000);
+
+    setTimeout(() => addToLog(LOG_MESSAGES[0]), 2000);
 
     speedUpgradeBtn.addEventListener("click", buySpeedUpgrade);
     speedAutoBuyBtn.addEventListener("click", handleSpeedAutoBuyClick);

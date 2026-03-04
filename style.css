@@ -410,3 +410,49 @@ CURTAINS
 .dev-btn:hover {
     background: #555;
 }
+
+/* =========================
+   Action log (bottom, expandable)
+   ========================= */
+.action-log {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    background: rgba(20, 22, 35, 0.95);
+    border-top: 1px solid #333;
+    padding: 6px 12px 8px;
+    font-size: 12px;
+    color: #bbb;
+    max-height: 30%;
+}
+
+.action-log-lines {
+    max-height: 4.2em;
+    overflow: hidden;
+    line-height: 1.4em;
+}
+.action-log.expanded .action-log-lines {
+    max-height: 20em;
+    overflow-y: auto;
+}
+
+.action-log-line {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.action-log-toggle {
+    margin-top: 4px;
+    padding: 2px 8px;
+    font-size: 11px;
+    background: transparent;
+    color: #888;
+    border: none;
+    cursor: pointer;
+}
+.action-log-toggle:hover {
+    color: #aaa;
+}
