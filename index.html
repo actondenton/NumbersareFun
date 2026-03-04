@@ -303,7 +303,7 @@
     let autoBuyEnabled = false;
     function getSpeedMultiplierForLevel(level) {
         if (level === 0) return 1;
-        return Math.pow(1.1, level); 
+        return Math.pow(1.2, level); //increase speed by 20%
     }
     function getSpeedMultiplier() {
         return getSpeedMultiplierForLevel(speedLevel);
@@ -612,4 +612,5 @@
 
 </body>
 </html>
+
 
