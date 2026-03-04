@@ -28,8 +28,12 @@
         <button id="menu-btn">Menu</button>
 
         <div id="objectives">
-            <h3>Objectives</h3>
+            <h3>Short term objectives</h3>
             <ul id="objective-list"></ul>
+        </div>
+        <div id="long-objectives">
+            <h3>Long Term Objectives</h3>
+            <ul id="long-objective-list"></ul>
         </div>
     </div>
 
@@ -228,6 +232,7 @@
     const incrementalRateEl = document.getElementById("incremental-rate");
     const handsContainer = document.getElementById("hands-container");
     const objectiveList = document.getElementById("objective-list");
+    const longObjectiveList = document.getElementById("long-objective-list");
 
     const NAMES = ["", "thousand", "million", "billion", "trillion", "quadrillion", "quintillion", "sextillion", "septillion", "octillion", "nonillion", "decillion"];
     function formatCount(n) {
@@ -239,33 +244,38 @@
         return mantissa + " " + name;
     }
 
-    // For empirical counts-per-second measurement
-    let lastCpsSampleTime = Date.now();
-    let lastCpsTotalChanges = 0;
-
     /* ---------------------------------------------------------
-       OBJECTIVES
+       OBJECTIVES (short term: 10, 100, 1000; long term: 1e9, ...)
+       Once achieved, stays complete even if count drops later.
     --------------------------------------------------------- */
     const objectives = [
-        { goal: 10, achieved: false },
-        { goal: 100, achieved: false },
-        { goal: 1000, achieved: false }
+        { goal: 10, text: "Unlock speed increase", achieved: false },
+        { goal: 100, text: "Unlocks speed increase auto buyer", achieved: false },
+        { goal: 1000, text: "Unlock speed increase Cheapen", achieved: false }
     ];
+    const longTermObjectives = [
+        { goal: 1e9, text: "Unlock a second hand", achieved: false }
+    ];
+
+    function renderObjective(obj, totalChanges) {
+        const li = document.createElement("li");
+        li.textContent = `Reach ${formatCount(obj.goal)} — ${obj.text}`;
+        if (totalChanges >= obj.goal) obj.achieved = true;
+        if (obj.achieved) {
+            li.style.textDecoration = "line-through";
+            li.style.color = "#4CAF50";
+        }
+        return li;
+    }
 
     function updateObjectives() {
         objectiveList.innerHTML = "";
-
         objectives.forEach(obj => {
-            const li = document.createElement("li");
-            li.textContent = `Reach ${obj.goal}`;
-
-            if (totalChanges >= obj.goal) {
-                obj.achieved = true;
-                li.style.textDecoration = "line-through";
-                li.style.color = "#4CAF50";
-            }
-
-            objectiveList.appendChild(li);
+            objectiveList.appendChild(renderObjective(obj, totalChanges));
+        });
+        longObjectiveList.innerHTML = "";
+        longTermObjectives.forEach(obj => {
+            longObjectiveList.appendChild(renderObjective(obj, totalChanges));
         });
     }
 
@@ -279,8 +289,10 @@
     let autoBuyEnabled = false;
     function getSpeedMultiplierForLevel(level) {
         if (level === 0) return 1;
-        const r = 0.5; // geometric decay for diminishing returns
-        return 1 + (1 - Math.pow(r, level)) / (1 - r);
+        const r = 0.6; // decay per level; first 10 levels sum to ~1000% (10x total)
+        const first10 = 9 * (1 - Math.pow(r, Math.min(level, 10))) / (1 - Math.pow(r, 10));
+        const beyond10 = level > 10 ? 2 * Math.log(1 + level - 10) : 0;
+        return 1 + first10 + beyond10;
     }
     function getSpeedMultiplier() {
         return getSpeedMultiplierForLevel(speedLevel);
@@ -399,18 +411,17 @@
     }
 
     /* ---------------------------------------------------------
-       RATE DISPLAY (counts per second, measured)
-       Uses change in totalChanges over real time so it matches
-       what the Total Count is actually doing (including spending).
+       RATE DISPLAY (counts per second, theoretical)
+       Stable value: sum of each hand's ticks per second at current
+       speed multiplier. Equals amount added to incremental count
+       per second when not spending. Updates when hands or speed change.
     --------------------------------------------------------- */
     function updateRateDisplay() {
-        const now = Date.now();
-        const dt = (now - lastCpsSampleTime) / 1000;
-        if (dt <= 0) return;
-        const diff = totalChanges - lastCpsTotalChanges;
-        const cps = diff / dt;
-        lastCpsSampleTime = now;
-        lastCpsTotalChanges = totalChanges;
+        const mult = getSpeedMultiplier();
+        let cps = 0;
+        hands.forEach(h => {
+            cps += (1000 * mult) / h.baseSpeed;
+        });
         incrementalRateEl.textContent = cps.toFixed(2);
     }
 
@@ -467,6 +478,7 @@
             updateSpeedUpgradeUI();
             updateCheapenUpgradeUI();
             maybeAutoBuySpeedUpgrade();
+            updateRateDisplay();
         }
 
         render() {
@@ -519,10 +531,7 @@
     cheapenUpgradeBtn.addEventListener("click", buyCheapenUpgrade);
     updateSpeedUpgradeUI();
     updateCheapenUpgradeUI();
-
-    // Sample counts per second regularly so it matches the
-    // actual Total Count behavior over time.
-    setInterval(updateRateDisplay, 500);
+    updateRateDisplay();
 
     /* ---------------------------------------------------------
        AUTO-UNLOCK HANDS (driven by checkUnlockHands in update())
