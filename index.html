@@ -35,8 +35,10 @@
 
     <!-- Global Incremental Counter -->
 	<div class="incremental-count-countainer">
-	<div id="incremental-count-label">Total Count</div>
-    <div id="incremental-count">1</div>
+	    <div id="incremental-count-label" class="incremental-count-label">Total Count</div>
+        <div id="incremental-count" class="incremental-count">1</div>
+        <div id="incremental-rate-label" class="incremental-count-label">Count per second</div>
+        <div id="incremental-rate" class="incremental-count">0.00</div>
 	</div>
 
     <!-- Speed Upgrade -->
@@ -220,6 +222,7 @@
     const maxHands = 10;
 
     const incrementalEl = document.getElementById("incremental-count");
+    const incrementalRateEl = document.getElementById("incremental-rate");
     const handsContainer = document.getElementById("hands-container");
     const objectiveList = document.getElementById("objective-list");
 
@@ -294,6 +297,7 @@
         hands.forEach(h => h.restartTimer());
         updateSpeedUpgradeUI();
         updateCheapenUpgradeUI();
+        updateRateDisplay();
     }
 
     /* ---------------------------------------------------------
@@ -333,6 +337,18 @@
         incrementalEl.textContent = formatCount(totalChanges);
         updateSpeedUpgradeUI();
         updateCheapenUpgradeUI();
+    }
+
+    /* ---------------------------------------------------------
+       RATE DISPLAY (counts per second, theoretical)
+    --------------------------------------------------------- */
+    function updateRateDisplay() {
+        let cps = 0;
+        const multiplier = getSpeedMultiplier();
+        hands.forEach(h => {
+            cps += (1000 * multiplier) / h.baseSpeed;
+        });
+        incrementalRateEl.textContent = cps.toFixed(2);
     }
 
     /* ---------------------------------------------------------
@@ -412,6 +428,7 @@
 
         const hand = new HandCounter(unlockedHands, speed);
         hands.push(hand);
+        updateRateDisplay();
     }
 
     function checkUnlockHands() {
@@ -424,6 +441,7 @@
        INITIALIZE FIRST HAND (appears immediately)
     --------------------------------------------------------- */
     hands.push(new HandCounter(1, 1000));
+    updateRateDisplay();
 
     speedUpgradeBtn.addEventListener("click", buySpeedUpgrade);
     cheapenUpgradeBtn.addEventListener("click", buyCheapenUpgrade);
