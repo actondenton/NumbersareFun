@@ -63,6 +63,20 @@
     <!-- Hands Grid -->
     <div id="hands-container" class="hands-grid"></div>
 
+    <!-- Dev tools (toggle on/off) -->
+    <button type="button" id="dev-tools-toggle" class="dev-tools-toggle">Dev</button>
+    <div id="dev-tools-panel" class="dev-tools-panel" style="display: none;">
+        <div class="dev-tools-row">
+            <label>Seconds since load:</label>
+            <span id="dev-seconds-elapsed">0</span>
+        </div>
+        <div class="dev-tools-row">
+            <label>Add to count:</label>
+            <input type="number" id="dev-add-count-input" min="0" value="0" class="dev-input" />
+            <button type="button" id="dev-add-count-btn" class="dev-btn">Add</button>
+        </div>
+    </div>
+
     <script src="game.js"></script>
     <script>
     /* ---------------------------------------------------------
@@ -280,8 +294,9 @@
     }
 
     /* ---------------------------------------------------------
-       SPEED UPGRADE: each level doubles speed, cost triples per level
-       Multiplier: 2^level. Cost: 10 * 3^(level-1), then * cheapen
+       SPEED UPGRADE: each level doubles speed
+       Cost: (1.17 - cheapen_variable)^owned_variable
+       Uses existing vars: cheapenLevel (→ base), nextLevel = speedLevel+1 (→ exponent)
     --------------------------------------------------------- */
     let speedLevel = 0;
     let autoBuyUnlocked = false;
@@ -294,8 +309,8 @@
         return getSpeedMultiplierForLevel(speedLevel);
     }
     function getUpgradeCost(nextLevel) {
-        const base = 10 * Math.pow(3, nextLevel - 1); // level 1: 10, 2: 30, 3: 90, ...
-        return Math.max(1, Math.floor(base * getCheapenMultiplier()));
+        const base = Math.max(0.17, 1.17 - 0.1 * cheapenLevel);
+        return Math.max(1, Math.floor(Math.pow(base, nextLevel)));
     }
     const upgradeContainer = document.getElementById("upgrade-container");
     const speedUpgradeBtn = document.getElementById("speed-upgrade-btn");
@@ -368,9 +383,10 @@
     }
 
     /* ---------------------------------------------------------
-       CHEAPEN SPEED UPGRADE (reduces speed upgrade cost)
-       Appears at 1000. Level 1: cost 1000, cheapen by 9%; level 2: 10k, 99%; level 3: 100k, 99.9%; ...
+       CHEAPEN SPEED UPGRADE (reduces speed upgrade cost), max 8
+       Appears at 1000. Level 1: cost 1000, cheapen by 9%; level 2: 10k, 99%; ...
     --------------------------------------------------------- */
+    const MAX_CHEAPEN_LEVEL = 8;
     let cheapenLevel = 0;
     function getCheapenMultiplier() {
         if (cheapenLevel === 0) return 1;
@@ -391,12 +407,18 @@
         if (totalChanges >= 1000 && cheapenContainer.style.display === "none") {
             cheapenContainer.style.display = "block";
         }
-        const cost = getCheapenUpgradeCost(cheapenLevel + 1);
-        cheapenUpgradeCostEl.textContent = "Cost: " + formatCount(cost);
-        cheapenUpgradeBtn.disabled = totalChanges < cost;
+        if (cheapenLevel >= MAX_CHEAPEN_LEVEL) {
+            cheapenUpgradeCostEl.textContent = "Max (" + cheapenLevel + "/" + MAX_CHEAPEN_LEVEL + ")";
+            cheapenUpgradeBtn.disabled = true;
+        } else {
+            const cost = getCheapenUpgradeCost(cheapenLevel + 1);
+            cheapenUpgradeCostEl.textContent = "Cost: " + formatCount(cost);
+            cheapenUpgradeBtn.disabled = totalChanges < cost;
+        }
     }
 
     function buyCheapenUpgrade() {
+        if (cheapenLevel >= MAX_CHEAPEN_LEVEL) return;
         const cost = getCheapenUpgradeCost(cheapenLevel + 1);
         if (totalChanges < cost) return;
         totalChanges -= cost;
@@ -525,6 +547,46 @@
     updateSpeedUpgradeUI();
     updateCheapenUpgradeUI();
     updateRateDisplay();
+
+    /* ---------------------------------------------------------
+       DEV TOOLS (toggle on/off)
+    --------------------------------------------------------- */
+    const devToolsToggle = document.getElementById("dev-tools-toggle");
+    const devToolsPanel = document.getElementById("dev-tools-panel");
+    const devSecondsElapsed = document.getElementById("dev-seconds-elapsed");
+    const devAddCountInput = document.getElementById("dev-add-count-input");
+    const devAddCountBtn = document.getElementById("dev-add-count-btn");
+
+    const devToolsLoadTime = Date.now();
+    let devSecondsInterval = null;
+
+    function updateDevSeconds() {
+        devSecondsElapsed.textContent = ((Date.now() - devToolsLoadTime) / 1000).toFixed(1);
+    }
+
+    devToolsToggle.addEventListener("click", () => {
+        const show = devToolsPanel.style.display === "none";
+        devToolsPanel.style.display = show ? "block" : "none";
+        if (show) {
+            updateDevSeconds();
+            if (!devSecondsInterval) devSecondsInterval = setInterval(updateDevSeconds, 100);
+        } else {
+            if (devSecondsInterval) clearInterval(devSecondsInterval);
+            devSecondsInterval = null;
+        }
+    });
+
+    devAddCountBtn.addEventListener("click", () => {
+        const val = parseInt(devAddCountInput.value, 10) || 0;
+        if (val <= 0) return;
+        totalChanges += val;
+        incrementalEl.textContent = formatCount(totalChanges);
+        updateObjectives();
+        checkUnlockHands();
+        updateSpeedUpgradeUI();
+        updateCheapenUpgradeUI();
+        updateRateDisplay();
+    });
 
     /* ---------------------------------------------------------
        AUTO-UNLOCK HANDS (driven by checkUnlockHands in update())
