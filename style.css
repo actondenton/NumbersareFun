@@ -412,6 +412,32 @@ CURTAINS
 }
 
 /* =========================
+   Hand combos (poker-style bonuses)
+   ========================= */
+.combo-container {
+    margin: 10px 0;
+    padding: 8px 12px;
+    background: rgba(20, 22, 35, 0.6);
+    border-radius: 8px;
+    border: 1px solid #333;
+    font-size: 12px;
+}
+.combo-label {
+    font-weight: 600;
+    color: #9aa0ff;
+    margin-bottom: 4px;
+}
+.combo-list {
+    color: #ccc;
+    min-height: 1.2em;
+}
+.combo-total {
+    margin-top: 4px;
+    color: #4CAF50;
+    font-weight: 600;
+}
+
+/* =========================
    Action log (bottom, expandable)
    ========================= */
 .action-log {
