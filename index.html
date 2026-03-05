@@ -275,15 +275,14 @@
         "Counting is rewarding.",
         "Counting is satisfying.",
         "Counting is relaxing.",
-        "Counting is meditative.",
-        "You can always count to one more.",
+       "You can always count to one more.",
         "Counting is a skill that can be improved.",
-        "Counting is a skill that can be mastered.",
         "I wanted to add subtraction but I came up with nothing.",
         "At one point we counted from zero to one for the very first time",
         "We don't know the biggest number someone or something has counted to",
-        "This game will have exponents in the hundreds but the universe only has 10e80 atoms",
-        "If machines do all the counting what will we use our fingers for?"
+        "This game will have exponents in the hundreds but the universe only has 10e80 atoms. However, the universe is infinitely more complex than this game. Explain that to me.",
+        "If machines do all the counting what will we use our fingers for?",
+        "Most people can identify 4-5 objects without counting. Some people are better than others, this is called subitizing.  "
     ];
 
     function addToLog(msg, type) {
@@ -436,7 +435,7 @@
         if (totalChanges < cost) return;
         totalChanges -= cost;
         speedLevel++;
-        addToLog("Speed upgrade purchased (level " + speedLevel + ")");
+        addToLog("Speed upgrade purchased (level " + speedLevel + ")", "action");
         incrementalEl.textContent = formatCount(totalChanges);
         hands.forEach(h => h.restartTimer());
         updateSpeedUpgradeUI();
@@ -468,7 +467,7 @@
     const MAX_CHEAPEN_LEVEL = 8;
     let cheapenLevel = 0;
     function getCheapenMultiplier() {
-    return Math.pow(10, -cheapenLevel); //reduces cost by 99%
+    return Math.pow(10, -(cheapenLevel+1)); //reduces cost by 99%
     }
     function getCheapenUpgradeCost(nextLevel) {
         return 1000 * Math.pow(10, nextLevel - 1);
@@ -497,7 +496,7 @@
         if (totalChanges < cost) return;
         totalChanges -= cost;
         cheapenLevel++;
-        addToLog("Speed cheapen purchased (level " + cheapenLevel + ")");
+        addToLog("Speed cheapen purchased (level " + cheapenLevel + ")", "action");
         incrementalEl.textContent = formatCount(totalChanges);
         updateSpeedUpgradeUI();
         updateCheapenUpgradeUI();
