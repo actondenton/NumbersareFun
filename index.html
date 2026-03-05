@@ -311,8 +311,14 @@
     }
 
     const NAMES = ["", "thousand", "million", "billion", "trillion", "quadrillion", "quintillion", "sextillion", "septillion", "octillion", "nonillion", "decillion"];
+    function formatWithCommas(n) {
+        if (n < 1000) return String(n);
+        const parts = String(n).split(".");
+        const withCommas = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        return parts.length > 1 ? withCommas + "." + parts[1] : withCommas;
+    }
     function formatCount(n) {
-        if (n < 1e6) return String(n);
+        if (n < 1e6) return formatWithCommas(n);
         const exp = Math.floor(Math.log10(n));
         const tier = Math.floor(exp / 3);
         const mantissa = (n / Math.pow(10, tier * 3)).toFixed(2).replace(/\.?0+$/, "");
@@ -385,8 +391,8 @@
         return getSpeedMultiplierForLevel(speedLevel);
     }
     function getUpgradeCost(nextLevel) {
-        const base = Math.max(1, 1.70 - 0.01 * cheapenLevel);
-        return Math.max(1, 10 + Math.floor(Math.pow(base, nextLevel)));
+        const baseCost = 10 + Math.floor(Math.pow(1.70, nextLevel));
+        return Math.max(1, Math.floor(baseCost * getCheapenMultiplier()));
     }
     const upgradeContainer = document.getElementById("upgrade-container");
     const speedUpgradeBtn = document.getElementById("speed-upgrade-btn");
@@ -467,7 +473,8 @@
     const MAX_CHEAPEN_LEVEL = 8;
     let cheapenLevel = 0;
     function getCheapenMultiplier() {
-    return Math.pow(10, -(cheapenLevel+1)); //reduces cost by 99%
+        // Level 0: no reduction. Level 1: 99% (×0.01), Level 2: 99.9% (×0.001), Level 3: 99.99%, ...
+        return cheapenLevel === 0 ? 1 : Math.pow(10, -(cheapenLevel + 1));
     }
     function getCheapenUpgradeCost(nextLevel) {
         return 1000 * Math.pow(10, nextLevel - 1);
