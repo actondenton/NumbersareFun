@@ -268,7 +268,22 @@
         "Have you ever counted on your fingers?",
         "What about counting with multiple hands?",
         "Every number counts.",
-        "Speed is key."
+        "Speed is key.",
+        "Counting is fun.",
+        "Counting is addictive.",
+        "Counting is challenging.",
+        "Counting is rewarding.",
+        "Counting is satisfying.",
+        "Counting is relaxing.",
+        "Counting is meditative.",
+        "You can always count to one more.",
+        "Counting is a skill that can be improved.",
+        "Counting is a skill that can be mastered.",
+        "I wanted to add subtraction but I came up with nothing.",
+        "At one point we counted from zero to one for the very first time",
+        "We don't know the biggest number someone or something has counted to",
+        "This game will have exponents in the hundreds but the universe only has 10e80 atoms",
+        "If machines do all the counting what will we use our fingers for?"
     ];
 
     function addToLog(msg) {
@@ -371,7 +386,7 @@
         return getSpeedMultiplierForLevel(speedLevel);
     }
     function getUpgradeCost(nextLevel) {
-        const base = Math.max(1, 1.35 - 0.01 * cheapenLevel);
+        const base = Math.max(1, 1.70 - 0.01 * cheapenLevel);
         return Math.max(1, 10 + Math.floor(Math.pow(base, nextLevel)));
     }
     const upgradeContainer = document.getElementById("upgrade-container");
