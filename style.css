@@ -58,6 +58,54 @@ body {
   white-space: nowrap;
 }
 
+.hand-counts-container {
+  font-size: 0.85rem;
+  color: #b8c5ff;
+  margin-top: 6px;
+  margin-bottom: 4px;
+}
+
+/* Speed upgrade (per hand) */
+.speed-upgrades-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.speed-upgrade-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.speed-upgrade-label { font-weight: 600; color: #9aa0ff; }
+.speed-upgrade-balance { color: #b8c5ff; }
+.speed-upgrade-level { color: #ccc; }
+.speed-upgrade-cost { color: #aaa; }
+.speed-upgrade-effect { color: #4CAF50; font-size: 11px; }
+.speed-upgrade-btn { padding: 4px 10px; cursor: pointer; }
+
+/* Cheapen (per hand) */
+.cheapen-upgrades-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cheapen-upgrade-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.cheapen-upgrade-label { font-weight: 600; color: #9aa0ff; }
+.cheapen-upgrade-level { color: #ccc; }
+.cheapen-upgrade-cost { color: #aaa; }
+.cheapen-upgrade-effect { color: #4CAF50; font-size: 11px; }
+.cheapen-upgrade-btn { padding: 4px 10px; cursor: pointer; }
+.cheapen-upgrade-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
 /*
 
 
@@ -265,6 +313,34 @@ CURTAINS
     border-radius: 8px;
 }
 
+.earned-bonuses-panel {
+    margin-top: 20px;
+    background: rgba(20, 22, 35, 0.95);
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #333;
+}
+.earned-bonuses-panel h3 {
+    margin: 0 0 8px 0;
+    font-size: 0.95rem;
+    color: #9aa0ff;
+}
+#earned-bonuses-list {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 0.85rem;
+    color: #ccc;
+    max-height: 40vh;
+    overflow-y: auto;
+}
+#earned-bonuses-list li {
+    margin-bottom: 4px;
+}
+#earned-bonuses-list li.earned-bonuses-summary {
+    font-weight: 600;
+    color: #4CAF50;
+}
+
 /* Main Area */
 #main {
     margin-left: 120px;
@@ -409,6 +485,53 @@ CURTAINS
 
 .dev-btn:hover {
     background: #555;
+}
+
+/* =========================
+   Hand combos — bubble-up from center
+   ========================= */
+.combo-bubble-container {
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    pointer-events: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9000;
+}
+.combo-bubble {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    padding: 16px 24px;
+    background: rgba(20, 22, 35, 0.95);
+    border: 2px solid #4CAF50;
+    border-radius: 12px;
+    box-shadow: 0 0 24px rgba(76, 175, 80, 0.4);
+    text-align: center;
+    max-width: 90vw;
+    opacity: 1;
+    transition: transform 3s ease-out, opacity 3s ease-out;
+}
+.combo-bubble.combo-bubble-visible {
+    transform: translate(-50%, -50%) translateY(-140px);
+    opacity: 0;
+}
+.combo-bubble-names {
+    display: block;
+    font-size: 1rem;
+    color: #e0e4ff;
+    margin-bottom: 4px;
+}
+.combo-bubble-total {
+    display: block;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #4CAF50;
 }
 
 /* =========================
