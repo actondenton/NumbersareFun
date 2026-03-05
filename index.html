@@ -35,37 +35,34 @@
             <h3>Long Term Objectives</h3>
             <ul id="long-objective-list"></ul>
         </div>
+        <div id="earned-bonuses-panel" class="earned-bonuses-panel">
+            <h3>Earned Bonuses</h3>
+            <ul id="earned-bonuses-list"></ul>
+        </div>
     </div>
 
     <!-- Global Incremental Counter -->
 	<div class="incremental-count-countainer">
 	    <div id="incremental-count-label">Total Count</div>
         <div id="incremental-count">1</div>
+        <div id="hand-counts-container" class="hand-counts-container" style="display: none;"></div>
         <div id="incremental-rate-label">Count per second</div>
         <div id="incremental-rate">0.00</div>
 	</div>
 
-    <!-- Speed Upgrade -->
+    <!-- Speed Upgrade (per hand) -->
     <div id="upgrade-container" class="upgrade-container" style="display: none;">
-        <button id="speed-upgrade-btn" class="upgrade-btn">Increase count speed</button>
-        <div id="speed-upgrade-cost" class="upgrade-cost"></div>
-        <div id="speed-upgrade-level" class="upgrade-cost"></div>
-        <div id="speed-upgrade-effect" class="upgrade-cost"></div>
+        <div id="speed-upgrades-container" class="speed-upgrades-container"></div>
         <button id="speed-autobuy-btn" class="upgrade-btn" style="display: none;"></button>
     </div>
 
-    <!-- Cheapen Speed Cost Upgrade -->
+    <!-- Cheapen (per hand) -->
     <div id="cheapen-container" class="upgrade-container" style="display: none;">
-        <button id="cheapen-upgrade-btn" class="upgrade-btn">Cheapen speed upgrade</button>
-        <div id="cheapen-upgrade-cost" class="upgrade-cost"></div>
+        <div id="cheapen-upgrades-container" class="cheapen-upgrades-container"></div>
     </div>
 
-    <!-- Hand combos (poker-style bonuses) -->
-    <div id="combo-container" class="combo-container">
-        <div id="combo-label" class="combo-label">Active combos</div>
-        <div id="combo-list" class="combo-list"></div>
-        <div id="combo-total" class="combo-total"></div>
-    </div>
+    <!-- Hand combos: bubble-up notification (center of screen) -->
+    <div id="combo-bubble-container" class="combo-bubble-container" aria-live="polite"></div>
 
     <!-- Hands Grid -->
     <div id="hands-container" class="hands-grid"></div>
@@ -251,11 +248,18 @@
 /* ---------------------------------------------------------
        GLOBAL STATE
     --------------------------------------------------------- */
-    let totalChanges = 1;
-    let unlockedHands = 1;
     const maxHands = 10;
+    let totalChanges = 1;
+    let handEarnings = Array(maxHands).fill(0);
+    handEarnings[0] = 1;
+    let unlockedHands = 1;
+
+    function refreshTotalFromHandEarnings() {
+        totalChanges = handEarnings.reduce((a, b) => a + b, 0);
+    }
 
     const incrementalEl = document.getElementById("incremental-count");
+    const handCountsContainerEl = document.getElementById("hand-counts-container");
     const incrementalRateEl = document.getElementById("incremental-rate");
     const handsContainer = document.getElementById("hands-container");
     const objectiveList = document.getElementById("objective-list");
@@ -269,6 +273,8 @@
     const ACTION_LOG_EXPANDED = 15;
     const actionLogEntries = [];
     let actionLogExpanded = false;
+    const RECENT_RANDOM_LOG_COUNT = 3;
+    const recentRandomLogMessages = [];
     const LOG_MESSAGES = [
         "Keep counting!",
         "How fast can you count?",
@@ -392,20 +398,17 @@
     let autoBuyEnabled = false;
     function getSpeedMultiplierForLevel(level) {
         if (level === 0) return 1;
-        return Math.pow(1.5, level); // +50% speed per level
+        return Math.pow(2, level); 
     }
     function getSpeedMultiplier(handIndex) {
         return getSpeedMultiplierForLevel(speedLevel[handIndex] ?? 0);
     }
     function getUpgradeCost(handIndex, nextLevel) {
-        const baseCost = 10 + Math.floor(Math.pow(1.9, nextLevel));
+        const baseCost = 10 + Math.floor(Math.pow(4, nextLevel));
         return Math.max(1, Math.floor(baseCost * getCheapenMultiplier(handIndex)));
     }
     const upgradeContainer = document.getElementById("upgrade-container");
-    const speedUpgradeBtn = document.getElementById("speed-upgrade-btn");
-    const speedUpgradeCostEl = document.getElementById("speed-upgrade-cost");
-    const speedUpgradeLevelEl = document.getElementById("speed-upgrade-level");
-    const speedUpgradeEffectEl = document.getElementById("speed-upgrade-effect");
+    const speedUpgradesContainerEl = document.getElementById("speed-upgrades-container");
     const speedAutoBuyBtn = document.getElementById("speed-autobuy-btn");
 
     function getCheapestSpeedUpgrade() {
@@ -413,6 +416,7 @@
         for (let i = 0; i < unlockedHands; i++) {
             const nextLevel = speedLevel[i] + 1;
             const cost = getUpgradeCost(i, nextLevel);
+            if ((handEarnings[i] || 0) < cost) continue;
             if (best === null || cost < best.cost) best = { handIndex: i, cost, nextLevel };
         }
         return best;
@@ -421,27 +425,31 @@
         if (totalChanges >= 10 && upgradeContainer.style.display === "none") {
             upgradeContainer.style.display = "block";
         }
-        const next = getCheapestSpeedUpgrade();
-        if (!next) {
-            speedUpgradeCostEl.textContent = "—";
-            speedUpgradeBtn.disabled = true;
-        } else {
-            const handNum = next.handIndex + 1;
-            speedUpgradeCostEl.textContent = "Hand " + handNum + " — Cost: " + formatCount(next.cost);
-            speedUpgradeBtn.disabled = totalChanges < next.cost;
-        }
-
-        const levelsText = Array.from({ length: unlockedHands }, (_, i) => "H" + (i + 1) + ":" + speedLevel[i]).join(", ");
-        speedUpgradeLevelEl.textContent = "Speed: " + levelsText;
-
-        const nextUp = getCheapestSpeedUpgrade();
-        if (nextUp) {
-            const currentMult = getSpeedMultiplier(nextUp.handIndex);
-            const nextMult = getSpeedMultiplierForLevel(nextUp.nextLevel);
-            const percent = (nextMult / currentMult - 1) * 100;
-            speedUpgradeEffectEl.textContent = "Next (Hand " + (nextUp.handIndex + 1) + "): +" + percent.toFixed(1) + "% speed";
-        } else {
-            speedUpgradeEffectEl.textContent = "";
+        if (speedUpgradesContainerEl) {
+            speedUpgradesContainerEl.innerHTML = "";
+            for (let i = 0; i < unlockedHands; i++) {
+                const handNum = i + 1;
+                const nextLevel = speedLevel[i] + 1;
+                const cost = getUpgradeCost(i, nextLevel);
+                const balance = handEarnings[i] || 0;
+                const canAfford = balance >= cost;
+                const row = document.createElement("div");
+                row.className = "speed-upgrade-row";
+                const currentMult = getSpeedMultiplier(i);
+                const nextMult = getSpeedMultiplierForLevel(nextLevel);
+                const percent = (nextMult / currentMult - 1) * 100;
+                row.innerHTML = "<span class=\"speed-upgrade-label\">Hand " + handNum + "</span> " +
+                    "<span class=\"speed-upgrade-level\">Level " + speedLevel[i] + "</span> " +
+                    "<span class=\"speed-upgrade-cost\">Cost: " + formatCount(cost) + "</span> " +
+                    "<span class=\"speed-upgrade-effect\">+" + percent.toFixed(1) + "%</span> " +
+                    "<button type=\"button\" class=\"upgrade-btn speed-upgrade-btn\" data-hand-index=\"" + i + "\">Upgrade</button>";
+                const btn = row.querySelector(".speed-upgrade-btn");
+                if (btn) {
+                    btn.disabled = !canAfford;
+                    btn.addEventListener("click", function() { buySpeedUpgradeForHand(parseInt(this.getAttribute("data-hand-index"), 10)); });
+                }
+                speedUpgradesContainerEl.appendChild(row);
+            }
         }
 
         if (totalChanges >= 100 || autoBuyUnlocked) {
@@ -459,13 +467,17 @@
         }
     }
 
-    function buySpeedUpgrade() {
-        const next = getCheapestSpeedUpgrade();
-        if (!next || totalChanges < next.cost) return;
-        totalChanges -= next.cost;
-        speedLevel[next.handIndex]++;
-        const handNum = next.handIndex + 1;
-        addToLog("Speed upgrade purchased for Hand " + handNum + " (level " + speedLevel[next.handIndex] + ")", "action");
+    function buySpeedUpgradeForHand(handIndex) {
+        if (handIndex < 0 || handIndex >= unlockedHands) return;
+        const nextLevel = speedLevel[handIndex] + 1;
+        const cost = getUpgradeCost(handIndex, nextLevel);
+        const balance = handEarnings[handIndex] || 0;
+        if (balance < cost) return;
+        handEarnings[handIndex] = balance - cost;
+        refreshTotalFromHandEarnings();
+        speedLevel[handIndex]++;
+        const handNum = handIndex + 1;
+        addToLog("Speed upgrade purchased for Hand " + handNum + " (level " + speedLevel[handIndex] + ")", "action");
         incrementalEl.textContent = formatCount(totalChanges);
         hands.forEach(h => h.restartTimer());
         updateSpeedUpgradeUI();
@@ -477,7 +489,9 @@
         const unlockCost = 100;
         if (!autoBuyUnlocked) {
             if (totalChanges < unlockCost) return;
-            totalChanges -= unlockCost;
+            const ratio = (totalChanges - unlockCost) / totalChanges;
+            for (let i = 0; i < unlockedHands; i++) handEarnings[i] = Math.round((handEarnings[i] || 0) * ratio);
+            refreshTotalFromHandEarnings();
             autoBuyUnlocked = true;
             autoBuyEnabled = true;
             addToLog("Speed autobuy unlocked", "action");
@@ -503,42 +517,85 @@
         return 1000 * Math.pow(10, nextLevel - 1);
     }
     const cheapenContainer = document.getElementById("cheapen-container");
-    const cheapenUpgradeBtn = document.getElementById("cheapen-upgrade-btn");
-    const cheapenUpgradeCostEl = document.getElementById("cheapen-upgrade-cost");
+    const cheapenUpgradesContainerEl = document.getElementById("cheapen-upgrades-container");
+    let cheapenSectionUnlocked = false;
+    const cheapenRowRefs = [];
 
-    function getCheapestCheapenUpgrade() {
-        let best = null;
-        for (let i = 0; i < unlockedHands; i++) {
-            if ((cheapenLevel[i] ?? 0) >= MAX_CHEAPEN_LEVEL) continue;
-            const nextLevel = (cheapenLevel[i] ?? 0) + 1;
-            const cost = getCheapenUpgradeCost(i, nextLevel);
-            if (best === null || cost < best.cost) best = { handIndex: i, cost, nextLevel };
-        }
-        return best;
+    function getCheapenEffectText(nextLevel) {
+        if (nextLevel <= 0 || nextLevel > MAX_CHEAPEN_LEVEL) return "";
+        if (nextLevel === 1) return "99% off speed upgrade cost";
+        const decimals = nextLevel - 1;
+        return "99." + "9".repeat(decimals) + "% off speed upgrade cost";
     }
+
+    function ensureCheapenRows() {
+        if (!cheapenUpgradesContainerEl) return;
+        while (cheapenRowRefs.length < unlockedHands) {
+            const i = cheapenRowRefs.length;
+            const handNum = i + 1;
+            const row = document.createElement("div");
+            row.className = "cheapen-upgrade-row";
+            row.setAttribute("data-hand-index", String(i));
+            row.innerHTML = "<span class=\"cheapen-upgrade-label\">Hand " + handNum + "</span> " +
+                "<span class=\"cheapen-upgrade-level\"></span> " +
+                "<span class=\"cheapen-upgrade-cost\"></span> " +
+                "<span class=\"cheapen-upgrade-effect\"></span> " +
+                "<button type=\"button\" class=\"upgrade-btn cheapen-upgrade-btn\" data-hand-index=\"" + i + "\">Cheapen</button>";
+            cheapenUpgradesContainerEl.appendChild(row);
+            cheapenRowRefs.push({
+                levelEl: row.querySelector(".cheapen-upgrade-level"),
+                costEl: row.querySelector(".cheapen-upgrade-cost"),
+                effectEl: row.querySelector(".cheapen-upgrade-effect"),
+                btn: row.querySelector(".cheapen-upgrade-btn")
+            });
+        }
+    }
+
     function updateCheapenUpgradeUI() {
-        if (totalChanges >= 1000 && cheapenContainer.style.display === "none") {
-            cheapenContainer.style.display = "block";
+        const hand1Balance = handEarnings[0] || 0;
+        if (!cheapenSectionUnlocked && hand1Balance >= 1000) {
+            cheapenSectionUnlocked = true;
+            if (cheapenContainer) cheapenContainer.style.display = "block";
+            ensureCheapenRows();
         }
-        const next = getCheapestCheapenUpgrade();
-        if (!next) {
-            const levelsText = Array.from({ length: unlockedHands }, (_, i) => "H" + (i + 1) + ":" + (cheapenLevel[i] ?? 0)).join(", ");
-            cheapenUpgradeCostEl.textContent = "Max (" + levelsText + ")";
-            cheapenUpgradeBtn.disabled = true;
-        } else {
-            const handNum = next.handIndex + 1;
-            cheapenUpgradeCostEl.textContent = "Hand " + handNum + " — Cost: " + formatCount(next.cost);
-            cheapenUpgradeBtn.disabled = totalChanges < next.cost;
+        if (!cheapenSectionUnlocked) return;
+        ensureCheapenRows();
+        for (let i = 0; i < unlockedHands; i++) {
+            const ref = cheapenRowRefs[i];
+            if (!ref) continue;
+            const level = cheapenLevel[i] ?? 0;
+            const nextLevel = level + 1;
+            const cost = level >= MAX_CHEAPEN_LEVEL ? null : getCheapenUpgradeCost(i, nextLevel);
+            const balance = handEarnings[i] || 0;
+            const canAfford = cost !== null && balance >= cost;
+            if (level >= MAX_CHEAPEN_LEVEL) {
+                ref.levelEl.textContent = "Max (" + level + "/" + MAX_CHEAPEN_LEVEL + ")";
+                ref.costEl.textContent = "";
+                ref.effectEl.textContent = "";
+                ref.btn.style.display = "none";
+            } else {
+                ref.levelEl.textContent = "Level " + level;
+                ref.costEl.textContent = "Cost: " + formatCount(cost);
+                ref.effectEl.textContent = getCheapenEffectText(nextLevel);
+                ref.btn.style.display = "";
+                ref.btn.disabled = !canAfford;
+            }
         }
     }
 
-    function buyCheapenUpgrade() {
-        const next = getCheapestCheapenUpgrade();
-        if (!next || totalChanges < next.cost) return;
-        totalChanges -= next.cost;
-        cheapenLevel[next.handIndex] = (cheapenLevel[next.handIndex] ?? 0) + 1;
-        const handNum = next.handIndex + 1;
-        addToLog("Speed cheapen purchased for Hand " + handNum + " (level " + cheapenLevel[next.handIndex] + ")", "action");
+    function buyCheapenUpgradeForHand(handIndex) {
+        if (handIndex < 0 || handIndex >= unlockedHands) return;
+        const level = cheapenLevel[handIndex] ?? 0;
+        if (level >= MAX_CHEAPEN_LEVEL) return;
+        const nextLevel = level + 1;
+        const cost = getCheapenUpgradeCost(handIndex, nextLevel);
+        const balance = handEarnings[handIndex] || 0;
+        if (balance < cost) return;
+        handEarnings[handIndex] = balance - cost;
+        refreshTotalFromHandEarnings();
+        cheapenLevel[handIndex] = level + 1;
+        const handNum = handIndex + 1;
+        addToLog("Speed cheapen purchased for Hand " + handNum + " (level " + cheapenLevel[handIndex] + ")", "action");
         incrementalEl.textContent = formatCount(totalChanges);
         updateSpeedUpgradeUI();
         updateCheapenUpgradeUI();
@@ -550,21 +607,44 @@
     function getTickIntervalMs(baseSpeed, handIndex) {
         return baseSpeed / getSpeedMultiplier(handIndex);
     }
+    function updateHandCountsDisplay() {
+        if (!handCountsContainerEl) return;
+        if (unlockedHands < 2) {
+            handCountsContainerEl.style.display = "none";
+            return;
+        }
+        handCountsContainerEl.style.display = "block";
+        handCountsContainerEl.textContent = Array.from({ length: unlockedHands }, (_, i) => "Hand " + (i + 1) + ": " + formatCount(Math.round(handEarnings[i] || 0))).join(" · ");
+    }
     function updateRateDisplay() {
-        let cps = 0;
+        const cpsPerHand = [];
+        let cpsTotalRaw = 0;
         hands.forEach(h => {
             const handIndex = h.id - 1;
             const intervalMs = getTickIntervalMs(h.baseSpeed, handIndex);
-            cps += intervalMs > 0 ? 1000 / intervalMs : 0;
+            const cps = intervalMs > 0 ? 1000 / intervalMs : 0;
+            cpsPerHand.push(cps);
+            cpsTotalRaw += cps;
         });
-        incrementalRateEl.textContent = formatCount(cps < 1e6 ? Math.round(cps * 100) / 100 : cps);
+        const comboMult = getComboMultiplier();
+        const cpsTotal = cpsTotalRaw * comboMult;
+        if (unlockedHands >= 2) {
+            const parts = cpsPerHand.slice(0, unlockedHands).map((cps, i) => {
+                const effectiveCps = cps * comboMult;
+                return "H" + (i + 1) + ": " + formatCount(effectiveCps < 1e6 ? Math.round(effectiveCps * 100) / 100 : effectiveCps) + "/s";
+            });
+            incrementalRateEl.textContent = parts.join(" · ") + " (Total: " + formatCount(cpsTotal < 1e6 ? Math.round(cpsTotal * 100) / 100 : cpsTotal) + "/s)";
+        } else {
+            incrementalRateEl.textContent = formatCount(cpsTotal < 1e6 ? Math.round(cpsTotal * 100) / 100 : cpsTotal);
+        }
+        updateHandCountsDisplay();
     }
 
     function maybeAutoBuySpeedUpgrade() {
         if (!autoBuyEnabled || !autoBuyUnlocked) return;
         let next = getCheapestSpeedUpgrade();
         while (next && totalChanges >= next.cost) {
-            buySpeedUpgrade();
+            buySpeedUpgradeForHand(next.handIndex);
             next = getCheapestSpeedUpgrade();
         }
     }
@@ -682,30 +762,74 @@
         const v = getHandValues();
         return COMBOS.filter(c => v.length >= c.minHands && c.check(v));
     }
+    const earnedComboNames = [];
     function getComboMultiplier() {
-        const active = getActiveCombos();
         let mult = 1;
-        active.forEach(c => { mult *= c.bonus; });
+        COMBOS.forEach(c => {
+            if (earnedComboNames.indexOf(c.name) !== -1) mult *= c.bonus;
+        });
         return mult;
     }
-    const comboListEl = document.getElementById("combo-list");
-    const comboTotalEl = document.getElementById("combo-total");
+    const comboBubbleContainerEl = document.getElementById("combo-bubble-container");
+    const earnedBonusesListEl = document.getElementById("earned-bonuses-list");
+    const COMBO_BUBBLE_DURATION_MS = 3500;
+    function showComboBubble(newlyEarned) {
+        if (!comboBubbleContainerEl || newlyEarned.length === 0) return;
+        const totalMult = newlyEarned.reduce((m, c) => m * c.bonus, 1);
+        const text = newlyEarned.map(c => c.name + " +" + Math.round((c.bonus - 1) * 100) + "%").join(" · ");
+        const totalText = "Total bonus: +" + Math.round((totalMult - 1) * 100) + "%";
+        const bubble = document.createElement("div");
+        bubble.className = "combo-bubble";
+        bubble.innerHTML = "<span class=\"combo-bubble-names\">" + text + "</span><span class=\"combo-bubble-total\">" + totalText + "</span>";
+        comboBubbleContainerEl.appendChild(bubble);
+        requestAnimationFrame(() => bubble.classList.add("combo-bubble-visible"));
+        setTimeout(() => { if (bubble.parentNode) bubble.parentNode.removeChild(bubble); }, COMBO_BUBBLE_DURATION_MS);
+    }
+    function updateEarnedBonusesUI() {
+        if (!earnedBonusesListEl) return;
+        earnedBonusesListEl.innerHTML = "";
+        const earnedSet = new Set(earnedComboNames);
+        const byMinHands = {};
+        COMBOS.forEach(c => {
+            if (!byMinHands[c.minHands]) byMinHands[c.minHands] = [];
+            byMinHands[c.minHands].push(c);
+        });
+        for (let n = 2; n <= 10; n++) {
+            const group = byMinHands[n] || [];
+            if (group.length === 0) continue;
+            const earnedInGroup = group.filter(c => earnedSet.has(c.name));
+            if (earnedInGroup.length === 0) continue;
+            if (earnedInGroup.length === group.length) {
+                const totalMult = earnedInGroup.reduce((m, c) => m * c.bonus, 1);
+                const totalPct = Math.round((totalMult - 1) * 100);
+                const li = document.createElement("li");
+                li.className = "earned-bonuses-summary";
+                li.textContent = "All bonuses earned for " + n + " hands (+" + totalPct + "% total)";
+                earnedBonusesListEl.appendChild(li);
+            } else {
+                earnedInGroup.forEach(c => {
+                    const pct = Math.round((c.bonus - 1) * 100);
+                    const li = document.createElement("li");
+                    li.textContent = c.name + " (+" + pct + "%)";
+                    earnedBonusesListEl.appendChild(li);
+                });
+            }
+        }
+    }
     function updateComboUI() {
+        if (unlockedHands < 2) return;
         const active = getActiveCombos();
-        if (!comboListEl || !comboTotalEl) return;
-        if (active.length === 0) {
-            comboListEl.textContent = "—";
-            comboTotalEl.textContent = "";
-        } else {
-            comboListEl.textContent = active.map(c => c.name + " (+" + Math.round((c.bonus - 1) * 100) + "%)").join(" · ");
-            const totalMult = getComboMultiplier();
-            comboTotalEl.textContent = "Total bonus: +" + (Math.round((totalMult - 1) * 100)) + "%";
+        const newlyEarned = active.filter(c => earnedComboNames.indexOf(c.name) === -1);
+        if (newlyEarned.length > 0) {
+            newlyEarned.forEach(c => earnedComboNames.push(c.name));
+            showComboBubble(newlyEarned);
+            updateEarnedBonusesUI();
         }
     }
 
     function gameLoopTick() {
         const dt = GAME_LOOP_MS;
-        let ticksThisFrame = 0;
+        const ticksPerHand = Array(unlockedHands).fill(0);
         hands.forEach(h => {
             const handIndex = h.id - 1;
             const mult = getSpeedMultiplier(handIndex);
@@ -714,13 +838,17 @@
             h.accumulatorMs = (h.accumulatorMs || 0) + dt;
             const n = Math.floor(h.accumulatorMs / intervalMs);
             h.accumulatorMs -= n * intervalMs;
-            ticksThisFrame += n;
+            ticksPerHand[handIndex] = n;
             h.applyTicks(n);
         });
-        if (ticksThisFrame > 0) {
+        const totalTicks = ticksPerHand.reduce((a, b) => a + b, 0);
+        if (totalTicks > 0) {
             const comboMult = getComboMultiplier();
-            const bonusTicks = Math.round(ticksThisFrame * comboMult);
-            totalChanges += bonusTicks;
+            const bonusTicks = Math.round(totalTicks * comboMult);
+            for (let i = 0; i < unlockedHands; i++) {
+                handEarnings[i] += Math.round((ticksPerHand[i] / totalTicks) * bonusTicks);
+            }
+            refreshTotalFromHandEarnings();
             incrementalEl.textContent = formatCount(totalChanges);
             updateObjectives();
             checkUnlockHands();
@@ -734,19 +862,30 @@
     if (!gameLoopTimer) gameLoopTimer = setInterval(gameLoopTick, GAME_LOOP_MS);
 
     setInterval(() => {
-        const msg = LOG_MESSAGES[Math.floor(Math.random() * LOG_MESSAGES.length)];
+        const allowed = LOG_MESSAGES.filter(m => !recentRandomLogMessages.includes(m));
+        const pool = allowed.length > 0 ? allowed : LOG_MESSAGES;
+        const msg = pool[Math.floor(Math.random() * pool.length)];
         addToLog(msg);
+        recentRandomLogMessages.push(msg);
+        if (recentRandomLogMessages.length > RECENT_RANDOM_LOG_COUNT) recentRandomLogMessages.shift();
     }, 5000);
 
     setTimeout(() => addToLog(LOG_MESSAGES[0]), 2000);
 
-    speedUpgradeBtn.addEventListener("click", buySpeedUpgrade);
     speedAutoBuyBtn.addEventListener("click", handleSpeedAutoBuyClick);
-    cheapenUpgradeBtn.addEventListener("click", buyCheapenUpgrade);
+    if (cheapenUpgradesContainerEl) {
+        cheapenUpgradesContainerEl.addEventListener("click", function(e) {
+            const btn = e.target.closest(".cheapen-upgrade-btn");
+            if (!btn || btn.disabled) return;
+            const handIndex = parseInt(btn.getAttribute("data-hand-index"), 10);
+            if (!isNaN(handIndex)) buyCheapenUpgradeForHand(handIndex);
+        });
+    }
     updateSpeedUpgradeUI();
     updateCheapenUpgradeUI();
     updateRateDisplay();
     updateComboUI();
+    updateEarnedBonusesUI();
 
     /* ---------------------------------------------------------
        DEV TOOLS (toggle on/off)
@@ -779,7 +918,8 @@
     devAddCountBtn.addEventListener("click", () => {
         const val = parseInt(devAddCountInput.value, 10) || 0;
         if (val <= 0) return;
-        totalChanges += val;
+        handEarnings[0] = (handEarnings[0] || 0) + val;
+        refreshTotalFromHandEarnings();
         incrementalEl.textContent = formatCount(totalChanges);
         updateObjectives();
         checkUnlockHands();
