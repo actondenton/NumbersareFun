@@ -286,8 +286,8 @@
         "If machines do all the counting what will we use our fingers for?"
     ];
 
-    function addToLog(msg) {
-        actionLogEntries.push(msg);
+    function addToLog(msg, type) {
+        actionLogEntries.push({ text: msg, type: type || "message" });
         if (actionLogEntries.length > ACTION_LOG_MAX) actionLogEntries.shift();
         renderActionLog();
     }
@@ -295,10 +295,10 @@
         const n = actionLogExpanded ? ACTION_LOG_EXPANDED : ACTION_LOG_VISIBLE;
         const toShow = actionLogEntries.slice(-n);
         actionLogEl.innerHTML = "";
-        toShow.forEach(msg => {
+        toShow.forEach(entry => {
             const line = document.createElement("div");
-            line.className = "action-log-line";
-            line.textContent = msg;
+            line.className = "action-log-line action-log-" + entry.type;
+            line.textContent = entry.text;
             actionLogEl.appendChild(line);
         });
     }
@@ -451,7 +451,7 @@
             totalChanges -= unlockCost;
             autoBuyUnlocked = true;
             autoBuyEnabled = true;
-            addToLog("Speed autobuy unlocked");
+            addToLog("Speed autobuy unlocked", "action");
             incrementalEl.textContent = formatCount(totalChanges);
             updateSpeedUpgradeUI();
             updateCheapenUpgradeUI();
@@ -592,7 +592,7 @@
     function unlockHand() {
         if (unlockedHands >= maxHands) return;
         unlockedHands++;
-        addToLog("Hand " + unlockedHands + " unlocked");
+        addToLog("Hand " + unlockedHands + " unlocked", "action");
         hands.push(new HandCounter(unlockedHands, HAND_BASE_SPEED));
     }
 

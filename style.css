@@ -443,6 +443,12 @@ CURTAINS
     overflow: hidden;
     text-overflow: ellipsis;
 }
+.action-log-line.action-log-action {
+    color: #4CAF50;
+}
+.action-log-line.action-log-message {
+    color: #7dd3fc;
+}
 
 .action-log-toggle {
     margin-top: 4px;
