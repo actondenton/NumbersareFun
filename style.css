@@ -1,36 +1,40 @@
 body {
-  width: 800px;
+  width: calc(100vw - 260px); /* full width up until top-right (objectives) panel */
+  min-width: 600px;
+  max-width: 1400px;
   height: auto;
   justify-content: flex-start;
-  overflow: auto; /* prevents scrolling outside the area */
+  overflow: auto;
   padding-left: 75px;
   padding-top: 60px;
-  
 }
 
 /* ===============================
    TOTAL COUNT — ISOLATED BLOCK
    =============================== */
 
-.incremental-count-container {
-  /* Layout isolation */
+.top-count-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
   position: relative;
   z-index: 1000;
-
-  /* Box styling */
   padding: 14px 20px;
   min-width: 200px;
-  text-align: center;
-
-  background: linear-gradient(180deg, #1b1f3a, #11142a);
-  border-radius: 14px;
-
-  box-shadow:
-    0 10px 30px rgba(0, 0, 0, 0.6),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
-
-  /* Isolation from global styles */
+  background: rgba(140, 149, 205, 0.95);
+  border: 1px solid #333;
+  border-radius: 8px;
   font-family: monospace;
+}
+
+.incremental-count-container,
+.incremental-count-countainer {
+  position: relative;
+  text-align: center;
+  background: none;
+  padding: 0;
+  min-width: 0;
 }
 
 /* Label (small, stable) */
@@ -58,60 +62,308 @@ body {
   white-space: nowrap;
 }
 
-.hand-counts-container {
+.multiplier-display {
   font-size: 0.85rem;
   color: #b8c5ff;
-  margin-top: 6px;
-  margin-bottom: 4px;
+  margin-top: 4px;
 }
 
-/* Speed upgrade (per hand) */
+/* ===============================
+   TURBO BOOST GAUGE (right of total count)
+   =============================== */
+
+.turbo-boost-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  min-width: 140px;
+  font-family: monospace;
+}
+
+.turbo-gain-popup-container {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.turbo-gain-popup {
+  position: absolute;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #2e7d32;
+  text-shadow: 0 0 4px rgba(46, 125, 50, 0.6);
+  white-space: nowrap;
+  opacity: 1;
+  transition: opacity 0.35s ease-out, transform 0.35s ease-out;
+}
+.turbo-gain-popup.turbo-gain-popup-gone {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.turbo-boost-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #1a1c39;
+}
+
+.turbo-boost-gauge {
+  position: relative;
+  width: 120px;
+  height: 14px;
+  border-radius: 7px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.turbo-boost-track {
+  position: absolute;
+  inset: 0;
+  border-radius: 7px;
+}
+
+.turbo-boost-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0%;
+  border-radius: 7px;
+  background: linear-gradient(90deg, #3a4aff, #6c7cff);
+  box-shadow: 0 0 12px rgba(108, 124, 255, 0.5);
+  transition: width 0.15s ease-out;
+}
+
+.turbo-boost-fill.turbo-boost-fill-gain {
+  animation: turbo-boost-fill-gain 0.4s ease-out;
+}
+
+@keyframes turbo-boost-fill-gain {
+  0% { filter: brightness(1); box-shadow: 0 0 12px rgba(108, 124, 255, 0.5); }
+  50% { filter: brightness(1.4); box-shadow: 0 0 20px rgba(108, 124, 255, 0.9); }
+  100% { filter: brightness(1); box-shadow: 0 0 12px rgba(108, 124, 255, 0.5); }
+}
+
+.turbo-boost-gauge.turbo-boost-gauge-burning {
+  animation: turbo-boost-burn 0.25s ease-out;
+}
+
+@keyframes turbo-boost-burn {
+  0% { box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5); }
+  50% { box-shadow: inset 0 0 0 2px rgba(255, 120, 80, 0.6); }
+  100% { box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5); }
+}
+
+.turbo-boost-multiplier {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #c8ceff;
+  text-shadow: 0 0 8px rgba(108, 124, 255, 0.35);
+}
+
+.turbo-boost-toggle-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+.turbo-boost-toggle {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.turbo-boost-toggle-slider {
+  position: relative;
+  width: 36px;
+  height: 18px;
+  border-radius: 9px;
+  background: #444;
+  transition: background 0.2s;
+}
+.turbo-boost-toggle-slider::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ccc;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.2s;
+}
+.turbo-boost-toggle:checked + .turbo-boost-toggle-slider {
+  background: #c45c2a;
+}
+.turbo-boost-toggle:checked + .turbo-boost-toggle-slider::after {
+  transform: translateX(18px);
+}
+.turbo-boost-toggle-label {
+  font-size: 0.75rem;
+  color: #9aa0ff;
+  min-width: 24px;
+}
+
+/* Fire-themed rate when turbo boost is on */
+#incremental-rate.rate-turbo-active {
+  color: #ff9944;
+  text-shadow:
+    0 0 8px rgba(255, 120, 50, 0.8),
+    0 0 16px rgba(255, 80, 20, 0.5);
+}
+#incremental-rate.rate-turbo-active strong {
+  color: #ffbb66;
+  text-shadow:
+    0 0 10px rgba(255, 150, 60, 0.9),
+    0 0 20px rgba(255, 100, 30, 0.6);
+}
+
+/* Speed upgrade (per hand) + hand animation on left (same from load) */
+.upgrade-container {
+  padding-bottom: 25em;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin-top: 20px;
+  padding: 16px 20px 25em;
+}
 .speed-upgrades-container {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 10px;
+  gap: 10px;
+  margin-bottom: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.upgrade-container .hand-upgrade-row .speed-upgrade-row {
+  display: none;
+}
+.upgrade-container.show-upgrade-content .hand-upgrade-row .speed-upgrade-row {
+  display: grid;
+}
+.hand-upgrade-row {
+  display: grid;
+  grid-template-columns: auto 0;
+  align-items: center;
+  gap: 0 16px;
+  font-size: 12px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+}
+.upgrade-container.show-upgrade-content .hand-upgrade-row {
+  grid-template-columns: auto 1fr;
+}
+.hand-slot {
+  width: 130px;
+  min-width: 130px;
+  height: 17em;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+.hand-slot .hand {
+  margin: 0;
+  width: 130px;
+  height: 17em;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  line-height: 1.1;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 .speed-upgrade-row {
   display: grid;
-  grid-template-columns: 52px 120px 58px 120px 52px auto auto minmax(180px, 1fr) auto;
+  grid-template-columns: 48px 160px 50px 46px auto auto minmax(80px, 0.5fr) minmax(280px, 1.5fr);
   align-items: center;
-  gap: 0 12px;
-  font-size: 12px;
+  gap: 0 10px;
+  font-size: 11px;
+  min-width: 0;
+}
+.speed-upgrade-balance-cost {
+  color: #b8c5ff;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
 }
 .upgrade-row-cheapen {
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: 54px 100px minmax(100px, 1fr) auto;
   align-items: center;
-  flex-wrap: nowrap;
-  gap: 8px 12px;
-  margin-left: 8px;
-  padding-left: 8px;
-  border-left: 1px solid #555;
+  gap: 0 10px;
+  margin-left: 12px;
+  padding: 6px 0 6px 12px;
+  border-left: 2px solid rgba(154, 160, 255, 0.25);
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 11px;
+  border-radius: 0 6px 6px 0;
 }
-.upgrade-row-cheapen-sep { color: #666; margin-right: 4px; }
-.speed-upgrade-row .cheapen-upgrade-level { color: #ccc; }
-.speed-upgrade-row .cheapen-upgrade-cost { color: #aaa; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100px; }
-.speed-upgrade-row .cheapen-upgrade-effect { color: #4CAF50; font-size: 11px; }
-.speed-upgrade-row .cheapen-upgrade-btn { padding: 4px 10px; cursor: pointer; flex-shrink: 0; }
-.speed-upgrade-row .cheapen-upgrade-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-.speed-upgrade-label { font-weight: 600; color: #9aa0ff; }
-.speed-upgrade-balance { color: #b8c5ff; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.speed-upgrade-level { color: #ccc; }
-.speed-upgrade-cost { color: #aaa; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.speed-upgrade-effect { color: #4CAF50; font-size: 11px; }
-.speed-upgrade-btn { padding: 4px 10px; cursor: pointer; justify-self: start; }
+.speed-upgrade-row .cheapen-upgrade-level { color: #ccc; white-space: nowrap; min-width: 0; }
+.speed-upgrade-row .cheapen-upgrade-cost { color: #aaa; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.speed-upgrade-row .cheapen-upgrade-effect { color: #8bc34a; font-size: 11px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.speed-upgrade-row .cheapen-upgrade-btn {
+  padding: 4px 12px;
+  cursor: pointer;
+  justify-self: start;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid #5c8a5c;
+  background: #e8f5e9;
+  color: #1b5e20;
+  transition: background 0.2s, border-color 0.2s;
+}
+.speed-upgrade-row .cheapen-upgrade-btn:hover:not(:disabled) {
+  background: #c8e6c9;
+  border-color: #388e3c;
+}
+.speed-upgrade-row .cheapen-upgrade-btn:disabled { opacity: 0.5; cursor: not-allowed; color: #6b8e6b; }
+.speed-upgrade-label { font-weight: 600; color: #9aa0ff; font-size: 11px; white-space: nowrap; }
+.speed-upgrade-level { color: #ccc; font-size: 11px; }
+.speed-upgrade-effect { color: #8bc34a; font-size: 11px; }
+.speed-upgrade-btn {
+  padding: 4px 12px;
+  cursor: pointer;
+  justify-self: start;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid #5c6bc0;
+  background: #e8eaf6;
+  color: #283593;
+  transition: background 0.2s, border-color 0.2s;
+}
+.speed-upgrade-btn:hover:not(:disabled) {
+  background: #c5cae9;
+  border-color: #3949ab;
+}
+.speed-upgrade-btn:disabled { opacity: 0.5; cursor: not-allowed; color: #5c6bc0; }
 .speed-upgrade-row .speed-autobuy-wrap { justify-self: start; margin-left: 0; }
 .speed-autobuy-wrap {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-left: 8px;
-  font-size: 12px;
-  color: #aaa;
+  margin-left: 10px;
+  font-size: 11px;
+  color: #a5b4fc;
   cursor: pointer;
   user-select: none;
 }
-.speed-autobuy-wrap:has(input:disabled) { color: #666; cursor: default; }
+.speed-autobuy-wrap:has(input:disabled) { color: #5c6b8a; cursor: default; }
 .speed-autobuy-wrap input.speed-autobuy-toggle {
   position: absolute;
   opacity: 0;
@@ -125,11 +377,15 @@ body {
   width: 36px;
   height: 20px;
   flex-shrink: 0;
-  background: #444;
+  background: rgba(0, 0, 0, 0.4);
   border-radius: 10px;
   transition: background 0.2s ease;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
-.speed-autobuy-wrap input:checked + .speed-autobuy-switch { background: #5a9e4c; }
+.speed-autobuy-wrap input:checked + .speed-autobuy-switch {
+  background: linear-gradient(180deg, #5a9e4c, #4a8c3c);
+  border-color: rgba(255, 255, 255, 0.15);
+}
 .speed-autobuy-wrap input:disabled + .speed-autobuy-switch { opacity: 0.5; }
 .speed-autobuy-knob {
   position: absolute;
@@ -137,7 +393,7 @@ body {
   left: 2px;
   width: 16px;
   height: 16px;
-  background: #ddd;
+  background: linear-gradient(180deg, #f5f5f5, #e0e0e0);
   border-radius: 50%;
   transition: transform 0.2s ease;
   box-shadow: 0 1px 3px rgba(0,0,0,0.3);
@@ -146,7 +402,7 @@ body {
 .speed-autobuy-label { white-space: nowrap; }
 .speed-autobuy-message {
   font-size: 11px;
-  color: #888;
+  color: #9ca3af;
   font-style: italic;
   min-width: 0;
 }

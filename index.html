@@ -42,25 +42,41 @@
     </div>
 
     <!-- Global Incremental Counter -->
-	<div class="incremental-count-countainer">
-	    <div id="incremental-count-label">Total Count</div>
-        <div id="incremental-count">1</div>
-        <div id="hand-counts-container" class="hand-counts-container" style="display: none;"></div>
-        <div id="incremental-rate-label">Count per second</div>
-        <div id="incremental-rate">0.00</div>
+	<div class="top-count-row">
+	    <div class="incremental-count-countainer">
+	        <div id="incremental-count-label">Total Count</div>
+            <div id="incremental-count">1</div>
+            <div id="incremental-rate-label">Count per second</div>
+            <div id="incremental-rate">0.00</div>
+            <div id="bonus-multiplier-display" class="multiplier-display" style="display: none;">Bonus: 1.00×</div>
+            <div id="turbo-multiplier-display" class="multiplier-display" style="display: none;">Turbo: 1.00×</div>
+	    </div>
+	    <div id="turbo-boost-wrap" class="turbo-boost-wrap" style="display: none;" aria-hidden="true">
+	        <div id="turbo-gain-popup-container" class="turbo-gain-popup-container" aria-live="polite"></div>
+	        <div class="turbo-boost-label">Turbo Boost</div>
+	        <label class="turbo-boost-toggle-wrap" title="Turn boost on to multiply count and burn gauge">
+	            <span class="turbo-boost-toggle-label">On</span>
+	            <input type="checkbox" id="turbo-boost-enabled" class="turbo-boost-toggle" checked aria-label="Turbo boost on or off">
+	            <span class="turbo-boost-toggle-slider"></span>
+	        </label>
+	        <div class="turbo-boost-gauge" role="meter" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" id="turbo-boost-gauge">
+	            <div class="turbo-boost-track"></div>
+	            <div class="turbo-boost-fill" id="turbo-boost-fill"></div>
+	        </div>
+	        <div class="turbo-boost-multiplier" id="turbo-boost-multiplier">1.00×</div>
+	    </div>
 	</div>
 
-    <!-- Speed Upgrade (per hand) -->
-    <div id="upgrade-container" class="upgrade-container" style="display: none;">
+    <!-- Speed Upgrade (per hand) + Hands aligned left (same container from load) -->
+    <div id="upgrade-container" class="upgrade-container">
         <div id="speed-upgrades-container" class="speed-upgrades-container"></div>
-        <button id="speed-autobuy-btn" class="upgrade-btn" style="display: none;"></button>
     </div>
 
     <!-- Hand combos: bubble-up notification (center of screen) -->
     <div id="combo-bubble-container" class="combo-bubble-container" aria-live="polite"></div>
 
-    <!-- Hands Grid -->
-    <div id="hands-container" class="hands-grid"></div>
+    <!-- Hands placeholder (unused; hands live in upgrade rows from start) -->
+    <div id="hands-container" class="hands-grid" style="display: none;"></div>
 
     <!-- Dev tools (toggle on/off) -->
     <button type="button" id="dev-tools-toggle" class="dev-tools-toggle">Dev</button>
@@ -73,6 +89,15 @@
             <label>Add to count:</label>
             <input type="number" id="dev-add-count-input" min="0" value="0" class="dev-input" />
             <button type="button" id="dev-add-count-btn" class="dev-btn">Add</button>
+        </div>
+        <div class="dev-tools-row">
+            <label><input type="checkbox" id="dev-all-autobuy" /> All autobuyers on</label>
+        </div>
+        <div class="dev-tools-row">
+            <label><input type="checkbox" id="dev-autobuy-delay-01" /> Autobuy delay 0.1s</label>
+        </div>
+        <div class="dev-tools-row">
+            <label><input type="checkbox" id="dev-autobuy-cheapen" /> Autobuy cheapen (0.1s)</label>
         </div>
     </div>
 
@@ -106,8 +131,7 @@
     --------------------------------------------------------- */
     const hands1 = [
 
-`
-       _	
+`       _	
       | |
       | |
  _ _ _| |
@@ -271,8 +295,15 @@
     }
 
     const incrementalEl = document.getElementById("incremental-count");
-    const handCountsContainerEl = document.getElementById("hand-counts-container");
     const incrementalRateEl = document.getElementById("incremental-rate");
+    const bonusMultiplierEl = document.getElementById("bonus-multiplier-display");
+    const turboMultiplierDisplayEl = document.getElementById("turbo-multiplier-display");
+    const turboBoostWrapEl = document.getElementById("turbo-boost-wrap");
+    const turboBoostFillEl = document.getElementById("turbo-boost-fill");
+    const turboBoostGaugeEl = document.getElementById("turbo-boost-gauge");
+    const turboBoostMultiplierEl = document.getElementById("turbo-boost-multiplier");
+    const turboBoostEnabledCheckbox = document.getElementById("turbo-boost-enabled");
+    const turboBoostToggleLabelEl = document.querySelector(".turbo-boost-toggle-label");
     const handsContainer = document.getElementById("hands-container");
     const objectiveList = document.getElementById("objective-list");
     const longObjectiveList = document.getElementById("long-objective-list");
@@ -366,6 +397,7 @@
     const longTermObjectives = [
         { goal: 1e9, text: "Unlock a second hand", achieved: false },
         { goal: 1e12, text: "Unlock a third hand", achieved: false },
+        { goal: 2e12, text: "Unlock Turbo Boost", achieved: false },
         { goal: 1e15, text: "Unlock a fourth hand", achieved: false },
         { goal: 1e18, text: "Unlock a fifth hand", achieved: false },
         { goal: 1e21, text: "Unlock a sixth hand", achieved: false },
@@ -451,6 +483,8 @@
     let autoBuyUnlocked = false;
     let autoBuyEnabledByHand = [];
     const AUTO_BUY_DELAY_SECONDS = 30;
+    let devAutoBuyDelaySeconds = null;
+    function getAutoBuyDelaySeconds() { return devAutoBuyDelaySeconds !== null ? devAutoBuyDelaySeconds : AUTO_BUY_DELAY_SECONDS; }
     let autoBuyCountdownSecondsByHand = [];
     function getSpeedMultiplierForLevel(level) {
         if (level === 0) return 1;
@@ -465,7 +499,6 @@
     }
     const upgradeContainer = document.getElementById("upgrade-container");
     const speedUpgradesContainerEl = document.getElementById("speed-upgrades-container");
-    const speedAutoBuyBtn = document.getElementById("speed-autobuy-btn");
     const speedRowRefs = [];
 
     function ensureSpeedRows() {
@@ -475,23 +508,29 @@
         while (speedRowRefs.length < unlockedHands) {
             const i = speedRowRefs.length;
             const handNum = i + 1;
+            const wrapper = document.createElement("div");
+            wrapper.className = "hand-upgrade-row";
+            wrapper.setAttribute("data-hand-index", String(i));
+            const handSlot = document.createElement("div");
+            handSlot.className = "hand-slot";
             const row = document.createElement("div");
             row.className = "speed-upgrade-row";
             row.setAttribute("data-hand-index", String(i));
             row.innerHTML = "<span class=\"speed-upgrade-label\">Hand " + handNum + "</span> " +
-                "<span class=\"speed-upgrade-balance\"></span> " +
+                "<span class=\"speed-upgrade-balance-cost\"></span> " +
                 "<span class=\"speed-upgrade-level\"></span> " +
-                "<span class=\"speed-upgrade-cost\"></span> " +
                 "<span class=\"speed-upgrade-effect\"></span> " +
                 "<button type=\"button\" class=\"upgrade-btn speed-upgrade-btn\" data-hand-index=\"" + i + "\">Upgrade</button> " +
                 "<label class=\"speed-autobuy-wrap\"><input type=\"checkbox\" class=\"speed-autobuy-toggle\" data-hand-index=\"" + i + "\"><span class=\"speed-autobuy-switch\"><span class=\"speed-autobuy-knob\"></span></span><span class=\"speed-autobuy-label\">Autobuy</span></label><span class=\"speed-autobuy-message\"></span> " +
-                "<span class=\"upgrade-row-cheapen\" style=\"display: none;\"><span class=\"upgrade-row-cheapen-sep\">|</span><span class=\"cheapen-upgrade-level\"></span><span class=\"cheapen-upgrade-cost\"></span><span class=\"cheapen-upgrade-effect\"></span><button type=\"button\" class=\"upgrade-btn cheapen-upgrade-btn\" data-hand-index=\"" + i + "\">Cheapen</button></span>";
-            speedUpgradesContainerEl.appendChild(row);
+                "<span class=\"upgrade-row-cheapen\" style=\"display: none;\"><span class=\"cheapen-upgrade-level\"></span><span class=\"cheapen-upgrade-cost\"></span><span class=\"cheapen-upgrade-effect\"></span><button type=\"button\" class=\"upgrade-btn cheapen-upgrade-btn\" data-hand-index=\"" + i + "\">Cheapen</button></span>";
+            wrapper.appendChild(handSlot);
+            wrapper.appendChild(row);
+            speedUpgradesContainerEl.appendChild(wrapper);
             const cheapenWrap = row.querySelector(".upgrade-row-cheapen");
             speedRowRefs.push({
-                balanceEl: row.querySelector(".speed-upgrade-balance"),
+                handSlotEl: handSlot,
+                balanceCostEl: row.querySelector(".speed-upgrade-balance-cost"),
                 levelEl: row.querySelector(".speed-upgrade-level"),
-                costEl: row.querySelector(".speed-upgrade-cost"),
                 effectEl: row.querySelector(".speed-upgrade-effect"),
                 btn: row.querySelector(".speed-upgrade-btn"),
                 autobuyToggleEl: row.querySelector(".speed-autobuy-toggle"),
@@ -517,10 +556,7 @@
         return best;
     }
     function updateSpeedUpgradeUI() {
-        if (totalChanges >= 10 && upgradeContainer.style.display === "none") {
-            upgradeContainer.style.display = "block";
-            ensureSpeedRows();
-        }
+        if (totalChanges >= 10) upgradeContainer.classList.add("show-upgrade-content");
         if (speedUpgradesContainerEl) {
             ensureSpeedRows();
             for (let i = 0; i < unlockedHands; i++) {
@@ -533,9 +569,8 @@
                 const currentMult = getSpeedMultiplier(i);
                 const nextMult = getSpeedMultiplierForLevel(nextLevel);
                 const percent = (nextMult / currentMult - 1) * 100;
-                ref.balanceEl.textContent = "Balance: " + formatCount(balance);
+                ref.balanceCostEl.textContent = "Balance/Cost: " + formatCount(balance) + " / " + formatCount(cost);
                 ref.levelEl.textContent = "Level " + speedLevel[i];
-                ref.costEl.textContent = "Cost: " + formatCount(cost);
                 ref.effectEl.textContent = "+" + percent.toFixed(1) + "%";
                 ref.btn.disabled = !canAfford;
                 if (ref.autobuyToggleEl) {
@@ -544,8 +579,10 @@
                     ref.autobuyToggleEl.closest(".speed-autobuy-wrap").style.visibility = (totalChanges >= 100 || autoBuyUnlocked) ? "visible" : "hidden";
                 }
                 if (ref.autobuyMessageEl) {
-                    if (!autoBuyUnlocked || !autoBuyEnabledByHand[i]) {
+                    if (!autoBuyUnlocked) {
                         ref.autobuyMessageEl.textContent = "";
+                    } else if (!autoBuyEnabledByHand[i]) {
+                        ref.autobuyMessageEl.textContent = "The autobuyer is inactive.";
                     } else if ((autoBuyCountdownSecondsByHand[i] || 0) > 0) {
                         ref.autobuyMessageEl.textContent = Math.ceil(autoBuyCountdownSecondsByHand[i]) + " seconds until autobuy buys the next upgrade.";
                     } else {
@@ -555,16 +592,7 @@
             }
         }
 
-        if (totalChanges >= 100 || autoBuyUnlocked) {
-            speedAutoBuyBtn.style.display = !autoBuyUnlocked ? "block" : "none";
-            const unlockCost = 100;
-            if (!autoBuyUnlocked) {
-                speedAutoBuyBtn.textContent = "Unlock speed autobuy (Cost: " + formatCount(unlockCost) + ")";
-                speedAutoBuyBtn.disabled = totalChanges < unlockCost;
-            }
-        } else {
-            speedAutoBuyBtn.style.display = "none";
-        }
+        if (totalChanges >= 100) autoBuyUnlocked = true;
     }
 
     function buySpeedUpgradeForHand(handIndex, opts) {
@@ -585,27 +613,12 @@
             if ((handEarnings[handIndex] || 0) < nextCost) autoBuyCountdownSecondsByHand[handIndex] = 0;
         }
         if (!opts?.fromAutobuy) {
-            const row = speedRowRefs[handIndex]?.btn?.closest(".speed-upgrade-row");
-            if (row) sprayConfettiFrom(row);
+            const origin = opts?.confettiOrigin || speedRowRefs[handIndex]?.btn?.closest(".speed-upgrade-row");
+            if (origin) sprayConfettiFrom(origin);
         }
         updateSpeedUpgradeUI();
         updateCheapenUpgradeUI();
         updateRateDisplay();
-    }
-
-    function handleSpeedAutoBuyClick() {
-        const unlockCost = 100;
-        if (!autoBuyUnlocked) {
-            if (totalChanges < unlockCost) return;
-            const ratio = (totalChanges - unlockCost) / totalChanges;
-            for (let i = 0; i < unlockedHands; i++) handEarnings[i] = Math.round((handEarnings[i] || 0) * ratio);
-            refreshTotalFromHandEarnings();
-            autoBuyUnlocked = true;
-            addToLog("Speed autobuy unlocked", "action");
-            incrementalEl.textContent = formatCount(totalChanges);
-            updateSpeedUpgradeUI();
-            updateCheapenUpgradeUI();
-        }
     }
 
     /* ---------------------------------------------------------
@@ -621,6 +634,9 @@
         return 1000 * Math.pow(10, nextLevel - 1);
     }
     let cheapenSectionUnlocked = false;
+    let devCheapenAutobuyOn = false;
+    let cheapenAutoBuyCountdownByHand = [];
+    const DEV_CHEAPEN_AUTOBUY_DELAY = 0.1;
 
     function getCheapenEffectText(nextLevel) {
         if (nextLevel <= 0 || nextLevel > MAX_CHEAPEN_LEVEL) return "";
@@ -646,12 +662,12 @@
             const balance = handEarnings[i] || 0;
             const canAfford = cost !== null && balance >= cost;
             if (level >= MAX_CHEAPEN_LEVEL) {
-                ref.cheapenLevelEl.textContent = "Max (" + level + "/" + MAX_CHEAPEN_LEVEL + ")";
+                ref.cheapenLevelEl.textContent = "Level " + level + "/" + MAX_CHEAPEN_LEVEL;
                 ref.cheapenCostEl.textContent = "";
                 ref.cheapenEffectEl.textContent = "";
                 ref.cheapenBtn.style.display = "none";
             } else {
-                ref.cheapenLevelEl.textContent = "Level " + level;
+                ref.cheapenLevelEl.textContent = "Level " + level + "/" + MAX_CHEAPEN_LEVEL;
                 ref.cheapenCostEl.textContent = "Cost: " + formatCount(cost);
                 ref.cheapenEffectEl.textContent = getCheapenEffectText(nextLevel);
                 ref.cheapenBtn.style.display = "";
@@ -660,7 +676,7 @@
         }
     }
 
-    function buyCheapenUpgradeForHand(handIndex) {
+    function buyCheapenUpgradeForHand(handIndex, confettiOriginEl) {
         if (handIndex < 0 || handIndex >= unlockedHands) return;
         const level = cheapenLevel[handIndex] ?? 0;
         if (level >= MAX_CHEAPEN_LEVEL) return;
@@ -674,10 +690,38 @@
         const handNum = handIndex + 1;
         addToLog("Speed cheapen purchased for Hand " + handNum + " (level " + cheapenLevel[handIndex] + ")", "action");
         incrementalEl.textContent = formatCount(totalChanges);
-        const row = speedRowRefs[handIndex]?.cheapenBtn?.closest(".speed-upgrade-row");
-        if (row) sprayConfettiFrom(row);
+        const origin = confettiOriginEl || speedRowRefs[handIndex]?.cheapenBtn?.closest(".speed-upgrade-row");
+        if (origin) sprayConfettiFrom(origin);
         updateSpeedUpgradeUI();
         updateCheapenUpgradeUI();
+    }
+
+    function maybeAutoBuyCheapen() {
+        if (!devCheapenAutobuyOn) return;
+        while (cheapenAutoBuyCountdownByHand.length < unlockedHands) cheapenAutoBuyCountdownByHand.push(0);
+        const dtSec = GAME_LOOP_MS / 1000;
+        for (let i = 0; i < unlockedHands; i++) {
+            const level = cheapenLevel[i] ?? 0;
+            if (level >= MAX_CHEAPEN_LEVEL) continue;
+            const nextLevel = level + 1;
+            const cost = getCheapenUpgradeCost(i, nextLevel);
+            const canAfford = (handEarnings[i] || 0) >= cost;
+            let countdown = cheapenAutoBuyCountdownByHand[i] || 0;
+            if (countdown > 0) {
+                cheapenAutoBuyCountdownByHand[i] = countdown - dtSec;
+                if (cheapenAutoBuyCountdownByHand[i] <= 0) {
+                    if (canAfford) {
+                        buyCheapenUpgradeForHand(i);
+                        const stillCanAfford = (handEarnings[i] || 0) >= getCheapenUpgradeCost(i, cheapenLevel[i] + 1);
+                        cheapenAutoBuyCountdownByHand[i] = stillCanAfford && cheapenLevel[i] < MAX_CHEAPEN_LEVEL ? DEV_CHEAPEN_AUTOBUY_DELAY : 0;
+                    } else {
+                        cheapenAutoBuyCountdownByHand[i] = 0;
+                    }
+                }
+            } else if (canAfford) {
+                cheapenAutoBuyCountdownByHand[i] = DEV_CHEAPEN_AUTOBUY_DELAY;
+            }
+        }
     }
 
     /* ---------------------------------------------------------
@@ -686,15 +730,10 @@
     function getTickIntervalMs(baseSpeed, handIndex) {
         return baseSpeed / getSpeedMultiplier(handIndex);
     }
-    function updateHandCountsDisplay() {
-        if (!handCountsContainerEl) return;
-        if (unlockedHands < 2) {
-            handCountsContainerEl.style.display = "none";
-            return;
-        }
-        handCountsContainerEl.style.display = "block";
-        handCountsContainerEl.textContent = Array.from({ length: unlockedHands }, (_, i) => "Hand " + (i + 1) + ": " + formatCount(Math.round(handEarnings[i] || 0))).join(" · ");
-    }
+    // Updates the "Count per second" UI:
+    // - Total shows effective CPS and an optional "base × bonus × turbo" breakdown.
+    // - Per-hand lines show raw CPS per hand (no bonus/turbo applied).
+    // - Bonus/Turbo lines are hidden until those features are unlocked.
     function updateRateDisplay() {
         const cpsPerHand = [];
         let cpsTotalRaw = 0;
@@ -706,17 +745,179 @@
             cpsTotalRaw += cps;
         });
         const comboMult = getComboMultiplier();
-        const cpsTotal = cpsTotalRaw * comboMult;
+        const turboMult = getTurboCountMultiplier ? getTurboCountMultiplier() : 1;
+        const turboDisplayMult = getTurboCountMultiplierFromMeter ? getTurboCountMultiplierFromMeter() : 1;
+        const cpsTotal = cpsTotalRaw * comboMult * turboMult;
+        const bonusUnlocked = unlockedHands >= 2;
+        const turboUnlocked = turboBoostUnlocked;
+        if (bonusMultiplierEl) {
+            bonusMultiplierEl.textContent = "Bonus: " + comboMult.toFixed(2) + "×";
+            bonusMultiplierEl.style.display = bonusUnlocked ? "" : "none";
+        }
+        if (turboMultiplierDisplayEl) {
+            turboMultiplierDisplayEl.textContent = "Turbo: " + turboDisplayMult.toFixed(2) + "×";
+            turboMultiplierDisplayEl.style.display = turboUnlocked ? "" : "none";
+        }
+        if (incrementalRateEl) incrementalRateEl.classList.toggle("rate-turbo-active", turboBoostEnabled && turboMult > 1);
         if (unlockedHands >= 2) {
-            const parts = cpsPerHand.slice(0, unlockedHands).map((cps, i) => {
-                const effectiveCps = cps * comboMult;
-                return "H" + (i + 1) + ": " + formatCount(effectiveCps < 1e6 ? Math.round(effectiveCps * 100) / 100 : effectiveCps) + "/s";
+            const totalFormatted = formatCount(cpsTotal < 1e6 ? Math.round(cpsTotal * 100) / 100 : cpsTotal);
+            const baseFormatted = formatCount(cpsTotalRaw < 1e6 ? Math.round(cpsTotalRaw * 100) / 100 : cpsTotalRaw);
+            const calcParts = [baseFormatted];
+            if (bonusUnlocked) calcParts.push(comboMult.toFixed(2));
+            // For the CPS calculation, only include turbo's *actual* applied multiplier.
+            // When turbo is toggled off, turboMult is 1×, so it won't look like it boosts CPS.
+            if (turboUnlocked) calcParts.push(turboMult.toFixed(2));
+            const calcStr = calcParts.length > 1 ? " (" + calcParts.join(" × ") + ")" : "";
+            const totalStr = "Total: " + totalFormatted + "/s" + calcStr;
+            const handParts = cpsPerHand.slice(0, unlockedHands).map((cps, i) => {
+                const rawCps = cps;
+                return "H" + (i + 1) + ": " + formatCount(rawCps < 1e6 ? Math.round(rawCps * 100) / 100 : rawCps) + "/s";
             });
-            incrementalRateEl.textContent = parts.join(" · ") + " (Total: " + formatCount(cpsTotal < 1e6 ? Math.round(cpsTotal * 100) / 100 : cpsTotal) + "/s)";
+            incrementalRateEl.innerHTML = "<strong>" + totalStr + "</strong> · " + handParts.join(" · ");
         } else {
             incrementalRateEl.textContent = formatCount(cpsTotal < 1e6 ? Math.round(cpsTotal * 100) / 100 : cpsTotal);
         }
-        updateHandCountsDisplay();
+    }
+
+    /* ---------------------------------------------------------
+       TURBO BOOST (unlocks at 2T; gauge to right of total count)
+
+       Design goals:
+       - Meter is fueled by repeatable hand combos (after unlock).
+       - Turbo can be toggled On/Off. Off: meter can grow, but no bonus and no burn.
+       - On: applies a non-linear multiplier to counting and burns the meter faster at higher multipliers.
+
+       Balance knobs:
+       - Combo → meter points (`getTurboComboPoints`)
+       - Meter → multiplier curve (max + exponent)
+       - Burn rate and burn scaling
+    --------------------------------------------------------- */
+    const TURBO_UNLOCK_COUNT = 2e12;
+    const TURBO_BOOST_METER_MAX = 100;
+    // Combo size → boost points: 2 hands = 1, 6 hands = 16, 10 hands = 256 (2^(minHands-2))
+    const TURBO_COMBO_POINTS_BASE = 2;
+    const TURBO_COMBO_POINTS_EXP_OFFSET = 2;   // points = TURBO_COMBO_POINTS_BASE^(minHands - TURBO_COMBO_POINTS_EXP_OFFSET)
+    const TURBO_COUNT_MULTIPLIER_MAX = 100;    // at full meter, count is multiplied by this (100×)
+    const TURBO_MULTIPLIER_CURVE_EXPONENT = 2; // non-linear: levelRatio^exp rewards filling the gauge (2 = quadratic)
+    const TURBO_BURN_RATE_PER_SEC = 3;         // meter drained per second at 1× multiplier (half of original)
+    const TURBO_BURN_MULTIPLIER_SCALE = 0.25;   // burn rate scales with count multiplier (higher mult = faster drain)
+
+    let turboBoostMeter = 0;
+    let turboBoostUnlocked = false;
+    let turboBoostEnabled = true;
+
+    // Converts combo size (minHands) into meter points.
+    // Current mapping uses an exponential curve: points = base^(minHands-offset)
+    function getTurboComboPoints(minHands) {
+        if (minHands < 2) return 0;
+        return Math.pow(TURBO_COMBO_POINTS_BASE, minHands - TURBO_COMBO_POINTS_EXP_OFFSET);
+    }
+
+    // Applied turbo multiplier. If turbo is toggled Off, this returns 1× (no effect).
+    function getTurboCountMultiplier() {
+        if (!turboBoostUnlocked || !turboBoostEnabled || turboBoostMeter <= 0) return 1;
+        const levelRatio = Math.min(1, turboBoostMeter / TURBO_BOOST_METER_MAX);
+        const curve = Math.pow(levelRatio, TURBO_MULTIPLIER_CURVE_EXPONENT);
+        return 1 + curve * (TURBO_COUNT_MULTIPLIER_MAX - 1);
+    }
+
+    // Display-only turbo multiplier: shows the potential multiplier from the current meter,
+    // even if the toggle is Off (so players can see what they'd get by turning it on).
+    function getTurboCountMultiplierFromMeter() {
+        if (!turboBoostUnlocked || turboBoostMeter <= 0) return 1;
+        const levelRatio = Math.min(1, turboBoostMeter / TURBO_BOOST_METER_MAX);
+        const curve = Math.pow(levelRatio, TURBO_MULTIPLIER_CURVE_EXPONENT);
+        return 1 + curve * (TURBO_COUNT_MULTIPLIER_MAX - 1);
+    }
+
+    const TURBO_GAIN_POPUP_DURATION_MS = 1000;
+
+    // Small, short-lived "+N" popup near the turbo gauge when meter increases.
+    // Positioned with slight randomness so multiple gains don't overlap perfectly.
+    function showTurboGainPopup(points) {
+        const container = document.getElementById("turbo-gain-popup-container");
+        const gaugeEl = turboBoostGaugeEl;
+        const wrapEl = turboBoostWrapEl;
+        if (!container || !gaugeEl || !wrapEl || points <= 0) return;
+        const popup = document.createElement("div");
+        popup.className = "turbo-gain-popup";
+        popup.textContent = "+" + points;
+        const gaugeRect = gaugeEl.getBoundingClientRect();
+        const wrapRect = wrapEl.getBoundingClientRect();
+        const offsetX = (Math.random() - 0.5) * 56;
+        const offsetY = (Math.random() - 0.5) * 20;
+        popup.style.left = (gaugeRect.left - wrapRect.left + offsetX) + "px";
+        popup.style.top = (gaugeRect.top - wrapRect.top + offsetY) + "px";
+        container.appendChild(popup);
+        setTimeout(() => {
+            popup.classList.add("turbo-gain-popup-gone");
+            setTimeout(() => { if (popup.parentNode) popup.parentNode.removeChild(popup); }, 350);
+        }, TURBO_GAIN_POPUP_DURATION_MS);
+    }
+
+    // Adds meter charge (clamped). This does NOT care whether turbo is toggled On;
+    // players can still build meter while turbo is Off.
+    function addTurboBoostMeter(points) {
+        if (!turboBoostUnlocked) return;
+        const prev = turboBoostMeter;
+        turboBoostMeter = Math.min(TURBO_BOOST_METER_MAX, turboBoostMeter + points);
+        if (turboBoostMeter > prev && turboBoostFillEl) {
+            showTurboGainPopup(points);
+            turboBoostFillEl.classList.remove("turbo-boost-fill-gain");
+            void turboBoostFillEl.offsetWidth;
+            turboBoostFillEl.classList.add("turbo-boost-fill-gain");
+            setTimeout(() => turboBoostFillEl.classList.remove("turbo-boost-fill-gain"), 400);
+        }
+        updateTurboBoostUI();
+    }
+
+    // Burns meter while turbo is actively applying a multiplier (toggle On).
+    // Also auto-switches the toggle Off when the meter hits 0.
+    function updateTurboBurn(dtSec) {
+        if (!turboBoostUnlocked || !turboBoostEnabled || turboBoostMeter <= 0) return;
+        const mult = getTurboCountMultiplier();
+        const burnRate = TURBO_BURN_RATE_PER_SEC * (1 + (mult - 1) * TURBO_BURN_MULTIPLIER_SCALE);
+        const drain = dtSec * burnRate;
+        turboBoostMeter = Math.max(0, turboBoostMeter - drain);
+        if (turboBoostMeter <= 0) {
+            turboBoostEnabled = false;
+            if (turboBoostEnabledCheckbox) turboBoostEnabledCheckbox.checked = false;
+            if (turboBoostToggleLabelEl) turboBoostToggleLabelEl.textContent = "Off";
+            updateRateDisplay();
+        }
+        if (drain > 0 && turboBoostGaugeEl) {
+            turboBoostGaugeEl.classList.remove("turbo-boost-gauge-burning");
+            void turboBoostGaugeEl.offsetWidth;
+            turboBoostGaugeEl.classList.add("turbo-boost-gauge-burning");
+            setTimeout(() => turboBoostGaugeEl.classList.remove("turbo-boost-gauge-burning"), 250);
+        }
+        updateTurboBoostUI();
+    }
+
+    // Syncs the turbo UI (unlock visibility, gauge fill, and displayed multiplier).
+    function updateTurboBoostUI() {
+        if (!turboBoostWrapEl) return;
+        if (totalChanges >= TURBO_UNLOCK_COUNT && !turboBoostUnlocked) {
+            turboBoostUnlocked = true;
+            turboBoostWrapEl.style.display = "";
+            turboBoostWrapEl.setAttribute("aria-hidden", "false");
+            checkStoryBanners();
+        }
+        if (!turboBoostUnlocked) return;
+        const pct = Math.min(100, (turboBoostMeter / TURBO_BOOST_METER_MAX) * 100);
+        if (turboBoostFillEl) turboBoostFillEl.style.width = pct + "%";
+        if (turboBoostGaugeEl) turboBoostGaugeEl.setAttribute("aria-valuenow", Math.round(turboBoostMeter));
+        const displayMult = getTurboCountMultiplierFromMeter();
+        if (turboBoostMultiplierEl) turboBoostMultiplierEl.textContent = displayMult.toFixed(2) + "×";
+    }
+
+    if (turboBoostEnabledCheckbox) {
+        turboBoostEnabledCheckbox.addEventListener("change", () => {
+            turboBoostEnabled = turboBoostEnabledCheckbox.checked;
+            if (turboBoostToggleLabelEl) turboBoostToggleLabelEl.textContent = turboBoostEnabled ? "On" : "Off";
+            updateTurboBoostUI();
+            updateRateDisplay();
+        });
     }
 
     function maybeAutoBuySpeedUpgrade() {
@@ -734,13 +935,13 @@
                     if (canAfford) {
                         buySpeedUpgradeForHand(i, { fromAutobuy: true });
                         const stillCanAfford = (handEarnings[i] || 0) >= getUpgradeCost(i, speedLevel[i] + 1);
-                        autoBuyCountdownSecondsByHand[i] = stillCanAfford ? AUTO_BUY_DELAY_SECONDS : 0;
+                        autoBuyCountdownSecondsByHand[i] = stillCanAfford ? getAutoBuyDelaySeconds() : 0;
                     } else {
                         autoBuyCountdownSecondsByHand[i] = 0;
                     }
                 }
             } else if (canAfford) {
-                autoBuyCountdownSecondsByHand[i] = AUTO_BUY_DELAY_SECONDS;
+                autoBuyCountdownSecondsByHand[i] = getAutoBuyDelaySeconds();
             }
         }
     }
@@ -752,7 +953,7 @@
     let gameLoopTimer = null;
 
     class HandCounter {
-        constructor(id, speed) {
+        constructor(id, speed, parentEl) {
             this.id = id;
             this.count = 1;
             this.baseSpeed = speed;
@@ -763,7 +964,7 @@
             this.el.style.whiteSpace = "pre";
             this.el.style.fontFamily = "monospace";
 
-            handsContainer.appendChild(this.el);
+            (parentEl || handsContainer).appendChild(this.el);
 
             this.render();
 
@@ -810,8 +1011,10 @@
     function unlockHand() {
         if (unlockedHands >= maxHands) return;
         unlockedHands++;
+        ensureSpeedRows();
         addToLog("Hand " + unlockedHands + " unlocked", "action");
-        hands.push(new HandCounter(unlockedHands, HAND_BASE_SPEED));
+        const slot = speedRowRefs[unlockedHands - 1]?.handSlotEl;
+        hands.push(new HandCounter(unlockedHands, HAND_BASE_SPEED, slot));
         checkStoryBanners();
     }
 
@@ -822,9 +1025,10 @@
     }
 
     /* ---------------------------------------------------------
-       INITIALIZE FIRST HAND (appears immediately)
+       INITIALIZE FIRST HAND (appears immediately, in same slot as after 10)
     --------------------------------------------------------- */
-    hands.push(new HandCounter(1, HAND_BASE_SPEED));
+    ensureSpeedRows();
+    hands.push(new HandCounter(1, HAND_BASE_SPEED, speedRowRefs[0]?.handSlotEl));
 
     /* ---------------------------------------------------------
        STORY BANNERS (celebratory, pause game; reviewable later)
@@ -845,50 +1049,57 @@
             body: "I don't know how that is possible but maybe your friend is helping you. Similarly to two hands you can earn bonuses by having interesting hand combinations like all of the hands are on the same number at the end of the tick. It shouldn't be too hard to collect them all."
         },
         {
-            id: "fourth-hand",
+            id: "turbo-boost",
             order: 3,
+            trigger: () => totalChanges >= TURBO_UNLOCK_COUNT,
+            title: "Turbo Boost unlocked!",
+            body: "These hands aren't going to get you to a quadrillion on their own, but with Turbo Boost you can! At 2 trillion you've unlocked Turbo Boost. The gauge to the right of your total count fills when you land hand combos—bigger combos add more. While the meter has charge, all hand counts are multiplied. The higher the boost level, the bigger the multiplier, but the faster the meter drains. Balance building combos with burning through the boost!"
+        },
+        {
+            id: "fourth-hand",
+            order: 4,
             trigger: () => unlockedHands >= 4,
             title: "It's patty-cake time! 🎉 You're now counting on 4 hands!",
             body: "Bake me a cake as fast as you can. JK there is no cake. You are now counting on 4 hands. You can earn bonuses by having interesting hand combinations like all of the hands are on the same number at the end of the tick. It shouldn't be too hard to collect them all."
         },
         {
             id: "fifth-hand",
-            order: 4,
+            order: 5,
             trigger: () => unlockedHands >= 5,
             title: "You're now counting on 5 hands!",
             body: "This is getting crazy. Where are these hands coming from? Probably from the same place as the sheep do. You are now counting on 5 hands. You can earn bonuses by having interesting hand combinations like all of the hands are on the same number at the end of the tick. It shouldn't be too hard to collect them all."
         },
         {
             id: "sixth-hand",
-            order: 5,
+            order: 6,
             trigger: () => unlockedHands >= 6,
             title: "You're now counting on 6 hands!",
             body: "If you google, \"do any creatures have 6 hands?\" the answer is no. Because of course it is no. Therefore you are an abomination...much like when Spider-Man became a spider man, but look at all those numbers! You are now counting on 6 hands. You can earn bonuses by having interesting hand combinations like all of the hands are on the same number at the end of the tick. It shouldn't be too hard to collect them all."
         },
         {
             id: "seventh-hand",
-            order: 6,
+            order: 7,
             trigger: () => unlockedHands >= 7,
             title: "THE SEVENTH HAND HAS APPEARED!",
             body: "Much like the other hands we have no idea who's they are or why they chose to help you count. But look at all those numbers! You are now counting on 7 hands. You can earn bonuses by having interesting hand combinations like all of the hands are on the same number at the end of the tick. It shouldn't be too hard to collect them all."
         },
         {
             id: "eighth-hand",
-            order: 7,
+            order: 8,
             trigger: () => unlockedHands >= 8,
             title: "8 hand counting is now a thing!",
             body: "Spiders could count like this but they have no fingers, so for now you are the only one who can do it. You are now counting on 8 hands. You can earn bonuses by having interesting hand combinations like all of the hands are on the same number at the end of the tick. It shouldn't be too hard to collect them all."
         },
         {
             id: "ninth-hand",
-            order: 8,
+            order: 9,
             trigger: () => unlockedHands >= 9,
             title: "Nine is a fun number because it is the first time we see the square of three! If you don't find that interesting too, well thats reasonable.",
             body: "Anyways, you are now counting on 9 hands. You can earn bonuses by having interesting hand combinations like all of the hands are on the same number at the end of the tick. It shouldn't be too hard to collect them all."
         },
         {
             id: "tenth-hand",
-            order: 9,
+            order: 10,
             trigger: () => unlockedHands >= 10,
             title: "This is the sound of 10 hands counting!",
             body: "It is quieter than I thought it would be. You are now counting on 10 hands. You can earn bonuses by having interesting hand combinations like all of the hands are on the same number at the end of the tick. It shouldn't be too hard to collect them all."
@@ -994,6 +1205,7 @@
         return COMBOS.filter(c => v.length >= c.minHands && c.check(v));
     }
     const earnedComboNames = [];
+    let previousTickActiveComboNames = new Set();
     function getComboMultiplier() {
         const earnedSet = new Set(earnedComboNames);
         let mult = 1;
@@ -1057,6 +1269,17 @@
             showComboBubble(newlyEarned);
             updateEarnedBonusesUI();
         }
+        if (turboBoostUnlocked && active.length > 0) {
+            const activeNames = new Set(active.map(c => c.name));
+            active.forEach(c => {
+                if (!previousTickActiveComboNames.has(c.name)) {
+                    addTurboBoostMeter(getTurboComboPoints(c.minHands));
+                }
+            });
+            previousTickActiveComboNames = activeNames;
+        } else {
+            previousTickActiveComboNames = new Set(active.map(c => c.name));
+        }
     }
 
     function gameLoopTick() {
@@ -1075,9 +1298,15 @@
             h.applyTicks(n);
         });
         const totalTicks = ticksPerHand.reduce((a, b) => a + b, 0);
+        const dtSec = GAME_LOOP_MS / 1000;
+        if (totalChanges >= TURBO_UNLOCK_COUNT) {
+            updateTurboBoostUI();
+            if (turboBoostUnlocked) updateTurboBurn(dtSec);
+        }
         if (totalTicks > 0) {
             const comboMult = getComboMultiplier();
-            const bonusTicks = Math.round(totalTicks * comboMult);
+            const turboMult = getTurboCountMultiplier();
+            const bonusTicks = Math.round(totalTicks * comboMult * turboMult);
             for (let i = 0; i < unlockedHands; i++) {
                 handEarnings[i] += Math.round((ticksPerHand[i] / totalTicks) * bonusTicks);
             }
@@ -1086,6 +1315,7 @@
             updateObjectives();
             checkUnlockHands();
             maybeAutoBuySpeedUpgrade();
+            maybeAutoBuyCheapen();
             const now = Date.now();
             if (now - lastUIUpdateMs >= UI_UPDATE_THROTTLE_MS) {
                 lastUIUpdateMs = now;
@@ -1112,19 +1342,18 @@
 
     setTimeout(() => addToLog(LOG_MESSAGES[0]), 2000);
 
-    speedAutoBuyBtn.addEventListener("click", handleSpeedAutoBuyClick);
     if (speedUpgradesContainerEl) {
         speedUpgradesContainerEl.addEventListener("click", function(e) {
             const btn = e.target.closest(".speed-upgrade-btn");
             if (btn && !btn.disabled) {
                 const handIndex = parseInt(btn.getAttribute("data-hand-index"), 10);
-                if (!isNaN(handIndex)) buySpeedUpgradeForHand(handIndex);
+                if (!isNaN(handIndex)) buySpeedUpgradeForHand(handIndex, { confettiOrigin: btn });
                 return;
             }
             const cheapenBtn = e.target.closest(".cheapen-upgrade-btn");
             if (cheapenBtn && !cheapenBtn.disabled) {
                 const handIndex = parseInt(cheapenBtn.getAttribute("data-hand-index"), 10);
-                if (!isNaN(handIndex)) buyCheapenUpgradeForHand(handIndex);
+                if (!isNaN(handIndex)) buyCheapenUpgradeForHand(handIndex, cheapenBtn);
             }
         });
         speedUpgradesContainerEl.addEventListener("change", function(e) {
@@ -1148,6 +1377,9 @@
     const devSecondsElapsed = document.getElementById("dev-seconds-elapsed");
     const devAddCountInput = document.getElementById("dev-add-count-input");
     const devAddCountBtn = document.getElementById("dev-add-count-btn");
+    const devAllAutobuyCheckbox = document.getElementById("dev-all-autobuy");
+    const devAutobuyDelay01Checkbox = document.getElementById("dev-autobuy-delay-01");
+    const devAutobuyCheapenCheckbox = document.getElementById("dev-autobuy-cheapen");
 
     const devToolsLoadTime = Date.now();
     let devSecondsInterval = null;
@@ -1167,6 +1399,42 @@
             devSecondsInterval = null;
         }
     });
+
+    if (devAllAutobuyCheckbox) {
+        devAllAutobuyCheckbox.addEventListener("change", () => {
+            const on = devAllAutobuyCheckbox.checked;
+            if (on) autoBuyUnlocked = true;
+            ensureSpeedRows();
+            for (let i = 0; i < unlockedHands; i++) autoBuyEnabledByHand[i] = on;
+            updateSpeedUpgradeUI();
+        });
+    }
+    if (devAutobuyDelay01Checkbox) {
+        devAutobuyDelay01Checkbox.addEventListener("change", () => {
+            const useFast = devAutobuyDelay01Checkbox.checked;
+            devAutoBuyDelaySeconds = useFast ? 0.1 : null;
+            const delay = useFast ? 0.1 : AUTO_BUY_DELAY_SECONDS;
+            for (let i = 0; i < unlockedHands; i++) {
+                if (autoBuyEnabledByHand[i] && (autoBuyCountdownSecondsByHand[i] || 0) > 0) {
+                    autoBuyCountdownSecondsByHand[i] = delay;
+                }
+            }
+        });
+    }
+    if (devAutobuyCheapenCheckbox) {
+        devAutobuyCheapenCheckbox.addEventListener("change", () => {
+            devCheapenAutobuyOn = devAutobuyCheapenCheckbox.checked;
+            if (devCheapenAutobuyOn) {
+                while (cheapenAutoBuyCountdownByHand.length < unlockedHands) cheapenAutoBuyCountdownByHand.push(0);
+                for (let i = 0; i < unlockedHands; i++) {
+                    const level = cheapenLevel[i] ?? 0;
+                    if (level >= MAX_CHEAPEN_LEVEL) continue;
+                    const cost = getCheapenUpgradeCost(i, level + 1);
+                    if ((handEarnings[i] || 0) >= cost) cheapenAutoBuyCountdownByHand[i] = DEV_CHEAPEN_AUTOBUY_DELAY;
+                }
+            }
+        });
+    }
 
     devAddCountBtn.addEventListener("click", () => {
         const val = parseInt(devAddCountInput.value, 10) || 0;
