@@ -73,38 +73,85 @@ body {
   margin-bottom: 10px;
 }
 .speed-upgrade-row {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 52px 120px 58px 120px 52px auto auto minmax(180px, 1fr) auto;
   align-items: center;
-  gap: 8px;
+  gap: 0 12px;
   font-size: 12px;
 }
+.upgrade-row-cheapen {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 8px 12px;
+  margin-left: 8px;
+  padding-left: 8px;
+  border-left: 1px solid #555;
+}
+.upgrade-row-cheapen-sep { color: #666; margin-right: 4px; }
+.speed-upgrade-row .cheapen-upgrade-level { color: #ccc; }
+.speed-upgrade-row .cheapen-upgrade-cost { color: #aaa; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100px; }
+.speed-upgrade-row .cheapen-upgrade-effect { color: #4CAF50; font-size: 11px; }
+.speed-upgrade-row .cheapen-upgrade-btn { padding: 4px 10px; cursor: pointer; flex-shrink: 0; }
+.speed-upgrade-row .cheapen-upgrade-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .speed-upgrade-label { font-weight: 600; color: #9aa0ff; }
-.speed-upgrade-balance { color: #b8c5ff; }
+.speed-upgrade-balance { color: #b8c5ff; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .speed-upgrade-level { color: #ccc; }
-.speed-upgrade-cost { color: #aaa; }
+.speed-upgrade-cost { color: #aaa; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .speed-upgrade-effect { color: #4CAF50; font-size: 11px; }
-.speed-upgrade-btn { padding: 4px 10px; cursor: pointer; }
-
-/* Cheapen (per hand) */
-.cheapen-upgrades-container {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.cheapen-upgrade-row {
-  display: flex;
-  flex-wrap: wrap;
+.speed-upgrade-btn { padding: 4px 10px; cursor: pointer; justify-self: start; }
+.speed-upgrade-row .speed-autobuy-wrap { justify-self: start; margin-left: 0; }
+.speed-autobuy-wrap {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  margin-left: 8px;
   font-size: 12px;
+  color: #aaa;
+  cursor: pointer;
+  user-select: none;
 }
-.cheapen-upgrade-label { font-weight: 600; color: #9aa0ff; }
-.cheapen-upgrade-level { color: #ccc; }
-.cheapen-upgrade-cost { color: #aaa; }
-.cheapen-upgrade-effect { color: #4CAF50; font-size: 11px; }
-.cheapen-upgrade-btn { padding: 4px 10px; cursor: pointer; }
-.cheapen-upgrade-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.speed-autobuy-wrap:has(input:disabled) { color: #666; cursor: default; }
+.speed-autobuy-wrap input.speed-autobuy-toggle {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+  pointer-events: none;
+}
+.speed-autobuy-switch {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  flex-shrink: 0;
+  background: #444;
+  border-radius: 10px;
+  transition: background 0.2s ease;
+}
+.speed-autobuy-wrap input:checked + .speed-autobuy-switch { background: #5a9e4c; }
+.speed-autobuy-wrap input:disabled + .speed-autobuy-switch { opacity: 0.5; }
+.speed-autobuy-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: #ddd;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+.speed-autobuy-wrap input:checked + .speed-autobuy-switch .speed-autobuy-knob { transform: translateX(16px); }
+.speed-autobuy-label { white-space: nowrap; }
+.speed-autobuy-message {
+  font-size: 11px;
+  color: #888;
+  font-style: italic;
+  min-width: 0;
+}
+
+/* Cheapen (per hand) - now inline with speed row, see .upgrade-row-cheapen above */
 
 /*
 
@@ -311,6 +358,28 @@ CURTAINS
     background: #ddd;
     padding: 10px;
     border-radius: 8px;
+}
+
+/* Short-term objective completion confetti */
+.confetti-container {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 0;
+    height: 0;
+    z-index: 9999;
+}
+.confetti-particle {
+    position: fixed;
+    border-radius: 4px;
+    opacity: 0.9;
+    animation: confetti-fly 3s ease-out forwards;
+}
+@keyframes confetti-fly {
+    to {
+        transform: translate(var(--dx, 0), var(--dy, 0));
+        opacity: 0;
+    }
 }
 
 .earned-bonuses-panel {
@@ -532,6 +601,128 @@ CURTAINS
     font-size: 1.1rem;
     font-weight: 700;
     color: #4CAF50;
+}
+
+/* =========================
+   Story banner (pauses game)
+   ========================= */
+.story-banner-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+.story-banner-modal {
+    background: linear-gradient(180deg, #1b1f3a, #11142a);
+    border: 2px solid #4CAF50;
+    border-radius: 16px;
+    padding: 28px 32px;
+    max-width: 480px;
+    box-shadow: 0 0 40px rgba(76, 175, 80, 0.3);
+}
+.story-banner-title {
+    margin: 0 0 16px 0;
+    font-size: 1.35rem;
+    color: #4CAF50;
+    text-align: center;
+}
+.story-banner-body {
+    color: #e0e4ff;
+    line-height: 1.6;
+    margin-bottom: 24px;
+    white-space: pre-line;
+}
+.story-banner-close {
+    display: block;
+    margin: 0 auto;
+    padding: 12px 28px;
+    font-size: 1rem;
+    background: #4CAF50;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+.story-banner-close:hover {
+    background: #66bb6a;
+}
+
+/* Story review (past banners) */
+.story-review-btn {
+    position: fixed;
+    bottom: 8px;
+    right: 80px;
+    z-index: 9998;
+    padding: 6px 14px;
+    font-size: 12px;
+    background: rgba(20, 22, 35, 0.9);
+    color: #9aa0ff;
+    border: 1px solid #333;
+    border-radius: 6px;
+    cursor: pointer;
+}
+.story-review-btn:hover {
+    color: #fff;
+}
+.story-review-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 100001;
+    width: 90%;
+    max-width: 440px;
+    max-height: 80vh;
+    overflow: hidden;
+    background: linear-gradient(180deg, #1b1f3a, #11142a);
+    border: 1px solid #333;
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+}
+.story-review-heading {
+    margin: 0 0 12px 0;
+    font-size: 1rem;
+    color: #9aa0ff;
+}
+.story-review-list {
+    flex: 1;
+    overflow-y: auto;
+    margin-bottom: 12px;
+}
+.story-review-item {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #333;
+}
+.story-review-item:last-child {
+    border-bottom: none;
+}
+.story-review-item-title {
+    display: block;
+    color: #4CAF50;
+    font-size: 0.95rem;
+    margin-bottom: 6px;
+}
+.story-review-item-body {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #ccc;
+    line-height: 1.5;
+}
+.story-review-close {
+    padding: 8px 16px;
+    font-size: 12px;
+    background: #444;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
 }
 
 /* =========================
