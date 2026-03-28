@@ -493,6 +493,12 @@
     function getSpeedMultiplier(handIndex) {
         return getSpeedMultiplierForLevel(speedLevel[handIndex] ?? 0);
     }
+    /** Exact 2^level for tick math (float Math.pow loses integers past ~2^53). */
+    function getSpeedMultiplierBigForLevel(level) {
+        const lv = level | 0;
+        if (lv <= 0) return 1n;
+        return 1n << BigInt(lv);
+    }
     function getUpgradeCost(handIndex, nextLevel) {
         const baseCost = 10 + Math.floor(Math.pow(4, nextLevel));
         return Math.max(1, Math.floor(baseCost * getCheapenMultiplier(handIndex)));
@@ -605,6 +611,8 @@
         refreshTotalFromHandEarnings();
         speedLevel[handIndex]++;
         const handNum = handIndex + 1;
+        const upgradedHand = hands[handIndex];
+        if (upgradedHand) upgradedHand.tickAccBig = 0n;
         addToLog("Speed upgrade purchased for Hand " + handNum + " (level " + speedLevel[handIndex] + ")", "action");
         incrementalEl.textContent = formatCount(totalChanges);
         hands.forEach(h => h.restartTimer());
@@ -957,7 +965,8 @@
             this.id = id;
             this.count = 1;
             this.baseSpeed = speed;
-            this.accumulatorMs = 0;
+            /** Exact sub-tick carry: floor(total ms × mult / 1000) via (acc += dt×mult) / 1000. */
+            this.tickAccBig = 0n;
 
             this.el = document.createElement("div");
             this.el.className = "hand curtain-reveal";
@@ -977,7 +986,10 @@
 
         applyTicks(n) {
             if (n <= 0) return;
-            this.count = ((this.count - 1 + n) % 10) + 1;
+            const nb = typeof n === "bigint" ? n : BigInt(Math.floor(Number(n)));
+            if (nb <= 0n) return;
+            const tMod = Number(nb % 10n);
+            this.count = ((this.count - 1 + tMod) % 10 + 10) % 10 + 1;
             this.render();
         }
 
@@ -1016,6 +1028,7 @@
         const slot = speedRowRefs[unlockedHands - 1]?.handSlotEl;
         hands.push(new HandCounter(unlockedHands, HAND_BASE_SPEED, slot));
         checkStoryBanners();
+        updateEarnedBonusesUI();
     }
 
     function checkUnlockHands() {
@@ -1032,77 +1045,81 @@
 
     /* ---------------------------------------------------------
        STORY BANNERS (celebratory, pause game; reviewable later)
+       Milestone text matches UNLOCK_THRESHOLDS / TURBO_UNLOCK_COUNT (same as long-term objectives).
     --------------------------------------------------------- */
+    function storyTotalCountLead(threshold) {
+        return "At " + formatCount(threshold) + " total count on your counter, ";
+    }
     const STORY_BANNERS = [
         {
             id: "second-hand",
             order: 1,
             trigger: () => unlockedHands >= 2,
             title: "Congratulations — you unlocked a second hand!",
-            body: "Now you will be counting with two hands. Each hand has its own upgrades and its own earnings. Combinations between two hands award one-time bonuses that affect all of your counting. Try to get all of the bonuses!"
+            body: storyTotalCountLead(UNLOCK_THRESHOLDS[0]) + "you unlocked a second hand. Now you will be counting with two hands. Each hand has its own upgrades and its own earnings. Combinations between two hands award one-time bonuses that affect all of your counting. Try to get all of the bonuses!"
         },
         {
             id: "third-hand",
             order: 2,
             trigger: () => unlockedHands >= 3,
             title: "Wow — you're now counting on 3 hands!",
-            body: "I don't know how that is possible but maybe your friend is helping you. Similarly to two hands you can earn bonuses by having interesting hand combinations like all of the hands are on the same number at the end of the tick. It shouldn't be too hard to collect them all."
+            body: storyTotalCountLead(UNLOCK_THRESHOLDS[1]) + "you unlocked a third hand. I don't know how that is possible but maybe your friend is helping you. Similarly to two hands you can earn bonuses by having interesting hand combinations like all of the hands are on the same number at the end of the tick. It shouldn't be too hard to collect them all."
         },
         {
             id: "turbo-boost",
             order: 3,
             trigger: () => totalChanges >= TURBO_UNLOCK_COUNT,
             title: "Turbo Boost unlocked!",
-            body: "These hands aren't going to get you to a quadrillion on their own, but with Turbo Boost you can! At 2 trillion you've unlocked Turbo Boost. The gauge to the right of your total count fills when you land hand combos—bigger combos add more. While the meter has charge, all hand counts are multiplied. The higher the boost level, the bigger the multiplier, but the faster the meter drains. Balance building combos with burning through the boost!"
+            body: storyTotalCountLead(TURBO_UNLOCK_COUNT) + "you unlocked Turbo Boost. These hands aren't going to get you to a quadrillion on their own, but with Turbo Boost you can push much further! The gauge to the right of your total count fills when you land hand combos—bigger combos add more. While the meter has charge, all hand counts are multiplied. The higher the boost level, the bigger the multiplier, but the faster the meter drains. Balance building combos with burning through the boost!"
         },
         {
             id: "fourth-hand",
             order: 4,
             trigger: () => unlockedHands >= 4,
             title: "It's patty-cake time! 🎉 You're now counting on 4 hands!",
-            body: "Bake me a cake as fast as you can. JK there is no cake. You are now counting on 4 hands. You can earn bonuses by having interesting hand combinations like all of the hands are on the same number at the end of the tick. It shouldn't be too hard to collect them all."
+            body: storyTotalCountLead(UNLOCK_THRESHOLDS[2]) + "you unlocked a fourth hand. Bake me a cake as fast as you can. JK there is no cake. You can earn bonuses by having interesting hand combinations like all of the hands are on the same number at the end of the tick. It shouldn't be too hard to collect them all."
         },
         {
             id: "fifth-hand",
             order: 5,
             trigger: () => unlockedHands >= 5,
             title: "You're now counting on 5 hands!",
-            body: "This is getting crazy. Where are these hands coming from? Probably from the same place as the sheep do. You are now counting on 5 hands. You can earn bonuses by having interesting hand combinations like all of the hands are on the same number at the end of the tick. It shouldn't be too hard to collect them all."
+            body: storyTotalCountLead(UNLOCK_THRESHOLDS[3]) + "you unlocked a fifth hand. This is getting crazy. Where are these hands coming from? Probably from the same place as the sheep do. You can earn bonuses by having interesting hand combinations like all of the hands are on the same number at the end of the tick. It shouldn't be too hard to collect them all."
         },
         {
             id: "sixth-hand",
             order: 6,
             trigger: () => unlockedHands >= 6,
             title: "You're now counting on 6 hands!",
-            body: "If you google, \"do any creatures have 6 hands?\" the answer is no. Because of course it is no. Therefore you are an abomination...much like when Spider-Man became a spider man, but look at all those numbers! You are now counting on 6 hands. You can earn bonuses by having interesting hand combinations like all of the hands are on the same number at the end of the tick. It shouldn't be too hard to collect them all."
+            body: storyTotalCountLead(UNLOCK_THRESHOLDS[4]) + "you unlocked a sixth hand. If you google, \"do any creatures have 6 hands?\" the answer is no. Because of course it is no. Therefore you are an abomination...much like when Spider-Man became a spider man, but look at all those numbers! You can earn bonuses by having interesting hand combinations like all of the hands are on the same number at the end of the tick. It shouldn't be too hard to collect them all."
         },
         {
             id: "seventh-hand",
             order: 7,
             trigger: () => unlockedHands >= 7,
             title: "THE SEVENTH HAND HAS APPEARED!",
-            body: "Much like the other hands we have no idea who's they are or why they chose to help you count. But look at all those numbers! You are now counting on 7 hands. You can earn bonuses by having interesting hand combinations like all of the hands are on the same number at the end of the tick. It shouldn't be too hard to collect them all."
+            body: storyTotalCountLead(UNLOCK_THRESHOLDS[5]) + "you unlocked a seventh hand. Much like the other hands we have no idea who's they are or why they chose to help you count. But look at all those numbers! You can earn bonuses by having interesting hand combinations like all of the hands are on the same number at the end of the tick. It shouldn't be too hard to collect them all."
         },
         {
             id: "eighth-hand",
             order: 8,
             trigger: () => unlockedHands >= 8,
             title: "8 hand counting is now a thing!",
-            body: "Spiders could count like this but they have no fingers, so for now you are the only one who can do it. You are now counting on 8 hands. You can earn bonuses by having interesting hand combinations like all of the hands are on the same number at the end of the tick. It shouldn't be too hard to collect them all."
+            body: storyTotalCountLead(UNLOCK_THRESHOLDS[6]) + "you unlocked an eighth hand. Spiders could count like this but they have no fingers, so for now you are the only one who can do it. You can earn bonuses by having interesting hand combinations like all of the hands are on the same number at the end of the tick. It shouldn't be too hard to collect them all."
         },
         {
             id: "ninth-hand",
             order: 9,
             trigger: () => unlockedHands >= 9,
             title: "Nine is a fun number because it is the first time we see the square of three! If you don't find that interesting too, well thats reasonable.",
-            body: "Anyways, you are now counting on 9 hands. You can earn bonuses by having interesting hand combinations like all of the hands are on the same number at the end of the tick. It shouldn't be too hard to collect them all."
+            body: storyTotalCountLead(UNLOCK_THRESHOLDS[7]) + "you unlocked a ninth hand. Anyways, you can earn bonuses by having interesting hand combinations like all of the hands are on the same number at the end of the tick. It shouldn't be too hard to collect them all."
         },
         {
             id: "tenth-hand",
             order: 10,
             trigger: () => unlockedHands >= 10,
             title: "This is the sound of 10 hands counting!",
-            body: "It is quieter than I thought it would be. You are now counting on 10 hands. You can earn bonuses by having interesting hand combinations like all of the hands are on the same number at the end of the tick. It shouldn't be too hard to collect them all."
+            body: storyTotalCountLead(UNLOCK_THRESHOLDS[8]) + "you unlocked a tenth hand. It is quieter than I thought it would be. You can earn bonuses by having interesting hand combinations like all of the hands are on the same number at the end of the tick. It shouldn't be too hard to collect them all."
         }
     ];
     const shownBannerIds = new Set();
@@ -1119,7 +1136,9 @@
 
     function checkStoryBanners() {
         if (gamePaused) return;
-        const toShow = STORY_BANNERS.find(b => !shownBannerIds.has(b.id) && b.trigger());
+        const pending = STORY_BANNERS.filter(b => !shownBannerIds.has(b.id) && b.trigger());
+        pending.sort((a, b) => a.order - b.order);
+        const toShow = pending[0];
         if (toShow) showStoryBanner(toShow);
     }
 
@@ -1143,6 +1162,7 @@
         storyBannerOverlayEl.style.display = "none";
         gamePaused = false;
         renderStoryReviewList();
+        checkStoryBanners();
     }
 
     function renderStoryReviewList() {
@@ -1195,7 +1215,7 @@
         }
     }
     COMBOS.push(
-        { name: "Two Pair (1s & 2s)", minHands: 4, check: v => { const c = countValues(v); return c[1] >= 2 && c[2] >= 2; }, bonus: 1.15 },
+        { name: "Two Pair", minHands: 4, check: v => { const c = countValues(v); let nRanksWithPair = 0; for (let r = 1; r <= 10; r++) { if (c[r] >= 2) nRanksWithPair++; } return nRanksWithPair >= 2; }, bonus: 1.15 },
         { name: "Straight (1–5)", minHands: 5, check: v => [...v.slice(0, 5)].sort((a, b) => a - b).join() === "1,2,3,4,5", bonus: 1.25 },
         { name: "Full House", minHands: 5, check: v => { const c = countValues(v); const counts = Object.values(c).filter(n => n > 0).sort((a, b) => b - a); return counts[0] >= 3 && counts[1] >= 2; }, bonus: 1.30 },
         { name: "High straight (6–10)", minHands: 5, check: v => [...v.slice(0, 5)].sort((a, b) => a - b).join() === "6,7,8,9,10", bonus: 1.35 }
@@ -1206,22 +1226,35 @@
     }
     const earnedComboNames = [];
     let previousTickActiveComboNames = new Set();
+    function getCombosByMinHands() {
+        const byMinHands = {};
+        COMBOS.forEach(c => {
+            if (!byMinHands[c.minHands]) byMinHands[c.minHands] = [];
+            byMinHands[c.minHands].push(c);
+        });
+        return byMinHands;
+    }
+    /** Within each hand-count tier (2…10), earned pattern bonuses multiply; tier totals add. */
     function getComboMultiplier() {
         const earnedSet = new Set(earnedComboNames);
-        let mult = 1;
-        COMBOS.forEach(c => {
-            if (earnedSet.has(c.name)) mult *= c.bonus;
-        });
-        return mult;
+        const byMinHands = getCombosByMinHands();
+        let sum = 0;
+        for (let n = 2; n <= 10; n++) {
+            const group = byMinHands[n] || [];
+            const earnedInGroup = group.filter(c => earnedSet.has(c.name));
+            if (earnedInGroup.length === 0) continue;
+            sum += earnedInGroup.reduce((m, c) => m * c.bonus, 1);
+        }
+        return sum > 0 ? sum : 1;
     }
     const comboBubbleContainerEl = document.getElementById("combo-bubble-container");
     const earnedBonusesListEl = document.getElementById("earned-bonuses-list");
     const COMBO_BUBBLE_DURATION_MS = 3500;
     function showComboBubble(newlyEarned) {
         if (!comboBubbleContainerEl || newlyEarned.length === 0) return;
-        const totalMult = newlyEarned.reduce((m, c) => m * c.bonus, 1);
-        const text = newlyEarned.map(c => c.name + " +" + Math.round((c.bonus - 1) * 100) + "%").join(" · ");
-        const totalText = "Total bonus: +" + Math.round((totalMult - 1) * 100) + "%";
+        const tierProduct = newlyEarned.reduce((m, c) => m * c.bonus, 1);
+        const text = newlyEarned.map(c => c.name + " ×" + c.bonus.toFixed(2)).join(" · ");
+        const totalText = "New this tick: ×" + tierProduct.toFixed(2) + " within tier(s) — hand-count tiers add for total Bonus (patterns still multiply inside each tier)";
         const bubble = document.createElement("div");
         bubble.className = "combo-bubble";
         bubble.innerHTML = "<span class=\"combo-bubble-names\">" + text + "</span><span class=\"combo-bubble-total\">" + totalText + "</span>";
@@ -1232,29 +1265,32 @@
     function updateEarnedBonusesUI() {
         if (!earnedBonusesListEl) return;
         earnedBonusesListEl.innerHTML = "";
+        if (unlockedHands < 2) return;
         const earnedSet = new Set(earnedComboNames);
-        const byMinHands = {};
-        COMBOS.forEach(c => {
-            if (!byMinHands[c.minHands]) byMinHands[c.minHands] = [];
-            byMinHands[c.minHands].push(c);
-        });
+        const byMinHands = getCombosByMinHands();
+        const combinedMult = getComboMultiplier();
+        const combinedLi = document.createElement("li");
+        combinedLi.className = "earned-bonuses-combined";
+        combinedLi.textContent = "Bonus: " + combinedMult.toFixed(2) + "× (same as Count per second; sum of each hand-count tier below — within a tier, patterns multiply)";
+        earnedBonusesListEl.appendChild(combinedLi);
         for (let n = 2; n <= 10; n++) {
+            if (unlockedHands < n) continue;
             const group = byMinHands[n] || [];
             if (group.length === 0) continue;
             const earnedInGroup = group.filter(c => earnedSet.has(c.name));
-            if (earnedInGroup.length === 0) continue;
-            if (earnedInGroup.length === group.length) {
+            const allEarned = earnedInGroup.length === group.length;
+            if (allEarned) {
                 const totalMult = earnedInGroup.reduce((m, c) => m * c.bonus, 1);
-                const totalPct = Math.round((totalMult - 1) * 100);
                 const li = document.createElement("li");
                 li.className = "earned-bonuses-summary";
-                li.textContent = "All bonuses earned for " + n + " hands (+" + totalPct + "% total)";
+                li.textContent = "All " + n + "-hand pattern bonuses (complete): ×" + totalMult.toFixed(2) + " (this tier’s contribution to Bonus)";
                 earnedBonusesListEl.appendChild(li);
             } else {
-                earnedInGroup.forEach(c => {
-                    const pct = Math.round((c.bonus - 1) * 100);
+                group.forEach(c => {
                     const li = document.createElement("li");
-                    li.textContent = c.name + " (+" + pct + "%)";
+                    const isEarned = earnedSet.has(c.name);
+                    li.className = isEarned ? "earned-bonus-item-earned" : "earned-bonus-undiscovered";
+                    li.textContent = c.name + " (×" + c.bonus.toFixed(2) + ")" + (isEarned ? "" : " — undiscovered");
                     earnedBonusesListEl.appendChild(li);
                 });
             }
@@ -1286,16 +1322,42 @@
         if (gamePaused) return;
         const dt = GAME_LOOP_MS;
         const ticksPerHand = Array(unlockedHands).fill(0);
+        // Hands with the same speed multiplier share one tick phase and the same 1–10 digit
+        // so pair-style combos stay achievable (stable bucket key: mult is an exact power of 2).
+        const buckets = new Map();
         hands.forEach(h => {
             const handIndex = h.id - 1;
             const mult = getSpeedMultiplier(handIndex);
             const intervalMs = h.baseSpeed / mult;
             if (intervalMs <= 0) return;
-            h.accumulatorMs = (h.accumulatorMs || 0) + dt;
-            const n = Math.floor(h.accumulatorMs / intervalMs);
-            h.accumulatorMs -= n * intervalMs;
-            ticksPerHand[handIndex] = n;
-            h.applyTicks(n);
+            if (!buckets.has(mult)) buckets.set(mult, []);
+            buckets.get(mult).push(h);
+        });
+        buckets.forEach((groupHands, speedMult) => {
+            groupHands.sort((a, b) => a.id - b.id);
+            const leader = groupHands[0];
+            const handIndexLeader = leader.id - 1;
+            const level = speedLevel[handIndexLeader] ?? 0;
+            const multBig = getSpeedMultiplierBigForLevel(level);
+            const intervalMs = leader.baseSpeed / speedMult;
+            if (intervalMs <= 0) return;
+            const alignedCount = leader.count;
+            let acc = leader.tickAccBig != null ? leader.tickAccBig : 0n;
+            acc += BigInt(dt) * multBig;
+            const ticksBig = acc / 1000n;
+            acc %= 1000n;
+            const ticksNum = ticksBig <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(ticksBig) : Number.MAX_SAFE_INTEGER;
+            let targetCount = alignedCount;
+            if (ticksBig > 0n) {
+                const tMod = Number(ticksBig % 10n);
+                targetCount = ((alignedCount - 1 + tMod) % 10 + 10) % 10 + 1;
+            }
+            groupHands.forEach(h => {
+                h.count = targetCount;
+                h.tickAccBig = acc;
+                ticksPerHand[h.id - 1] = ticksNum;
+                h.render();
+            });
         });
         const totalTicks = ticksPerHand.reduce((a, b) => a + b, 0);
         const dtSec = GAME_LOOP_MS / 1000;
