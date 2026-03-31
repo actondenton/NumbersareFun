@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <title>NumbersareFun</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -16,16 +19,32 @@
 
     <!-- Left Sidebar Navigation -->
     <div id="sidebar">
-        <button class="nav-btn" data-mode="1">1</button>
-        <button class="nav-btn" data-mode="2">2</button>
-        <button class="nav-btn" data-mode="3">3</button>
-        <button class="nav-btn" data-mode="5">5</button>
-        <button class="nav-btn" data-mode="7">7</button>
+        <button type="button" class="nav-btn" data-mode="1" aria-label="Number 1">1</button>
+        <button type="button" class="nav-btn nav-btn--soon" data-mode="2" aria-label="Number 2 (coming soon)" title="Coming soon">2</button>
+        <button type="button" class="nav-btn nav-btn--soon" data-mode="3" aria-label="Number 3 (coming soon)" title="Coming soon">3</button>
+        <button type="button" class="nav-btn nav-btn--soon" data-mode="5" aria-label="Number 5 (coming soon)" title="Coming soon">5</button>
+        <button type="button" class="nav-btn nav-btn--soon" data-mode="7" aria-label="Number 7 (coming soon)" title="Coming soon">7</button>
     </div>
 
     <!-- Top Right Menu + Objectives -->
     <div id="top-right">
         <button id="menu-btn">Menu</button>
+        <div class="pages-shell">
+            <button type="button" class="page-btn" data-page="achievements">Achievements</button>
+            <button type="button" class="page-btn" data-page="unlocks">Unlocks</button>
+            <button type="button" class="page-btn" data-page="collectibles">Collectibles</button>
+            <button type="button" class="page-btn" data-page="combinations" style="display: none;">Combinations</button>
+            <button type="button" class="page-btn" data-page="messages">Message Log</button>
+            <button type="button" class="page-btn" data-page="overview">Global Overview</button>
+        </div>
+        <div id="milestone-box" class="milestone-box">
+            <div id="milestone-title" class="milestone-title">Next milestone</div>
+            <div id="milestone-text" class="milestone-text"></div>
+            <div id="milestone-essence-line" class="milestone-essence-line"></div>
+            <div class="milestone-progress-wrap">
+                <div id="milestone-progress-fill" class="milestone-progress-fill"></div>
+            </div>
+        </div>
 
         <div id="objectives">
             <h3>Short term objectives</h3>
@@ -41,36 +60,40 @@
         </div>
     </div>
 
-    <!-- Global Incremental Counter -->
-	<div class="top-count-row">
-	    <div class="incremental-count-countainer">
-	        <div id="incremental-count-label">Total Count</div>
-            <div id="incremental-count">1</div>
-            <div id="incremental-rate-label">Count per second</div>
-            <div id="incremental-rate">0.00</div>
-            <div id="bonus-multiplier-display" class="multiplier-display" style="display: none;">Bonus: 1.00×</div>
-            <div id="turbo-multiplier-display" class="multiplier-display" style="display: none;">Turbo: 1.00×</div>
-	    </div>
-	    <div id="turbo-boost-wrap" class="turbo-boost-wrap" style="display: none;" aria-hidden="true">
-	        <div id="turbo-gain-popup-container" class="turbo-gain-popup-container" aria-live="polite"></div>
-	        <div class="turbo-boost-label">Turbo Boost</div>
-	        <label class="turbo-boost-toggle-wrap" title="Turn boost on to multiply count and burn gauge">
-	            <span class="turbo-boost-toggle-label">On</span>
-	            <input type="checkbox" id="turbo-boost-enabled" class="turbo-boost-toggle" checked aria-label="Turbo boost on or off">
-	            <span class="turbo-boost-toggle-slider"></span>
-	        </label>
-	        <div class="turbo-boost-gauge" role="meter" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" id="turbo-boost-gauge">
-	            <div class="turbo-boost-track"></div>
-	            <div class="turbo-boost-fill" id="turbo-boost-fill"></div>
-	        </div>
-	        <div class="turbo-boost-multiplier" id="turbo-boost-multiplier">1.00×</div>
-	    </div>
-	</div>
+    <!-- Play stage: marquee count + hands (theater / Mario 3-style foreground) -->
+    <main class="play-stage" id="play-stage" aria-label="Play area">
+        <!-- Global Incremental Counter -->
+        <div class="top-count-row">
+            <div class="incremental-count-countainer">
+                <div id="incremental-count-label">Total Count</div>
+                <div id="incremental-count">1</div>
+                <div id="incremental-rate-label">Count per second</div>
+                <div id="incremental-rate">0.00</div>
+                <div id="bonus-multiplier-display" class="multiplier-display" style="display: none;">Bonus: 1.00×</div>
+                <div id="turbo-multiplier-display" class="multiplier-display" style="display: none;">Turbo: 1.00×</div>
+            </div>
+            <div id="turbo-boost-wrap" class="turbo-boost-wrap" style="display: none;" aria-hidden="true">
+                <div id="turbo-gain-popup-container" class="turbo-gain-popup-container" aria-live="polite"></div>
+                <div class="turbo-boost-label">Turbo Boost</div>
+                <label class="turbo-boost-toggle-wrap" title="Turn boost on to multiply count and burn gauge">
+                    <span class="turbo-boost-toggle-label">On</span>
+                    <input type="checkbox" id="turbo-boost-enabled" class="turbo-boost-toggle" checked aria-label="Turbo boost on or off">
+                    <span class="turbo-boost-toggle-slider"></span>
+                </label>
+                <div class="turbo-boost-gauge" role="meter" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" id="turbo-boost-gauge">
+                    <div class="turbo-boost-track"></div>
+                    <div class="turbo-boost-fill" id="turbo-boost-fill"></div>
+                </div>
+                <div class="turbo-boost-multiplier" id="turbo-boost-multiplier">1.00×</div>
+                <div class="turbo-boost-activations" id="turbo-boost-activations" title="Game ticks while Turbo is on and the meter has charge (resets on ascension)">Activations: 0</div>
+            </div>
+        </div>
 
-    <!-- Speed Upgrade (per hand) + Hands aligned left (same container from load) -->
-    <div id="upgrade-container" class="upgrade-container">
-        <div id="speed-upgrades-container" class="speed-upgrades-container"></div>
-    </div>
+        <!-- Speed Upgrade (per hand) + Hands aligned left (same container from load) -->
+        <div id="upgrade-container" class="upgrade-container">
+            <div id="speed-upgrades-container" class="speed-upgrades-container"></div>
+        </div>
+    </main>
 
     <!-- Hand combos: bubble-up notification (center of screen) -->
     <div id="combo-bubble-container" class="combo-bubble-container" aria-live="polite"></div>
@@ -99,6 +122,9 @@
         <div class="dev-tools-row">
             <label><input type="checkbox" id="dev-autobuy-cheapen" /> Autobuy cheapen (0.1s)</label>
         </div>
+        <div class="dev-tools-row">
+            <button type="button" id="dev-delete-save" class="dev-delete-save-btn">Delete save data…</button>
+        </div>
     </div>
 
     <!-- Story banner (pauses game; shown on major goals) -->
@@ -110,12 +136,72 @@
         </div>
     </div>
 
+    <div id="ascension-intro-overlay" class="story-banner-overlay" style="display: none;" aria-modal="true">
+        <div class="story-banner-modal">
+            <h2 class="story-banner-title">Ascension — Number 1</h2>
+            <div class="story-banner-body">Ascension resets your Number 1 run: all extra hands are folded away, speed and cheapen upgrades are cleared, earned combo bonuses are cleared, turbo meter and unlock state reset, and short- and long-term objective checkmarks start fresh.
+
+You keep Ascension Essence forever. The Essence you gain scales with your total count at the moment you ascend — push higher before ascending to earn more.</div>
+            <button type="button" id="ascension-intro-continue" class="story-banner-close">Continue</button>
+        </div>
+    </div>
+
+    <div id="ascension-confirm-overlay" class="story-banner-overlay" style="display: none;" aria-modal="true">
+        <div class="story-banner-modal">
+            <h2 class="story-banner-title">Ascend Number 1?</h2>
+            <div id="ascension-confirm-body" class="story-banner-body"></div>
+            <div class="ascension-confirm-actions">
+                <button type="button" id="ascension-confirm-cancel" class="ascension-confirm-btn ascension-confirm-cancel">Cancel</button>
+                <button type="button" id="ascension-confirm-ascend" class="ascension-confirm-btn ascension-confirm-go">Ascend</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="delete-save-overlay" class="story-banner-overlay" style="display: none;" aria-modal="true" aria-labelledby="delete-save-title" role="alertdialog">
+        <div class="story-banner-modal delete-save-modal">
+            <h2 id="delete-save-title" class="story-banner-title">Delete save data?</h2>
+            <div class="story-banner-body">All game progress on this device will be removed (hands, upgrades, combos, turbo, ascension essence, and related state). Your settings in the Menu (theme, humor, offline cap, etc.) are kept. The page will reload.</div>
+            <div class="ascension-confirm-actions">
+                <button type="button" id="delete-save-no" class="ascension-confirm-btn ascension-confirm-cancel">No</button>
+                <button type="button" id="delete-save-yes" class="ascension-confirm-btn delete-save-yes">Yes, delete</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Story / past banners (review) -->
     <button type="button" id="story-review-btn" class="story-review-btn">Story</button>
     <div id="story-review-panel" class="story-review-panel" style="display: none;">
         <h3 class="story-review-heading">Story &amp; progress</h3>
         <div id="story-review-list" class="story-review-list"></div>
         <button type="button" id="story-review-close" class="story-review-close">Close</button>
+    </div>
+    <div id="settings-panel" class="settings-panel" style="display: none;">
+        <h3>Settings</h3>
+        <label class="settings-row"><input type="checkbox" id="settings-theme-dark"> Dark mode</label>
+        <label class="settings-row"><input type="checkbox" id="settings-adaptive-tips" checked> Adaptive tips</label>
+        <label class="settings-row"><input type="checkbox" id="settings-curtain-enabled" checked> Curtain transitions</label>
+        <label class="settings-row"><input type="checkbox" id="settings-humor-enabled" checked> Humor messages</label>
+        <label class="settings-row">Offline cap (hours): <input type="number" id="settings-offline-cap-hours" min="0" step="0.5" value="8"></label>
+        <p class="settings-coming-soon-note">Import / export save — <span class="coming-soon-inline">coming soon</span>.</p>
+        <div class="settings-delete-save-block">
+            <button type="button" id="settings-delete-save" class="settings-delete-save-btn">Delete save data…</button>
+            <p class="settings-delete-save-hint">Removes progress only. Menu settings stay. Confirm in the next dialog.</p>
+        </div>
+        <button type="button" id="settings-close" class="settings-close">Close</button>
+    </div>
+    <div id="offline-summary-panel" class="offline-summary-panel" style="display: none;" aria-modal="true">
+        <div class="offline-summary-modal">
+            <h3>Offline Progress</h3>
+            <div id="offline-summary-body"></div>
+            <button type="button" id="offline-summary-close" class="offline-summary-close">Continue</button>
+        </div>
+    </div>
+    <div id="page-panel" class="page-panel" style="display: none;" aria-modal="true">
+        <div id="page-modal" class="page-modal">
+            <h3 id="page-panel-title"></h3>
+            <div id="page-panel-body"></div>
+            <button type="button" id="page-panel-close" class="page-panel-close">Close</button>
+        </div>
     </div>
 
     <!-- Action log (bottom, expandable) -->
@@ -289,9 +375,16 @@
     let handEarnings = Array(maxHands).fill(0);
     handEarnings[0] = 1;
     let unlockedHands = 1;
+    /** Persistent prestige currency for Number 1 (run stats reset on ascend). */
+    let number1AscensionEssence = 0;
+    let number1HasAscended = false;
+    let number1AscensionUpgrades = { cheapenCap: 0, turboScaling: 0, timeWarpOverflow: 0 };
+    /** If false, first ascend shows the teaching overlay (PRD: first completion only). */
+    let ascensionNumber1IntroSeen = false;
 
     function refreshTotalFromHandEarnings() {
         totalChanges = handEarnings.reduce((a, b) => a + b, 0);
+        syncUnlocksWithTotalCount();
     }
 
     const incrementalEl = document.getElementById("incremental-count");
@@ -302,11 +395,34 @@
     const turboBoostFillEl = document.getElementById("turbo-boost-fill");
     const turboBoostGaugeEl = document.getElementById("turbo-boost-gauge");
     const turboBoostMultiplierEl = document.getElementById("turbo-boost-multiplier");
+    const turboBoostActivationsEl = document.getElementById("turbo-boost-activations");
     const turboBoostEnabledCheckbox = document.getElementById("turbo-boost-enabled");
     const turboBoostToggleLabelEl = document.querySelector(".turbo-boost-toggle-label");
     const handsContainer = document.getElementById("hands-container");
     const objectiveList = document.getElementById("objective-list");
     const longObjectiveList = document.getElementById("long-objective-list");
+    const milestoneTitleEl = document.getElementById("milestone-title");
+    const milestoneTextEl = document.getElementById("milestone-text");
+    const milestoneEssenceLineEl = document.getElementById("milestone-essence-line");
+    const milestoneProgressFillEl = document.getElementById("milestone-progress-fill");
+    const menuBtn = document.getElementById("menu-btn");
+    const settingsPanelEl = document.getElementById("settings-panel");
+    const settingsCloseBtn = document.getElementById("settings-close");
+    const settingsThemeDarkEl = document.getElementById("settings-theme-dark");
+    const settingsAdaptiveTipsEl = document.getElementById("settings-adaptive-tips");
+    const settingsCurtainEnabledEl = document.getElementById("settings-curtain-enabled");
+    const settingsHumorEnabledEl = document.getElementById("settings-humor-enabled");
+    const settingsOfflineCapHoursEl = document.getElementById("settings-offline-cap-hours");
+    const offlineSummaryPanelEl = document.getElementById("offline-summary-panel");
+    const offlineSummaryBodyEl = document.getElementById("offline-summary-body");
+    const offlineSummaryCloseBtn = document.getElementById("offline-summary-close");
+    const pagePanelEl = document.getElementById("page-panel");
+    const pagePanelTitleEl = document.getElementById("page-panel-title");
+    const pagePanelBodyEl = document.getElementById("page-panel-body");
+    const pagePanelCloseBtn = document.getElementById("page-panel-close");
+    const pageModalEl = document.getElementById("page-modal");
+    const pageButtons = Array.from(document.querySelectorAll(".page-btn"));
+    const combinationsPageBtn = document.querySelector(".page-btn[data-page=\"combinations\"]");
     const actionLogEl = document.getElementById("action-log-lines");
     const actionLogToggle = document.getElementById("action-log-toggle");
     const actionLogContainer = document.getElementById("action-log");
@@ -318,39 +434,151 @@
     let actionLogExpanded = false;
     const RECENT_RANDOM_LOG_COUNT = 3;
     const recentRandomLogMessages = [];
-    const LOG_MESSAGES = [
-        "Keep counting!",
-        "How fast can you count?",
-        "Have you ever counted on your fingers? What about counting with multiple hands?",
-        "Every number counts.",
-        "Speed is key.",
-        "Counting is fun.",
-        "Counting is addictive.",
-        "Counting is rewarding.",
-        "Counting is satisfying.",
-        "Counting is relaxing.",
-        "You can always count to one more.",
-        "Counting is a skill that can be improved.",
-        "I wanted to add subtraction but I came up with nothing.",
-        "At one point we counted from zero to one for the very first time.",
-        "We don't know the biggest number someone or something has counted to.",
-        "This game will have exponents in the hundreds but the universe only has 10e80 atoms. However, the universe is infinitely more complex than this game. Explain that to me.",
-        "If machines do all the counting what will we use our fingers for?",
-        "Most people can identify 4-5 objects without counting. Some people are better than others, this is called subitizing.  "
+    /** Typed message log: category drives GLaDOS-style color coding; humor filtered by settings. */
+    const LOG_CATEGORIES = ["tip", "fact", "milestone", "warning", "humor"];
+    const LOG_MESSAGE_ENTRIES = [
+        { text: "Keep counting!", category: "tip" },
+        { text: "How fast can you count?", category: "tip" },
+        { text: "Have you ever counted on your fingers? What about counting with multiple hands?", category: "tip" },
+        { text: "Every number counts.", category: "tip" },
+        { text: "Speed is key.", category: "tip" },
+        { text: "Counting is fun.", category: "tip" },
+        { text: "Counting is addictive.", category: "tip" },
+        { text: "Counting is rewarding.", category: "tip" },
+        { text: "Counting is satisfying.", category: "tip" },
+        { text: "Counting is relaxing.", category: "tip" },
+        { text: "You can always count to one more.", category: "tip" },
+        { text: "Counting is a skill that can be improved.", category: "tip" },
+        { text: "At one point we counted from zero to one for the very first time.", category: "fact" },
+        { text: "We don't know the biggest number someone or something has counted to.", category: "fact" },
+        { text: "This game will have exponents in the hundreds but the universe only has 10e80 atoms. However, the universe is infinitely more complex than this game. Explain that to me.", category: "fact" },
+        { text: "Most people can identify 4-5 objects without counting. Some people are better than others, this is called subitizing.  ", category: "fact" },
+        { text: "I wanted to add subtraction but I came up with nothing.", category: "humor" },
+        { text: "If machines do all the counting what will we use our fingers for?", category: "humor" }
+    ];
+    const SETTINGS_KEY = "naf.settings.v1";
+    const SAVE_KEY = "naf.save.v1";
+    /** When true, autosave is skipped (e.g. right before deleting save + reload). */
+    let suppressAutosave = false;
+    const AUTOSAVE_INTERVAL_MS = 10000;
+    const DEFAULT_SETTINGS = { theme: "light", adaptiveTipsEnabled: true, curtainEnabled: true, humorEnabled: true, offlineCapHours: 8 };
+    let settings = { ...DEFAULT_SETTINGS };
+    const ADAPTIVE_TIP_FIRST_STALL_MS = 360000;
+    const ADAPTIVE_TIP_REPEAT_STALL_MS = 600000;
+    let adaptiveLastProgressAtMs = Date.now();
+    let adaptiveLastHintAtMs = 0;
+    const unlockedNumbers = new Set([1, 2]);
+    const number2State = {
+        totalTwos: 0,
+        tickCarry: 0
+    };
+    const NUMBER_2_BASE_RATE_PER_SEC = 2;
+    const NUMBER_2_MILESTONES = [
+        { goal: 100, text: "Stub milestone: produce 100 twos" },
+        { goal: 1000, text: "Stub milestone: produce 1,000 twos" },
+        { goal: 10000, text: "Stub milestone: produce 10,000 twos" }
     ];
 
-    function addToLog(msg, type) {
-        actionLogEntries.push({ text: msg, type: type || "message" });
+    function getPreferredThemeFromSystem() {
+        try {
+            return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        } catch (_) {
+            return DEFAULT_SETTINGS.theme;
+        }
+    }
+    function applyTheme() {
+        const theme = settings.theme === "dark" ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", theme);
+    }
+    function loadSettings() {
+        try {
+            const raw = localStorage.getItem(SETTINGS_KEY);
+            if (!raw) {
+                settings = { ...DEFAULT_SETTINGS, theme: getPreferredThemeFromSystem() };
+                return;
+            }
+            const parsed = JSON.parse(raw);
+            settings = {
+                theme: parsed.theme === "dark" ? "dark" : "light",
+                adaptiveTipsEnabled: parsed.adaptiveTipsEnabled !== false,
+                curtainEnabled: parsed.curtainEnabled !== false,
+                humorEnabled: parsed.humorEnabled !== false,
+                offlineCapHours: Number.isFinite(parsed.offlineCapHours) && parsed.offlineCapHours >= 0 ? parsed.offlineCapHours : DEFAULT_SETTINGS.offlineCapHours
+            };
+        } catch (_) {}
+    }
+    function persistSettings() {
+        try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (_) {}
+    }
+    function applySettingsToUI() {
+        if (settingsThemeDarkEl) settingsThemeDarkEl.checked = settings.theme === "dark";
+        if (settingsAdaptiveTipsEl) settingsAdaptiveTipsEl.checked = settings.adaptiveTipsEnabled !== false;
+        if (settingsCurtainEnabledEl) settingsCurtainEnabledEl.checked = !!settings.curtainEnabled;
+        if (settingsHumorEnabledEl) settingsHumorEnabledEl.checked = !!settings.humorEnabled;
+        if (settingsOfflineCapHoursEl) settingsOfflineCapHoursEl.value = String(settings.offlineCapHours);
+    }
+    function markMeaningfulProgress() {
+        adaptiveLastProgressAtMs = Date.now();
+    }
+    function getAdaptiveTipMessage() {
+        if (totalChanges < 10) {
+            return "Tip: Buy your first Speed upgrade to ramp up early count gain.";
+        }
+        if (unlockedHands < 2) {
+            return "Tip: Keep upgrading Speed and Cheapen on Hand 1 to push toward unlocking Hand 2.";
+        }
+        if (!turboBoostUnlocked) {
+            return "Tip: Match hand digits to discover combos and build stronger multipliers.";
+        }
+        if (!isSlowdownUnlocked()) {
+            return "Tip: Turbo is unlocked. Build meter from combos, then toggle Turbo on for bursts.";
+        }
+        if (!isTimeWarpUnlocked()) {
+            return "Tip: Slowdown can trade speed for heavier ticks per hand. Use it where upgrades are expensive.";
+        }
+        return "Tip: Watch for Time Warp auras and click them for instant production bursts.";
+    }
+    function maybeEmitAdaptiveTip(nowMs) {
+        if (settings.adaptiveTipsEnabled === false) return;
+        const now = nowMs || Date.now();
+        const sinceProgress = now - adaptiveLastProgressAtMs;
+        if (adaptiveLastHintAtMs <= 0) {
+            if (sinceProgress < ADAPTIVE_TIP_FIRST_STALL_MS) return;
+        } else if (now - adaptiveLastHintAtMs < ADAPTIVE_TIP_REPEAT_STALL_MS) {
+            return;
+        }
+        addToLog(getAdaptiveTipMessage(), "tip");
+        adaptiveLastHintAtMs = now;
+    }
+
+    function normalizeLogCategory(category) {
+        if (LOG_CATEGORIES.indexOf(category) !== -1) return category;
+        if (category === "action") return "milestone";
+        if (category === "message") return "fact";
+        return "fact";
+    }
+    function isLogCategoryVisible(category) {
+        const cat = normalizeLogCategory(category);
+        if (cat === "humor" && !settings.humorEnabled) return false;
+        return true;
+    }
+    function addToLog(msg, category) {
+        const cat = normalizeLogCategory(category);
+        if (!isLogCategoryVisible(cat)) return;
+        actionLogEntries.push({ text: msg, category: cat });
         if (actionLogEntries.length > ACTION_LOG_MAX) actionLogEntries.shift();
         renderActionLog();
+        refreshMessageLogPanelIfOpen();
     }
     function renderActionLog() {
         const n = actionLogExpanded ? ACTION_LOG_EXPANDED : ACTION_LOG_VISIBLE;
-        const toShow = actionLogEntries.slice(-n);
+        const visible = actionLogEntries.filter(entry => isLogCategoryVisible(entry.category));
+        const toShow = visible.slice(-n);
         actionLogEl.innerHTML = "";
         toShow.forEach(entry => {
             const line = document.createElement("div");
-            line.className = "action-log-line action-log-" + entry.type;
+            line.className = "action-log-line action-log-cat-" + entry.category;
+            line.setAttribute("data-log-category", entry.category);
             line.textContent = entry.text;
             actionLogEl.appendChild(line);
         });
@@ -397,7 +625,7 @@
     const longTermObjectives = [
         { goal: 1e9, text: "Unlock a second hand", achieved: false },
         { goal: 1e12, text: "Unlock a third hand", achieved: false },
-        { goal: 2e12, text: "Unlock Turbo Boost", achieved: false },
+        { goal: 1e12, text: "Unlock Turbo Boost", achieved: false },
         { goal: 1e15, text: "Unlock a fourth hand", achieved: false },
         { goal: 1e18, text: "Unlock a fifth hand", achieved: false },
         { goal: 1e21, text: "Unlock a sixth hand", achieved: false },
@@ -474,6 +702,364 @@
         longTermToShow.forEach(obj => {
             longObjectiveList.appendChild(renderObjective(obj, totalChanges));
         });
+        updateMilestoneUI();
+    }
+    function updateMilestoneUI() {
+        if (!milestoneTextEl || !milestoneProgressFillEl) return;
+        const next = longTermObjectives.find(o => !o.achieved) || longTermObjectives[longTermObjectives.length - 1];
+        if (!next) return;
+        const idx = longTermObjectives.indexOf(next);
+        const previousGoal = idx > 0 ? longTermObjectives[idx - 1].goal : 1;
+        const span = Math.max(1, next.goal - previousGoal);
+        const progressed = Math.max(0, Math.min(span, totalChanges - previousGoal));
+        const pct = Math.max(0, Math.min(100, (progressed / span) * 100));
+        if (milestoneTitleEl) milestoneTitleEl.textContent = "Next milestone";
+        milestoneTextEl.textContent = next.text + " — " + formatCount(totalChanges) + " / " + formatCount(next.goal) + " (" + pct.toFixed(2) + "%)";
+        milestoneProgressFillEl.style.width = pct + "%";
+        if (milestoneEssenceLineEl) {
+            if (number1AscensionEssence > 0 || isNumber1AscensionReady()) {
+                milestoneEssenceLineEl.style.display = "";
+                const ascPct = Math.max(0, Math.min(100, (totalChanges / ASCENSION_1_REQUIRED_TOTAL) * 100));
+                const handReqText = unlockedHands >= ASCENSION_1_MIN_HANDS ? "hands ready" : ("hands: " + unlockedHands + "/" + ASCENSION_1_MIN_HANDS);
+                const readinessText = isNumber1AscensionReady() ? " — Ascension ready (open Global Overview to ascend)" : (" — Ascension: " + formatCount(totalChanges) + " / " + formatCount(ASCENSION_1_REQUIRED_TOTAL) + " (" + ascPct.toFixed(2) + "%), " + handReqText);
+                milestoneEssenceLineEl.textContent = "Ascension Essence (Number 1): " + formatCount(number1AscensionEssence) + readinessText;
+            } else {
+                milestoneEssenceLineEl.textContent = "";
+                milestoneEssenceLineEl.style.display = "none";
+            }
+        }
+    }
+    const ASCENSION_1_MIN_HANDS = 10;
+    const ASCENSION_1_REQUIRED_TOTAL = 1e35;
+    const NUMBER_MODULE_INTERFACE_METHODS = [
+        "getLabel",
+        "getRatePerSec",
+        "getMilestone",
+        "isAscensionReady",
+        "tickBackground",
+        "getSaveData",
+        "applySaveData",
+        "getOverviewDetails"
+    ];
+    function createNumberModule(definition) {
+        const module = {
+            getLabel: () => "Unknown Number",
+            getRatePerSec: () => 0,
+            getMilestone: () => ({ text: "No milestone", pct: 0 }),
+            isAscensionReady: () => false,
+            tickBackground: () => {},
+            getSaveData: () => ({}),
+            applySaveData: () => {},
+            getOverviewDetails: () => "",
+            ...definition
+        };
+        NUMBER_MODULE_INTERFACE_METHODS.forEach(method => {
+            if (typeof module[method] !== "function") {
+                throw new Error("Number module missing method: " + method);
+            }
+        });
+        return module;
+    }
+    function computeNumber1AscensionGain(fromTotal) {
+        const t = Math.max(1, fromTotal);
+        return Math.max(1, Math.min(500, Math.floor(Math.log10(t))));
+    }
+    function isNumber1AscensionReady() {
+        return unlockedHands >= ASCENSION_1_MIN_HANDS && totalChanges >= ASCENSION_1_REQUIRED_TOTAL;
+    }
+    function getMaxCheapenLevel() {
+        return BASE_MAX_CHEAPEN_LEVEL + (number1AscensionUpgrades.cheapenCap || 0);
+    }
+    function getTurboMeterMax() {
+        return TURBO_BOOST_METER_BASE_MAX + (number1AscensionUpgrades.turboScaling || 0) * 25;
+    }
+    function getTurboCountMultiplierMax() {
+        return TURBO_COUNT_MULTIPLIER_BASE_MAX * Math.pow(1.25, number1AscensionUpgrades.turboScaling || 0);
+    }
+    function getTimeWarpOverflowRatio() {
+        return Math.min(0.9, TIME_WARP_OVERFLOW_BASE_RATIO + (number1AscensionUpgrades.timeWarpOverflow || 0) * 0.05);
+    }
+    function getAscUpgradeCost(key) {
+        const lv = number1AscensionUpgrades[key] || 0;
+        if (key === "cheapenCap") return Math.round(5 * Math.pow(2, lv));
+        if (key === "turboScaling") return Math.round(8 * Math.pow(2, lv));
+        if (key === "timeWarpOverflow") return Math.round(10 * Math.pow(2, lv));
+        return Number.MAX_SAFE_INTEGER;
+    }
+    function buyAscensionUpgrade(key) {
+        if (!number1HasAscended) return;
+        const cost = getAscUpgradeCost(key);
+        if (number1AscensionEssence < cost) return;
+        number1AscensionEssence -= cost;
+        number1AscensionUpgrades[key] = (number1AscensionUpgrades[key] || 0) + 1;
+        addToLog("Ascension upgrade purchased: " + key + " (level " + number1AscensionUpgrades[key] + ")", "milestone");
+        updateCheapenUpgradeUI();
+        updateTurboBoostUI();
+        refreshGlobalOverviewPanelIfOpen();
+        autosaveNow();
+    }
+    function renderAscensionUpgradesHtml() {
+        if (!number1HasAscended) return "";
+        const cheapenCost = getAscUpgradeCost("cheapenCap");
+        const turboCost = getAscUpgradeCost("turboScaling");
+        const warpCost = getAscUpgradeCost("timeWarpOverflow");
+        return "<div class=\"coming-soon-sneak-peek\"><p class=\"coming-soon-sneak-title\">Ascension Upgrades (Number 1)</p>" +
+            "<p>Essence: " + formatCount(number1AscensionEssence) + "</p>" +
+            "<ul id=\"asc-upgrade-list\">" +
+            "<li><strong>Cheapen Cap</strong> — Max cheapen levels: " + getMaxCheapenLevel() + " <button type=\"button\" class=\"page-btn combo-filter-btn\" data-asc-upgrade=\"cheapenCap\"" + (number1AscensionEssence >= cheapenCost ? "" : " disabled") + ">Buy (" + formatCount(cheapenCost) + ")</button></li>" +
+            "<li><strong>Turbo Scaling</strong> — Turbo max: " + formatCount(Math.round(getTurboCountMultiplierMax() * 100) / 100) + "x, meter max: " + formatCount(getTurboMeterMax()) + " <button type=\"button\" class=\"page-btn combo-filter-btn\" data-asc-upgrade=\"turboScaling\"" + (number1AscensionEssence >= turboCost ? "" : " disabled") + ">Buy (" + formatCount(turboCost) + ")</button></li>" +
+            "<li><strong>Time Warp Overflow</strong> — Overflow: " + (getTimeWarpOverflowRatio() * 100).toFixed(0) + "% <button type=\"button\" class=\"page-btn combo-filter-btn\" data-asc-upgrade=\"timeWarpOverflow\"" + (number1AscensionEssence >= warpCost ? "" : " disabled") + ">Buy (" + formatCount(warpCost) + ")</button></li>" +
+            "</ul></div>";
+    }
+    function getNumber2Milestone() {
+        const next = NUMBER_2_MILESTONES.find(m => number2State.totalTwos < m.goal) || NUMBER_2_MILESTONES[NUMBER_2_MILESTONES.length - 1];
+        if (!next) return { text: "Complete", pct: 100 };
+        const nextIndex = NUMBER_2_MILESTONES.indexOf(next);
+        const previousGoal = nextIndex > 0 ? NUMBER_2_MILESTONES[nextIndex - 1].goal : 0;
+        const span = Math.max(1, next.goal - previousGoal);
+        const progressed = Math.max(0, Math.min(span, number2State.totalTwos - previousGoal));
+        const pct = Math.max(0, Math.min(100, (progressed / span) * 100));
+        return { text: next.text, pct };
+    }
+    function tickNumber2Background(dtSec) {
+        if (!(dtSec > 0)) return;
+        const rawGain = dtSec * NUMBER_2_BASE_RATE_PER_SEC + number2State.tickCarry;
+        const gain = Math.floor(rawGain);
+        number2State.tickCarry = rawGain - gain;
+        if (gain > 0) number2State.totalTwos += gain;
+    }
+    const NUMBER_MODULES = {
+        1: createNumberModule({
+            getLabel: () => "Number 1",
+            getRatePerSec: () => {
+                const cpsPerHand = getRawCpsPerHand();
+                const rawCps = cpsPerHand.reduce((a, b) => a + b, 0);
+                return rawCps * getComboMultiplier() * getTurboCountMultiplier();
+            },
+            getMilestone: () => {
+                const next = longTermObjectives.find(o => !o.achieved) || longTermObjectives[longTermObjectives.length - 1];
+                if (!next) return { text: "Complete", pct: 100 };
+                const idx = longTermObjectives.indexOf(next);
+                const previousGoal = idx > 0 ? longTermObjectives[idx - 1].goal : 1;
+                const span = Math.max(1, next.goal - previousGoal);
+                const progressed = Math.max(0, Math.min(span, totalChanges - previousGoal));
+                const pct = Math.max(0, Math.min(100, (progressed / span) * 100));
+                return { text: next.text, pct };
+            },
+            isAscensionReady: () => isNumber1AscensionReady(),
+            tickBackground: () => {},
+            getSaveData: () => ({
+                ascensionEssence: number1AscensionEssence,
+                ascensionIntroSeen: ascensionNumber1IntroSeen
+            }),
+            applySaveData: (data) => {
+                if (!data || typeof data !== "object") return;
+                if (Number.isFinite(data.ascensionEssence) && data.ascensionEssence >= 0) {
+                    number1AscensionEssence = Math.floor(data.ascensionEssence);
+                }
+                if (typeof data.ascensionIntroSeen === "boolean") {
+                    ascensionNumber1IntroSeen = data.ascensionIntroSeen;
+                }
+            },
+            getOverviewDetails: () => "Essence: " + formatCount(number1AscensionEssence)
+        }),
+        2: createNumberModule({
+            getLabel: () => "Number 2 (stub)",
+            getRatePerSec: () => NUMBER_2_BASE_RATE_PER_SEC,
+            getMilestone: () => getNumber2Milestone(),
+            isAscensionReady: () => false,
+            tickBackground: (dtSec) => tickNumber2Background(dtSec),
+            getSaveData: () => ({ totalTwos: number2State.totalTwos, tickCarry: number2State.tickCarry }),
+            applySaveData: (data) => {
+                if (!data || typeof data !== "object") return;
+                if (Number.isFinite(data.totalTwos) && data.totalTwos >= 0) number2State.totalTwos = Math.floor(data.totalTwos);
+                if (Number.isFinite(data.tickCarry) && data.tickCarry >= 0) number2State.tickCarry = data.tickCarry;
+            },
+            getOverviewDetails: () => "Background total: " + formatCount(number2State.totalTwos)
+        })
+    };
+    function getUnlockedNumberModules() {
+        return Array.from(unlockedNumbers).map(n => ({ number: n, module: NUMBER_MODULES[n] })).filter(x => !!x.module);
+    }
+    function tickBackgroundNumberModules(dtSec) {
+        getUnlockedNumberModules().forEach(entry => {
+            if (entry.number === 1) return;
+            entry.module.tickBackground(dtSec);
+        });
+    }
+    function renderGlobalOverview() {
+        const rows = getUnlockedNumberModules().map(entry => {
+            const m = entry.module;
+            const milestone = m.getMilestone();
+            const ascReady = m.isAscensionReady();
+            const gainPreview = entry.number === 1 && ascReady ? computeNumber1AscensionGain(totalChanges) : 0;
+            let ascPart = "Ascension: " + (ascReady ? "<span class=\"overview-asc-ready\">Ready</span>" : "Not ready");
+            if (entry.number === 1) ascPart += " · Essence: " + formatCount(number1AscensionEssence);
+            if (entry.number === 1 && !ascReady) {
+                ascPart += " · Requirement: " + formatCount(ASCENSION_1_REQUIRED_TOTAL) + " total and " + ASCENSION_1_MIN_HANDS + " hands";
+            }
+            if (entry.number === 1 && ascReady) {
+                ascPart += " · Next gain: " + formatCount(gainPreview);
+                ascPart += " <button type=\"button\" class=\"ascend-number-btn\" data-number=\"1\">Ascend Number 1</button>";
+            }
+            const details = m.getOverviewDetails();
+            const isLive = entry.number === 1;
+            const badgeLabel = isLive ? "Main stage · live" : "Background · summarized";
+            const badgeMod = isLive ? "overview-card-badge--live" : "overview-card-badge--bg";
+            const pct = Math.max(0, Math.min(100, milestone.pct));
+            const rateStr = formatCount(Math.round(m.getRatePerSec() * 100) / 100) + "/s";
+            return (
+                "<article class=\"overview-card overview-card--n" + entry.number + "\" data-overview-number=\"" + entry.number + "\">" +
+                "<header class=\"overview-card-header\">" +
+                "<span class=\"overview-card-poster-glyph\" aria-hidden=\"true\">" + entry.number + "</span>" +
+                "<div class=\"overview-card-heading\">" +
+                "<h3 class=\"overview-card-title\">" + m.getLabel() + "</h3>" +
+                "<span class=\"overview-card-badge " + badgeMod + "\">" + badgeLabel + "</span>" +
+                "</div></header>" +
+                "<div class=\"overview-card-body\">" +
+                "<div class=\"overview-stat\">" +
+                "<span class=\"overview-stat-label\">Progress rate</span>" +
+                "<span class=\"overview-stat-value\">" + rateStr + "</span></div>" +
+                "<div class=\"overview-stat overview-stat--milestone\">" +
+                "<span class=\"overview-stat-label\">Next milestone</span>" +
+                "<span class=\"overview-stat-value overview-stat-milestone-text\">" + milestone.text + " · " + pct.toFixed(1) + "%</span>" +
+                "<div class=\"overview-mini-progress\" role=\"progressbar\" aria-valuenow=\"" + pct.toFixed(1) + "\" aria-valuemin=\"0\" aria-valuemax=\"100\">" +
+                "<div class=\"overview-mini-fill\" style=\"width:" + pct + "%\"></div></div></div>" +
+                "<div class=\"overview-stat\">" +
+                "<span class=\"overview-stat-label\">Module details</span>" +
+                "<span class=\"overview-stat-value\">" + details + "</span></div>" +
+                (entry.number !== 1 ? "<p class=\"overview-coming-soon-note\">Full playable stage for this number — <span class=\"coming-soon-inline\">coming soon</span>.</p>" : "") +
+                "<div class=\"overview-ascension-cell\">" + ascPart + "</div></div></article>"
+            );
+        });
+        const base = rows.join("") || "<div class=\"overview-empty\">No unlocked numbers on this save. Additional number modules — <span class=\"coming-soon-inline\">coming soon</span>.</div>";
+        return base + renderAscensionUpgradesHtml();
+    }
+    function logCategoryTag(category) {
+        const c = normalizeLogCategory(category);
+        if (c === "tip") return "TIP";
+        if (c === "fact") return "FACT";
+        if (c === "milestone") return "MILE";
+        if (c === "warning") return "WARN";
+        if (c === "humor") return "JOKE";
+        return "LOG";
+    }
+    function renderMessageLogPageHtml() {
+        const visible = actionLogEntries.filter(entry => isLogCategoryVisible(entry.category));
+        const esc = (t) => {
+            const d = document.createElement("div");
+            d.textContent = t;
+            return d.innerHTML;
+        };
+        if (visible.length === 0) {
+            return "<p class=\"message-log-empty\">No messages yet. Tips, facts, and milestones will appear here as you play. Humor lines respect Settings → Humor messages.</p>" +
+                "<p class=\"coming-soon-note coming-soon-note--compact\">Filters, search, and save export for this log — <span class=\"coming-soon-inline\">coming soon</span>.</p>";
+        }
+        const lines = visible.map(entry =>
+            "<div class=\"message-log-line message-log-cat-" + entry.category + "\" data-log-category=\"" + entry.category + "\">" +
+            "<span class=\"message-log-tag\">[" + logCategoryTag(entry.category) + "]</span>" +
+            "<span class=\"message-log-text\">" + esc(entry.text) + "</span></div>"
+        ).join("");
+        return "<div class=\"message-log-terminal\" role=\"log\" aria-relevant=\"additions\">" +
+            "<div class=\"message-log-terminal-header\">message_feed // " + visible.length + " line(s) visible</div>" +
+            "<div class=\"message-log-terminal-body\" id=\"message-log-terminal-body\">" + lines + "</div></div>" +
+            "<p class=\"message-log-footnote\">Bottom ticker shows the latest lines; this panel is the full scrollback (oldest → newest).</p>";
+    }
+    function scrollMessageLogPanelToBottom() {
+        const body = document.getElementById("message-log-terminal-body");
+        if (body) body.scrollTop = body.scrollHeight;
+    }
+    function renderComingSoonPoster(heading, bodyHtml) {
+        return "<div class=\"coming-soon-poster\" role=\"status\">" +
+            "<div class=\"coming-soon-poster-ribbon\" aria-hidden=\"true\">Coming soon</div>" +
+            "<h4 class=\"coming-soon-poster-title\">" + heading + "</h4>" +
+            "<div class=\"coming-soon-poster-body\">" + bodyHtml + "</div></div>";
+    }
+    function updatePageButtonUnlocks() {
+        if (combinationsPageBtn) {
+            const unlocked = unlockedHands >= 2;
+            combinationsPageBtn.style.display = unlocked ? "" : "none";
+        }
+    }
+    function refreshMessageLogPanelIfOpen() {
+        if (!pagePanelEl || pagePanelEl.style.display !== "flex" || !pagePanelBodyEl || !pagePanelTitleEl) return;
+        if (pagePanelTitleEl.textContent !== "Message Log") return;
+        pagePanelBodyEl.innerHTML = renderMessageLogPageHtml();
+        scrollMessageLogPanelToBottom();
+    }
+    function renderCombinationsPageHtml() {
+        if (unlockedHands < 2) return "<p class=\"message-log-empty\">Unlock Hand 2 to view combinations.</p>";
+        const discovered = new Set(earnedComboNames);
+        const activeNow = new Set(getActiveCombos().map(c => c.name));
+        const available = COMBOS.filter(c => unlockedHands >= c.minHands);
+        const handOptions = ["all"].concat(Array.from(new Set(available.map(c => c.minHands))).sort((a, b) => a - b).map(String));
+        let rows = available.slice();
+        if (comboIndexStatusFilter === "discovered") rows = rows.filter(c => discovered.has(c.name));
+        if (comboIndexStatusFilter === "undiscovered") rows = rows.filter(c => !discovered.has(c.name));
+        if (comboIndexHandsFilter !== "all") rows = rows.filter(c => String(c.minHands) === comboIndexHandsFilter);
+        const discoveredCount = available.filter(c => discovered.has(c.name)).length;
+        const statusButtons = [
+            { id: "all", label: "All" },
+            { id: "discovered", label: "Discovered" },
+            { id: "undiscovered", label: "Undiscovered" }
+        ].map(b => "<button type=\"button\" class=\"page-btn combo-filter-btn" + (comboIndexStatusFilter === b.id ? " combo-filter-active" : "") + "\" data-combo-status=\"" + b.id + "\">" + b.label + "</button>").join(" ");
+        const handButtons = handOptions.map(h => {
+            const label = h === "all" ? "All hand counts" : (h + "-hand combos");
+            return "<button type=\"button\" class=\"page-btn combo-filter-btn" + (comboIndexHandsFilter === h ? " combo-filter-active" : "") + "\" data-combo-hands=\"" + h + "\">" + label + "</button>";
+        }).join(" ");
+        const listItems = rows.map(c => {
+            const found = discovered.has(c.name);
+            const css = found ? "earned-bonus-item-earned" : "earned-bonus-undiscovered";
+            const activeBadge = activeNow.has(c.name) ? " <span class=\"overview-card-badge overview-card-badge--live\">Active</span>" : "";
+            const activations = comboActivationCounts[c.name] || 0;
+            return "<li class=\"" + css + "\"><strong>" + c.name + "</strong>" + activeBadge + "<div>Hands: " + c.minHands + " · Effect: x" + c.bonus.toFixed(2) + " · Activations: " + formatCount(activations) + "</div></li>";
+        }).join("");
+        return "<div class=\"coming-soon-sneak-peek\"><p class=\"coming-soon-sneak-title\">Combination Index</p><p>Discovered " + discoveredCount + " / " + available.length + ". Currently active: " + (activeNow.size > 0 ? Array.from(activeNow).join(", ") : "None") + ".</p></div>" +
+            renderComboPagePerHandStatusSectionHtml() +
+            "<div class=\"combo-filter-row\">" + statusButtons + "</div>" +
+            "<div class=\"combo-filter-row\">" + handButtons + "</div>" +
+            "<ul id=\"combo-index-list\">" + (listItems || "<li class=\"earned-bonuses-placeholder\">No combinations match the current filters.</li>") + "</ul>";
+    }
+    function refreshCombinationsPanelIfOpen() {
+        if (!pagePanelEl || pagePanelEl.style.display !== "flex" || !pagePanelBodyEl || !pagePanelTitleEl) return;
+        if (pagePanelTitleEl.textContent !== "Combinations") return;
+        pagePanelBodyEl.innerHTML = renderCombinationsPageHtml();
+    }
+    function showPagePanel(pageId) {
+        if (!pagePanelEl || !pagePanelTitleEl || !pagePanelBodyEl) return;
+        let title = "";
+        let bodyHtml = "";
+        if (pageId === "achievements") {
+            title = "Achievements";
+            bodyHtml = renderComingSoonPoster("Achievement boards", "<p>Global and per-number achievement lists, filters, and rewards will live here.</p>" +
+                "<p class=\"coming-soon-note\">Until then, pattern bonuses you have earned are listed under <strong>Earned Bonuses</strong> on the main screen.</p>");
+        } else if (pageId === "unlocks") {
+            title = "Unlocks";
+            bodyHtml = renderComingSoonPoster("Unlock atlas", "<p>A full unlock tree (hands, turbo, numbers, and cross-number gates) will be mapped here with clearer progress links.</p>") +
+                "<div class=\"coming-soon-sneak-peek\"><p class=\"coming-soon-sneak-title\">Preview — current progression hooks</p><ul>" +
+                "<li>Hands 2–10 via total count milestones</li>" +
+                "<li>Turbo Boost at " + formatCount(TURBO_UNLOCK_COUNT) + "</li>" +
+                "<li>More number modules as they are built</li></ul></div>";
+        } else if (pageId === "collectibles") {
+            title = "Collectibles";
+            bodyHtml = renderComingSoonPoster("Collectibles vault", "<p>Collectibles with unique art, benefits, and cross-number synergies are planned. Each will be earned or unlocked through its own path.</p>");
+        } else if (pageId === "messages") {
+            title = "Message Log";
+            bodyHtml = renderMessageLogPageHtml();
+        } else if (pageId === "combinations") {
+            title = "Combinations";
+            bodyHtml = renderCombinationsPageHtml();
+        } else {
+            title = "Global Overview";
+            bodyHtml = renderGlobalOverview();
+        }
+        pagePanelTitleEl.textContent = title;
+        pagePanelBodyEl.innerHTML = bodyHtml;
+        if (pageModalEl) pageModalEl.classList.toggle("page-modal--wide", pageId === "overview" || pageId === "combinations");
+        pagePanelEl.style.display = "flex";
+        if (pageId === "messages") {
+            requestAnimationFrame(() => scrollMessageLogPanelToBottom());
+        }
     }
 
     /* ---------------------------------------------------------
@@ -517,8 +1103,30 @@
             const wrapper = document.createElement("div");
             wrapper.className = "hand-upgrade-row";
             wrapper.setAttribute("data-hand-index", String(i));
+            const handCol = document.createElement("div");
+            handCol.className = "hand-left-column";
             const handSlot = document.createElement("div");
             handSlot.className = "hand-slot";
+            const auraBtn = document.createElement("button");
+            auraBtn.type = "button";
+            auraBtn.className = "time-warp-aura-btn";
+            auraBtn.setAttribute("data-hand-index", String(i));
+            auraBtn.setAttribute("aria-label", "Activate Time Warp aura for hand " + handNum);
+            auraBtn.style.display = "none";
+            auraBtn.textContent = "Time Warp";
+            handSlot.appendChild(auraBtn);
+            const statusBlock = document.createElement("div");
+            statusBlock.className = "hand-status-block";
+            statusBlock.setAttribute("role", "group");
+            statusBlock.setAttribute("aria-label", "Hand " + handNum + " production");
+            statusBlock.innerHTML = "<div class=\"hand-status-expanded\">" +
+                "<div class=\"hand-status-line\"><span class=\"hand-status-k\">Count</span> <span class=\"hand-status-v hand-status-count\"></span></div>" +
+                "<div class=\"hand-status-line\"><span class=\"hand-status-k\">Base CPS</span> <span class=\"hand-status-v hand-status-base\"></span></div>" +
+                "<div class=\"hand-status-line\"><span class=\"hand-status-k\">Effective CPS</span> <span class=\"hand-status-v hand-status-effective\"></span></div>" +
+                "<div class=\"hand-status-formula\" aria-hidden=\"true\"></div></div>" +
+                "<div class=\"hand-status-compact\" aria-hidden=\"true\"></div>";
+            handCol.appendChild(handSlot);
+            handCol.appendChild(statusBlock);
             const row = document.createElement("div");
             row.className = "speed-upgrade-row";
             row.setAttribute("data-hand-index", String(i));
@@ -528,12 +1136,15 @@
                 "<span class=\"speed-upgrade-effect\"></span> " +
                 "<button type=\"button\" class=\"upgrade-btn speed-upgrade-btn\" data-hand-index=\"" + i + "\">Upgrade</button> " +
                 "<label class=\"speed-autobuy-wrap\"><input type=\"checkbox\" class=\"speed-autobuy-toggle\" data-hand-index=\"" + i + "\"><span class=\"speed-autobuy-switch\"><span class=\"speed-autobuy-knob\"></span></span><span class=\"speed-autobuy-label\">Autobuy</span></label><span class=\"speed-autobuy-message\"></span> " +
-                "<span class=\"upgrade-row-cheapen\" style=\"display: none;\"><span class=\"cheapen-upgrade-level\"></span><span class=\"cheapen-upgrade-cost\"></span><span class=\"cheapen-upgrade-effect\"></span><button type=\"button\" class=\"upgrade-btn cheapen-upgrade-btn\" data-hand-index=\"" + i + "\">Cheapen</button></span>";
-            wrapper.appendChild(handSlot);
+                "<span class=\"upgrade-row-cheapen\" style=\"display: none;\"><span class=\"cheapen-upgrade-level\"></span><span class=\"cheapen-upgrade-cost\"></span><span class=\"cheapen-upgrade-effect\"></span><button type=\"button\" class=\"upgrade-btn cheapen-upgrade-btn\" data-hand-index=\"" + i + "\">Cheapen</button></span>" +
+                "<span class=\"upgrade-row-slowdown\" style=\"display: none;\"><span class=\"slowdown-upgrade-level\"></span><span class=\"slowdown-upgrade-cost\"></span><span class=\"slowdown-upgrade-effect\"></span><button type=\"button\" class=\"upgrade-btn slowdown-upgrade-btn\" data-hand-index=\"" + i + "\">Slowdown</button></span>";
+            wrapper.appendChild(handCol);
             wrapper.appendChild(row);
             speedUpgradesContainerEl.appendChild(wrapper);
             const cheapenWrap = row.querySelector(".upgrade-row-cheapen");
+            const slowdownWrap = row.querySelector(".upgrade-row-slowdown");
             speedRowRefs.push({
+                handUpgradeRowEl: wrapper,
                 handSlotEl: handSlot,
                 balanceCostEl: row.querySelector(".speed-upgrade-balance-cost"),
                 levelEl: row.querySelector(".speed-upgrade-level"),
@@ -545,8 +1156,31 @@
                 cheapenLevelEl: row.querySelector(".cheapen-upgrade-level"),
                 cheapenCostEl: row.querySelector(".cheapen-upgrade-cost"),
                 cheapenEffectEl: row.querySelector(".cheapen-upgrade-effect"),
-                cheapenBtn: row.querySelector(".cheapen-upgrade-btn")
+                cheapenBtn: row.querySelector(".cheapen-upgrade-btn"),
+                slowdownWrapEl: slowdownWrap,
+                slowdownLevelEl: row.querySelector(".slowdown-upgrade-level"),
+                slowdownCostEl: row.querySelector(".slowdown-upgrade-cost"),
+                slowdownEffectEl: row.querySelector(".slowdown-upgrade-effect"),
+                slowdownBtn: row.querySelector(".slowdown-upgrade-btn"),
+                timeWarpAuraBtn: auraBtn,
+                statusCountEl: statusBlock.querySelector(".hand-status-count"),
+                statusBaseEl: statusBlock.querySelector(".hand-status-base"),
+                statusEffectiveEl: statusBlock.querySelector(".hand-status-effective"),
+                statusFormulaEl: statusBlock.querySelector(".hand-status-formula"),
+                statusCompactEl: statusBlock.querySelector(".hand-status-compact")
             });
+        }
+    }
+
+    function shrinkSpeedRowsTo(keepCount) {
+        if (!speedUpgradesContainerEl) return;
+        const k = Math.max(0, keepCount | 0);
+        while (speedRowRefs.length > k) {
+            const ref = speedRowRefs.pop();
+            const wrapper = ref && ref.handUpgradeRowEl ? ref.handUpgradeRowEl : null;
+            if (wrapper && wrapper.parentNode === speedUpgradesContainerEl) {
+                speedUpgradesContainerEl.removeChild(wrapper);
+            }
         }
     }
 
@@ -608,12 +1242,13 @@
         const balance = handEarnings[handIndex] || 0;
         if (balance < cost) return;
         handEarnings[handIndex] = balance - cost;
+        markMeaningfulProgress();
         refreshTotalFromHandEarnings();
         speedLevel[handIndex]++;
         const handNum = handIndex + 1;
         const upgradedHand = hands[handIndex];
         if (upgradedHand) upgradedHand.tickAccBig = 0n;
-        addToLog("Speed upgrade purchased for Hand " + handNum + " (level " + speedLevel[handIndex] + ")", "action");
+        addToLog("Speed upgrade purchased for Hand " + handNum + " (level " + speedLevel[handIndex] + ")", "tip");
         incrementalEl.textContent = formatCount(totalChanges);
         hands.forEach(h => h.restartTimer());
         if (autoBuyUnlocked) {
@@ -626,13 +1261,14 @@
         }
         updateSpeedUpgradeUI();
         updateCheapenUpgradeUI();
+        updateSlowdownUpgradeUI();
         updateRateDisplay();
     }
 
     /* ---------------------------------------------------------
        CHEAPEN SPEED UPGRADE (per-hand), max 6 per hand. 99%, 99.9%, ...
     --------------------------------------------------------- */
-    const MAX_CHEAPEN_LEVEL = 6;
+    const BASE_MAX_CHEAPEN_LEVEL = 6;
     let cheapenLevel = Array(maxHands).fill(0);
     function getCheapenMultiplier(handIndex) {
         const level = cheapenLevel[handIndex] ?? 0;
@@ -647,7 +1283,7 @@
     const DEV_CHEAPEN_AUTOBUY_DELAY = 0.1;
 
     function getCheapenEffectText(nextLevel) {
-        if (nextLevel <= 0 || nextLevel > MAX_CHEAPEN_LEVEL) return "";
+        if (nextLevel <= 0 || nextLevel > getMaxCheapenLevel()) return "";
         if (nextLevel === 1) return "99% off speed upgrade cost";
         const decimals = nextLevel - 1;
         return "99." + "9".repeat(decimals) + "% off speed upgrade cost";
@@ -659,23 +1295,30 @@
             cheapenSectionUnlocked = true;
             ensureSpeedRows();
         }
-        if (!cheapenSectionUnlocked) return;
+        if (!cheapenSectionUnlocked) {
+            for (let i = 0; i < speedRowRefs.length; i++) {
+                const ref = speedRowRefs[i];
+                if (ref && ref.cheapenWrapEl) ref.cheapenWrapEl.style.display = "none";
+            }
+            return;
+        }
         for (let i = 0; i < unlockedHands; i++) {
             const ref = speedRowRefs[i];
             if (!ref || !ref.cheapenWrapEl) continue;
             ref.cheapenWrapEl.style.display = "";
             const level = cheapenLevel[i] ?? 0;
             const nextLevel = level + 1;
-            const cost = level >= MAX_CHEAPEN_LEVEL ? null : getCheapenUpgradeCost(i, nextLevel);
+            const cap = getMaxCheapenLevel();
+            const cost = level >= cap ? null : getCheapenUpgradeCost(i, nextLevel);
             const balance = handEarnings[i] || 0;
             const canAfford = cost !== null && balance >= cost;
-            if (level >= MAX_CHEAPEN_LEVEL) {
-                ref.cheapenLevelEl.textContent = "Level " + level + "/" + MAX_CHEAPEN_LEVEL;
+            if (level >= cap) {
+                ref.cheapenLevelEl.textContent = "Level " + level + "/" + cap;
                 ref.cheapenCostEl.textContent = "";
                 ref.cheapenEffectEl.textContent = "";
                 ref.cheapenBtn.style.display = "none";
             } else {
-                ref.cheapenLevelEl.textContent = "Level " + level + "/" + MAX_CHEAPEN_LEVEL;
+                ref.cheapenLevelEl.textContent = "Level " + level + "/" + cap;
                 ref.cheapenCostEl.textContent = "Cost: " + formatCount(cost);
                 ref.cheapenEffectEl.textContent = getCheapenEffectText(nextLevel);
                 ref.cheapenBtn.style.display = "";
@@ -687,21 +1330,23 @@
     function buyCheapenUpgradeForHand(handIndex, confettiOriginEl) {
         if (handIndex < 0 || handIndex >= unlockedHands) return;
         const level = cheapenLevel[handIndex] ?? 0;
-        if (level >= MAX_CHEAPEN_LEVEL) return;
+        if (level >= getMaxCheapenLevel()) return;
         const nextLevel = level + 1;
         const cost = getCheapenUpgradeCost(handIndex, nextLevel);
         const balance = handEarnings[handIndex] || 0;
         if (balance < cost) return;
         handEarnings[handIndex] = balance - cost;
+        markMeaningfulProgress();
         refreshTotalFromHandEarnings();
         cheapenLevel[handIndex] = level + 1;
         const handNum = handIndex + 1;
-        addToLog("Speed cheapen purchased for Hand " + handNum + " (level " + cheapenLevel[handIndex] + ")", "action");
+        addToLog("Speed cheapen purchased for Hand " + handNum + " (level " + cheapenLevel[handIndex] + ")", "tip");
         incrementalEl.textContent = formatCount(totalChanges);
         const origin = confettiOriginEl || speedRowRefs[handIndex]?.cheapenBtn?.closest(".speed-upgrade-row");
         if (origin) sprayConfettiFrom(origin);
         updateSpeedUpgradeUI();
         updateCheapenUpgradeUI();
+        updateSlowdownUpgradeUI();
     }
 
     function maybeAutoBuyCheapen() {
@@ -710,7 +1355,7 @@
         const dtSec = GAME_LOOP_MS / 1000;
         for (let i = 0; i < unlockedHands; i++) {
             const level = cheapenLevel[i] ?? 0;
-            if (level >= MAX_CHEAPEN_LEVEL) continue;
+            if (level >= getMaxCheapenLevel()) continue;
             const nextLevel = level + 1;
             const cost = getCheapenUpgradeCost(i, nextLevel);
             const canAfford = (handEarnings[i] || 0) >= cost;
@@ -721,7 +1366,7 @@
                     if (canAfford) {
                         buyCheapenUpgradeForHand(i);
                         const stillCanAfford = (handEarnings[i] || 0) >= getCheapenUpgradeCost(i, cheapenLevel[i] + 1);
-                        cheapenAutoBuyCountdownByHand[i] = stillCanAfford && cheapenLevel[i] < MAX_CHEAPEN_LEVEL ? DEV_CHEAPEN_AUTOBUY_DELAY : 0;
+                        cheapenAutoBuyCountdownByHand[i] = stillCanAfford && cheapenLevel[i] < getMaxCheapenLevel() ? DEV_CHEAPEN_AUTOBUY_DELAY : 0;
                     } else {
                         cheapenAutoBuyCountdownByHand[i] = 0;
                     }
@@ -733,9 +1378,213 @@
     }
 
     /* ---------------------------------------------------------
+       SLOWDOWN UPGRADE (per-hand), unlock at 1e15, max 3 levels.
+       Level >=1 forces animation to 1 count/sec and boosts production by 10^level.
+    --------------------------------------------------------- */
+    const SLOWDOWN_UNLOCK_COUNT = 1e15;
+    const MAX_SLOWDOWN_LEVEL = 3;
+    const SLOWDOWN_COSTS = [1e16, 1e17, 1e18];
+    let slowdownLevel = Array(maxHands).fill(0);
+    let slowdownUnlockLogged = false;
+
+    function getSlowdownMultiplier(handIndex) {
+        const lv = slowdownLevel[handIndex] ?? 0;
+        return lv <= 0 ? 1 : Math.pow(10, lv);
+    }
+    function getSlowdownUpgradeCost(nextLevel) {
+        if (nextLevel <= 0 || nextLevel > MAX_SLOWDOWN_LEVEL) return null;
+        return SLOWDOWN_COSTS[nextLevel - 1];
+    }
+    function isSlowdownUnlocked() {
+        return totalChanges >= SLOWDOWN_UNLOCK_COUNT;
+    }
+    function getSlowdownEffectText(level) {
+        if (level <= 0) return "1/s animation, +10x ticks";
+        return "1/s animation, +" + formatCount(getSlowdownMultiplierForLevel(level)) + "x ticks";
+    }
+    function getSlowdownMultiplierForLevel(level) {
+        if (level <= 0) return 1;
+        return Math.pow(10, level);
+    }
+    function updateSlowdownUpgradeUI() {
+        const unlocked = isSlowdownUnlocked();
+        if (unlocked && !slowdownUnlockLogged) {
+            slowdownUnlockLogged = true;
+            addToLog("Slowdown system unlocked (all hands).", "milestone");
+        }
+        for (let i = 0; i < unlockedHands; i++) {
+            const ref = speedRowRefs[i];
+            if (!ref || !ref.slowdownWrapEl) continue;
+            if (!unlocked) {
+                ref.slowdownWrapEl.style.display = "none";
+                continue;
+            }
+            ref.slowdownWrapEl.style.display = "";
+            const level = slowdownLevel[i] ?? 0;
+            const nextLevel = level + 1;
+            const cost = level >= MAX_SLOWDOWN_LEVEL ? null : getSlowdownUpgradeCost(nextLevel);
+            const balance = handEarnings[i] || 0;
+            const canAfford = cost !== null && balance >= cost;
+            if (level >= MAX_SLOWDOWN_LEVEL) {
+                ref.slowdownLevelEl.textContent = "Slowdown " + level + "/" + MAX_SLOWDOWN_LEVEL;
+                ref.slowdownCostEl.textContent = "";
+                ref.slowdownEffectEl.textContent = "";
+                ref.slowdownBtn.style.display = "none";
+            } else {
+                ref.slowdownLevelEl.textContent = "Slowdown " + level + "/" + MAX_SLOWDOWN_LEVEL;
+                ref.slowdownCostEl.textContent = "Cost: " + formatCount(cost);
+                ref.slowdownEffectEl.textContent = getSlowdownEffectText(nextLevel);
+                ref.slowdownBtn.style.display = "";
+                ref.slowdownBtn.disabled = !canAfford;
+            }
+        }
+    }
+    function buySlowdownUpgradeForHand(handIndex, originEl) {
+        if (handIndex < 0 || handIndex >= unlockedHands) return;
+        if (!isSlowdownUnlocked()) return;
+        const level = slowdownLevel[handIndex] ?? 0;
+        if (level >= MAX_SLOWDOWN_LEVEL) return;
+        const nextLevel = level + 1;
+        const cost = getSlowdownUpgradeCost(nextLevel);
+        if (cost === null) return;
+        const balance = handEarnings[handIndex] || 0;
+        if (balance < cost) return;
+        handEarnings[handIndex] = balance - cost;
+        markMeaningfulProgress();
+        refreshTotalFromHandEarnings();
+        slowdownLevel[handIndex] = nextLevel;
+        const handNum = handIndex + 1;
+        addToLog("Slowdown purchased for Hand " + handNum + " (level " + nextLevel + ")", "tip");
+        incrementalEl.textContent = formatCount(totalChanges);
+        const targetHand = hands[handIndex];
+        if (targetHand) targetHand.tickAccBig = 0n;
+        const origin = originEl || speedRowRefs[handIndex]?.slowdownBtn?.closest(".speed-upgrade-row");
+        if (origin) sprayConfettiFrom(origin);
+        updateSpeedUpgradeUI();
+        updateCheapenUpgradeUI();
+        updateSlowdownUpgradeUI();
+        updateRateDisplay();
+    }
+
+    /* ---------------------------------------------------------
+       TIME WARP (per-hand aura), unlock at 1e18.
+       Random aura every 0–60s. Clicking grants 60s production for that hand.
+       If all hands already have aura, auto-grant 25% value to a random hand.
+    --------------------------------------------------------- */
+    const TIME_WARP_UNLOCK_COUNT = 1e18;
+    const TIME_WARP_SECONDS_BONUS = 60;
+    const TIME_WARP_OVERFLOW_BASE_RATIO = 0.25;
+    let timeWarpAuraActiveByHand = [];
+    let timeWarpNextSpawnInSec = 0;
+    let timeWarpUnlockLogged = false;
+
+    function isTimeWarpUnlocked() {
+        return totalChanges >= TIME_WARP_UNLOCK_COUNT;
+    }
+    function ensureTimeWarpArrays() {
+        while (timeWarpAuraActiveByHand.length < unlockedHands) timeWarpAuraActiveByHand.push(false);
+    }
+    function scheduleNextTimeWarpSpawn() {
+        // Keep logic simple and cheap: one random roll per cycle.
+        timeWarpNextSpawnInSec = Math.random() * 60;
+    }
+    function formatCpsForDisplay(cps) {
+        if (!isFinite(cps) || cps <= 0) return "0/s";
+        const rounded = cps < 1e6 ? Math.round(cps * 100) / 100 : cps;
+        return formatCount(rounded) + "/s";
+    }
+    /** Tick rate from speed upgrades only (1/s when slowdown forces 1 Hz). */
+    function getHandBaseCpsBeforeSlowdownMult(handIndex) {
+        const h = hands[handIndex];
+        if (!h) return 0;
+        const intervalMs = getTickIntervalMs(h.baseSpeed, handIndex);
+        if (intervalMs <= 0) return 0;
+        return 1000 / intervalMs;
+    }
+    function getHandSlowdownFactorForDisplay(handIndex) {
+        return isSlowdownUnlocked() ? getSlowdownMultiplier(handIndex) : 1;
+    }
+    function getHandComboFactorForDisplay() {
+        return unlockedHands >= 2 ? getComboMultiplier() : 1;
+    }
+    function getHandTurboFactorForDisplay() {
+        return turboBoostUnlocked ? getTurboCountMultiplier() : 1;
+    }
+    function getHandEffectiveCps(handIndex) {
+        const h = hands[handIndex];
+        if (!h) return 0;
+        const intervalMs = getTickIntervalMs(h.baseSpeed, handIndex);
+        if (intervalMs <= 0) return 0;
+        const rawCps = (1000 / intervalMs) * getSlowdownMultiplier(handIndex);
+        return rawCps * getComboMultiplier() * getTurboCountMultiplier();
+    }
+    function getTimeWarpGrantForHand(handIndex, scale) {
+        const effectiveCps = getHandEffectiveCps(handIndex);
+        return Math.max(1, Math.round(effectiveCps * TIME_WARP_SECONDS_BONUS * (scale || 1)));
+    }
+    function applyTimeWarpGrant(handIndex, scale, reasonLabel) {
+        if (handIndex < 0 || handIndex >= unlockedHands) return;
+        const gain = getTimeWarpGrantForHand(handIndex, scale);
+        handEarnings[handIndex] = (handEarnings[handIndex] || 0) + gain;
+        refreshTotalFromHandEarnings();
+        incrementalEl.textContent = formatCount(totalChanges);
+        updateObjectives();
+        updateSpeedUpgradeUI();
+        updateCheapenUpgradeUI();
+        updateSlowdownUpgradeUI();
+        updateRateDisplay();
+        updateTimeWarpAuraUI();
+        addToLog("Time Warp " + (reasonLabel || "activated") + " on Hand " + (handIndex + 1) + " for +" + formatCount(gain) + ".", "milestone");
+    }
+    function updateTimeWarpAuraUI() {
+        const unlocked = isTimeWarpUnlocked();
+        ensureTimeWarpArrays();
+        for (let i = 0; i < unlockedHands; i++) {
+            const ref = speedRowRefs[i];
+            if (!ref || !ref.timeWarpAuraBtn) continue;
+            const active = unlocked && !!timeWarpAuraActiveByHand[i];
+            ref.timeWarpAuraBtn.style.display = active ? "" : "none";
+        }
+    }
+    function activateTimeWarpAuraForHand(handIndex) {
+        ensureTimeWarpArrays();
+        if (!isTimeWarpUnlocked()) return;
+        if (!timeWarpAuraActiveByHand[handIndex]) return;
+        timeWarpAuraActiveByHand[handIndex] = false;
+        markMeaningfulProgress();
+        applyTimeWarpGrant(handIndex, 1, "aura");
+    }
+    function updateTimeWarpSystem(dtSec) {
+        if (!isTimeWarpUnlocked()) return;
+        ensureTimeWarpArrays();
+        if (!timeWarpUnlockLogged) {
+            timeWarpUnlockLogged = true;
+            addToLog("Time Warp system unlocked (auras can now appear).", "milestone");
+        }
+        if (timeWarpNextSpawnInSec <= 0) scheduleNextTimeWarpSpawn();
+        timeWarpNextSpawnInSec -= dtSec;
+        if (timeWarpNextSpawnInSec > 0) return;
+        const available = [];
+        for (let i = 0; i < unlockedHands; i++) {
+            if (!timeWarpAuraActiveByHand[i]) available.push(i);
+        }
+        if (available.length > 0) {
+            const idx = available[Math.floor(Math.random() * available.length)];
+            timeWarpAuraActiveByHand[idx] = true;
+            addToLog("A Time Warp aura appeared on Hand " + (idx + 1) + ".", "milestone");
+        } else if (unlockedHands > 0) {
+            const idx = Math.floor(Math.random() * unlockedHands);
+            applyTimeWarpGrant(idx, getTimeWarpOverflowRatio(), "overflow");
+        }
+        scheduleNextTimeWarpSpawn();
+        updateTimeWarpAuraUI();
+    }
+
+    /* ---------------------------------------------------------
        RATE DISPLAY and TICK INTERVAL (per-hand; total CPS = sum of hand CPS)
     --------------------------------------------------------- */
     function getTickIntervalMs(baseSpeed, handIndex) {
+        if ((slowdownLevel[handIndex] ?? 0) > 0) return 1000;
         return baseSpeed / getSpeedMultiplier(handIndex);
     }
     // Updates the "Count per second" UI:
@@ -748,7 +1597,7 @@
         hands.forEach(h => {
             const handIndex = h.id - 1;
             const intervalMs = getTickIntervalMs(h.baseSpeed, handIndex);
-            const cps = intervalMs > 0 ? 1000 / intervalMs : 0;
+            const cps = intervalMs > 0 ? (1000 / intervalMs) * getSlowdownMultiplier(handIndex) : 0;
             cpsPerHand.push(cps);
             cpsTotalRaw += cps;
         });
@@ -785,10 +1634,79 @@
         } else {
             incrementalRateEl.textContent = formatCount(cpsTotal < 1e6 ? Math.round(cpsTotal * 100) / 100 : cpsTotal);
         }
+        updateHandStatusBlocks();
+        refreshCombinationsHandStatusIfOpen();
+    }
+    function updateHandStatusBlocks() {
+        for (let i = 0; i < unlockedHands; i++) {
+            const ref = speedRowRefs[i];
+            if (!ref || !ref.statusCountEl) continue;
+            const baseCps = getHandBaseCpsBeforeSlowdownMult(i);
+            const slowF = getHandSlowdownFactorForDisplay(i);
+            const comboF = getHandComboFactorForDisplay();
+            const turboF = getHandTurboFactorForDisplay();
+            const rawHand = baseCps * getSlowdownMultiplier(i);
+            const eff = getHandEffectiveCps(i);
+            const bal = handEarnings[i] || 0;
+            ref.statusCountEl.textContent = formatCount(bal);
+            ref.statusBaseEl.textContent = formatCpsForDisplay(rawHand);
+            ref.statusEffectiveEl.textContent = formatCpsForDisplay(eff);
+            const baseStr = formatCpsForDisplay(baseCps);
+            ref.statusFormulaEl.textContent = "base × combo × turbo × slowdown: " + baseStr + " × " +
+                comboF.toFixed(2) + " × " + turboF.toFixed(2) + " × " + slowF.toFixed(2) + " = " + formatCpsForDisplay(eff);
+            ref.statusCompactEl.textContent = "Hand " + (i + 1) + ": " + formatCount(bal) + " · " + formatCpsForDisplay(rawHand) + " → " + formatCpsForDisplay(eff);
+        }
+    }
+    function buildComboHandStatusCardsHtml() {
+        if (unlockedHands < 1) return "<li class=\"combo-hand-status-empty\">No hands.</li>";
+        const cards = [];
+        for (let i = 0; i < unlockedHands; i++) {
+            const baseCps = getHandBaseCpsBeforeSlowdownMult(i);
+            const slowF = getHandSlowdownFactorForDisplay(i);
+            const comboF = getHandComboFactorForDisplay();
+            const turboF = getHandTurboFactorForDisplay();
+            const rawHand = baseCps * getSlowdownMultiplier(i);
+            const eff = getHandEffectiveCps(i);
+            const bal = handEarnings[i] || 0;
+            const n = i + 1;
+            const formula = "base × combo × turbo × slowdown: " + formatCpsForDisplay(baseCps) + " × " +
+                comboF.toFixed(2) + " × " + turboF.toFixed(2) + " × " + slowF.toFixed(2) + " = " + formatCpsForDisplay(eff);
+            cards.push(
+                "<li class=\"combo-hand-status-card\" data-hand-index=\"" + i + "\">" +
+                "<div class=\"combo-hand-status-card-title\">Hand " + n + "</div>" +
+                "<div class=\"combo-hand-status-line\"><span class=\"hand-status-k\">Count</span> <span class=\"hand-status-v\">" + formatCount(bal) + "</span></div>" +
+                "<div class=\"combo-hand-status-line\"><span class=\"hand-status-k\">Base CPS</span> <span class=\"hand-status-v\">" + formatCpsForDisplay(rawHand) + "</span></div>" +
+                "<div class=\"combo-hand-status-line\"><span class=\"hand-status-k\">Effective CPS</span> <span class=\"hand-status-v\">" + formatCpsForDisplay(eff) + "</span></div>" +
+                "<div class=\"combo-hand-status-formula\">" + formula + "</div>" +
+                "<div class=\"combo-hand-status-compact\">Hand " + n + ": " + formatCount(bal) + " · " + formatCpsForDisplay(rawHand) + " → " + formatCpsForDisplay(eff) + "</div>" +
+                "</li>"
+            );
+        }
+        return cards.join("");
+    }
+    function renderComboPagePerHandStatusSectionHtml() {
+        return "<div class=\"combo-per-hand-status\" role=\"region\" aria-label=\"Per-hand production\">" +
+            "<p class=\"combo-per-hand-status-title\">Per-hand production</p>" +
+            "<p class=\"combo-per-hand-status-note\">These values use the same throttled refresh as the main hand rows (typically a few times per second) so the tab stays responsive.</p>" +
+            "<ul id=\"combo-per-hand-status-list\" class=\"combo-hand-status-grid\">" + buildComboHandStatusCardsHtml() + "</ul></div>";
+    }
+    function refreshCombinationsHandStatusIfOpen() {
+        if (!pagePanelEl || pagePanelEl.style.display !== "flex" || !pagePanelTitleEl) return;
+        if (pagePanelTitleEl.textContent !== "Combinations") return;
+        const listEl = document.getElementById("combo-per-hand-status-list");
+        if (!listEl) return;
+        listEl.innerHTML = buildComboHandStatusCardsHtml();
+    }
+    function getRawCpsPerHand() {
+        return hands.slice(0, unlockedHands).map(h => {
+            const handIndex = h.id - 1;
+            const intervalMs = getTickIntervalMs(h.baseSpeed, handIndex);
+            return intervalMs > 0 ? (1000 / intervalMs) * getSlowdownMultiplier(handIndex) : 0;
+        });
     }
 
     /* ---------------------------------------------------------
-       TURBO BOOST (unlocks at 2T; gauge to right of total count)
+       TURBO BOOST (unlocks at 1T; gauge to right of total count)
 
        Design goals:
        - Meter is fueled by repeatable hand combos (after unlock).
@@ -800,12 +1718,12 @@
        - Meter → multiplier curve (max + exponent)
        - Burn rate and burn scaling
     --------------------------------------------------------- */
-    const TURBO_UNLOCK_COUNT = 2e12;
-    const TURBO_BOOST_METER_MAX = 100;
+    const TURBO_UNLOCK_COUNT = 1e12;
+    const TURBO_BOOST_METER_BASE_MAX = 100;
     // Combo size → boost points: 2 hands = 1, 6 hands = 16, 10 hands = 256 (2^(minHands-2))
     const TURBO_COMBO_POINTS_BASE = 2;
     const TURBO_COMBO_POINTS_EXP_OFFSET = 2;   // points = TURBO_COMBO_POINTS_BASE^(minHands - TURBO_COMBO_POINTS_EXP_OFFSET)
-    const TURBO_COUNT_MULTIPLIER_MAX = 100;    // at full meter, count is multiplied by this (100×)
+    const TURBO_COUNT_MULTIPLIER_BASE_MAX = 100;    // at full meter, count is multiplied by this (100×)
     const TURBO_MULTIPLIER_CURVE_EXPONENT = 2; // non-linear: levelRatio^exp rewards filling the gauge (2 = quadratic)
     const TURBO_BURN_RATE_PER_SEC = 3;         // meter drained per second at 1× multiplier (half of original)
     const TURBO_BURN_MULTIPLIER_SCALE = 0.25;   // burn rate scales with count multiplier (higher mult = faster drain)
@@ -813,6 +1731,7 @@
     let turboBoostMeter = 0;
     let turboBoostUnlocked = false;
     let turboBoostEnabled = true;
+    let turboActivationCount = 0;
 
     // Converts combo size (minHands) into meter points.
     // Current mapping uses an exponential curve: points = base^(minHands-offset)
@@ -824,18 +1743,18 @@
     // Applied turbo multiplier. If turbo is toggled Off, this returns 1× (no effect).
     function getTurboCountMultiplier() {
         if (!turboBoostUnlocked || !turboBoostEnabled || turboBoostMeter <= 0) return 1;
-        const levelRatio = Math.min(1, turboBoostMeter / TURBO_BOOST_METER_MAX);
+        const levelRatio = Math.min(1, turboBoostMeter / getTurboMeterMax());
         const curve = Math.pow(levelRatio, TURBO_MULTIPLIER_CURVE_EXPONENT);
-        return 1 + curve * (TURBO_COUNT_MULTIPLIER_MAX - 1);
+        return 1 + curve * (getTurboCountMultiplierMax() - 1);
     }
 
     // Display-only turbo multiplier: shows the potential multiplier from the current meter,
     // even if the toggle is Off (so players can see what they'd get by turning it on).
     function getTurboCountMultiplierFromMeter() {
         if (!turboBoostUnlocked || turboBoostMeter <= 0) return 1;
-        const levelRatio = Math.min(1, turboBoostMeter / TURBO_BOOST_METER_MAX);
+        const levelRatio = Math.min(1, turboBoostMeter / getTurboMeterMax());
         const curve = Math.pow(levelRatio, TURBO_MULTIPLIER_CURVE_EXPONENT);
-        return 1 + curve * (TURBO_COUNT_MULTIPLIER_MAX - 1);
+        return 1 + curve * (getTurboCountMultiplierMax() - 1);
     }
 
     const TURBO_GAIN_POPUP_DURATION_MS = 1000;
@@ -868,7 +1787,7 @@
     function addTurboBoostMeter(points) {
         if (!turboBoostUnlocked) return;
         const prev = turboBoostMeter;
-        turboBoostMeter = Math.min(TURBO_BOOST_METER_MAX, turboBoostMeter + points);
+        turboBoostMeter = Math.min(getTurboMeterMax(), turboBoostMeter + points);
         if (turboBoostMeter > prev && turboBoostFillEl) {
             showTurboGainPopup(points);
             turboBoostFillEl.classList.remove("turbo-boost-fill-gain");
@@ -902,21 +1821,52 @@
         updateTurboBoostUI();
     }
 
-    // Syncs the turbo UI (unlock visibility, gauge fill, and displayed multiplier).
-    function updateTurboBoostUI() {
-        if (!turboBoostWrapEl) return;
-        if (totalChanges >= TURBO_UNLOCK_COUNT && !turboBoostUnlocked) {
+    function tryUnlockTurboIfEligible() {
+        if (totalChanges < TURBO_UNLOCK_COUNT) return;
+        if (!turboBoostUnlocked) {
             turboBoostUnlocked = true;
-            turboBoostWrapEl.style.display = "";
-            turboBoostWrapEl.setAttribute("aria-hidden", "false");
+            addToLog("Turbo system unlocked at " + formatCount(TURBO_UNLOCK_COUNT) + ".", "milestone");
             checkStoryBanners();
         }
-        if (!turboBoostUnlocked) return;
-        const pct = Math.min(100, (turboBoostMeter / TURBO_BOOST_METER_MAX) * 100);
+        if (turboBoostWrapEl) {
+            turboBoostWrapEl.style.display = "";
+            turboBoostWrapEl.setAttribute("aria-hidden", "false");
+        }
+    }
+
+    /** Run whenever `totalChanges` changes so milestone gates cannot desync (load, offline, dev tools, etc.). */
+    function syncUnlocksWithTotalCount() {
+        checkUnlockHands();
+        tryUnlockTurboIfEligible();
+        if (totalChanges >= 100) autoBuyUnlocked = true;
+        if (totalChanges >= 10 && upgradeContainer) upgradeContainer.classList.add("show-upgrade-content");
+        if ((handEarnings[0] || 0) >= 1000 && !cheapenSectionUnlocked) {
+            cheapenSectionUnlocked = true;
+            ensureSpeedRows();
+            updateCheapenUpgradeUI();
+        }
+        if (isSlowdownUnlocked() && !slowdownUnlockLogged) {
+            slowdownUnlockLogged = true;
+            addToLog("Slowdown system unlocked (all hands).", "milestone");
+        }
+        if (isTimeWarpUnlocked() && !timeWarpUnlockLogged) {
+            timeWarpUnlockLogged = true;
+            addToLog("Time Warp system unlocked (auras can now appear).", "milestone");
+        }
+    }
+
+    // Syncs the turbo UI (unlock visibility, gauge fill, and displayed multiplier).
+    function updateTurboBoostUI() {
+        tryUnlockTurboIfEligible();
+        if (!turboBoostWrapEl || !turboBoostUnlocked) return;
+        const meterMax = getTurboMeterMax();
+        const pct = Math.min(100, (turboBoostMeter / meterMax) * 100);
         if (turboBoostFillEl) turboBoostFillEl.style.width = pct + "%";
         if (turboBoostGaugeEl) turboBoostGaugeEl.setAttribute("aria-valuenow", Math.round(turboBoostMeter));
+        if (turboBoostGaugeEl) turboBoostGaugeEl.setAttribute("aria-valuemax", Math.round(meterMax));
         const displayMult = getTurboCountMultiplierFromMeter();
         if (turboBoostMultiplierEl) turboBoostMultiplierEl.textContent = displayMult.toFixed(2) + "×";
+        if (turboBoostActivationsEl) turboBoostActivationsEl.textContent = "Activations: " + formatCount(turboActivationCount);
     }
 
     if (turboBoostEnabledCheckbox) {
@@ -954,6 +1904,147 @@
         }
     }
 
+    function getSaveState(savedAt) {
+        const numberModulesState = {};
+        Object.keys(NUMBER_MODULES).forEach(k => {
+            const m = NUMBER_MODULES[k];
+            numberModulesState[k] = m.getSaveData();
+        });
+        return {
+            savedAt: savedAt || Date.now(),
+            handEarnings,
+            unlockedHands,
+            speedLevel,
+            cheapenLevel,
+            slowdownLevel,
+            slowdownUnlockLogged,
+            timeWarpAuraActiveByHand,
+            timeWarpNextSpawnInSec,
+            timeWarpUnlockLogged,
+            autoBuyUnlocked,
+            autoBuyEnabledByHand,
+            autoBuyCountdownSecondsByHand,
+            turboBoostMeter,
+            turboBoostUnlocked,
+            turboBoostEnabled,
+            turboActivationCount,
+            earnedComboNames,
+            comboActivationCounts,
+            adaptiveLastProgressAtMs,
+            adaptiveLastHintAtMs,
+            previousTickActiveComboNames: Array.from(previousTickActiveComboNames),
+            objectivesAchieved: objectives.map(o => o.achieved),
+            longTermObjectivesAchieved: longTermObjectives.map(o => o.achieved),
+            shownBannerIds: Array.from(shownBannerIds),
+            closedBanners,
+            settings,
+            numberModulesState,
+            number1AscensionEssence,
+            number1HasAscended,
+            number1AscensionUpgrades,
+            ascensionNumber1IntroSeen
+        };
+    }
+    function autosaveNow() {
+        if (suppressAutosave) return;
+        try { localStorage.setItem(SAVE_KEY, JSON.stringify(getSaveState(Date.now()))); } catch (_) {}
+    }
+    function applyLoadedState(data) {
+        if (!data || typeof data !== "object") return;
+        if (Array.isArray(data.handEarnings)) handEarnings = data.handEarnings.slice(0, maxHands).concat(Array(Math.max(0, maxHands - data.handEarnings.length)).fill(0));
+        if (Array.isArray(data.speedLevel)) speedLevel = data.speedLevel.slice(0, maxHands).concat(Array(Math.max(0, maxHands - data.speedLevel.length)).fill(0));
+        if (Array.isArray(data.cheapenLevel)) cheapenLevel = data.cheapenLevel.slice(0, maxHands).concat(Array(Math.max(0, maxHands - data.cheapenLevel.length)).fill(0));
+        if (Array.isArray(data.slowdownLevel)) slowdownLevel = data.slowdownLevel.slice(0, maxHands).concat(Array(Math.max(0, maxHands - data.slowdownLevel.length)).fill(0));
+        slowdownUnlockLogged = !!data.slowdownUnlockLogged;
+        if (Array.isArray(data.timeWarpAuraActiveByHand)) timeWarpAuraActiveByHand = data.timeWarpAuraActiveByHand.slice(0, maxHands).map(v => !!v).concat(Array(Math.max(0, maxHands - data.timeWarpAuraActiveByHand.length)).fill(false));
+        timeWarpNextSpawnInSec = Number.isFinite(data.timeWarpNextSpawnInSec) && data.timeWarpNextSpawnInSec >= 0 ? data.timeWarpNextSpawnInSec : 0;
+        timeWarpUnlockLogged = !!data.timeWarpUnlockLogged;
+        unlockedHands = Math.max(1, Math.min(maxHands, Number(data.unlockedHands) || 1));
+        ensureSpeedRows();
+        while (hands.length < unlockedHands) {
+            const handNum = hands.length + 1;
+            const slot = speedRowRefs[handNum - 1]?.handSlotEl;
+            hands.push(new HandCounter(handNum, HAND_BASE_SPEED, slot));
+        }
+        autoBuyUnlocked = !!data.autoBuyUnlocked;
+        if (Array.isArray(data.autoBuyEnabledByHand)) autoBuyEnabledByHand = data.autoBuyEnabledByHand.slice(0, maxHands);
+        if (Array.isArray(data.autoBuyCountdownSecondsByHand)) autoBuyCountdownSecondsByHand = data.autoBuyCountdownSecondsByHand.slice(0, maxHands);
+        turboBoostMeter = Number(data.turboBoostMeter) || 0;
+        turboBoostUnlocked = !!data.turboBoostUnlocked;
+        turboBoostEnabled = data.turboBoostEnabled !== false;
+        turboActivationCount = Number.isFinite(data.turboActivationCount) && data.turboActivationCount >= 0 ? Math.floor(data.turboActivationCount) : 0;
+        adaptiveLastProgressAtMs = Number.isFinite(data.adaptiveLastProgressAtMs) && data.adaptiveLastProgressAtMs > 0 ? data.adaptiveLastProgressAtMs : Date.now();
+        adaptiveLastHintAtMs = Number.isFinite(data.adaptiveLastHintAtMs) && data.adaptiveLastHintAtMs > 0 ? data.adaptiveLastHintAtMs : 0;
+        if (Array.isArray(data.earnedComboNames)) {
+            earnedComboNames.length = 0;
+            data.earnedComboNames.forEach(n => earnedComboNames.push(n));
+        }
+        if (data.comboActivationCounts && typeof data.comboActivationCounts === "object") {
+            comboActivationCounts = {};
+            Object.keys(data.comboActivationCounts).forEach(k => {
+                const v = Number(data.comboActivationCounts[k]);
+                comboActivationCounts[k] = Number.isFinite(v) && v >= 0 ? Math.floor(v) : 0;
+            });
+        }
+        if (Array.isArray(data.previousTickActiveComboNames)) previousTickActiveComboNames = new Set(data.previousTickActiveComboNames);
+        if (Array.isArray(data.objectivesAchieved)) objectives.forEach((o, i) => { o.achieved = !!data.objectivesAchieved[i]; });
+        if (Array.isArray(data.longTermObjectivesAchieved)) longTermObjectives.forEach((o, i) => { o.achieved = !!data.longTermObjectivesAchieved[i]; });
+        if (Array.isArray(data.shownBannerIds)) { shownBannerIds.clear(); data.shownBannerIds.forEach(id => shownBannerIds.add(id)); }
+        if (Array.isArray(data.closedBanners)) { closedBanners.length = 0; data.closedBanners.forEach(b => closedBanners.push(b)); }
+        if (data.settings) {
+            settings = {
+                theme: data.settings.theme === "dark" ? "dark" : "light",
+                adaptiveTipsEnabled: data.settings.adaptiveTipsEnabled !== false,
+                curtainEnabled: data.settings.curtainEnabled !== false,
+                humorEnabled: data.settings.humorEnabled !== false,
+                offlineCapHours: Number.isFinite(data.settings.offlineCapHours) && data.settings.offlineCapHours >= 0 ? data.settings.offlineCapHours : settings.offlineCapHours
+            };
+        }
+        if (data.numberModulesState && typeof data.numberModulesState === "object") {
+            Object.keys(data.numberModulesState).forEach(k => {
+                const m = NUMBER_MODULES[k];
+                if (m) m.applySaveData(data.numberModulesState[k]);
+            });
+        }
+        if (Number.isFinite(data.number1AscensionEssence) && data.number1AscensionEssence >= 0) {
+            number1AscensionEssence = Math.floor(data.number1AscensionEssence);
+        }
+        number1HasAscended = !!data.number1HasAscended;
+        if (data.number1AscensionUpgrades && typeof data.number1AscensionUpgrades === "object") {
+            number1AscensionUpgrades = {
+                cheapenCap: Math.max(0, Math.floor(Number(data.number1AscensionUpgrades.cheapenCap) || 0)),
+                turboScaling: Math.max(0, Math.floor(Number(data.number1AscensionUpgrades.turboScaling) || 0)),
+                timeWarpOverflow: Math.max(0, Math.floor(Number(data.number1AscensionUpgrades.timeWarpOverflow) || 0))
+            };
+        }
+        if (typeof data.ascensionNumber1IntroSeen === "boolean") {
+            ascensionNumber1IntroSeen = data.ascensionNumber1IntroSeen;
+        }
+        refreshTotalFromHandEarnings();
+    }
+    function applyOfflineProgress(offlineMs) {
+        const capMs = Math.max(0, settings.offlineCapHours * 3600 * 1000);
+        const effectiveMs = Math.min(Math.max(0, offlineMs), capMs);
+        if (effectiveMs <= 0) return;
+        tickBackgroundNumberModules(effectiveMs / 1000);
+        const cpsPerHand = getRawCpsPerHand();
+        const rawCps = cpsPerHand.reduce((a, b) => a + b, 0);
+        if (rawCps <= 0) return;
+        const comboMult = getComboMultiplier();
+        const gained = Math.round((effectiveMs / 1000) * rawCps * comboMult);
+        const totalWeight = cpsPerHand.reduce((a, b) => a + b, 0) || 1;
+        for (let i = 0; i < unlockedHands; i++) {
+            const weight = cpsPerHand[i] || 0;
+            handEarnings[i] = (handEarnings[i] || 0) + Math.round((weight / totalWeight) * gained);
+        }
+        refreshTotalFromHandEarnings();
+        if (offlineSummaryBodyEl && offlineSummaryPanelEl) {
+            const capped = offlineMs > capMs;
+            offlineSummaryBodyEl.textContent = "Simulated " + (effectiveMs / 1000).toFixed(1) + "s offline and gained " + formatCount(gained) + (capped ? " (capped)." : ".");
+            offlineSummaryPanelEl.style.display = "flex";
+        }
+    }
+
     /* ---------------------------------------------------------
        HAND CLASS
     --------------------------------------------------------- */
@@ -971,7 +2062,6 @@
             this.el = document.createElement("div");
             this.el.className = "hand curtain-reveal";
             this.el.style.whiteSpace = "pre";
-            this.el.style.fontFamily = "monospace";
 
             (parentEl || handsContainer).appendChild(this.el);
 
@@ -1020,15 +2110,39 @@
 
     let gamePaused = false;
 
+    const deleteSaveOverlayEl = document.getElementById("delete-save-overlay");
+    const deleteSaveNoBtn = document.getElementById("delete-save-no");
+    const deleteSaveYesBtn = document.getElementById("delete-save-yes");
+    const settingsDeleteSaveBtn = document.getElementById("settings-delete-save");
+    const devDeleteSaveBtn = document.getElementById("dev-delete-save");
+
+    function showDeleteSaveConfirmDialog() {
+        gamePaused = true;
+        if (deleteSaveOverlayEl) deleteSaveOverlayEl.style.display = "flex";
+    }
+    function hideDeleteSaveConfirmDialog() {
+        if (deleteSaveOverlayEl) deleteSaveOverlayEl.style.display = "none";
+        gamePaused = false;
+    }
+    function executeDeleteSaveAndReload() {
+        suppressAutosave = true;
+        try { localStorage.removeItem(SAVE_KEY); } catch (_) {}
+        location.reload();
+    }
+
     function unlockHand() {
         if (unlockedHands >= maxHands) return;
         unlockedHands++;
+        markMeaningfulProgress();
         ensureSpeedRows();
-        addToLog("Hand " + unlockedHands + " unlocked", "action");
+        addToLog("Hand " + unlockedHands + " unlocked", "milestone");
         const slot = speedRowRefs[unlockedHands - 1]?.handSlotEl;
         hands.push(new HandCounter(unlockedHands, HAND_BASE_SPEED, slot));
         checkStoryBanners();
         updateEarnedBonusesUI();
+        updatePageButtonUnlocks();
+        updateSlowdownUpgradeUI();
+        updateTimeWarpAuraUI();
     }
 
     function checkUnlockHands() {
@@ -1129,6 +2243,12 @@
     const storyBannerTitleEl = document.getElementById("story-banner-title");
     const storyBannerBodyEl = document.getElementById("story-banner-body");
     const storyBannerCloseBtn = document.getElementById("story-banner-close");
+    const ascensionIntroOverlayEl = document.getElementById("ascension-intro-overlay");
+    const ascensionIntroContinueBtn = document.getElementById("ascension-intro-continue");
+    const ascensionConfirmOverlayEl = document.getElementById("ascension-confirm-overlay");
+    const ascensionConfirmBodyEl = document.getElementById("ascension-confirm-body");
+    const ascensionConfirmCancelBtn = document.getElementById("ascension-confirm-cancel");
+    const ascensionConfirmAscendBtn = document.getElementById("ascension-confirm-ascend");
     const storyReviewBtn = document.getElementById("story-review-btn");
     const storyReviewPanelEl = document.getElementById("story-review-panel");
     const storyReviewListEl = document.getElementById("story-review-list");
@@ -1169,6 +2289,13 @@
         if (!storyReviewListEl) return;
         storyReviewListEl.innerHTML = "";
         const sorted = [...closedBanners].sort((a, b) => a.order - b.order);
+        if (sorted.length === 0) {
+            const empty = document.createElement("p");
+            empty.className = "story-review-empty";
+            empty.innerHTML = "No story beats yet — they appear as you hit milestones. Richer replay and chapter view — <span class=\"coming-soon-inline\">coming soon</span>.";
+            storyReviewListEl.appendChild(empty);
+            return;
+        }
         sorted.forEach(b => {
             const item = document.createElement("div");
             item.className = "story-review-item";
@@ -1185,6 +2312,98 @@
     if (storyBannerCloseBtn) storyBannerCloseBtn.addEventListener("click", closeStoryBanner);
     if (storyReviewBtn) storyReviewBtn.addEventListener("click", () => { storyReviewPanelEl.style.display = storyReviewPanelEl.style.display === "none" ? "block" : "none"; renderStoryReviewList(); });
     if (storyReviewCloseBtn) storyReviewCloseBtn.addEventListener("click", () => { storyReviewPanelEl.style.display = "none"; });
+    if (menuBtn) menuBtn.addEventListener("click", () => {
+        if (!settingsPanelEl) return;
+        settingsPanelEl.style.display = settingsPanelEl.style.display === "none" ? "block" : "none";
+    });
+    if (settingsCloseBtn) settingsCloseBtn.addEventListener("click", () => { if (settingsPanelEl) settingsPanelEl.style.display = "none"; });
+    if (settingsDeleteSaveBtn) settingsDeleteSaveBtn.addEventListener("click", () => {
+        if (settingsPanelEl) settingsPanelEl.style.display = "none";
+        showDeleteSaveConfirmDialog();
+    });
+    if (deleteSaveNoBtn) deleteSaveNoBtn.addEventListener("click", () => hideDeleteSaveConfirmDialog());
+    if (deleteSaveYesBtn) deleteSaveYesBtn.addEventListener("click", () => executeDeleteSaveAndReload());
+    if (settingsThemeDarkEl) settingsThemeDarkEl.addEventListener("change", () => {
+        settings.theme = settingsThemeDarkEl.checked ? "dark" : "light";
+        applyTheme();
+        persistSettings();
+    });
+    if (settingsAdaptiveTipsEl) settingsAdaptiveTipsEl.addEventListener("change", () => {
+        settings.adaptiveTipsEnabled = settingsAdaptiveTipsEl.checked;
+        if (settings.adaptiveTipsEnabled) {
+            addToLog(getAdaptiveTipMessage(), "tip");
+            adaptiveLastHintAtMs = Date.now();
+            adaptiveLastProgressAtMs = Date.now();
+        }
+        persistSettings();
+    });
+    if (settingsCurtainEnabledEl) settingsCurtainEnabledEl.addEventListener("change", () => { settings.curtainEnabled = settingsCurtainEnabledEl.checked; persistSettings(); });
+    if (settingsHumorEnabledEl) settingsHumorEnabledEl.addEventListener("change", () => { settings.humorEnabled = settingsHumorEnabledEl.checked; persistSettings(); renderActionLog(); refreshMessageLogPanelIfOpen(); });
+    if (settingsOfflineCapHoursEl) settingsOfflineCapHoursEl.addEventListener("change", () => {
+        const n = Number(settingsOfflineCapHoursEl.value);
+        settings.offlineCapHours = Number.isFinite(n) && n >= 0 ? n : DEFAULT_SETTINGS.offlineCapHours;
+        settingsOfflineCapHoursEl.value = String(settings.offlineCapHours);
+        persistSettings();
+    });
+    if (offlineSummaryCloseBtn) offlineSummaryCloseBtn.addEventListener("click", () => { if (offlineSummaryPanelEl) offlineSummaryPanelEl.style.display = "none"; });
+    pageButtons.forEach(btn => {
+        btn.addEventListener("click", () => {
+            const pageId = btn.getAttribute("data-page");
+            if (typeof playCurtainAnimation === "function") {
+                playCurtainAnimation(() => showPagePanel(pageId));
+            } else {
+                showPagePanel(pageId);
+            }
+        });
+    });
+    if (pagePanelCloseBtn) pagePanelCloseBtn.addEventListener("click", () => { if (pagePanelEl) pagePanelEl.style.display = "none"; });
+
+    if (pagePanelEl) {
+        pagePanelEl.addEventListener("click", function(e) {
+            const statusBtn = e.target.closest("[data-combo-status]");
+            if (statusBtn) {
+                comboIndexStatusFilter = statusBtn.getAttribute("data-combo-status") || "all";
+                refreshCombinationsPanelIfOpen();
+                return;
+            }
+            const handsBtn = e.target.closest("[data-combo-hands]");
+            if (handsBtn) {
+                comboIndexHandsFilter = handsBtn.getAttribute("data-combo-hands") || "all";
+                refreshCombinationsPanelIfOpen();
+                return;
+            }
+            const ascBtn = e.target.closest("[data-asc-upgrade]");
+            if (ascBtn) {
+                const key = ascBtn.getAttribute("data-asc-upgrade");
+                if (key) buyAscensionUpgrade(key);
+                return;
+            }
+            const btn = e.target.closest(".ascend-number-btn");
+            if (!btn) return;
+            const n = parseInt(btn.getAttribute("data-number"), 10);
+            if (n === 1) beginNumber1AscensionFlow();
+        });
+    }
+
+    if (ascensionIntroContinueBtn && ascensionIntroOverlayEl) {
+        ascensionIntroContinueBtn.addEventListener("click", () => {
+            ascensionIntroOverlayEl.style.display = "none";
+            gamePaused = false;
+        });
+    }
+    if (ascensionConfirmCancelBtn && ascensionConfirmOverlayEl) {
+        ascensionConfirmCancelBtn.addEventListener("click", () => {
+            ascensionConfirmOverlayEl.style.display = "none";
+            gamePaused = false;
+        });
+    }
+    if (ascensionConfirmAscendBtn && ascensionConfirmOverlayEl) {
+        ascensionConfirmAscendBtn.addEventListener("click", () => {
+            ascensionConfirmOverlayEl.style.display = "none";
+            performNumber1Ascension();
+            gamePaused = false;
+        });
+    }
 
     /* ---------------------------------------------------------
        HAND COMBOS (poker-style: hand values 1–10, bonuses stack)
@@ -1225,6 +2444,9 @@
         return COMBOS.filter(c => v.length >= c.minHands && c.check(v));
     }
     const earnedComboNames = [];
+    let comboActivationCounts = {};
+    let comboIndexStatusFilter = "all";
+    let comboIndexHandsFilter = "all";
     let previousTickActiveComboNames = new Set();
     function getCombosByMinHands() {
         const byMinHands = {};
@@ -1265,7 +2487,13 @@
     function updateEarnedBonusesUI() {
         if (!earnedBonusesListEl) return;
         earnedBonusesListEl.innerHTML = "";
-        if (unlockedHands < 2) return;
+        if (unlockedHands < 2) {
+            const placeLi = document.createElement("li");
+            placeLi.className = "earned-bonuses-placeholder";
+            placeLi.textContent = "Unlock a second hand to discover pattern bonuses. Full achievement-style integration with the Achievements page — coming soon.";
+            earnedBonusesListEl.appendChild(placeLi);
+            return;
+        }
         const earnedSet = new Set(earnedComboNames);
         const byMinHands = getCombosByMinHands();
         const combinedMult = getComboMultiplier();
@@ -1296,12 +2524,125 @@
             }
         }
     }
+
+    function refreshGlobalOverviewPanelIfOpen() {
+        if (!pagePanelEl || pagePanelEl.style.display !== "flex" || !pagePanelBodyEl || !pagePanelTitleEl) return;
+        if (pagePanelTitleEl.textContent !== "Global Overview") return;
+        pagePanelBodyEl.innerHTML = renderGlobalOverview();
+    }
+
+    function performNumber1Ascension() {
+        if (!isNumber1AscensionReady()) return;
+        const gain = computeNumber1AscensionGain(totalChanges);
+        number1AscensionEssence += gain;
+        number1HasAscended = true;
+
+        shrinkSpeedRowsTo(1);
+        while (hands.length > 1) {
+            const h = hands.pop();
+            if (h.el && h.el.parentNode) h.el.parentNode.removeChild(h.el);
+        }
+        unlockedHands = 1;
+        handEarnings = Array(maxHands).fill(0);
+        handEarnings[0] = 1;
+        speedLevel = Array(maxHands).fill(0);
+        cheapenLevel = Array(maxHands).fill(0);
+        slowdownLevel = Array(maxHands).fill(0);
+        slowdownUnlockLogged = false;
+        timeWarpAuraActiveByHand = [];
+        timeWarpNextSpawnInSec = 0;
+        timeWarpUnlockLogged = false;
+        autoBuyUnlocked = false;
+        autoBuyEnabledByHand = [false];
+        autoBuyCountdownSecondsByHand = [0];
+        cheapenSectionUnlocked = false;
+        cheapenAutoBuyCountdownByHand = [];
+
+        turboBoostMeter = 0;
+        turboBoostUnlocked = false;
+        turboBoostEnabled = true;
+        turboActivationCount = 0;
+        if (turboBoostEnabledCheckbox) turboBoostEnabledCheckbox.checked = true;
+        if (turboBoostToggleLabelEl) turboBoostToggleLabelEl.textContent = "On";
+        if (turboBoostWrapEl) {
+            turboBoostWrapEl.style.display = "none";
+            turboBoostWrapEl.setAttribute("aria-hidden", "true");
+        }
+
+        earnedComboNames.length = 0;
+        comboActivationCounts = {};
+        comboIndexStatusFilter = "all";
+        comboIndexHandsFilter = "all";
+        previousTickActiveComboNames = new Set();
+        objectives.forEach(o => { o.achieved = false; });
+        longTermObjectives.forEach(o => { o.achieved = false; });
+
+        const h0 = hands[0];
+        if (h0) {
+            h0.count = 1;
+            h0.tickAccBig = 0n;
+            if (h0.el && speedRowRefs[0] && speedRowRefs[0].handSlotEl && h0.el.parentNode !== speedRowRefs[0].handSlotEl) {
+                speedRowRefs[0].handSlotEl.appendChild(h0.el);
+            }
+            h0.render();
+        }
+
+        refreshTotalFromHandEarnings();
+        if (upgradeContainer && totalChanges < 10) upgradeContainer.classList.remove("show-upgrade-content");
+
+        incrementalEl.textContent = formatCount(totalChanges);
+        ensureSpeedRows();
+        updateObjectives();
+        updateMilestoneUI();
+        updateSpeedUpgradeUI();
+        updateCheapenUpgradeUI();
+        updateSlowdownUpgradeUI();
+        updateTimeWarpAuraUI();
+        updateRateDisplay();
+        updateTurboBoostUI();
+        updateComboUI();
+        updateEarnedBonusesUI();
+        updatePageButtonUnlocks();
+        refreshGlobalOverviewPanelIfOpen();
+        addToLog("Ascended Number 1 — +" + formatCount(gain) + " Ascension Essence (total " + formatCount(number1AscensionEssence) + ")", "milestone");
+        markMeaningfulProgress();
+        autosaveNow();
+    }
+
+    function showAscensionConfirmDialog() {
+        if (!ascensionConfirmOverlayEl || !ascensionConfirmBodyEl) return;
+        const gain = computeNumber1AscensionGain(totalChanges);
+        const nextTotal = number1AscensionEssence + gain;
+        ascensionConfirmBodyEl.textContent = "Your total count is " + formatCount(totalChanges) + ". Ascending now grants " + formatCount(gain) + " Ascension Essence (you will have " + formatCount(nextTotal) + " total).\n\nThis resets Number 1 only: one hand, no upgrades, no combo bonuses, objectives unchecked, turbo reset.";
+        ascensionConfirmOverlayEl.style.display = "flex";
+    }
+
+    function maybeShowFirstAscensionIntroOnUnlock() {
+        if (ascensionNumber1IntroSeen) return;
+        if (!isNumber1AscensionReady()) return;
+        if (!ascensionIntroOverlayEl) return;
+        if (gamePaused) return;
+        ascensionNumber1IntroSeen = true;
+        gamePaused = true;
+        ascensionIntroOverlayEl.style.display = "flex";
+        autosaveNow();
+    }
+
+    function beginNumber1AscensionFlow() {
+        if (!isNumber1AscensionReady()) return;
+        gamePaused = true;
+        showAscensionConfirmDialog();
+    }
+
     function updateComboUI() {
         if (unlockedHands < 2) return;
         const active = getActiveCombos();
+        active.forEach(c => { comboActivationCounts[c.name] = (comboActivationCounts[c.name] || 0) + 1; });
         const newlyEarned = active.filter(c => earnedComboNames.indexOf(c.name) === -1);
         if (newlyEarned.length > 0) {
             newlyEarned.forEach(c => earnedComboNames.push(c.name));
+            newlyEarned.forEach(c => addToLog("Discovered combo: " + c.name + " (x" + c.bonus.toFixed(2) + ")", "milestone"));
+            markMeaningfulProgress();
             showComboBubble(newlyEarned);
             updateEarnedBonusesUI();
         }
@@ -1316,11 +2657,15 @@
         } else {
             previousTickActiveComboNames = new Set(active.map(c => c.name));
         }
+        refreshCombinationsPanelIfOpen();
     }
 
     function gameLoopTick() {
         if (gamePaused) return;
         const dt = GAME_LOOP_MS;
+        const dtSec = GAME_LOOP_MS / 1000;
+        tickBackgroundNumberModules(dtSec);
+        updateTimeWarpSystem(dtSec);
         const ticksPerHand = Array(unlockedHands).fill(0);
         // Hands with the same speed multiplier share one tick phase and the same 1–10 digit
         // so pair-style combos stay achievable (stable bucket key: mult is an exact power of 2).
@@ -1360,22 +2705,28 @@
             });
         });
         const totalTicks = ticksPerHand.reduce((a, b) => a + b, 0);
-        const dtSec = GAME_LOOP_MS / 1000;
         if (totalChanges >= TURBO_UNLOCK_COUNT) {
+            if (turboBoostUnlocked) {
+                if (turboBoostEnabled && turboBoostMeter > 0) turboActivationCount++;
+                updateTurboBurn(dtSec);
+            }
             updateTurboBoostUI();
-            if (turboBoostUnlocked) updateTurboBurn(dtSec);
         }
         if (totalTicks > 0) {
             const comboMult = getComboMultiplier();
             const turboMult = getTurboCountMultiplier();
-            const bonusTicks = Math.round(totalTicks * comboMult * turboMult);
-            for (let i = 0; i < unlockedHands; i++) {
-                handEarnings[i] += Math.round((ticksPerHand[i] / totalTicks) * bonusTicks);
+            const effectiveTicksPerHand = ticksPerHand.map((t, i) => t * getSlowdownMultiplier(i));
+            const totalEffectiveTicks = effectiveTicksPerHand.reduce((a, b) => a + b, 0);
+            if (totalEffectiveTicks > 0) {
+                const bonusTicks = Math.round(totalEffectiveTicks * comboMult * turboMult);
+                for (let i = 0; i < unlockedHands; i++) {
+                    handEarnings[i] += Math.round((effectiveTicksPerHand[i] / totalEffectiveTicks) * bonusTicks);
+                }
             }
             refreshTotalFromHandEarnings();
             incrementalEl.textContent = formatCount(totalChanges);
             updateObjectives();
-            checkUnlockHands();
+            maybeShowFirstAscensionIntroOnUnlock();
             maybeAutoBuySpeedUpgrade();
             maybeAutoBuyCheapen();
             const now = Date.now();
@@ -1383,29 +2734,51 @@
                 lastUIUpdateMs = now;
                 updateSpeedUpgradeUI();
                 updateCheapenUpgradeUI();
+                updateSlowdownUpgradeUI();
+                updateTimeWarpAuraUI();
                 updateRateDisplay();
             }
+        }
+        const nowOverview = Date.now();
+        if (nowOverview - lastOverviewUpdateMs >= 1000) {
+            lastOverviewUpdateMs = nowOverview;
+            refreshGlobalOverviewPanelIfOpen();
         }
         updateComboUI();
     }
     let lastUIUpdateMs = 0;
+    let lastOverviewUpdateMs = 0;
     const UI_UPDATE_THROTTLE_MS = 150;
     if (!gameLoopTimer) gameLoopTimer = setInterval(gameLoopTick, GAME_LOOP_MS);
 
     setInterval(() => {
         if (gamePaused) return;
-        const allowed = LOG_MESSAGES.filter(m => !recentRandomLogMessages.includes(m));
-        const pool = allowed.length > 0 ? allowed : LOG_MESSAGES;
-        const msg = pool[Math.floor(Math.random() * pool.length)];
-        addToLog(msg);
-        recentRandomLogMessages.push(msg);
+        const source = LOG_MESSAGE_ENTRIES.filter(e => isLogCategoryVisible(e.category));
+        if (source.length === 0) return;
+        const allowed = source.filter(e => !recentRandomLogMessages.includes(e.text));
+        const pool = allowed.length > 0 ? allowed : source;
+        const pick = pool[Math.floor(Math.random() * pool.length)];
+        addToLog(pick.text, pick.category);
+        recentRandomLogMessages.push(pick.text);
         if (recentRandomLogMessages.length > RECENT_RANDOM_LOG_COUNT) recentRandomLogMessages.shift();
     }, 5000);
 
-    setTimeout(() => addToLog(LOG_MESSAGES[0]), 2000);
+    setTimeout(() => {
+        const first = LOG_MESSAGE_ENTRIES[0];
+        if (first) addToLog(first.text, first.category);
+    }, 2000);
+    setInterval(() => {
+        maybeEmitAdaptiveTip(Date.now());
+    }, 2000);
 
     if (speedUpgradesContainerEl) {
         speedUpgradesContainerEl.addEventListener("click", function(e) {
+            const auraBtn = e.target.closest(".time-warp-aura-btn");
+            if (auraBtn) {
+                const handIndex = parseInt(auraBtn.getAttribute("data-hand-index"), 10);
+                if (!isNaN(handIndex)) activateTimeWarpAuraForHand(handIndex);
+                return;
+            }
             const btn = e.target.closest(".speed-upgrade-btn");
             if (btn && !btn.disabled) {
                 const handIndex = parseInt(btn.getAttribute("data-hand-index"), 10);
@@ -1416,6 +2789,12 @@
             if (cheapenBtn && !cheapenBtn.disabled) {
                 const handIndex = parseInt(cheapenBtn.getAttribute("data-hand-index"), 10);
                 if (!isNaN(handIndex)) buyCheapenUpgradeForHand(handIndex, cheapenBtn);
+                return;
+            }
+            const slowdownBtn = e.target.closest(".slowdown-upgrade-btn");
+            if (slowdownBtn && !slowdownBtn.disabled) {
+                const handIndex = parseInt(slowdownBtn.getAttribute("data-hand-index"), 10);
+                if (!isNaN(handIndex)) buySlowdownUpgradeForHand(handIndex, slowdownBtn);
             }
         });
         speedUpgradesContainerEl.addEventListener("change", function(e) {
@@ -1427,9 +2806,36 @@
     }
     updateSpeedUpgradeUI();
     updateCheapenUpgradeUI();
+    updateSlowdownUpgradeUI();
+    updateTimeWarpAuraUI();
     updateRateDisplay();
+    updateMilestoneUI();
     updateComboUI();
     updateEarnedBonusesUI();
+    updatePageButtonUnlocks();
+    loadSettings();
+    applyTheme();
+    applySettingsToUI();
+    try {
+        const rawSave = localStorage.getItem(SAVE_KEY);
+        if (rawSave) {
+            const data = JSON.parse(rawSave);
+            applyLoadedState(data);
+            const savedAt = Number(data.savedAt) || Date.now();
+            applyOfflineProgress(Date.now() - savedAt);
+        }
+    } catch (_) {}
+    updateObjectives();
+    updateMilestoneUI();
+    updateTurboBoostUI();
+    updateRateDisplay();
+    updateSlowdownUpgradeUI();
+    updateTimeWarpAuraUI();
+    updateEarnedBonusesUI();
+    updatePageButtonUnlocks();
+    maybeShowFirstAscensionIntroOnUnlock();
+    setInterval(autosaveNow, AUTOSAVE_INTERVAL_MS);
+    window.addEventListener("beforeunload", autosaveNow);
 
     /* ---------------------------------------------------------
        DEV TOOLS (toggle on/off)
@@ -1490,11 +2896,18 @@
                 while (cheapenAutoBuyCountdownByHand.length < unlockedHands) cheapenAutoBuyCountdownByHand.push(0);
                 for (let i = 0; i < unlockedHands; i++) {
                     const level = cheapenLevel[i] ?? 0;
-                    if (level >= MAX_CHEAPEN_LEVEL) continue;
+                    if (level >= getMaxCheapenLevel()) continue;
                     const cost = getCheapenUpgradeCost(i, level + 1);
                     if ((handEarnings[i] || 0) >= cost) cheapenAutoBuyCountdownByHand[i] = DEV_CHEAPEN_AUTOBUY_DELAY;
                 }
             }
+        });
+    }
+
+    if (devDeleteSaveBtn) {
+        devDeleteSaveBtn.addEventListener("click", () => {
+            if (devToolsPanel) devToolsPanel.style.display = "none";
+            showDeleteSaveConfirmDialog();
         });
     }
 
@@ -1505,14 +2918,14 @@
         refreshTotalFromHandEarnings();
         incrementalEl.textContent = formatCount(totalChanges);
         updateObjectives();
-        checkUnlockHands();
         updateSpeedUpgradeUI();
         updateCheapenUpgradeUI();
+        updateSlowdownUpgradeUI();
         updateRateDisplay();
     });
 
     /* ---------------------------------------------------------
-       AUTO-UNLOCK HANDS (driven by checkUnlockHands in update())
+       Hand milestones: checkUnlockHands() via syncUnlocksWithTotalCount → refreshTotalFromHandEarnings()
     --------------------------------------------------------- */
 
     </script>

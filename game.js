@@ -8,7 +8,21 @@ const curtain = document.getElementById("curtain");
 
 // Trigger curtain animation
 const CURTAIN_DURATION = 900;
+function isCurtainEnabled() {
+    try {
+        const raw = localStorage.getItem("naf.settings.v1");
+        if (!raw) return true;
+        const parsed = JSON.parse(raw);
+        return parsed.curtainEnabled !== false;
+    } catch (_) {
+        return true;
+    }
+}
 function playCurtainAnimation(callback) {
+    if (!isCurtainEnabled()) {
+        callback?.();
+        return;
+    }
     // Ensure clean state
     curtain.classList.remove("opening", "closing");
 
@@ -34,16 +48,23 @@ function switchMode(mode) {
 }
 
 // Navigation buttons
+function showLockedModeMessage() {
+    const msg = "Keep playing to unlock this counting number!";
+    if (typeof addToLog === "function") {
+        addToLog(msg, "warning");
+    } else {
+        // Fallback for early boot edge cases.
+        console.warn(msg);
+    }
+}
 document.querySelectorAll(".nav-btn").forEach(btn => {
     btn.addEventListener("click", () => {
+        if (btn.classList.contains("nav-btn--soon")) {
+            showLockedModeMessage();
+            return;
+        }
         const mode = parseInt(btn.dataset.mode, 10);
         switchMode(mode);
     });
 });
 
-// Menu button
-document.getElementById("menu-btn").addEventListener("click", () => {
-    playCurtainAnimation(() => {
-        console.log("Menu clicked — future menu goes here");
-    });
-});
