@@ -40,7 +40,9 @@ function playCurtainAnimation(callback) {
 // Switch counting mode
 function switchMode(mode) {
     playCurtainAnimation(() => {
+        if (typeof window.onBeforeNumberModeSwitch === "function") window.onBeforeNumberModeSwitch(mode);
         currentMode = mode;
+        if (typeof window.onNumberModeSwitched === "function") window.onNumberModeSwitched(mode);
         //count = 0;
         //countDisplay.textContent = count;
         //countBtn.textContent = `Count +${mode}`;

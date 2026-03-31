@@ -29,13 +29,6 @@ html[data-theme="light"] .nav-btn {
 html[data-theme="light"] .nav-btn:hover {
   background: #c4cde6;
 }
-html[data-theme="light"] #menu-btn {
-  background: #d8deef;
-  color: #1d2742;
-}
-html[data-theme="light"] #menu-btn:hover {
-  background: #c5cee7;
-}
 html[data-theme="light"] .pages-shell .page-btn {
   background: #e8ebf7;
   color: #1f2742;
@@ -140,6 +133,12 @@ html[data-theme="light"] .story-banner-overlay,
 html[data-theme="light"] .offline-summary-panel {
   background: rgba(33, 43, 72, 0.35);
 }
+html[data-theme="light"] .page-panel.page-panel--inline {
+  background: transparent;
+}
+html[data-theme="light"] .settings-panel.settings-panel--inline {
+  background: rgba(245, 247, 255, 0.96);
+}
 html[data-theme="light"] .message-log-terminal {
   border-color: #9db7a7;
   background: #eaf5ee;
@@ -173,6 +172,17 @@ html[data-theme="dark"] #top-right h3,
 html[data-theme="dark"] #top-right li,
 html[data-theme="dark"] #top-right p {
   color: #e3e8fb;
+}
+/* Short / long objectives: base rule uses #ddd for legacy; light theme overrides. Dark must match other top-right cards. */
+html[data-theme="dark"] #objectives,
+html[data-theme="dark"] #long-objectives {
+  background: rgba(20, 22, 35, 0.95);
+  border: 1px solid #333;
+  color: #e3e8fb;
+}
+html[data-theme="dark"] #objectives h3,
+html[data-theme="dark"] #long-objectives h3 {
+  color: #9aa0ff;
 }
 html[data-theme="dark"] .hand-upgrade-row,
 html[data-theme="dark"] .speed-upgrade-row,
@@ -221,7 +231,6 @@ html[data-theme="dark"] .hand-status-compact {
 html[data-theme="dark"] .turbo-boost-activations {
   color: #c8d4f8;
 }
-html[data-theme="dark"] #menu-btn,
 html[data-theme="dark"] .page-btn,
 html[data-theme="dark"] .settings-close,
 html[data-theme="dark"] .page-panel-close,
@@ -255,7 +264,7 @@ html[data-theme="dark"] .earned-bonuses-placeholder {
   flex-direction: column;
   gap: 18px;
   margin: 8px 0 28px;
-  padding: 26px 22px 28px;
+  padding: 18px 22px 28px;
   border-radius: 16px;
   border: 3px solid #c9a227;
   box-shadow:
@@ -266,26 +275,6 @@ html[data-theme="dark"] .earned-bonuses-placeholder {
     radial-gradient(ellipse 90% 50% at 50% -8%, rgba(255, 245, 220, 0.24) 0%, transparent 58%),
     radial-gradient(ellipse 130% 75% at 50% 115%, rgba(10, 21, 61, 0.7) 0%, transparent 48%),
     linear-gradient(180deg, rgba(28, 34, 78, 0.94) 0%, rgba(16, 20, 48, 0.98) 100%);
-}
-
-.play-stage::before {
-  content: "";
-  position: absolute;
-  left: 14px;
-  right: 14px;
-  top: 12px;
-  height: 9px;
-  border-radius: 4px;
-  pointer-events: none;
-  opacity: 0.88;
-  background: repeating-linear-gradient(
-    to right,
-    var(--curtain-blue-light) 0px,
-    var(--curtain-blue-light) 8px,
-    var(--curtain-blue-dark) 8px,
-    var(--curtain-blue-dark) 16px
-  );
-  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.4);
 }
 
 .play-stage::after {
@@ -605,13 +594,22 @@ html[data-theme="dark"] .earned-bonuses-placeholder {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 8px;
+  gap: 0;
   min-width: 0;
   max-width: min(260px, 100%);
 }
+.hand-upgrades-column {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
 .hand-status-block {
   width: 100%;
-  max-width: 248px;
+  max-width: 100%;
   padding: 8px 10px;
   border-radius: 8px;
   font-family: var(--font-gameplay);
@@ -667,6 +665,22 @@ html[data-theme="dark"] .earned-bonuses-placeholder {
   .hand-left-column {
     max-width: 100%;
   }
+  .speed-upgrade-row {
+    grid-template-columns: 52px 70px auto minmax(100px, 1fr);
+    row-gap: 6px;
+  }
+  .speed-upgrade-row .speed-autobuy-wrap,
+  .speed-upgrade-row .speed-autobuy-message,
+  .upgrade-row-cheapen,
+  .upgrade-row-slowdown {
+    grid-column: 1 / -1;
+  }
+  .upgrade-row-cheapen,
+  .upgrade-row-slowdown {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: none;
+  }
 }
 .time-warp-aura-btn {
   position: absolute;
@@ -695,9 +709,138 @@ html[data-theme="dark"] .earned-bonuses-placeholder {
   0%, 100% { transform: scale(1); box-shadow: 0 0 8px rgba(180, 120, 255, 0.75), 0 0 16px rgba(138, 62, 224, 0.5), inset 0 0 6px rgba(255, 255, 255, 0.2); }
   50% { transform: scale(1.06); box-shadow: 0 0 12px rgba(210, 160, 255, 0.95), 0 0 22px rgba(160, 90, 240, 0.7), inset 0 0 8px rgba(255, 255, 255, 0.26); }
 }
+
+/* Full-screen Time Warp click FX (spiral + light well centered on the aura button) */
+.time-warp-screen-fx {
+  position: fixed;
+  inset: 0;
+  z-index: 9500;
+  pointer-events: none;
+  overflow: hidden;
+  --tw-x: 50vw;
+  --tw-y: 50vh;
+}
+.time-warp-screen-fx-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at var(--tw-x) var(--tw-y),
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0) max(8%, 72px),
+    rgba(210, 185, 255, 0.22) 28%,
+    rgba(40, 15, 80, 0.55) 100%
+  );
+  animation: time-warp-fx-vignette 0.88s ease-out forwards;
+}
+.time-warp-screen-fx-twist {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 95% 70% at var(--tw-x) var(--tw-y),
+    transparent 35%,
+    rgba(160, 210, 255, 0.07) 55%,
+    transparent 72%
+  );
+  mix-blend-mode: soft-light;
+  animation: time-warp-fx-twist 0.9s ease-out forwards;
+}
+.time-warp-screen-fx-spiral {
+  position: absolute;
+  left: var(--tw-x);
+  top: var(--tw-y);
+  width: 190vmax;
+  height: 190vmax;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgba(255, 252, 255, 0.28) 0deg 4deg,
+    rgba(160, 110, 255, 0.1) 4deg 9deg,
+    transparent 9deg 16deg
+  );
+  -webkit-mask-image: radial-gradient(circle, #000 0%, #000 18%, transparent 48%);
+  mask-image: radial-gradient(circle, #000 0%, #000 18%, transparent 48%);
+  mix-blend-mode: screen;
+  animation: time-warp-fx-spiral 0.92s cubic-bezier(0.18, 0.9, 0.32, 1) forwards;
+  will-change: transform, opacity;
+}
+@keyframes time-warp-fx-vignette {
+  0% { opacity: 0; filter: blur(14px) brightness(1); }
+  18% { opacity: 1; filter: blur(5px) brightness(1.12); }
+  100% { opacity: 0; filter: blur(20px) brightness(1); }
+}
+@keyframes time-warp-fx-twist {
+  0% { opacity: 0; transform: scale(1); }
+  22% { opacity: 1; transform: scale(1.03); }
+  100% { opacity: 0; transform: scale(1.06); }
+}
+@keyframes time-warp-fx-spiral {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg) scale(0.28);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(780deg) scale(1.08);
+    opacity: 0;
+  }
+}
+html[data-theme="light"] .time-warp-screen-fx-vignette {
+  background: radial-gradient(
+    circle at var(--tw-x) var(--tw-y),
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0) max(8%, 72px),
+    rgba(255, 255, 255, 0.72) 32%,
+    rgba(180, 170, 240, 0.35) 100%
+  );
+}
+html[data-theme="light"] .time-warp-screen-fx-spiral {
+  mix-blend-mode: multiply;
+  opacity: 0.85;
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgba(255, 255, 255, 0.55) 0deg 4deg,
+    rgba(130, 90, 210, 0.12) 4deg 9deg,
+    transparent 9deg 16deg
+  );
+}
+html[data-theme="light"] .time-warp-screen-fx-twist {
+  mix-blend-mode: multiply;
+  background: radial-gradient(
+    ellipse 95% 70% at var(--tw-x) var(--tw-y),
+    transparent 38%,
+    rgba(120, 160, 255, 0.12) 58%,
+    transparent 75%
+  );
+}
+@media (prefers-reduced-motion: reduce) {
+  .time-warp-screen-fx-spiral {
+    animation: time-warp-fx-spiral-subtle 0.4s ease-out forwards;
+  }
+  .time-warp-screen-fx-vignette {
+    animation: time-warp-fx-vignette-soft 0.4s ease-out forwards;
+  }
+  .time-warp-screen-fx-twist {
+    animation: none;
+    opacity: 0;
+  }
+}
+@keyframes time-warp-fx-spiral-subtle {
+  0% { opacity: 0; }
+  35% { opacity: 0.5; }
+  100% { opacity: 0; }
+}
+@keyframes time-warp-fx-vignette-soft {
+  0% { opacity: 0; }
+  40% { opacity: 0.6; }
+  100% { opacity: 0; }
+}
+
 .speed-upgrade-row {
   display: grid;
-  grid-template-columns: 48px 160px 50px 46px auto auto minmax(80px, 0.5fr) minmax(280px, 1.5fr);
+  grid-template-columns: 52px 80px auto auto minmax(80px, 0.5fr) minmax(280px, 1.5fr);
   align-items: center;
   gap: 0 10px;
   font-size: 14px;
@@ -706,15 +849,11 @@ html[data-theme="dark"] .earned-bonuses-placeholder {
 }
 .speed-upgrade-balance-cost {
   color: #b8c5ff;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-size: 14px;
 }
 .upgrade-row-cheapen {
   display: grid;
-  grid-template-columns: 54px 100px minmax(100px, 1fr) auto;
+  grid-template-columns: 68px auto minmax(120px, 1fr);
   align-items: center;
   gap: 0 10px;
   margin-left: 12px;
@@ -729,7 +868,7 @@ html[data-theme="dark"] .earned-bonuses-placeholder {
 }
 .upgrade-row-slowdown {
   display: grid;
-  grid-template-columns: 84px 110px minmax(130px, 1fr) auto;
+  grid-template-columns: 98px auto minmax(130px, 1fr);
   align-items: center;
   gap: 0 10px;
   margin-left: 12px;
@@ -743,8 +882,8 @@ html[data-theme="dark"] .earned-bonuses-placeholder {
   border-radius: 0 6px 6px 0;
 }
 .speed-upgrade-row .cheapen-upgrade-level { color: #ccc; white-space: nowrap; min-width: 0; }
-.speed-upgrade-row .cheapen-upgrade-cost { color: #aaa; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.speed-upgrade-row .cheapen-upgrade-effect { color: #8bc34a; font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.speed-upgrade-row .cheapen-upgrade-cost { color: #aaa; }
+.speed-upgrade-row .cheapen-upgrade-effect { color: #8bc34a; font-size: 13px; }
 .speed-upgrade-row .cheapen-upgrade-btn {
   padding: 4px 12px;
   cursor: pointer;
@@ -761,10 +900,50 @@ html[data-theme="dark"] .earned-bonuses-placeholder {
   background: #c8e6c9;
   border-color: #388e3c;
 }
+.upgrade-details-tooltip {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 8;
+  min-width: 0;
+  width: max-content;
+  max-width: min(88vw, 620px);
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #2a5a45;
+  background: #06100d;
+  color: #a8e4cb;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
+  display: none;
+  white-space: pre-wrap;
+  line-height: 1.45;
+  pointer-events: none;
+}
+.upgrade-tooltip-line {
+  display: block;
+  font-family: var(--font-gameplay);
+  font-size: 0.8rem;
+  line-height: 1.35;
+  white-space: normal;
+  word-break: break-word;
+}
+.upgrade-btn:hover .upgrade-details-tooltip,
+.upgrade-btn:focus-visible .upgrade-details-tooltip,
+.upgrade-btn.tooltip-open .upgrade-details-tooltip {
+  display: block;
+}
+@media (max-width: 640px) {
+  .upgrade-details-tooltip {
+    max-width: 94vw;
+    width: min(94vw, 720px);
+    padding: 12px 14px;
+    font-size: 0.86rem;
+  }
+}
 .speed-upgrade-row .cheapen-upgrade-btn:disabled { opacity: 0.5; cursor: not-allowed; color: #6b8e6b; }
 .speed-upgrade-row .slowdown-upgrade-level { color: #ffcc80; white-space: nowrap; min-width: 0; }
-.speed-upgrade-row .slowdown-upgrade-cost { color: #ffd8a8; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.speed-upgrade-row .slowdown-upgrade-effect { color: #ffb74d; font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.speed-upgrade-row .slowdown-upgrade-cost { color: #ffd8a8; }
+.speed-upgrade-row .slowdown-upgrade-effect { color: #ffb74d; font-size: 13px; }
 .speed-upgrade-row .slowdown-upgrade-btn {
   padding: 4px 12px;
   cursor: pointer;
@@ -802,6 +981,30 @@ html[data-theme="dark"] .earned-bonuses-placeholder {
   border-color: #3949ab;
 }
 .speed-upgrade-btn:disabled { opacity: 0.5; cursor: not-allowed; color: #5c6bc0; }
+.upgrade-btn {
+  position: relative;
+  overflow: visible;
+}
+.upgrade-btn .upgrade-btn-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(130, 170, 255, 0.25), rgba(170, 220, 255, 0.35));
+  pointer-events: none;
+  z-index: 0;
+  transition: width 0.15s ease-out;
+}
+.upgrade-btn .upgrade-btn-label {
+  position: relative;
+  z-index: 1;
+}
+.upgrade-btn.upgrade-btn-maxed .upgrade-btn-fill {
+  width: 100%;
+  background: linear-gradient(90deg, rgba(80, 220, 120, 0.3), rgba(120, 255, 170, 0.4));
+}
 .speed-upgrade-row .speed-autobuy-wrap { justify-self: start; margin-left: 0; }
 .speed-autobuy-wrap {
   display: inline-flex;
@@ -1104,20 +1307,7 @@ html[data-theme="light"] {
     transition: width 0.2s ease-out;
 }
 
-#menu-btn {
-    width: 100%;
-    padding: 20px;
-    background: #333;
-    color: white;
-    border: none;
-    cursor: pointer;
-}
-
-#menu-btn:hover {
-    background: #555;
-}
 .pages-shell {
-    margin-top: 10px;
     display: grid;
     gap: 6px;
 }
@@ -1535,6 +1725,16 @@ html[data-theme="light"] {
     padding: 14px;
     color: #ddd;
 }
+.settings-panel.settings-panel--inline {
+    position: relative;
+    top: auto;
+    right: auto;
+    z-index: 3;
+    width: 100%;
+    max-width: none;
+    margin-top: 12px;
+    box-sizing: border-box;
+}
 .settings-panel h3 {
     margin: 0 0 10px 0;
     color: #9aa0ff;
@@ -1641,6 +1841,14 @@ html[data-theme="light"] {
     justify-content: center;
     background: rgba(0, 0, 0, 0.75);
 }
+.page-panel.page-panel--inline {
+    position: relative;
+    inset: auto;
+    z-index: 3;
+    display: block;
+    background: transparent;
+    margin-top: 12px;
+}
 .page-modal {
     width: 520px;
     max-width: 92vw;
@@ -1651,6 +1859,12 @@ html[data-theme="light"] {
     border-radius: 10px;
     padding: 16px;
     color: #ddd;
+}
+.page-modal.page-modal--inline {
+    width: 100%;
+    max-width: none;
+    max-height: none;
+    overflow: visible;
 }
 .page-modal--wide {
     width: min(640px, 94vw);
