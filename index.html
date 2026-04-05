@@ -54,10 +54,6 @@
             <h3>Long Term Objectives</h3>
             <ul id="long-objective-list"></ul>
         </div>
-        <div id="earned-bonuses-panel" class="earned-bonuses-panel">
-            <h3>Earned Bonuses</h3>
-            <ul id="earned-bonuses-list"></ul>
-        </div>
     </div>
 
     <!-- Play stage: marquee count + hands (theater / Mario 3-style foreground) -->
@@ -91,12 +87,17 @@
 
         <!-- Speed Upgrade (per hand) + Hands aligned left (same container from load) -->
         <div id="upgrade-container" class="upgrade-container">
+            <div id="upgrade-scroll-hint" class="upgrade-scroll-hint" hidden role="region" aria-label="Hand upgrade hints">
+                <div id="upgrade-scroll-hint-messages" class="upgrade-scroll-hint-messages" aria-live="polite"></div>
+                <div id="upgrade-scroll-hint-jumps" class="upgrade-scroll-hint-jumps"></div>
+            </div>
             <div id="speed-upgrades-container" class="speed-upgrades-container"></div>
         </div>
     </main>
 
     <!-- Hand combos: bubble-up notification (center of screen) -->
     <div id="combo-bubble-container" class="combo-bubble-container" aria-live="polite"></div>
+    <div id="clap-animation-root" class="clap-animation-root" aria-hidden="true"></div>
 
     <!-- Hands placeholder (unused; hands live in upgrade rows from start) -->
     <div id="hands-container" class="hands-grid" style="display: none;"></div>
@@ -184,6 +185,8 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
         <label class="settings-row"><input type="checkbox" id="settings-adaptive-tips" checked> Adaptive tips</label>
         <label class="settings-row"><input type="checkbox" id="settings-curtain-enabled" checked> Curtain transitions</label>
         <label class="settings-row"><input type="checkbox" id="settings-humor-enabled" checked> Humor messages</label>
+        <h4 class="settings-subheading">Visual settings</h4>
+        <label class="settings-row"><input type="checkbox" id="settings-show-clap-animation" checked> Show clap animation</label>
         <label class="settings-row">Offline cap (hours): <input type="number" id="settings-offline-cap-hours" min="0" step="0.5" value="8"></label>
         <p class="settings-coming-soon-note">Import / export save — <span class="coming-soon-inline">coming soon</span>.</p>
         <div class="settings-delete-save-block">
@@ -416,6 +419,7 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
     const settingsAdaptiveTipsEl = document.getElementById("settings-adaptive-tips");
     const settingsCurtainEnabledEl = document.getElementById("settings-curtain-enabled");
     const settingsHumorEnabledEl = document.getElementById("settings-humor-enabled");
+    const settingsShowClapAnimationEl = document.getElementById("settings-show-clap-animation");
     const settingsOfflineCapHoursEl = document.getElementById("settings-offline-cap-hours");
     const offlineSummaryPanelEl = document.getElementById("offline-summary-panel");
     const offlineSummaryBodyEl = document.getElementById("offline-summary-body");
@@ -497,7 +501,7 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
     /** When true, autosave is skipped (e.g. right before deleting save + reload). */
     let suppressAutosave = false;
     const AUTOSAVE_INTERVAL_MS = 10000;
-    const DEFAULT_SETTINGS = { theme: "light", adaptiveTipsEnabled: true, curtainEnabled: true, humorEnabled: true, offlineCapHours: 8 };
+    const DEFAULT_SETTINGS = { theme: "light", adaptiveTipsEnabled: true, curtainEnabled: true, humorEnabled: true, showClapAnimation: true, offlineCapHours: 8 };
     let settings = { ...DEFAULT_SETTINGS };
     const ADAPTIVE_TIP_FIRST_STALL_MS = 360000;
     const ADAPTIVE_TIP_REPEAT_STALL_MS = 600000;
@@ -587,6 +591,7 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
                 adaptiveTipsEnabled: parsed.adaptiveTipsEnabled !== false,
                 curtainEnabled: parsed.curtainEnabled !== false,
                 humorEnabled: parsed.humorEnabled !== false,
+                showClapAnimation: parsed.showClapAnimation !== false,
                 offlineCapHours: Number.isFinite(parsed.offlineCapHours) && parsed.offlineCapHours >= 0 ? parsed.offlineCapHours : DEFAULT_SETTINGS.offlineCapHours
             };
         } catch (_) {}
@@ -599,6 +604,7 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
         if (settingsAdaptiveTipsEl) settingsAdaptiveTipsEl.checked = settings.adaptiveTipsEnabled !== false;
         if (settingsCurtainEnabledEl) settingsCurtainEnabledEl.checked = !!settings.curtainEnabled;
         if (settingsHumorEnabledEl) settingsHumorEnabledEl.checked = !!settings.humorEnabled;
+        if (settingsShowClapAnimationEl) settingsShowClapAnimationEl.checked = settings.showClapAnimation !== false;
         if (settingsOfflineCapHoursEl) settingsOfflineCapHoursEl.value = String(settings.offlineCapHours);
     }
     function markMeaningfulProgress() {
@@ -1108,6 +1114,10 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
         }).join("");
         return "<div class=\"coming-soon-sneak-peek\"><p class=\"coming-soon-sneak-title\">Combination Index</p><p>Discovered " + discoveredCount + " / " + available.length + ". Currently active: " + (activeNow.size > 0 ? Array.from(activeNow).join(", ") : "None") + ".</p></div>" +
             renderComboPagePerHandStatusSectionHtml() +
+            "<section class=\"combo-earned-bonuses-section\" aria-labelledby=\"combo-bonus-breakdown-heading\">" +
+            "<h3 id=\"combo-bonus-breakdown-heading\" class=\"combo-earned-bonuses-heading\">Bonus breakdown</h3>" +
+            "<p class=\"combo-earned-bonuses-intro\">How pattern bonuses stack into the <strong>Bonus</strong> multiplier on Count per second (tiers add; patterns multiply within a tier).</p>" +
+            "<ul id=\"earned-bonuses-list\" class=\"earned-bonuses-list--page\"></ul></section>" +
             "<div class=\"combo-filter-row\">" + statusButtons + "</div>" +
             "<div class=\"combo-filter-row\">" + handButtons + "</div>" +
             "<ul id=\"combo-index-list\">" + (listItems || "<li class=\"earned-bonuses-placeholder\">No combinations match the current filters.</li>") + "</ul>";
@@ -1123,8 +1133,12 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
         if (!pagePanelEl || pagePanelEl.style.display === "none" || !pagePanelBodyEl || !pagePanelTitleEl) return;
         if (pagePanelTitleEl.textContent !== "Combinations") return;
         const now = Date.now();
-        if (!force && now < comboFilterPauseAutoRefreshUntilMs) return;
+        if (!force && now < comboFilterPauseAutoRefreshUntilMs) {
+            updateEarnedBonusesUI();
+            return;
+        }
         pagePanelBodyEl.innerHTML = renderCombinationsPageHtml();
+        updateEarnedBonusesUI();
     }
     function showPagePanel(pageId) {
         if (!pagePanelEl || !pagePanelTitleEl || !pagePanelBodyEl) return;
@@ -1134,7 +1148,7 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
         if (pageId === "achievements") {
             title = "Achievements";
             bodyHtml = renderComingSoonPoster("Achievement boards", "<p>Global and per-number achievement lists, filters, and rewards will live here.</p>" +
-                "<p class=\"coming-soon-note\">Until then, pattern bonuses you have earned are listed under <strong>Earned Bonuses</strong> on the main screen.</p>");
+                "<p class=\"coming-soon-note\">Until then, pattern bonuses and your combined Bonus multiplier are on the <strong>Combinations</strong> page.</p>");
         } else if (pageId === "unlocks") {
             title = "Unlocks";
             bodyHtml = renderComingSoonPoster("Unlock atlas", "<p>A full unlock tree (hands, turbo, numbers, and cross-number gates) will be mapped here with clearer progress links.</p>") +
@@ -1163,12 +1177,21 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
         if (pageId === "messages") {
             requestAnimationFrame(() => scrollMessageLogPanelToBottom());
         }
+        if (pageId === "combinations") {
+            requestAnimationFrame(() => updateEarnedBonusesUI());
+        }
     }
 
     /* ---------------------------------------------------------
        SPEED UPGRADE (per-hand)
     --------------------------------------------------------- */
     let speedLevel = Array(maxHands).fill(0);
+    /** Clap bonus: adds to speed multiplier like purchased levels; does not affect upgrade cost. Resets on ascension. */
+    let speedBonusLevel = Array(maxHands).fill(0);
+    /** Per-hand digit last frame (1–10) for clap edge detection; -1 = unknown */
+    let clapDigitPrevious = Array(maxHands).fill(-1);
+    /** Per-hand wall-clock ms (Date.now) until that hand may clap again; 0 = ready */
+    let clapCooldownUntilMsByHand = Array(maxHands).fill(0);
     let autoBuyUnlocked = false;
     let autoBuyEnabledByHand = [];
     const AUTO_BUY_DELAY_SECONDS = 30;
@@ -1179,8 +1202,11 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
         if (level === 0) return 1;
         return Math.pow(2, level); 
     }
+    function getEffectiveSpeedLevel(handIndex) {
+        return Math.max(0, (speedLevel[handIndex] ?? 0) + (speedBonusLevel[handIndex] ?? 0));
+    }
     function getSpeedMultiplier(handIndex) {
-        return getSpeedMultiplierForLevel(speedLevel[handIndex] ?? 0);
+        return getSpeedMultiplierForLevel(getEffectiveSpeedLevel(handIndex));
     }
     /** Exact 2^level for tick math (float Math.pow loses integers past ~2^53). */
     function getSpeedMultiplierBigForLevel(level) {
@@ -1325,15 +1351,17 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
                 const cost = getUpgradeCost(i, nextLevel);
                 const balance = handEarnings[i] || 0;
                 const canAfford = balance >= cost;
-                const currentMult = getSpeedMultiplier(i);
-                const nextMult = getSpeedMultiplierForLevel(nextLevel);
-                const percent = (nextMult / currentMult - 1) * 100;
-                ref.levelEl.textContent = "Level " + speedLevel[i];
+                const bonusB = speedBonusLevel[i] || 0;
+                const effLv = getEffectiveSpeedLevel(i);
+                const currentMult = getSpeedMultiplierForLevel(effLv);
+                const nextMult = getSpeedMultiplierForLevel(effLv + 1);
+                const percent = currentMult > 0 ? (nextMult / currentMult - 1) * 100 : 0;
+                ref.levelEl.innerHTML = "Level " + speedLevel[i] + (bonusB > 0 ? " <span class=\"speed-level-bonus\" title=\"Clap bonus\">+" + bonusB + "</span>" : "");
                 ref.btn.disabled = !canAfford;
                 const progress = cost > 0 ? Math.max(0, Math.min(1, balance / cost)) : 1;
                 setUpgradeButtonProgress(ref.btn, progress);
                 ref.btn.classList.remove("upgrade-btn-maxed");
-                setUpgradeTooltipText(ref.btn, "Level: " + speedLevel[i] + "\nBalance/Cost: " + formatCount(balance) + " / " + formatCount(cost) + "\nEffect: +" + percent.toFixed(1) + "%");
+                setUpgradeTooltipText(ref.btn, "Base level: " + speedLevel[i] + "\nBonus (clap): " + bonusB + "\nEffective: " + effLv + "\nBalance/Cost: " + formatCount(balance) + " / " + formatCount(cost) + "\nEffect next: +" + percent.toFixed(1) + "%");
                 if (ref.autobuyToggleEl) {
                     ref.autobuyToggleEl.checked = !!autoBuyEnabledByHand[i];
                     ref.autobuyToggleEl.disabled = !autoBuyUnlocked;
@@ -1354,6 +1382,248 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
         }
 
         if (totalChanges >= 100) autoBuyUnlocked = true;
+        updateHandUpgradeScrollHint();
+    }
+
+    const upgradeScrollHintEl = document.getElementById("upgrade-scroll-hint");
+    const upgradeScrollHintMessagesEl = document.getElementById("upgrade-scroll-hint-messages");
+    const upgradeScrollHintJumpsEl = document.getElementById("upgrade-scroll-hint-jumps");
+    const UPGRADE_SCROLL_HINT_TOP_MARGIN = 72;
+    const UPGRADE_SCROLL_HINT_BOTTOM_MARGIN = 32;
+    const SCROLL_HINT_PULSE_COOLDOWN_MS = 5000;
+    const SPEED_AUTOBUY_SUPPRESS_COUNTDOWN_SEC = 5;
+    let lastScrollHintPulseUpAt = 0;
+    let lastScrollHintPulseDownAt = 0;
+    let upgradeScrollHintLastStateKey = "";
+    function handHasSpeedAffordableNext(handIndex) {
+        if (handIndex < 0 || handIndex >= unlockedHands || totalChanges < 10) return false;
+        const bal = handEarnings[handIndex] || 0;
+        const nextLevel = speedLevel[handIndex] + 1;
+        return bal >= getUpgradeCost(handIndex, nextLevel);
+    }
+    function handHasCheapenAffordableNext(handIndex) {
+        if (handIndex < 0 || handIndex >= unlockedHands || !cheapenSectionUnlocked) return false;
+        const bal = handEarnings[handIndex] || 0;
+        const cl = cheapenLevel[handIndex] ?? 0;
+        const cap = getMaxCheapenLevel();
+        if (cl >= cap) return false;
+        const c = getCheapenUpgradeCost(handIndex, cl + 1);
+        return c !== null && bal >= c;
+    }
+    function handHasSlowdownAffordableNext(handIndex) {
+        if (handIndex < 0 || handIndex >= unlockedHands || !isSlowdownUnlocked()) return false;
+        const bal = handEarnings[handIndex] || 0;
+        const sl = slowdownLevel[handIndex] ?? 0;
+        if (sl >= MAX_SLOWDOWN_LEVEL) return false;
+        const c = getSlowdownUpgradeCost(sl + 1);
+        return c !== null && bal >= c;
+    }
+    function handHasAffordableUpgradeWaiting(handIndex) {
+        return handHasSpeedAffordableNext(handIndex) || handHasCheapenAffordableNext(handIndex) || handHasSlowdownAffordableNext(handIndex);
+    }
+    /** Speed autobuy will buy within N seconds and no other upgrade type is waiting — suppress scroll hint for that hand. */
+    function handSuppressedForImminentSpeedAutobuy(handIndex) {
+        if (!autoBuyUnlocked || !autoBuyEnabledByHand[handIndex]) return false;
+        const cd = autoBuyCountdownSecondsByHand[handIndex] || 0;
+        if (cd <= 0 || cd > SPEED_AUTOBUY_SUPPRESS_COUNTDOWN_SEC) return false;
+        if (!handHasSpeedAffordableNext(handIndex)) return false;
+        if (handHasCheapenAffordableNext(handIndex) || handHasSlowdownAffordableNext(handIndex)) return false;
+        return true;
+    }
+    function handScrollHintHasUpgradeReason(handIndex) {
+        if (!handHasAffordableUpgradeWaiting(handIndex)) return false;
+        if (handSuppressedForImminentSpeedAutobuy(handIndex)) return false;
+        return true;
+    }
+    function handUpgradeRowIntersectsViewportComfort(el) {
+        if (!el) return true;
+        const r = el.getBoundingClientRect();
+        const vTop = UPGRADE_SCROLL_HINT_TOP_MARGIN;
+        const vBot = window.innerHeight - UPGRADE_SCROLL_HINT_BOTTOM_MARGIN;
+        return r.bottom > vTop && r.top < vBot;
+    }
+    function classifyOffScreenScrollHintHands() {
+        const above = [];
+        const below = [];
+        const vTop = UPGRADE_SCROLL_HINT_TOP_MARGIN;
+        const vBot = window.innerHeight - UPGRADE_SCROLL_HINT_BOTTOM_MARGIN;
+        for (let i = 0; i < unlockedHands; i++) {
+            if (!handContributesToScrollHint(i)) continue;
+            const row = speedRowRefs[i] && speedRowRefs[i].handUpgradeRowEl;
+            if (!row) continue;
+            if (handUpgradeRowIntersectsViewportComfort(row)) continue;
+            const r = row.getBoundingClientRect();
+            if (r.bottom <= vTop) above.push({ handIndex: i, row: row, r: r });
+            else if (r.top >= vBot) below.push({ handIndex: i, row: row, r: r });
+        }
+        above.sort((a, b) => {
+            const pa = handContributesTimeWarpPriority(a.handIndex);
+            const pb = handContributesTimeWarpPriority(b.handIndex);
+            if (pa !== pb) return pb - pa;
+            return b.r.bottom - a.r.bottom;
+        });
+        below.sort((a, b) => {
+            const pa = handContributesTimeWarpPriority(a.handIndex);
+            const pb = handContributesTimeWarpPriority(b.handIndex);
+            if (pa !== pb) return pb - pa;
+            return a.r.top - b.r.top;
+        });
+        return { above: above, below: below };
+    }
+    function pulseUpgradeScrollHintShell() {
+        if (!upgradeScrollHintEl) return;
+        upgradeScrollHintEl.classList.remove("upgrade-scroll-hint--pulse");
+        void upgradeScrollHintEl.offsetWidth;
+        upgradeScrollHintEl.classList.add("upgrade-scroll-hint--pulse");
+        window.clearTimeout(pulseUpgradeScrollHintShell._clearT);
+        pulseUpgradeScrollHintShell._clearT = window.setTimeout(() => {
+            upgradeScrollHintEl.classList.remove("upgrade-scroll-hint--pulse");
+        }, 750);
+    }
+    function pulseHandUpgradeRowForScrollHint(rowEl) {
+        if (!rowEl) return;
+        rowEl.classList.remove("hand-upgrade-row--scroll-pulse");
+        void rowEl.offsetWidth;
+        rowEl.classList.add("hand-upgrade-row--scroll-pulse");
+        window.setTimeout(() => rowEl.classList.remove("hand-upgrade-row--scroll-pulse"), 750);
+    }
+    /** Scroll window so the full hand row fits in view (same margins as scroll-hint comfort band). Vertical only. */
+    function scrollHandUpgradeRowFullyIntoView(rowEl) {
+        if (!rowEl) return;
+        const padTop = UPGRADE_SCROLL_HINT_TOP_MARGIN;
+        const padBot = UPGRADE_SCROLL_HINT_BOTTOM_MARGIN;
+        const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+        const rect = rowEl.getBoundingClientRect();
+        const available = vh - padTop - padBot;
+        let delta = 0;
+        if (rect.height <= available) {
+            if (rect.top < padTop) {
+                delta = rect.top - padTop;
+            } else if (rect.bottom > vh - padBot) {
+                delta = rect.bottom - (vh - padBot);
+            }
+        } else {
+            const bandMidY = padTop + available / 2;
+            const idealTop = bandMidY - rect.height / 2;
+            delta = rect.top - idealTop;
+        }
+        if (Math.abs(delta) > 2) {
+            window.scrollBy({ top: delta, left: 0, behavior: "smooth" });
+        }
+    }
+    if (upgradeScrollHintEl && upgradeScrollHintEl.dataset.jumpBound !== "1") {
+        upgradeScrollHintEl.dataset.jumpBound = "1";
+        upgradeScrollHintEl.addEventListener("click", function(e) {
+            const btn = e.target.closest("[data-jump-hand]");
+            if (!btn) return;
+            const i = parseInt(btn.getAttribute("data-jump-hand"), 10);
+            if (isNaN(i) || i < 0 || i >= unlockedHands) return;
+            const row = speedRowRefs[i] && speedRowRefs[i].handUpgradeRowEl;
+            if (row) scrollHandUpgradeRowFullyIntoView(row);
+        });
+    }
+    let handUpgradeScrollHintRaf = 0;
+    function updateHandUpgradeScrollHint() {
+        if (!upgradeScrollHintEl || !upgradeScrollHintMessagesEl || !upgradeScrollHintJumpsEl) return;
+        const { above, below } = classifyOffScreenScrollHintHands();
+        const needUp = above.length > 0;
+        const needDown = below.length > 0;
+        if (!needUp) lastScrollHintPulseUpAt = 0;
+        if (!needDown) lastScrollHintPulseDownAt = 0;
+        if (!needUp && !needDown) {
+            upgradeScrollHintMessagesEl.textContent = "";
+            upgradeScrollHintJumpsEl.innerHTML = "";
+            upgradeScrollHintEl.hidden = true;
+            upgradeScrollHintLastStateKey = "";
+            return;
+        }
+        upgradeScrollHintEl.hidden = false;
+        const upTwAny = needUp && above.some(e => handHasActiveTimeWarpAura(e.handIndex));
+        const upGrAny = needUp && above.some(e => handScrollHintHasUpgradeReason(e.handIndex));
+        const downTwAny = needDown && below.some(e => handHasActiveTimeWarpAura(e.handIndex));
+        const downGrAny = needDown && below.some(e => handScrollHintHasUpgradeReason(e.handIndex));
+        const upPri = above[0] ? above[0].handIndex : "x";
+        const downPri = below[0] ? below[0].handIndex : "x";
+        const upPriTw = above[0] && handHasActiveTimeWarpAura(above[0].handIndex) ? "1" : "0";
+        const downPriTw = below[0] && handHasActiveTimeWarpAura(below[0].handIndex) ? "1" : "0";
+        const stateKey =
+            (needUp ? "1" : "0") +
+            "|" +
+            (needDown ? "1" : "0") +
+            "|" +
+            upPri +
+            "|" +
+            downPri +
+            "|" +
+            (upTwAny ? "1" : "0") +
+            (upGrAny ? "1" : "0") +
+            (downTwAny ? "1" : "0") +
+            (downGrAny ? "1" : "0") +
+            "|" +
+            upPriTw +
+            "|" +
+            downPriTw;
+        if (stateKey !== upgradeScrollHintLastStateKey) {
+            upgradeScrollHintLastStateKey = stateKey;
+            lastScrollHintPulseUpAt = 0;
+            lastScrollHintPulseDownAt = 0;
+            upgradeScrollHintMessagesEl.innerHTML = "";
+            if (needUp) {
+                const line = document.createElement("div");
+                line.className = "upgrade-scroll-hint-line";
+                if (upTwAny && upGrAny) line.textContent = "Scroll up, hand upgrades or a Time Warp are available!";
+                else if (upTwAny) line.textContent = "Scroll up, a Time Warp is waiting!";
+                else line.textContent = "Scroll up, hand upgrades are available!";
+                upgradeScrollHintMessagesEl.appendChild(line);
+            }
+            if (needDown) {
+                const line = document.createElement("div");
+                line.className = "upgrade-scroll-hint-line";
+                if (downTwAny && downGrAny) line.textContent = "Scroll down, hand upgrades or a Time Warp are available!";
+                else if (downTwAny) line.textContent = "Scroll down, a Time Warp is waiting!";
+                else line.textContent = "Scroll down, hand upgrades are available!";
+                upgradeScrollHintMessagesEl.appendChild(line);
+            }
+            upgradeScrollHintJumpsEl.innerHTML = "";
+            if (needUp && above[0]) {
+                const hi = above[0].handIndex;
+                const b = document.createElement("button");
+                b.type = "button";
+                b.className = "upgrade-scroll-hint-jump-btn";
+                b.setAttribute("data-jump-hand", String(hi));
+                b.textContent = handHasActiveTimeWarpAura(hi) ? "Jump to Hand " + (hi + 1) + " (Time Warp)" : "Jump to Hand " + (hi + 1);
+                upgradeScrollHintJumpsEl.appendChild(b);
+            }
+            if (needDown && below[0]) {
+                const hi = below[0].handIndex;
+                const b = document.createElement("button");
+                b.type = "button";
+                b.className = "upgrade-scroll-hint-jump-btn";
+                b.setAttribute("data-jump-hand", String(hi));
+                b.textContent = handHasActiveTimeWarpAura(hi) ? "Jump to Hand " + (hi + 1) + " (Time Warp)" : "Jump to Hand " + (hi + 1);
+                upgradeScrollHintJumpsEl.appendChild(b);
+            }
+        }
+        const now = Date.now();
+        const upDue = needUp && (lastScrollHintPulseUpAt === 0 || now - lastScrollHintPulseUpAt >= SCROLL_HINT_PULSE_COOLDOWN_MS);
+        const downDue = needDown && (lastScrollHintPulseDownAt === 0 || now - lastScrollHintPulseDownAt >= SCROLL_HINT_PULSE_COOLDOWN_MS);
+        if (upDue || downDue) {
+            if (upDue) lastScrollHintPulseUpAt = now;
+            if (downDue) lastScrollHintPulseDownAt = now;
+            pulseUpgradeScrollHintShell();
+            if (upDue && above[0]) pulseHandUpgradeRowForScrollHint(above[0].row);
+            if (downDue && below[0]) {
+                if (upDue) window.setTimeout(() => pulseHandUpgradeRowForScrollHint(below[0].row), 160);
+                else pulseHandUpgradeRowForScrollHint(below[0].row);
+            }
+        }
+    }
+    function scheduleHandUpgradeScrollHintUpdate() {
+        if (handUpgradeScrollHintRaf) return;
+        handUpgradeScrollHintRaf = requestAnimationFrame(() => {
+            handUpgradeScrollHintRaf = 0;
+            updateHandUpgradeScrollHint();
+        });
     }
 
     function buySpeedUpgradeForHand(handIndex, opts) {
@@ -1424,6 +1694,7 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
                 const ref = speedRowRefs[i];
                 if (ref && ref.cheapenWrapEl) ref.cheapenWrapEl.style.display = "none";
             }
+            updateHandUpgradeScrollHint();
             return;
         }
         for (let i = 0; i < unlockedHands; i++) {
@@ -1453,6 +1724,7 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
                 setUpgradeTooltipText(ref.cheapenBtn, "Level: " + level + "/" + cap + "\nBalance/Cost: " + formatCount(balance) + " / " + formatCount(cost) + "\nEffect: " + getCheapenEffectText(nextLevel));
             }
         }
+        updateHandUpgradeScrollHint();
     }
 
     function buyCheapenUpgradeForHand(handIndex, confettiOriginEl) {
@@ -1537,7 +1809,8 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
 
     /* ---------------------------------------------------------
        SLOWDOWN UPGRADE (per-hand), unlock at 1e15, max 3 levels.
-       Level >=1 forces animation to 1 count/sec and boosts production by 10^level.
+       Purchase resets Speed to 0; each level multiplies tick value by 10^level.
+       Digit animation cadence follows Speed upgrades again (same interval math as no slowdown).
     --------------------------------------------------------- */
     const SLOWDOWN_UNLOCK_COUNT = 1e15;
     const MAX_SLOWDOWN_LEVEL = 3;
@@ -1557,8 +1830,8 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
         return totalChanges >= SLOWDOWN_UNLOCK_COUNT;
     }
     function getSlowdownEffectText(level) {
-        if (level <= 0) return "1/s animation, +10x ticks";
-        return "1/s animation, +" + formatCount(getSlowdownMultiplierForLevel(level)) + "x ticks";
+        if (level <= 0) return "No slowdown";
+        return "+" + formatCount(getSlowdownMultiplierForLevel(level)) + "× tick value; digit speed scales with Speed upgrades";
     }
     function getSlowdownMultiplierForLevel(level) {
         if (level <= 0) return 1;
@@ -1600,6 +1873,7 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
                 setUpgradeTooltipText(ref.slowdownBtn, "Level: " + level + "/" + MAX_SLOWDOWN_LEVEL + "\nBalance/Cost: " + formatCount(balance) + " / " + formatCount(cost) + "\nEffect: " + getSlowdownEffectText(nextLevel));
             }
         }
+        updateHandUpgradeScrollHint();
     }
     function buySlowdownUpgradeForHand(handIndex, originEl) {
         if (handIndex < 0 || handIndex >= unlockedHands) return;
@@ -1648,6 +1922,18 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
     function isTimeWarpUnlocked() {
         return totalChanges >= TIME_WARP_UNLOCK_COUNT;
     }
+    function handHasActiveTimeWarpAura(handIndex) {
+        if (handIndex < 0 || handIndex >= unlockedHands || !isTimeWarpUnlocked()) return false;
+        ensureTimeWarpArrays();
+        return !!timeWarpAuraActiveByHand[handIndex];
+    }
+    function handContributesTimeWarpPriority(handIndex) {
+        return handHasActiveTimeWarpAura(handIndex) ? 1 : 0;
+    }
+    function handContributesToScrollHint(handIndex) {
+        if (handHasActiveTimeWarpAura(handIndex)) return true;
+        return handScrollHintHasUpgradeReason(handIndex);
+    }
     function ensureTimeWarpArrays() {
         while (timeWarpAuraActiveByHand.length < unlockedHands) timeWarpAuraActiveByHand.push(false);
     }
@@ -1666,8 +1952,7 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
     }
     /**
      * Per-hand count/s from that hand before combo/turbo (matches gameLoopTick weighting).
-     * Animation is capped at 1 Hz when slowdown is on, but speed upgrades still multiply
-     * production; when slowdown is off, tick rate already embeds speed (2^level /s).
+     * Tick cadence embeds Speed (2^level); Slowdown multiplies tick value only (10^level).
      */
     function getHandPerHandRawCps(handIndex) {
         if (handIndex < 0 || handIndex >= unlockedHands) return 0;
@@ -1678,8 +1963,6 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
         if (intervalMs <= 0) return 0;
         const animPerSec = 1000 / intervalMs;
         const slow = getSlowdownMultiplier(handIndex);
-        const speed = getSpeedMultiplier(handIndex);
-        if ((slowdownLevel[handIndex] ?? 0) > 0) return clampFiniteNonNegative(animPerSec * slow * speed);
         return clampFiniteNonNegative(animPerSec * slow);
     }
     /** Speed-upgrade multiplier shown as the “base” in base × combo × turbo × slowdown (always ≥ 1). */
@@ -1726,6 +2009,7 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
             const active = unlocked && !!timeWarpAuraActiveByHand[i];
             ref.timeWarpAuraBtn.style.display = active ? "" : "none";
         }
+        scheduleHandUpgradeScrollHintUpdate();
     }
     const TIME_WARP_SCREEN_FX_MS = 960;
     function playTimeWarpScreenEffect(anchorEl) {
@@ -1787,13 +2071,15 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
        RATE DISPLAY and TICK INTERVAL (per-hand; total CPS = sum of hand CPS)
     --------------------------------------------------------- */
     function getTickIntervalMs(baseSpeed, handIndex) {
-        if ((slowdownLevel[handIndex] ?? 0) > 0) return 1000;
-        return baseSpeed / getSpeedMultiplier(handIndex);
+        const mult = getSpeedMultiplier(handIndex);
+        if (!Number.isFinite(mult) || mult <= 0) return 0;
+        return baseSpeed / mult;
     }
     // Updates the "Count per second" UI:
     // - Total shows effective CPS and an optional "base × bonus × turbo" breakdown.
-    // - Per-hand lines show raw CPS per hand (no bonus/turbo applied).
+    // - Per-hand Hn lines are raw tick-rate CPS only (do not sum them and expect Total; Total = sum(H) × Bonus × Turbo).
     // - Bonus/Turbo lines are hidden until those features are unlocked.
+    // - CPS matches nominal 50ms sim steps; gameLoopTick catch-up keeps wall-clock production aligned when timers lag.
     function updateRateDisplay() {
         const cpsPerHand = [];
         let cpsTotalRaw = 0;
@@ -2120,6 +2406,7 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
             handEarnings,
             unlockedHands,
             speedLevel,
+            speedBonusLevel,
             cheapenLevel,
             slowdownLevel,
             slowdownUnlockLogged,
@@ -2147,7 +2434,8 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
             number1AscensionEssence,
             number1HasAscended,
             number1AscensionUpgrades,
-            ascensionNumber1IntroSeen
+            ascensionNumber1IntroSeen,
+            clapCooldownUntilMsByHand
         };
     }
     function autosaveNow() {
@@ -2158,6 +2446,18 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
         if (!data || typeof data !== "object") return;
         if (Array.isArray(data.handEarnings)) handEarnings = data.handEarnings.slice(0, maxHands).concat(Array(Math.max(0, maxHands - data.handEarnings.length)).fill(0));
         if (Array.isArray(data.speedLevel)) speedLevel = data.speedLevel.slice(0, maxHands).concat(Array(Math.max(0, maxHands - data.speedLevel.length)).fill(0));
+        if (Array.isArray(data.speedBonusLevel)) speedBonusLevel = data.speedBonusLevel.slice(0, maxHands).concat(Array(Math.max(0, maxHands - data.speedBonusLevel.length)).fill(0));
+        else speedBonusLevel = Array(maxHands).fill(0);
+        clapDigitPrevious = Array(maxHands).fill(-1);
+        clapCooldownUntilMsByHand = Array(maxHands).fill(0);
+        if (Array.isArray(data.clapCooldownUntilMsByHand)) {
+            const src = data.clapCooldownUntilMsByHand;
+            const now = Date.now();
+            for (let i = 0; i < maxHands && i < src.length; i++) {
+                const t = Number(src[i]);
+                clapCooldownUntilMsByHand[i] = Number.isFinite(t) && t > now ? t : 0;
+            }
+        }
         if (Array.isArray(data.cheapenLevel)) cheapenLevel = data.cheapenLevel.slice(0, maxHands).concat(Array(Math.max(0, maxHands - data.cheapenLevel.length)).fill(0));
         if (Array.isArray(data.slowdownLevel)) slowdownLevel = data.slowdownLevel.slice(0, maxHands).concat(Array(Math.max(0, maxHands - data.slowdownLevel.length)).fill(0));
         slowdownUnlockLogged = !!data.slowdownUnlockLogged;
@@ -2202,6 +2502,7 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
                 adaptiveTipsEnabled: data.settings.adaptiveTipsEnabled !== false,
                 curtainEnabled: data.settings.curtainEnabled !== false,
                 humorEnabled: data.settings.humorEnabled !== false,
+                showClapAnimation: data.settings.showClapAnimation !== false,
                 offlineCapHours: Number.isFinite(data.settings.offlineCapHours) && data.settings.offlineCapHours >= 0 ? data.settings.offlineCapHours : settings.offlineCapHours
             };
         }
@@ -2256,6 +2557,12 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
        HAND CLASS
     --------------------------------------------------------- */
     const GAME_LOOP_MS = 50;
+    /** Wall-clock timing: each step advances the sim by exactly GAME_LOOP_MS so hand/combo logic stays stable. */
+    let lastGameLoopPerfMs = null;
+    let simLagMs = 0;
+    const GAME_LOOP_MAX_ELAPSED_MS = 60000;
+    const GAME_LOOP_MAX_LAG_MS = 120000;
+    const GAME_LOOP_MAX_CATCHUP_STEPS = 240;
     let gameLoopTimer = null;
 
     class HandCounter {
@@ -2426,7 +2733,7 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
             order: 8,
             trigger: () => unlockedHands >= 8,
             title: "8 hand counting is now a thing!",
-            body: storyTotalCountLead(UNLOCK_THRESHOLDS[6]) + "you unlocked an eighth hand. Spiders could count like this but they have no fingers, so for now you are the only one who can do it. You can earn bonuses by having interesting hand combinations like all of the hands are on the same number at the end of the tick. It shouldn't be too hard to collect them all."
+            body: storyTotalCountLead(UNLOCK_THRESHOLDS[6]) + "you unlocked an eighth hand — and Clapping is now live. When any two hands finish a tick on the digit 5, they clap together (watch for the center-screen animation). Each clap has a 10% chance per hand to grant a bonus Speed level: it boosts your hand's rate like a normal level but does not increase upgrade costs. Your level line shows as \"Level X +Y\" when you have bonus levels. You can turn the animation off in Menu → Show clap animation (bonuses still apply). Combos between hands still work as before — keep mixing digits for bonuses and Turbo meter."
         },
         {
             id: "ninth-hand",
@@ -2564,6 +2871,7 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
     });
     if (settingsCurtainEnabledEl) settingsCurtainEnabledEl.addEventListener("change", () => { settings.curtainEnabled = settingsCurtainEnabledEl.checked; persistSettings(); });
     if (settingsHumorEnabledEl) settingsHumorEnabledEl.addEventListener("change", () => { settings.humorEnabled = settingsHumorEnabledEl.checked; persistSettings(); renderActionLog(); refreshMessageLogPanelIfOpen(); });
+    if (settingsShowClapAnimationEl) settingsShowClapAnimationEl.addEventListener("change", () => { settings.showClapAnimation = settingsShowClapAnimationEl.checked; persistSettings(); });
     if (settingsOfflineCapHoursEl) settingsOfflineCapHoursEl.addEventListener("change", () => {
         const n = Number(settingsOfflineCapHoursEl.value);
         settings.offlineCapHours = Number.isFinite(n) && n >= 0 ? n : DEFAULT_SETTINGS.offlineCapHours;
@@ -2715,8 +3023,19 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
         return sum > 0 ? sum : 1;
     }
     const comboBubbleContainerEl = document.getElementById("combo-bubble-container");
-    const earnedBonusesListEl = document.getElementById("earned-bonuses-list");
     const COMBO_BUBBLE_DURATION_MS = 3500;
+    const COMBO_PAGE_BTN_PULSE_MS = 2600;
+    let combinationsBonusPulseClearT = 0;
+    function pulseCombinationsPageButtonForNewBonus() {
+        if (!combinationsPageBtn || combinationsPageBtn.style.display === "none") return;
+        window.clearTimeout(combinationsBonusPulseClearT);
+        combinationsPageBtn.classList.remove("page-btn--new-bonus-pulse");
+        void combinationsPageBtn.offsetWidth;
+        combinationsPageBtn.classList.add("page-btn--new-bonus-pulse");
+        combinationsBonusPulseClearT = window.setTimeout(() => {
+            combinationsPageBtn.classList.remove("page-btn--new-bonus-pulse");
+        }, COMBO_PAGE_BTN_PULSE_MS);
+    }
     function showComboBubble(newlyEarned) {
         if (!comboBubbleContainerEl || newlyEarned.length === 0) return;
         const tierProduct = newlyEarned.reduce((m, c) => m * c.bonus, 1);
@@ -2730,13 +3049,14 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
         setTimeout(() => { if (bubble.parentNode) bubble.parentNode.removeChild(bubble); }, COMBO_BUBBLE_DURATION_MS);
     }
     function updateEarnedBonusesUI() {
-        if (!earnedBonusesListEl) return;
-        earnedBonusesListEl.innerHTML = "";
+        const listEl = document.getElementById("earned-bonuses-list");
+        if (!listEl) return;
+        listEl.innerHTML = "";
         if (unlockedHands < 2) {
             const placeLi = document.createElement("li");
             placeLi.className = "earned-bonuses-placeholder";
             placeLi.textContent = "Unlock a second hand to discover pattern bonuses. Full achievement-style integration with the Achievements page — coming soon.";
-            earnedBonusesListEl.appendChild(placeLi);
+            listEl.appendChild(placeLi);
             return;
         }
         const earnedSet = new Set(earnedComboNames);
@@ -2745,7 +3065,7 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
         const combinedLi = document.createElement("li");
         combinedLi.className = "earned-bonuses-combined";
         combinedLi.textContent = "Bonus: " + combinedMult.toFixed(2) + "× (same as Count per second; sum of each hand-count tier below — within a tier, patterns multiply)";
-        earnedBonusesListEl.appendChild(combinedLi);
+        listEl.appendChild(combinedLi);
         for (let n = 2; n <= 10; n++) {
             if (unlockedHands < n) continue;
             const group = byMinHands[n] || [];
@@ -2757,14 +3077,14 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
                 const li = document.createElement("li");
                 li.className = "earned-bonuses-summary";
                 li.textContent = "All " + n + "-hand pattern bonuses (complete): ×" + totalMult.toFixed(2) + " (this tier’s contribution to Bonus)";
-                earnedBonusesListEl.appendChild(li);
+                listEl.appendChild(li);
             } else {
                 group.forEach(c => {
                     const li = document.createElement("li");
                     const isEarned = earnedSet.has(c.name);
                     li.className = isEarned ? "earned-bonus-item-earned" : "earned-bonus-undiscovered";
                     li.textContent = c.name + " (×" + c.bonus.toFixed(2) + ")" + (isEarned ? "" : " — undiscovered");
-                    earnedBonusesListEl.appendChild(li);
+                    listEl.appendChild(li);
                 });
             }
         }
@@ -2792,6 +3112,9 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
         handEarnings = Array(maxHands).fill(0);
         handEarnings[0] = 1;
         speedLevel = Array(maxHands).fill(0);
+        speedBonusLevel = Array(maxHands).fill(0);
+        clapDigitPrevious = Array(maxHands).fill(-1);
+        clapCooldownUntilMsByHand = Array(maxHands).fill(0);
         cheapenLevel = Array(maxHands).fill(0);
         slowdownLevel = Array(maxHands).fill(0);
         slowdownUnlockLogged = false;
@@ -2891,6 +3214,7 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
             newlyEarned.forEach(c => addToLog("Discovered combo: " + c.name + " (x" + c.bonus.toFixed(2) + ")", "milestone"));
             markMeaningfulProgress();
             showComboBubble(newlyEarned);
+            pulseCombinationsPageButtonForNewBonus();
             updateEarnedBonusesUI();
         }
         if (turboBoostUnlocked && active.length > 0) {
@@ -2907,8 +3231,108 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
         refreshCombinationsPanelIfOpen();
     }
 
-    function gameLoopTick() {
-        if (gamePaused) return;
+    const CLAP_UNLOCK_HANDS = 8;
+    const CLAP_BONUS_CHANCE = 0.1;
+    const CLAP_MAX_PAIRS_PER_TICK = 2;
+    const CLAP_ANIM_STAGGER_MS = 220;
+    const CLAP_COOLDOWN_MS = 10000;
+    function isClappingUnlocked() {
+        return unlockedHands >= CLAP_UNLOCK_HANDS;
+    }
+    function playClapScreenAnimation(handIndexA, handIndexB, staggerDelayMs) {
+        if (settings.showClapAnimation === false) return;
+        const root = document.getElementById("clap-animation-root");
+        if (!root) return;
+        const art5 = hands1[4];
+        window.setTimeout(() => {
+            const wrap = document.createElement("div");
+            wrap.className = "clap-fx-burst";
+            wrap.setAttribute("role", "presentation");
+            wrap.style.setProperty("--clap-nudge-a", ((handIndexA * 7) % 24 - 12) + "px");
+            wrap.style.setProperty("--clap-nudge-b", ((handIndexB * 11) % 24 - 12) + "px");
+            const preL = document.createElement("pre");
+            preL.className = "clap-fx-pre";
+            preL.textContent = art5;
+            const preR = document.createElement("pre");
+            preR.className = "clap-fx-pre";
+            preR.textContent = art5;
+            const ha = document.createElement("div");
+            ha.className = "clap-fx-hand clap-fx-hand--a";
+            ha.appendChild(preL);
+            const hb = document.createElement("div");
+            hb.className = "clap-fx-hand clap-fx-hand--b";
+            hb.appendChild(preR);
+            wrap.appendChild(ha);
+            wrap.appendChild(hb);
+            root.appendChild(wrap);
+            window.setTimeout(() => { if (wrap.parentNode) wrap.parentNode.removeChild(wrap); }, 1100);
+        }, staggerDelayMs);
+    }
+    function processClappingThisTick() {
+        if (!isClappingUnlocked() || gamePaused) return;
+        const nowMs = Date.now();
+        function handOffClapCooldown(handIndex) {
+            const until = clapCooldownUntilMsByHand[handIndex] || 0;
+            return nowMs >= until;
+        }
+        const current = [];
+        for (let i = 0; i < unlockedHands; i++) current[i] = hands[i] ? hands[i].count : 0;
+        const fives = [];
+        for (let i = 0; i < unlockedHands; i++) {
+            if (current[i] === 5) fives.push(i);
+        }
+        fives.sort((a, b) => a - b);
+        const usedFiveSlot = new Array(fives.length).fill(false);
+        let clapPairsThisTick = 0;
+        let stagger = 0;
+        const bonusHandsOneIndexed = [];
+        for (let ia = 0; ia < fives.length && clapPairsThisTick < CLAP_MAX_PAIRS_PER_TICK; ia++) {
+            if (usedFiveSlot[ia]) continue;
+            const a = fives[ia];
+            for (let ib = ia + 1; ib < fives.length; ib++) {
+                if (usedFiveSlot[ib]) continue;
+                const b = fives[ib];
+                const heldFromLastFrame = clapDigitPrevious[a] === 5 && clapDigitPrevious[b] === 5;
+                // Both hands must be off cooldown; a cooling-down hand never claps with a ready hand.
+                if (!heldFromLastFrame && handOffClapCooldown(a) && handOffClapCooldown(b)) {
+                    usedFiveSlot[ia] = true;
+                    usedFiveSlot[ib] = true;
+                    clapPairsThisTick++;
+                    playClapScreenAnimation(a, b, stagger);
+                    stagger += CLAP_ANIM_STAGGER_MS;
+                    clapCooldownUntilMsByHand[a] = nowMs + CLAP_COOLDOWN_MS;
+                    clapCooldownUntilMsByHand[b] = nowMs + CLAP_COOLDOWN_MS;
+                    let bonusA = false;
+                    let bonusB = false;
+                    if (Math.random() < CLAP_BONUS_CHANCE) {
+                        speedBonusLevel[a] = (speedBonusLevel[a] || 0) + 1;
+                        bonusHandsOneIndexed.push(a + 1);
+                        if (hands[a]) hands[a].tickAccBig = 0n;
+                        bonusA = true;
+                    }
+                    if (Math.random() < CLAP_BONUS_CHANCE) {
+                        speedBonusLevel[b] = (speedBonusLevel[b] || 0) + 1;
+                        bonusHandsOneIndexed.push(b + 1);
+                        if (hands[b]) hands[b].tickAccBig = 0n;
+                        bonusB = true;
+                    }
+                    if (!bonusA && !bonusB) {
+                        addToLog("Clap! Hand " + (a + 1) + " and Hand " + (b + 1) + "—no bonus this time. Better luck next round.", "tip");
+                    }
+                    break;
+                }
+            }
+        }
+        for (let i = 0; i < unlockedHands; i++) clapDigitPrevious[i] = current[i];
+        if (bonusHandsOneIndexed.length > 0) {
+            markMeaningfulProgress();
+            addToLog("Clap! Bonus speed level on " + bonusHandsOneIndexed.map(n => "Hand " + n).join(", ") + ".", "tip");
+            updateSpeedUpgradeUI();
+            updateRateDisplay();
+        }
+    }
+
+    function runGameLoopStep() {
         const dt = GAME_LOOP_MS;
         const dtSec = GAME_LOOP_MS / 1000;
         tickBackgroundNumberModules(dtSec);
@@ -2916,8 +3340,7 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
         const ticksPerHand = Array(unlockedHands).fill(0);
         // Hands with the same speed multiplier share one tick phase and the same 1–10 digit
         // so pair-style combos stay achievable (stable bucket key: mult is an exact power of 2).
-        // Slowdown must use the same tick cadence as getTickIntervalMs / UI: 1 animation tick/s per hand.
-        // Speed upgrades still multiply output while slowed (same total as pre-cap: 2^level ticks/s × slowdown).
+        // Slowdown only scales tick *value* per hand (see effectiveTicksPerHand); cadence follows Speed.
         const buckets = new Map();
         hands.forEach(h => {
             const handIndex = h.id - 1;
@@ -2926,8 +3349,7 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
             const baseSpeed = (Number.isFinite(h.baseSpeed) && h.baseSpeed > 0) ? h.baseSpeed : HAND_BASE_SPEED;
             const intervalMs = getTickIntervalMs(baseSpeed, handIndex);
             if (intervalMs <= 0) return;
-            const slowOn = (slowdownLevel[handIndex] ?? 0) > 0;
-            const bucketKey = (slowOn ? "s" : "n") + ":" + mult;
+            const bucketKey = String(mult);
             if (!buckets.has(bucketKey)) buckets.set(bucketKey, []);
             buckets.get(bucketKey).push(h);
         });
@@ -2935,9 +3357,8 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
             groupHands.sort((a, b) => a.id - b.id);
             const leader = groupHands[0];
             const handIndexLeader = leader.id - 1;
-            const level = speedLevel[handIndexLeader] ?? 0;
-            const slowOn = (slowdownLevel[handIndexLeader] ?? 0) > 0;
-            const multBig = slowOn ? 1n : getSpeedMultiplierBigForLevel(level);
+            const levelEff = getEffectiveSpeedLevel(handIndexLeader);
+            const multBig = getSpeedMultiplierBigForLevel(levelEff);
             const baseSpeed = (Number.isFinite(leader.baseSpeed) && leader.baseSpeed > 0) ? leader.baseSpeed : HAND_BASE_SPEED;
             const intervalMs = getTickIntervalMs(baseSpeed, handIndexLeader);
             if (intervalMs <= 0) return;
@@ -2959,6 +3380,7 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
                 h.render();
             });
         });
+        processClappingThisTick();
         const totalTicks = ticksPerHand.reduce((a, b) => a + b, 0);
         if (totalChanges >= TURBO_UNLOCK_COUNT) {
             if (turboBoostUnlocked) {
@@ -2970,10 +3392,7 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
         if (totalTicks > 0) {
             const comboMult = getComboMultiplier();
             const turboMult = getTurboCountMultiplier();
-            const effectiveTicksPerHand = ticksPerHand.map((t, i) => {
-                if ((slowdownLevel[i] ?? 0) > 0) return t * getSlowdownMultiplier(i) * getSpeedMultiplier(i);
-                return t * getSlowdownMultiplier(i);
-            });
+            const effectiveTicksPerHand = ticksPerHand.map((t, i) => t * getSlowdownMultiplier(i));
             const totalEffectiveTicks = effectiveTicksPerHand.reduce((a, b) => a + b, 0);
             if (totalEffectiveTicks > 0) {
                 const bonusTicks = Math.round(totalEffectiveTicks * comboMult * turboMult);
@@ -2998,12 +3417,33 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
                 updateRateDisplay();
             }
         }
+        updateComboUI();
+    }
+
+    function gameLoopTick() {
+        if (gamePaused) {
+            lastGameLoopPerfMs = null;
+            simLagMs = 0;
+            return;
+        }
+        const perfNow = performance.now();
+        let elapsed = lastGameLoopPerfMs != null ? perfNow - lastGameLoopPerfMs : GAME_LOOP_MS;
+        lastGameLoopPerfMs = perfNow;
+        if (!Number.isFinite(elapsed) || elapsed < 0) elapsed = GAME_LOOP_MS;
+        elapsed = Math.min(elapsed, GAME_LOOP_MAX_ELAPSED_MS);
+        simLagMs += elapsed;
+        if (simLagMs > GAME_LOOP_MAX_LAG_MS) simLagMs = GAME_LOOP_MAX_LAG_MS;
+        let catchUpSteps = 0;
+        while (simLagMs >= GAME_LOOP_MS && catchUpSteps < GAME_LOOP_MAX_CATCHUP_STEPS) {
+            runGameLoopStep();
+            simLagMs -= GAME_LOOP_MS;
+            catchUpSteps++;
+        }
         const nowOverview = Date.now();
         if (nowOverview - lastOverviewUpdateMs >= 1000) {
             lastOverviewUpdateMs = nowOverview;
             refreshGlobalOverviewPanelIfOpen();
         }
-        updateComboUI();
     }
     let lastUIUpdateMs = 0;
     let lastOverviewUpdateMs = 0;
@@ -3062,6 +3502,10 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
         function positionVisibleTooltips() {
             speedUpgradesContainerEl.querySelectorAll(".upgrade-btn.tooltip-open, .upgrade-btn:hover, .upgrade-btn:focus-within").forEach(positionTooltipForButton);
         }
+        function onWindowScrollResizeForUpgrades() {
+            positionVisibleTooltips();
+            scheduleHandUpgradeScrollHintUpdate();
+        }
         speedUpgradesContainerEl.addEventListener("mouseover", function(e) {
             const btn = e.target.closest(".upgrade-btn");
             if (!btn) return;
@@ -3072,8 +3516,8 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
             if (!btn) return;
             requestAnimationFrame(() => positionTooltipForButton(btn));
         });
-        window.addEventListener("resize", positionVisibleTooltips);
-        window.addEventListener("scroll", positionVisibleTooltips, true);
+        window.addEventListener("resize", onWindowScrollResizeForUpgrades);
+        window.addEventListener("scroll", onWindowScrollResizeForUpgrades, true);
         speedUpgradesContainerEl.addEventListener("click", function(e) {
             const auraBtn = e.target.closest(".time-warp-aura-btn");
             if (auraBtn) {
