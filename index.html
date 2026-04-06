@@ -1544,6 +1544,7 @@ After your first ascension, open Global Overview to spend Essence on permanent s
     const upgradeContainer = document.getElementById("upgrade-container");
     const speedUpgradesContainerEl = document.getElementById("speed-upgrades-container");
     const speedRowRefs = [];
+    let handUpgradeDetailTipLogged = false;
 
     function ensureSpeedRows() {
         if (!speedUpgradesContainerEl) return;
@@ -1559,6 +1560,8 @@ After your first ascension, open Global Overview to spend Essence on permanent s
             handCol.className = "hand-left-column";
             const handSlot = document.createElement("div");
             handSlot.className = "hand-slot";
+            handSlot.setAttribute("tabindex", "0");
+            handSlot.setAttribute("aria-label", "Hand " + handNum + " — hover or focus for production details");
             const auraBtn = document.createElement("button");
             auraBtn.type = "button";
             auraBtn.className = "time-warp-aura-btn";
@@ -1567,7 +1570,14 @@ After your first ascension, open Global Overview to spend Essence on permanent s
             auraBtn.title = "Grants " + TIME_WARP_MANUAL_CLICK_SCALE + "× 60s of this hand's effective rate";
             auraBtn.style.display = "none";
             auraBtn.textContent = "Time Warp";
-            handSlot.appendChild(auraBtn);
+            const handSlotMain = document.createElement("div");
+            handSlotMain.className = "hand-slot-main";
+            handSlotMain.appendChild(auraBtn);
+            const handHeadingLabel = document.createElement("span");
+            handHeadingLabel.className = "speed-upgrade-label hand-slot-hand-label";
+            handHeadingLabel.textContent = "Hand " + handNum;
+            handHeadingLabel.setAttribute("aria-hidden", "true");
+            handSlotMain.appendChild(handHeadingLabel);
             const statusBlock = document.createElement("div");
             statusBlock.className = "hand-status-block";
             statusBlock.setAttribute("role", "group");
@@ -1578,20 +1588,39 @@ After your first ascension, open Global Overview to spend Essence on permanent s
                 "<div class=\"hand-status-line\"><span class=\"hand-status-k\">Effective CPS</span> <span class=\"hand-status-v hand-status-effective\"></span></div>" +
                 "<div class=\"hand-status-formula\" aria-hidden=\"true\"></div></div>" +
                 "<div class=\"hand-status-compact\" aria-hidden=\"true\"></div>";
+            handSlot.appendChild(handSlotMain);
+            handSlot.appendChild(statusBlock);
             handCol.appendChild(handSlot);
             const row = document.createElement("div");
             row.className = "speed-upgrade-row";
             row.setAttribute("data-hand-index", String(i));
-            row.innerHTML = "<span class=\"speed-upgrade-label\">Hand " + handNum + "</span> " +
-                "<span class=\"speed-upgrade-level\"></span> " +
-                "<button type=\"button\" class=\"upgrade-btn speed-upgrade-btn\" data-hand-index=\"" + i + "\"><span class=\"upgrade-btn-fill\"></span><span class=\"upgrade-btn-label\">Upgrade</span><span class=\"upgrade-details-tooltip\" role=\"tooltip\"></span></button> " +
-                "<label class=\"speed-autobuy-wrap\"><input type=\"checkbox\" class=\"speed-autobuy-toggle\" data-hand-index=\"" + i + "\"><span class=\"speed-autobuy-switch\"><span class=\"speed-autobuy-knob\"></span></span><span class=\"speed-autobuy-label\">Autobuy</span></label><span class=\"speed-autobuy-message\"></span> " +
-                "<span class=\"upgrade-row-cheapen\" style=\"display: none;\"><span class=\"cheapen-upgrade-level\"></span><button type=\"button\" class=\"upgrade-btn cheapen-upgrade-btn\" data-hand-index=\"" + i + "\"><span class=\"upgrade-btn-fill\"></span><span class=\"upgrade-btn-label\">Cheapen</span><span class=\"upgrade-details-tooltip\" role=\"tooltip\"></span></button></span>" +
-                "<span class=\"upgrade-row-slowdown\" style=\"display: none;\"><span class=\"slowdown-upgrade-level\"></span><button type=\"button\" class=\"upgrade-btn slowdown-upgrade-btn\" data-hand-index=\"" + i + "\"><span class=\"upgrade-btn-fill\"></span><span class=\"upgrade-btn-label\">Slowdown</span><span class=\"upgrade-details-tooltip\" role=\"tooltip\"></span></button></span>";
+            row.innerHTML = "<span class=\"upgrade-pillar upgrade-pillar--speed\">" +
+                "<span class=\"upgrade-pillar-heading\">Speed</span>" +
+                "<button type=\"button\" class=\"upgrade-btn speed-upgrade-btn\" data-hand-index=\"" + i + "\">" +
+                "<span class=\"upgrade-btn-fill\"></span>" +
+                "<span class=\"upgrade-btn-body\"><span class=\"upgrade-btn-level\"></span><span class=\"upgrade-btn-label\">Upgrade</span></span>" +
+                "<span class=\"upgrade-details-tooltip\" role=\"tooltip\"></span>" +
+                "</button></span>" +
+                "<span class=\"speed-autobuy-stack\"><label class=\"speed-autobuy-wrap\"><input type=\"checkbox\" class=\"speed-autobuy-toggle\" data-hand-index=\"" + i + "\"><span class=\"speed-autobuy-switch\"><span class=\"speed-autobuy-knob\"></span></span><span class=\"speed-autobuy-label\">Autobuy</span></label><span class=\"speed-autobuy-message\"></span></span>" +
+                "<span class=\"upgrade-row-cheapen\" style=\"display: none;\">" +
+                "<span class=\"upgrade-pillar upgrade-pillar--cheapen\">" +
+                "<span class=\"upgrade-pillar-heading\">Cheapen</span>" +
+                "<button type=\"button\" class=\"upgrade-btn cheapen-upgrade-btn\" data-hand-index=\"" + i + "\">" +
+                "<span class=\"upgrade-btn-fill\"></span>" +
+                "<span class=\"upgrade-btn-body\"><span class=\"upgrade-btn-level\"></span><span class=\"upgrade-btn-label\">Cheapen</span></span>" +
+                "<span class=\"upgrade-details-tooltip\" role=\"tooltip\"></span>" +
+                "</button></span></span>" +
+                "<span class=\"upgrade-row-slowdown\" style=\"display: none;\">" +
+                "<span class=\"upgrade-pillar upgrade-pillar--slowdown\">" +
+                "<span class=\"upgrade-pillar-heading\">Slowdown</span>" +
+                "<button type=\"button\" class=\"upgrade-btn slowdown-upgrade-btn\" data-hand-index=\"" + i + "\">" +
+                "<span class=\"upgrade-btn-fill\"></span>" +
+                "<span class=\"upgrade-btn-body\"><span class=\"upgrade-btn-level\"></span><span class=\"upgrade-btn-label\">Slowdown</span></span>" +
+                "<span class=\"upgrade-details-tooltip\" role=\"tooltip\"></span>" +
+                "</button></span></span>";
             const upgradesCol = document.createElement("div");
             upgradesCol.className = "hand-upgrades-column";
             upgradesCol.appendChild(row);
-            upgradesCol.appendChild(statusBlock);
             wrapper.appendChild(handCol);
             wrapper.appendChild(upgradesCol);
             speedUpgradesContainerEl.appendChild(wrapper);
@@ -1600,15 +1629,16 @@ After your first ascension, open Global Overview to spend Essence on permanent s
             speedRowRefs.push({
                 handUpgradeRowEl: wrapper,
                 handSlotEl: handSlot,
-                levelEl: row.querySelector(".speed-upgrade-level"),
+                handMountEl: handSlotMain,
+                speedLevelEl: row.querySelector(".speed-upgrade-btn .upgrade-btn-level"),
                 btn: row.querySelector(".speed-upgrade-btn"),
                 autobuyToggleEl: row.querySelector(".speed-autobuy-toggle"),
                 autobuyMessageEl: row.querySelector(".speed-autobuy-message"),
                 cheapenWrapEl: cheapenWrap,
-                cheapenLevelEl: row.querySelector(".cheapen-upgrade-level"),
+                cheapenLevelEl: row.querySelector(".cheapen-upgrade-btn .upgrade-btn-level"),
                 cheapenBtn: row.querySelector(".cheapen-upgrade-btn"),
                 slowdownWrapEl: slowdownWrap,
-                slowdownLevelEl: row.querySelector(".slowdown-upgrade-level"),
+                slowdownLevelEl: row.querySelector(".slowdown-upgrade-btn .upgrade-btn-level"),
                 slowdownBtn: row.querySelector(".slowdown-upgrade-btn"),
                 timeWarpAuraBtn: auraBtn,
                 statusCountEl: statusBlock.querySelector(".hand-status-count"),
@@ -1654,9 +1684,9 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         const p = Math.max(0, Math.min(1, Number(progress01) || 0));
         const pct = (p * 100).toFixed(2) + "%";
         if (fill) fill.style.width = pct;
-        let tint = "rgba(104, 126, 255, 0.38)";
-        if (btn.classList.contains("cheapen-upgrade-btn")) tint = "rgba(96, 200, 120, 0.42)";
-        else if (btn.classList.contains("slowdown-upgrade-btn")) tint = "rgba(255, 170, 80, 0.45)";
+        let tint = "rgba(72, 98, 220, 0.58)";
+        if (btn.classList.contains("cheapen-upgrade-btn")) tint = "rgba(56, 175, 95, 0.58)";
+        else if (btn.classList.contains("slowdown-upgrade-btn")) tint = "rgba(235, 130, 48, 0.58)";
         if (p <= 0) {
             btn.style.backgroundImage = "";
         } else {
@@ -1664,7 +1694,13 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         }
     }
     function updateSpeedUpgradeUI() {
-        if (totalChanges >= 10) upgradeContainer.classList.add("show-upgrade-content");
+        if (totalChanges >= 10) {
+            upgradeContainer.classList.add("show-upgrade-content");
+            if (!handUpgradeDetailTipLogged) {
+                handUpgradeDetailTipLogged = true;
+                addToLog("Hover or focus a hand to see count and CPS detail.", "tip");
+            }
+        }
         if (speedUpgradesContainerEl) {
             ensureSpeedRows();
             for (let i = 0; i < unlockedHands; i++) {
@@ -1679,26 +1715,41 @@ After your first ascension, open Global Overview to spend Essence on permanent s
                 const currentMult = getSpeedMultiplierForLevel(effLv);
                 const nextMult = getSpeedMultiplierForLevel(effLv + 1);
                 const percent = currentMult > 0 ? (nextMult / currentMult - 1) * 100 : 0;
-                ref.levelEl.innerHTML = "Level " + speedLevel[i] + (bonusB > 0 ? " <span class=\"speed-level-bonus\" title=\"Clap bonus\">+" + bonusB + "</span>" : "");
+                const sl = speedLevel[i] ?? 0;
+                if (ref.speedLevelEl) {
+                    if (sl === 0 && bonusB === 0) {
+                        ref.speedLevelEl.innerHTML = "";
+                        ref.speedLevelEl.classList.add("upgrade-btn-level--hidden");
+                    } else {
+                        ref.speedLevelEl.classList.remove("upgrade-btn-level--hidden");
+                        ref.speedLevelEl.innerHTML = String(sl) + (bonusB > 0 ? " <span class=\"speed-level-bonus\" title=\"Clap bonus\">+" + bonusB + "</span>" : "");
+                    }
+                }
+                const labelEl = ref.btn && ref.btn.querySelector(".upgrade-btn-label");
+                if (labelEl) labelEl.textContent = sl > 0 || bonusB > 0 ? "" : "Upgrade";
                 ref.btn.disabled = !canAfford;
                 const progress = cost > 0 ? Math.max(0, Math.min(1, balance / cost)) : 1;
                 setUpgradeButtonProgress(ref.btn, progress);
+                ref.btn.classList.toggle("upgrade-btn--afford-pulse", canAfford);
                 ref.btn.classList.remove("upgrade-btn-maxed");
                 setUpgradeTooltipText(ref.btn, "Base level: " + speedLevel[i] + "\nBonus (clap): " + bonusB + "\nEffective: " + effLv + "\nBalance/Cost: " + formatCount(balance) + " / " + formatCount(cost) + "\nEffect next: +" + percent.toFixed(1) + "%");
                 if (ref.autobuyToggleEl) {
                     ref.autobuyToggleEl.checked = !!autoBuyEnabledByHand[i];
                     ref.autobuyToggleEl.disabled = !autoBuyUnlocked;
-                    ref.autobuyToggleEl.closest(".speed-autobuy-wrap").style.visibility = (totalChanges >= 100 || autoBuyUnlocked) ? "visible" : "hidden";
+                    const autobuyStack = ref.autobuyToggleEl.closest(".speed-autobuy-stack");
+                    if (autobuyStack) autobuyStack.style.visibility = (totalChanges >= 100 || autoBuyUnlocked) ? "visible" : "hidden";
                 }
                 if (ref.autobuyMessageEl) {
-                    if (!autoBuyUnlocked) {
+                    if (!autoBuyUnlocked || !autoBuyEnabledByHand[i]) {
                         ref.autobuyMessageEl.textContent = "";
-                    } else if (!autoBuyEnabledByHand[i]) {
-                        ref.autobuyMessageEl.textContent = "The autobuyer is inactive.";
+                        ref.autobuyMessageEl.classList.remove("speed-autobuy-message--urgent");
                     } else if ((autoBuyCountdownSecondsByHand[i] || 0) > 0) {
-                        ref.autobuyMessageEl.textContent = Math.ceil(autoBuyCountdownSecondsByHand[i]) + " seconds until autobuy buys the next upgrade.";
+                        const secLeft = Math.ceil(autoBuyCountdownSecondsByHand[i]);
+                        ref.autobuyMessageEl.textContent = secLeft + "s";
+                        ref.autobuyMessageEl.classList.toggle("speed-autobuy-message--urgent", secLeft <= 3);
                     } else {
-                        ref.autobuyMessageEl.textContent = "Autobuy is waiting until there is enough count to buy the next upgrade.";
+                        ref.autobuyMessageEl.textContent = "Unaffordable";
+                        ref.autobuyMessageEl.classList.remove("speed-autobuy-message--urgent");
                     }
                 }
             }
@@ -2016,6 +2067,7 @@ After your first ascension, open Global Overview to spend Essence on permanent s
             for (let i = 0; i < speedRowRefs.length; i++) {
                 const ref = speedRowRefs[i];
                 if (ref && ref.cheapenWrapEl) ref.cheapenWrapEl.style.display = "none";
+                if (ref && ref.cheapenBtn) ref.cheapenBtn.classList.remove("upgrade-btn--afford-pulse");
             }
             updateHandUpgradeScrollHint();
             return;
@@ -2031,19 +2083,31 @@ After your first ascension, open Global Overview to spend Essence on permanent s
             const balance = handEarnings[i] || 0;
             const canAfford = cost !== null && balance >= cost;
             if (level >= cap) {
-                ref.cheapenLevelEl.textContent = "Level " + level + "/" + cap;
+                if (ref.cheapenLevelEl) {
+                    ref.cheapenLevelEl.textContent = level > 0 ? level + "/" + cap : "";
+                    ref.cheapenLevelEl.classList.toggle("upgrade-btn-level--hidden", level <= 0);
+                }
                 ref.cheapenBtn.style.display = "";
                 ref.cheapenBtn.disabled = true;
                 setUpgradeButtonProgress(ref.cheapenBtn, 1);
                 ref.cheapenBtn.classList.add("upgrade-btn-maxed");
+                ref.cheapenBtn.classList.remove("upgrade-btn--afford-pulse");
                 setUpgradeTooltipText(ref.cheapenBtn, "Level: " + level + "/" + cap + "\nBalance/Cost: MAX\nEffect: Maxed");
+                const cheapenLbl = ref.cheapenBtn && ref.cheapenBtn.querySelector(".upgrade-btn-label");
+                if (cheapenLbl) cheapenLbl.textContent = level > 0 ? "" : "Cheapen";
             } else {
-                ref.cheapenLevelEl.textContent = "Level " + level + "/" + cap;
+                if (ref.cheapenLevelEl) {
+                    ref.cheapenLevelEl.textContent = level > 0 ? level + "/" + cap : "";
+                    ref.cheapenLevelEl.classList.toggle("upgrade-btn-level--hidden", level <= 0);
+                }
+                const cheapenLbl = ref.cheapenBtn && ref.cheapenBtn.querySelector(".upgrade-btn-label");
+                if (cheapenLbl) cheapenLbl.textContent = level > 0 ? "" : "Cheapen";
                 ref.cheapenBtn.style.display = "";
                 ref.cheapenBtn.disabled = !canAfford;
                 const progress = cost > 0 ? Math.max(0, Math.min(1, balance / cost)) : 1;
                 setUpgradeButtonProgress(ref.cheapenBtn, progress);
                 ref.cheapenBtn.classList.remove("upgrade-btn-maxed");
+                ref.cheapenBtn.classList.toggle("upgrade-btn--afford-pulse", canAfford);
                 setUpgradeTooltipText(ref.cheapenBtn, "Level: " + level + "/" + cap + "\nBalance/Cost: " + formatCount(balance) + " / " + formatCount(cost) + "\nEffect: " + getCheapenEffectText(nextLevel));
             }
         }
@@ -2171,6 +2235,7 @@ After your first ascension, open Global Overview to spend Essence on permanent s
             if (!ref || !ref.slowdownWrapEl) continue;
             if (!unlocked) {
                 ref.slowdownWrapEl.style.display = "none";
+                if (ref.slowdownBtn) ref.slowdownBtn.classList.remove("upgrade-btn--afford-pulse");
                 continue;
             }
             ref.slowdownWrapEl.style.display = "";
@@ -2180,19 +2245,31 @@ After your first ascension, open Global Overview to spend Essence on permanent s
             const balance = handEarnings[i] || 0;
             const canAfford = cost !== null && balance >= cost;
             if (level >= MAX_SLOWDOWN_LEVEL) {
-                ref.slowdownLevelEl.textContent = "Slowdown " + level + "/" + MAX_SLOWDOWN_LEVEL;
+                if (ref.slowdownLevelEl) {
+                    ref.slowdownLevelEl.textContent = level > 0 ? level + "/" + MAX_SLOWDOWN_LEVEL : "";
+                    ref.slowdownLevelEl.classList.toggle("upgrade-btn-level--hidden", level <= 0);
+                }
                 ref.slowdownBtn.style.display = "";
                 ref.slowdownBtn.disabled = true;
                 setUpgradeButtonProgress(ref.slowdownBtn, 1);
                 ref.slowdownBtn.classList.add("upgrade-btn-maxed");
+                ref.slowdownBtn.classList.remove("upgrade-btn--afford-pulse");
                 setUpgradeTooltipText(ref.slowdownBtn, "Level: " + level + "/" + MAX_SLOWDOWN_LEVEL + "\nBalance/Cost: MAX\nEffect: Maxed");
+                const slowLbl = ref.slowdownBtn && ref.slowdownBtn.querySelector(".upgrade-btn-label");
+                if (slowLbl) slowLbl.textContent = level > 0 ? "" : "Slowdown";
             } else {
-                ref.slowdownLevelEl.textContent = "Slowdown " + level + "/" + MAX_SLOWDOWN_LEVEL;
+                if (ref.slowdownLevelEl) {
+                    ref.slowdownLevelEl.textContent = level > 0 ? level + "/" + MAX_SLOWDOWN_LEVEL : "";
+                    ref.slowdownLevelEl.classList.toggle("upgrade-btn-level--hidden", level <= 0);
+                }
+                const slowLbl = ref.slowdownBtn && ref.slowdownBtn.querySelector(".upgrade-btn-label");
+                if (slowLbl) slowLbl.textContent = level > 0 ? "" : "Slowdown";
                 ref.slowdownBtn.style.display = "";
                 ref.slowdownBtn.disabled = !canAfford;
                 const progress = cost > 0 ? Math.max(0, Math.min(1, balance / cost)) : 1;
                 setUpgradeButtonProgress(ref.slowdownBtn, progress);
                 ref.slowdownBtn.classList.remove("upgrade-btn-maxed");
+                ref.slowdownBtn.classList.toggle("upgrade-btn--afford-pulse", canAfford);
                 setUpgradeTooltipText(ref.slowdownBtn, "Level: " + level + "/" + MAX_SLOWDOWN_LEVEL + "\nBalance/Cost: " + formatCount(balance) + " / " + formatCount(cost) + "\nEffect: " + getSlowdownEffectText(nextLevel));
             }
         }
@@ -2791,7 +2868,7 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         ensureSpeedRows();
         while (hands.length < unlockedHands) {
             const handNum = hands.length + 1;
-            const slot = speedRowRefs[handNum - 1]?.handSlotEl;
+            const slot = speedRowRefs[handNum - 1]?.handMountEl;
             hands.push(new HandCounter(handNum, HAND_BASE_SPEED, slot));
         }
         autoBuyUnlocked = !!data.autoBuyUnlocked;
@@ -2973,7 +3050,7 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         markMeaningfulProgress();
         ensureSpeedRows();
         addToLog("Hand " + unlockedHands + " unlocked", "milestone");
-        const slot = speedRowRefs[unlockedHands - 1]?.handSlotEl;
+        const slot = speedRowRefs[unlockedHands - 1]?.handMountEl;
         hands.push(new HandCounter(unlockedHands, HAND_BASE_SPEED, slot));
         checkStoryBanners();
         updateEarnedBonusesUI();
@@ -2992,7 +3069,7 @@ After your first ascension, open Global Overview to spend Essence on permanent s
        INITIALIZE FIRST HAND (appears immediately, in same slot as after 10)
     --------------------------------------------------------- */
     ensureSpeedRows();
-    hands.push(new HandCounter(1, HAND_BASE_SPEED, speedRowRefs[0]?.handSlotEl));
+    hands.push(new HandCounter(1, HAND_BASE_SPEED, speedRowRefs[0]?.handMountEl));
 
     /* ---------------------------------------------------------
        STORY BANNERS (celebratory, pause game; reviewable later)
@@ -3493,8 +3570,8 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         if (h0) {
             h0.count = 1;
             h0.tickAccBig = 0n;
-            if (h0.el && speedRowRefs[0] && speedRowRefs[0].handSlotEl && h0.el.parentNode !== speedRowRefs[0].handSlotEl) {
-                speedRowRefs[0].handSlotEl.appendChild(h0.el);
+            if (h0.el && speedRowRefs[0] && speedRowRefs[0].handMountEl && h0.el.parentNode !== speedRowRefs[0].handMountEl) {
+                speedRowRefs[0].handMountEl.appendChild(h0.el);
             }
             h0.render();
         }
