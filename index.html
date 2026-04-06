@@ -20,7 +20,7 @@
     <!-- Left Sidebar Navigation -->
     <div id="sidebar">
         <button type="button" class="nav-btn" data-mode="1" aria-label="Number 1">1</button>
-        <button type="button" class="nav-btn nav-btn--soon" data-mode="2" aria-label="Number 2 (coming soon)" title="Coming soon">2</button>
+        <button type="button" class="nav-btn" data-mode="2" aria-label="Number 2">2</button>
         <button type="button" class="nav-btn nav-btn--soon" data-mode="3" aria-label="Number 3 (coming soon)" title="Coming soon">3</button>
         <button type="button" class="nav-btn nav-btn--soon" data-mode="5" aria-label="Number 5 (coming soon)" title="Coming soon">5</button>
         <button type="button" class="nav-btn nav-btn--soon" data-mode="7" aria-label="Number 7 (coming soon)" title="Coming soon">7</button>
@@ -85,6 +85,18 @@
             </div>
         </div>
 
+        <div id="ascension-ready-banner" class="ascension-ready-banner" hidden role="region" aria-label="Ascension ready">
+            <div class="ascension-ready-banner__aurora" aria-hidden="true"></div>
+            <div class="ascension-ready-banner__inner">
+                <div class="ascension-ready-banner__icon" aria-hidden="true">✦</div>
+                <div class="ascension-ready-banner__copy">
+                    <span class="ascension-ready-banner__title">Ascension is ready</span>
+                    <span class="ascension-ready-banner__sub">Start a new Number 1 run and earn <strong>Ascension Essence</strong> — your skill trees stay forever.</span>
+                </div>
+                <button type="button" id="ascension-ready-cta" class="ascension-ready-banner__cta">Ascend now</button>
+            </div>
+        </div>
+
         <!-- Speed Upgrade (per hand) + Hands aligned left (same container from load) -->
         <div id="upgrade-container" class="upgrade-container">
             <div id="upgrade-scroll-hint" class="upgrade-scroll-hint" hidden role="region" aria-label="Hand upgrade hints">
@@ -145,7 +157,9 @@
             <h2 class="story-banner-title">Ascension — Number 1</h2>
             <div class="story-banner-body">Ascension resets your Number 1 run: all extra hands are folded away, speed and cheapen upgrades are cleared, earned combo bonuses are cleared, turbo meter and unlock state reset, and short- and long-term objective checkmarks start fresh.
 
-You keep Ascension Essence forever. The Essence you gain scales with your total count at the moment you ascend — push higher before ascending to earn more.</div>
+You keep Ascension Essence forever. The Essence you gain scales with your total count at the moment you ascend — push higher before ascending to earn more.
+
+After your first ascension, open Global Overview to spend Essence on permanent skill branches (Tempo, Overdrive, …). You can respec for free any time.</div>
             <button type="button" id="ascension-intro-continue" class="story-banner-close">Continue</button>
         </div>
     </div>
@@ -384,7 +398,8 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
     /** Persistent prestige currency for Number 1 (run stats reset on ascend). */
     let number1AscensionEssence = 0;
     let number1HasAscended = false;
-    let number1AscensionUpgrades = { cheapenCap: 0, turboScaling: 0, timeWarpOverflow: 0 };
+    /** Purchased skill-tree node ids (Tempo / Overdrive chains — see PRD MVP). */
+    let number1AscensionNodeIds = [];
     /** If false, first ascend shows the teaching overlay (PRD: first completion only). */
     let ascensionNumber1IntroSeen = false;
 
@@ -412,6 +427,9 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
     const milestoneEssenceLineEl = document.getElementById("milestone-essence-line");
     const milestoneProgressFillEl = document.getElementById("milestone-progress-fill");
     const playStageEl = document.getElementById("play-stage");
+    const ascensionReadyBannerEl = document.getElementById("ascension-ready-banner");
+    const ascensionReadyCtaEl = document.getElementById("ascension-ready-cta");
+    const globalOverviewPageBtn = document.querySelector(".page-btn[data-page=\"overview\"]");
     const menuBtn = document.getElementById("menu-btn");
     const settingsPanelEl = document.getElementById("settings-panel");
     const settingsCloseBtn = document.getElementById("settings-close");
@@ -443,12 +461,21 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
     }
     function syncInlinePanelsVsGameplay() {
         if (!upgradeContainer) return;
-        upgradeContainer.style.display = (isPagePanelOpen() || isSettingsPanelOpen()) ? "none" : "";
+        const panelOpen = isPagePanelOpen() || isSettingsPanelOpen();
+        upgradeContainer.style.display = panelOpen ? "none" : "";
+        const topCountRow = document.querySelector(".top-count-row");
+        if (topCountRow) {
+            const overviewOpen = isPagePanelOpen() && pagePanelEl && pagePanelEl.dataset.openPageId === "overview";
+            topCountRow.style.display = overviewOpen ? "none" : "";
+        }
     }
     function closeInlineMainStagePanels(opts) {
         const keep = (opts && opts.keep) || "";
         if (settingsPanelEl && keep !== "settings") settingsPanelEl.style.display = "none";
-        if (pagePanelEl && keep !== "page") pagePanelEl.style.display = "none";
+        if (pagePanelEl && keep !== "page") {
+            pagePanelEl.style.display = "none";
+            delete pagePanelEl.dataset.openPageId;
+        }
         syncInlinePanelsVsGameplay();
     }
     function initInlineRightPanels() {
@@ -520,7 +547,7 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
         { goal: 10000, text: "Stub milestone: produce 10,000 twos" }
     ];
     function isNumber2Unlocked() {
-        return !!number1HasAscended;
+        return unlockedNumbers.has(2);
     }
     function canTickNumber2() {
         return isNumber2Unlocked() && !!number2State.started;
@@ -811,11 +838,29 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
                 milestoneEssenceLineEl.style.display = "";
                 const ascPct = Math.max(0, Math.min(100, (totalChanges / ASCENSION_1_REQUIRED_TOTAL) * 100));
                 const handReqText = unlockedHands >= ASCENSION_1_MIN_HANDS ? "hands ready" : ("hands: " + unlockedHands + "/" + ASCENSION_1_MIN_HANDS);
-                const readinessText = isNumber1AscensionReady() ? " — Ascension ready (open Global Overview to ascend)" : (" — Ascension: " + formatCount(totalChanges) + " / " + formatCount(ASCENSION_1_REQUIRED_TOTAL) + " (" + ascPct.toFixed(2) + "%), " + handReqText);
+                const readinessText = isNumber1AscensionReady()
+                    ? " — Ascension ready! Use the banner on the main screen or Global Overview."
+                    : (" — Ascension: " + formatCount(totalChanges) + " / " + formatCount(ASCENSION_1_REQUIRED_TOTAL) + " (" + ascPct.toFixed(2) + "%), " + handReqText);
                 milestoneEssenceLineEl.textContent = "Ascension Essence (Number 1): " + formatCount(number1AscensionEssence) + readinessText;
             } else {
                 milestoneEssenceLineEl.textContent = "";
                 milestoneEssenceLineEl.style.display = "none";
+            }
+        }
+        updateAscensionReadyChrome();
+    }
+    function updateAscensionReadyChrome() {
+        const ready = isNumber1AscensionReady();
+        if (ascensionReadyBannerEl) {
+            ascensionReadyBannerEl.hidden = !ready;
+            ascensionReadyBannerEl.setAttribute("aria-hidden", ready ? "false" : "true");
+        }
+        if (globalOverviewPageBtn) {
+            globalOverviewPageBtn.classList.toggle("page-btn--ascension-ready", ready);
+            if (ready) {
+                globalOverviewPageBtn.setAttribute("title", "Ascension ready — open to ascend or manage Essence");
+            } else {
+                globalOverviewPageBtn.removeAttribute("title");
             }
         }
     }
@@ -857,52 +902,328 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
     function isNumber1AscensionReady() {
         return unlockedHands >= ASCENSION_1_MIN_HANDS && totalChanges >= ASCENSION_1_REQUIRED_TOTAL;
     }
+    /** One arm per distinct route (clockwise from top). Positions come from `computeAscensionSnowflakeLayout()`. */
+    const ASCENSION_SNOWFLAKE_ARM_ROUTES = ["combo", "cheapen", "turbo", "speed", "warp"];
+    const ASCENSION_MAP_NODES = [
+        { id: "asc_chp_a", parents: [], route: "cheapen", tags: ["cheapen"], title: "Haggle primer", effect: "+1 max Cheapen level", cost: 5, grants: { cheapenCap: 1 } },
+        { id: "asc_chp_b", parents: ["asc_chp_a"], route: "cheapen", tags: ["cheapen"], title: "Bulk discount lore", effect: "+1 max Cheapen level", cost: 10, grants: { cheapenCap: 1 } },
+        { id: "asc_chp_c", parents: ["asc_chp_b"], route: "cheapen", tags: ["cheapen"], title: "Guild recognition", effect: "+1 max Cheapen level", cost: 20, grants: { cheapenCap: 1 } },
+        { id: "asc_chp_d", parents: ["asc_chp_c"], route: "cheapen", tags: ["cheapen"], title: "Master haggler", effect: "+1 max Cheapen level", cost: 40, grants: { cheapenCap: 1 } },
+        { id: "asc_cmb_a", parents: [], route: "combo", tags: ["combo"], title: "Pattern sense", effect: "+0.4% Combo multiplier", cost: 6, grants: { comboMultAdd: 0.004 } },
+        { id: "asc_cmb_b", parents: ["asc_cmb_a"], route: "combo", tags: ["combo"], title: "Rhythm counting", effect: "+0.4% Combo multiplier", cost: 12, grants: { comboMultAdd: 0.004 } },
+        { id: "asc_cmb_c", parents: ["asc_cmb_b"], route: "combo", tags: ["combo"], title: "Stack reader", effect: "+0.5% Combo multiplier", cost: 24, grants: { comboMultAdd: 0.005 } },
+        { id: "asc_cmb_d", parents: ["asc_cmb_c"], route: "combo", tags: ["combo"], title: "Grand patterns", effect: "+0.5% Combo multiplier", cost: 36, grants: { comboMultAdd: 0.005 } },
+        { id: "asc_spd_a", parents: [], route: "speed", tags: ["speed"], title: "Slick procurement", effect: "Speed upgrades cost 2% less", cost: 6, grants: { speedCostMult: 0.98 } },
+        { id: "asc_spd_b", parents: ["asc_spd_a"], route: "speed", tags: ["speed"], title: "Floor negotiator", effect: "Speed upgrades cost 2% less", cost: 12, grants: { speedCostMult: 0.98 } },
+        { id: "asc_spd_c", parents: ["asc_spd_b"], route: "speed", tags: ["speed"], title: "Velocity habits", effect: "Speed upgrades cost 2% less", cost: 24, grants: { speedCostMult: 0.98 } },
+        { id: "asc_spd_d", parents: ["asc_spd_c"], route: "speed", tags: ["speed"], title: "Bulk velocity", effect: "Speed upgrades cost 2% less", cost: 36, grants: { speedCostMult: 0.98 } },
+        { id: "asc_tur_a", parents: [], route: "turbo", tags: ["turbo"], title: "Overcharge basics", effect: "+25 Turbo meter; ×1.25 turbo cap", cost: 8, grants: { turboScaling: 1 } },
+        { id: "asc_tur_b", parents: ["asc_tur_a"], route: "turbo", tags: ["turbo"], title: "Gauge tuning", effect: "+25 Turbo meter; ×1.25 turbo cap", cost: 16, grants: { turboScaling: 1 } },
+        { id: "asc_tur_c", parents: ["asc_tur_b"], route: "turbo", tags: ["turbo"], title: "Burn efficiency", effect: "+25 Turbo meter; ×1.25 turbo cap", cost: 32, grants: { turboScaling: 1 } },
+        { id: "asc_wrp_a", parents: ["asc_tur_b"], route: "warp", tags: ["warp"], title: "Spillover I", effect: "+5% Time Warp overflow (cap 90%)", cost: 10, grants: { warpOverflow: 1 } },
+        { id: "asc_wrp_b", parents: ["asc_wrp_a"], route: "warp", tags: ["warp"], title: "Spillover II", effect: "+5% Time Warp overflow (cap 90%)", cost: 20, grants: { warpOverflow: 1 } },
+        { id: "asc_syn_ct", parents: ["asc_chp_c", "asc_tur_b"], route: "synergy", tags: ["cheapen", "turbo", "synergy"], title: "Tempo × Surge", effect: "+1 Cheapen cap & +1 Turbo scaling", cost: 35, grants: { cheapenCap: 1, turboScaling: 1 } },
+        { id: "asc_syn_cs", parents: ["asc_cmb_d", "asc_spd_d"], route: "synergy", tags: ["combo", "speed", "synergy"], title: "Patterns × Pace", effect: "+0.8% Combo & 3% cheaper speed", cost: 30, grants: { comboMultAdd: 0.008, speedCostMult: 0.97 } }
+    ];
+    const ASCENSION_MAP_NODE_BY_ID = {};
+    ASCENSION_MAP_NODES.forEach(n => { ASCENSION_MAP_NODE_BY_ID[n.id] = n; });
+    /** Pre-map ascension ids from early builds — any match clears the whole node list on load (no migration). */
+    const ASCENSION_LEGACY_NODE_ID_RE = /^(?:tempo_cheapen_|boost_turbo_|boost_warp_)/;
+    const ASCENSION_RESPEC_GROUP_TAGS = {
+        economy: ["cheapen", "combo", "speed"],
+        overdrive: ["turbo", "warp"]
+    };
+    function ascensionPurchasedSet() {
+        return new Set(number1AscensionNodeIds);
+    }
+    function computeAscensionGrantTotals() {
+        let cheapenCap = 0;
+        let turboScaling = 0;
+        let warpOverflow = 0;
+        let speedMult = 1;
+        let comboMultAdd = 0;
+        number1AscensionNodeIds.forEach(id => {
+            const def = ASCENSION_MAP_NODE_BY_ID[id];
+            if (!def || !def.grants) return;
+            const g = def.grants;
+            if (typeof g.cheapenCap === "number") cheapenCap += g.cheapenCap;
+            if (typeof g.turboScaling === "number") turboScaling += g.turboScaling;
+            if (typeof g.warpOverflow === "number") warpOverflow += g.warpOverflow;
+            if (typeof g.speedCostMult === "number" && g.speedCostMult > 0 && g.speedCostMult <= 1) speedMult *= g.speedCostMult;
+            if (typeof g.comboMultAdd === "number") comboMultAdd += g.comboMultAdd;
+        });
+        return { cheapenCap, turboScaling, warpOverflow, speedMult, comboMultAdd };
+    }
+    function getAscensionCheapenCapBonusFromTree() {
+        return computeAscensionGrantTotals().cheapenCap;
+    }
+    function getAscensionTurboScalingBonusFromTree() {
+        return computeAscensionGrantTotals().turboScaling;
+    }
+    function getAscensionWarpOverflowBonusFromTree() {
+        return computeAscensionGrantTotals().warpOverflow;
+    }
     function getMaxCheapenLevel() {
-        return BASE_MAX_CHEAPEN_LEVEL + (number1AscensionUpgrades.cheapenCap || 0);
+        return BASE_MAX_CHEAPEN_LEVEL + getAscensionCheapenCapBonusFromTree();
     }
     function getTurboMeterMax() {
-        return TURBO_BOOST_METER_BASE_MAX + (number1AscensionUpgrades.turboScaling || 0) * 25;
+        return TURBO_BOOST_METER_BASE_MAX + getAscensionTurboScalingBonusFromTree() * 25;
     }
     function getTurboCountMultiplierMax() {
-        return TURBO_COUNT_MULTIPLIER_BASE_MAX * Math.pow(1.25, number1AscensionUpgrades.turboScaling || 0);
+        return TURBO_COUNT_MULTIPLIER_BASE_MAX * Math.pow(1.25, getAscensionTurboScalingBonusFromTree());
     }
     function getTimeWarpOverflowRatio() {
-        return Math.min(0.9, TIME_WARP_OVERFLOW_BASE_RATIO + (number1AscensionUpgrades.timeWarpOverflow || 0) * 0.05);
+        return Math.min(0.9, TIME_WARP_OVERFLOW_BASE_RATIO + getAscensionWarpOverflowBonusFromTree() * 0.05);
     }
-    function getAscUpgradeCost(key) {
-        const lv = number1AscensionUpgrades[key] || 0;
-        if (key === "cheapenCap") return Math.round(5 * Math.pow(2, lv));
-        if (key === "turboScaling") return Math.round(8 * Math.pow(2, lv));
-        if (key === "timeWarpOverflow") return Math.round(10 * Math.pow(2, lv));
-        return Number.MAX_SAFE_INTEGER;
+    function getAscensionNodePurchaseCost(id) {
+        const def = ASCENSION_MAP_NODE_BY_ID[id];
+        return def && typeof def.cost === "number" ? def.cost : Number.MAX_SAFE_INTEGER;
     }
-    function buyAscensionUpgrade(key) {
+    function getAscensionEssenceInvestedInNodes() {
+        let sum = 0;
+        number1AscensionNodeIds.forEach(id => {
+            const c = getAscensionNodePurchaseCost(id);
+            if (Number.isFinite(c) && c > 0 && c < Number.MAX_SAFE_INTEGER / 4) sum += c;
+        });
+        return sum;
+    }
+    function ascensionNodePrereqsMet(id) {
+        const def = ASCENSION_MAP_NODE_BY_ID[id];
+        if (!def) return false;
+        const s = ascensionPurchasedSet();
+        return def.parents.every(p => s.has(p));
+    }
+    function normalizeAscensionNodeIds() {
+        if (number1AscensionNodeIds.some(id => typeof id === "string" && ASCENSION_LEGACY_NODE_ID_RE.test(id))) {
+            number1AscensionNodeIds = [];
+            return;
+        }
+        const seen = new Set();
+        const out = [];
+        number1AscensionNodeIds.forEach(id => {
+            if (typeof id !== "string" || !ASCENSION_MAP_NODE_BY_ID[id]) return;
+            if (seen.has(id)) return;
+            seen.add(id);
+            out.push(id);
+        });
+        number1AscensionNodeIds = out;
+    }
+    function ascensionNodeDisplayName(id) {
+        const def = ASCENSION_MAP_NODE_BY_ID[id];
+        return def && def.title ? def.title : id;
+    }
+    function tryBuyAscensionNode(id) {
         if (!number1HasAscended) return;
-        const cost = getAscUpgradeCost(key);
-        if (number1AscensionEssence < cost) return;
+        if (ascensionPurchasedSet().has(id)) return;
+        if (!ascensionNodePrereqsMet(id)) return;
+        const cost = getAscensionNodePurchaseCost(id);
+        if (!Number.isFinite(cost) || cost >= Number.MAX_SAFE_INTEGER / 4 || number1AscensionEssence < cost) return;
         number1AscensionEssence -= cost;
-        number1AscensionUpgrades[key] = (number1AscensionUpgrades[key] || 0) + 1;
-        addToLog("Ascension upgrade purchased: " + key + " (level " + number1AscensionUpgrades[key] + ")", "milestone");
+        number1AscensionNodeIds.push(id);
+        normalizeAscensionNodeIds();
+        addToLog("Ascension skill: " + ascensionNodeDisplayName(id) + " (" + formatCount(cost) + " Essence)", "milestone");
         updateCheapenUpgradeUI();
         updateTurboBoostUI();
+        updateRateDisplay();
         refreshGlobalOverviewPanelIfOpen();
         autosaveNow();
     }
+    function respecNumber1AscensionSkillTrees() {
+        if (!number1HasAscended || number1AscensionNodeIds.length === 0) return;
+        let refund = 0;
+        number1AscensionNodeIds.forEach(nodeId => {
+            const c = getAscensionNodePurchaseCost(nodeId);
+            if (Number.isFinite(c) && c > 0 && c < Number.MAX_SAFE_INTEGER / 4) refund += c;
+        });
+        number1AscensionNodeIds = [];
+        number1AscensionEssence += refund;
+        addToLog("Ascension trees reset — " + formatCount(refund) + " Essence refunded (free respec).", "milestone");
+        updateCheapenUpgradeUI();
+        updateTurboBoostUI();
+        updateRateDisplay();
+        refreshGlobalOverviewPanelIfOpen();
+        autosaveNow();
+    }
+    function ascensionNodeMatchesRespecGroup(nodeId, groupKey) {
+        const pathTags = ASCENSION_RESPEC_GROUP_TAGS[groupKey];
+        if (!pathTags) return false;
+        const def = ASCENSION_MAP_NODE_BY_ID[nodeId];
+        if (!def || !def.tags) return false;
+        return def.tags.some(t => pathTags.indexOf(t) >= 0);
+    }
+    function ascensionGroupHasPurchasedNodes(groupKey) {
+        return number1AscensionNodeIds.some(id => ascensionNodeMatchesRespecGroup(id, groupKey));
+    }
+    function respecNumber1AscensionGroup(groupKey) {
+        if (!number1HasAscended) return;
+        const kept = [];
+        let refund = 0;
+        number1AscensionNodeIds.forEach(nodeId => {
+            if (ascensionNodeMatchesRespecGroup(nodeId, groupKey)) {
+                const c = getAscensionNodePurchaseCost(nodeId);
+                if (Number.isFinite(c) && c > 0 && c < Number.MAX_SAFE_INTEGER / 4) refund += c;
+            } else {
+                kept.push(nodeId);
+            }
+        });
+        if (refund <= 0) return;
+        const labels = { economy: "Economy paths (Cheapen · Combo · Speed)", overdrive: "Overdrive paths (Turbo · Warp)" };
+        number1AscensionNodeIds = kept;
+        normalizeAscensionNodeIds();
+        number1AscensionEssence += refund;
+        addToLog((labels[groupKey] || groupKey) + " reset — " + formatCount(refund) + " Essence refunded.", "milestone");
+        updateCheapenUpgradeUI();
+        updateTurboBoostUI();
+        updateRateDisplay();
+        refreshGlobalOverviewPanelIfOpen();
+        autosaveNow();
+    }
+    function escapeAscensionHtml(t) {
+        return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+    /** Radial snowflake: one arm per entry in ASCENSION_SNOWFLAKE_ARM_ROUTES (clockwise from top). Synergy nodes sit at parent midpoints. */
+    function computeAscensionSnowflakeLayout() {
+        const cx = 50;
+        const cy = 50;
+        const nArms = ASCENSION_SNOWFLAKE_ARM_ROUTES.length;
+        const r0 = 13.25;
+        const dr = 8.65;
+        const armAngle = k => -Math.PI / 2 + (k * 2 * Math.PI) / nArms;
+        function atArmRing(armIdx, ring) {
+            const rad = r0 + ring * dr;
+            const th = armAngle(armIdx);
+            return { x: cx + rad * Math.cos(th), y: cy + rad * Math.sin(th) };
+        }
+        const arm = {};
+        ASCENSION_SNOWFLAKE_ARM_ROUTES.forEach((route, i) => { arm[route] = i; });
+        const pos = {};
+        pos.asc_cmb_a = atArmRing(arm.combo, 0);
+        pos.asc_cmb_b = atArmRing(arm.combo, 1);
+        pos.asc_cmb_c = atArmRing(arm.combo, 2);
+        pos.asc_cmb_d = atArmRing(arm.combo, 3);
+        pos.asc_chp_a = atArmRing(arm.cheapen, 0);
+        pos.asc_chp_b = atArmRing(arm.cheapen, 1);
+        pos.asc_chp_c = atArmRing(arm.cheapen, 2);
+        pos.asc_chp_d = atArmRing(arm.cheapen, 3);
+        pos.asc_tur_a = atArmRing(arm.turbo, 0);
+        pos.asc_tur_b = atArmRing(arm.turbo, 1);
+        pos.asc_tur_c = atArmRing(arm.turbo, 2);
+        pos.asc_spd_a = atArmRing(arm.speed, 0);
+        pos.asc_spd_b = atArmRing(arm.speed, 1);
+        pos.asc_spd_c = atArmRing(arm.speed, 2);
+        pos.asc_spd_d = atArmRing(arm.speed, 3);
+        pos.asc_wrp_a = atArmRing(arm.warp, 1);
+        pos.asc_wrp_b = atArmRing(arm.warp, 2.38);
+        function mid(a, b) {
+            return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+        }
+        pos.asc_syn_ct = mid(pos.asc_chp_c, pos.asc_tur_b);
+        pos.asc_syn_cs = mid(pos.asc_cmb_d, pos.asc_spd_d);
+        return pos;
+    }
+    function renderAscensionMapHubSvg() {
+        return (
+            "<g class=\"asc-map-snowflake-hub\" aria-hidden=\"true\">" +
+            "<circle class=\"asc-map-hub-ring\" cx=\"50\" cy=\"50\" r=\"5.4\" />" +
+            "<circle class=\"asc-map-hub-core\" cx=\"50\" cy=\"50\" r=\"1.85\" />" +
+            "</g>"
+        );
+    }
+    function renderAscensionMapEdgesSvg(layout) {
+        const L = layout || computeAscensionSnowflakeLayout();
+        const parts = [];
+        ASCENSION_MAP_NODES.forEach(node => {
+            const r = node.route || "synergy";
+            const np = L[node.id];
+            if (!np) return;
+            node.parents.forEach(pid => {
+                const pp = L[pid];
+                if (!pp) return;
+                parts.push(
+                    "<line class=\"asc-map-edge asc-map-edge--" + r + "\" x1=\"" + pp.x.toFixed(3) + "\" y1=\"" + pp.y.toFixed(3) + "\" x2=\"" + np.x.toFixed(3) + "\" y2=\"" + np.y.toFixed(3) + "\" />"
+                );
+            });
+        });
+        return parts.join("");
+    }
     function renderAscensionUpgradesHtml() {
         if (!number1HasAscended) return "";
-        const cheapenCost = getAscUpgradeCost("cheapenCap");
-        const turboCost = getAscUpgradeCost("turboScaling");
-        const warpCost = getAscUpgradeCost("timeWarpOverflow");
-        return "<div class=\"coming-soon-sneak-peek\"><p class=\"coming-soon-sneak-title\">Ascension Upgrades (Number 1)</p>" +
-            "<p>Essence: " + formatCount(number1AscensionEssence) + "</p>" +
-            "<ul id=\"asc-upgrade-list\">" +
-            "<li><strong>Cheapen Cap</strong> — Max cheapen levels: " + getMaxCheapenLevel() + " <button type=\"button\" class=\"page-btn combo-filter-btn\" data-asc-upgrade=\"cheapenCap\"" + (number1AscensionEssence >= cheapenCost ? "" : " disabled") + ">Buy (" + formatCount(cheapenCost) + ")</button></li>" +
-            "<li><strong>Turbo Scaling</strong> — Turbo max: " + formatCount(Math.round(getTurboCountMultiplierMax() * 100) / 100) + "x, meter max: " + formatCount(getTurboMeterMax()) + " <button type=\"button\" class=\"page-btn combo-filter-btn\" data-asc-upgrade=\"turboScaling\"" + (number1AscensionEssence >= turboCost ? "" : " disabled") + ">Buy (" + formatCount(turboCost) + ")</button></li>" +
-            "<li><strong>Time Warp Overflow</strong> — Overflow: " + (getTimeWarpOverflowRatio() * 100).toFixed(0) + "% <button type=\"button\" class=\"page-btn combo-filter-btn\" data-asc-upgrade=\"timeWarpOverflow\"" + (number1AscensionEssence >= warpCost ? "" : " disabled") + ">Buy (" + formatCount(warpCost) + ")</button></li>" +
-            "</ul></div>";
+        const esc = escapeAscensionHtml;
+        const s = ascensionPurchasedSet();
+        const totals = computeAscensionGrantTotals();
+        const totalNodes = ASCENSION_MAP_NODES.length;
+        const ownedCount = number1AscensionNodeIds.length;
+        const invested = getAscensionEssenceInvestedInNodes();
+        const speedDiscountPct = (1 - totals.speedMult) * 100;
+        const comboBonusPct = totals.comboMultAdd * 100;
+        const respecBtn = "<button type=\"button\" class=\"page-btn ascension-respec-btn\" data-asc-respec=\"1\"" + (number1AscensionNodeIds.length === 0 ? " disabled" : "") + ">Respec all</button>";
+        const economyRespec = "<button type=\"button\" class=\"page-btn asc-tree-respec-btn\" data-asc-respec-group=\"economy\"" + (ascensionGroupHasPurchasedNodes("economy") ? "" : " disabled") + " title=\"Cheapen, Combo, Speed, and matching synergy\">Respec economy</button>";
+        const overdriveRespec = "<button type=\"button\" class=\"page-btn asc-tree-respec-btn\" data-asc-respec-group=\"overdrive\"" + (ascensionGroupHasPurchasedNodes("overdrive") ? "" : " disabled") + " title=\"Turbo, Warp, and matching synergy\">Respec overdrive</button>";
+        const branchRespecs = economyRespec + overdriveRespec;
+        const layout = computeAscensionSnowflakeLayout();
+        const nodeDots = ASCENSION_MAP_NODES.map(node => {
+            const pt = layout[node.id] || { x: 50, y: 50 };
+            const lx = pt.x.toFixed(3);
+            const ly = pt.y.toFixed(3);
+            const owned = s.has(node.id);
+            const prereqOk = ascensionNodePrereqsMet(node.id);
+            const cost = getAscensionNodePurchaseCost(node.id);
+            const canBuy = !owned && prereqOk && number1AscensionEssence >= cost;
+            let stateClass = "asc-map-node--locked";
+            if (owned) stateClass = "asc-map-node--owned";
+            else if (prereqOk) stateClass = "asc-map-node--available";
+            const btn = owned
+                ? "<span class=\"asc-map-node-badge\">Owned</span>"
+                : (prereqOk
+                    ? "<button type=\"button\" class=\"page-btn asc-node-buy-btn asc-map-node-buy\" data-asc-node-buy=\"" + esc(node.id) + "\"" + (canBuy ? "" : " disabled") + ">" + formatCount(cost) + "</button>"
+                    : "<span class=\"asc-map-node-badge asc-map-node-badge--locked\">Locked</span>");
+            return (
+                "<div class=\"asc-map-node asc-map-node--route-" + esc(node.route) + " " + stateClass + "\" style=\"left:" + lx + "%;top:" + ly + "%;\" data-asc-node-id=\"" + esc(node.id) + "\" role=\"group\" aria-label=\"" + esc(node.title) + "\">" +
+                "<div class=\"asc-map-node-pin\" aria-hidden=\"true\"></div>" +
+                "<div class=\"asc-map-node-card\">" +
+                "<div class=\"asc-map-node-title\">" + esc(node.title) + "</div>" +
+                "<div class=\"asc-map-node-effect\">" + esc(node.effect) + "</div>" +
+                "<div class=\"asc-map-node-action\">" + btn + "</div></div></div>"
+            );
+        }).join("");
+        const legend =
+            "<ul class=\"asc-map-legend\" aria-label=\"Path colors\">" +
+            "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--cheapen\"></span> Cheapen</li>" +
+            "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--combo\"></span> Combo</li>" +
+            "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--speed\"></span> Speed</li>" +
+            "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--turbo\"></span> Turbo</li>" +
+            "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--warp\"></span> Warp</li>" +
+            "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--synergy\"></span> Synergy</li>" +
+            "</ul>";
+        return (
+            "<section class=\"ascension-hub\" aria-label=\"Number 1 ascension skill map\">" +
+            "<header class=\"ascension-hub-header\">" +
+            "<h4 class=\"ascension-hub-title\"><span class=\"ascension-hub-glyph\" aria-hidden=\"true\">◇</span> Ascension map</h4>" +
+            "<p class=\"ascension-hub-sub\">Five arms from the center (Combo, Cheapen, Turbo, Speed, Warp) with crisp links and synergy junctions. <strong>Respec is free</strong> — reset everything, economy (Cheapen · Combo · Speed), or overdrive (Turbo · Warp).</p>" +
+            "<div class=\"ascension-hub-stats\">" +
+            "<span class=\"asc-stat-pill asc-stat-pill--wide\"><span class=\"asc-stat-pill-k\">Nodes</span> <span class=\"asc-stat-pill-v\">" + ownedCount + " / " + totalNodes + "</span></span>" +
+            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">In nodes</span> <span class=\"asc-stat-pill-v\">" + formatCount(invested) + " Essence</span></span>" +
+            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Pool</span> <span class=\"asc-stat-pill-v\">" + formatCount(number1AscensionEssence) + "</span></span>" +
+            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Cheapen cap</span> <span class=\"asc-stat-pill-v\">" + getMaxCheapenLevel() + "</span></span>" +
+            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Speed</span> <span class=\"asc-stat-pill-v\">−" + speedDiscountPct.toFixed(1) + "% cost</span></span>" +
+            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Combo</span> <span class=\"asc-stat-pill-v\">+" + comboBonusPct.toFixed(1) + "% mult</span></span>" +
+            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Turbo</span> <span class=\"asc-stat-pill-v\">" + formatCount(Math.round(getTurboCountMultiplierMax() * 100) / 100) + "×</span></span>" +
+            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Meter</span> <span class=\"asc-stat-pill-v\">" + formatCount(getTurboMeterMax()) + "</span></span>" +
+            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Warp</span> <span class=\"asc-stat-pill-v\">" + (getTimeWarpOverflowRatio() * 100).toFixed(0) + "%</span></span>" +
+            "</div>" +
+            "<div class=\"ascension-respec-row\">" + respecBtn + "<div class=\"ascension-branch-respecs\">" + branchRespecs + "</div></div>" +
+            "</header>" +
+            "<div class=\"ascension-map-wrap\">" +
+            "<svg class=\"ascension-map-svg\" viewBox=\"0 0 100 100\" preserveAspectRatio=\"xMidYMid meet\" aria-hidden=\"true\">" +
+            renderAscensionMapHubSvg() +
+            renderAscensionMapEdgesSvg(layout) +
+            "</svg>" +
+            "<div class=\"ascension-map-nodes-layer\">" + nodeDots + "</div>" +
+            "</div>" + legend + "</section>"
+        );
     }
     function getNumber2Milestone() {
-        if (!isNumber2Unlocked()) return { text: "Locked — ascend Number 1 once to unlock Number 2", pct: 0 };
+        if (!isNumber2Unlocked()) return { text: "Number 2 is not available on this save", pct: 0 };
         if (!number2State.started) return { text: "Unlocked — switch to Number 2 to begin counting", pct: 0 };
         const next = NUMBER_2_MILESTONES.find(m => number2State.totalTwos < m.goal) || NUMBER_2_MILESTONES[NUMBER_2_MILESTONES.length - 1];
         if (!next) return { text: "Complete", pct: 100 };
@@ -970,7 +1291,7 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
                 number2State.started = !!data.started;
             },
             getOverviewDetails: () => {
-                if (!isNumber2Unlocked()) return "Coming soon — ascend Number 1 to unlock this module.";
+                if (!isNumber2Unlocked()) return "Number 2 is not available.";
                 if (!number2State.started) return "Unlocked but inactive — switch to Number 2 to start its background counting.";
                 return "Background total: " + formatCount(number2State.totalTwos);
             }
@@ -1172,6 +1493,7 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
         pagePanelTitleEl.textContent = title;
         pagePanelBodyEl.innerHTML = bodyHtml;
         if (pageModalEl) pageModalEl.classList.toggle("page-modal--wide", pageId === "overview" || pageId === "combinations");
+        pagePanelEl.dataset.openPageId = pageId;
         pagePanelEl.style.display = "block";
         syncInlinePanelsVsGameplay();
         if (pageId === "messages") {
@@ -1216,7 +1538,8 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
     }
     function getUpgradeCost(handIndex, nextLevel) {
         const baseCost = 10 + Math.floor(Math.pow(4, nextLevel));
-        return Math.max(1, Math.floor(baseCost * getCheapenMultiplier(handIndex)));
+        const ascSpeed = computeAscensionGrantTotals().speedMult;
+        return Math.max(1, Math.floor(baseCost * getCheapenMultiplier(handIndex) * ascSpeed));
     }
     const upgradeContainer = document.getElementById("upgrade-container");
     const speedUpgradesContainerEl = document.getElementById("speed-upgrades-container");
@@ -2433,7 +2756,7 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
             numberModulesState,
             number1AscensionEssence,
             number1HasAscended,
-            number1AscensionUpgrades,
+            number1AscensionNodeIds,
             ascensionNumber1IntroSeen,
             clapCooldownUntilMsByHand
         };
@@ -2518,12 +2841,12 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
         number1HasAscended = !!data.number1HasAscended;
         reconcileNumber2LockState();
         updateNumber2SidebarUnlockUI();
-        if (data.number1AscensionUpgrades && typeof data.number1AscensionUpgrades === "object") {
-            number1AscensionUpgrades = {
-                cheapenCap: Math.max(0, Math.floor(Number(data.number1AscensionUpgrades.cheapenCap) || 0)),
-                turboScaling: Math.max(0, Math.floor(Number(data.number1AscensionUpgrades.turboScaling) || 0)),
-                timeWarpOverflow: Math.max(0, Math.floor(Number(data.number1AscensionUpgrades.timeWarpOverflow) || 0))
-            };
+        number1AscensionNodeIds = [];
+        if (Array.isArray(data.number1AscensionNodeIds)) {
+            data.number1AscensionNodeIds.forEach(id => {
+                if (typeof id === "string") number1AscensionNodeIds.push(id);
+            });
+            normalizeAscensionNodeIds();
         }
         if (typeof data.ascensionNumber1IntroSeen === "boolean") {
             ascensionNumber1IntroSeen = data.ascensionNumber1IntroSeen;
@@ -2890,7 +3213,10 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
         });
     });
     if (pagePanelCloseBtn) pagePanelCloseBtn.addEventListener("click", () => {
-        if (pagePanelEl) pagePanelEl.style.display = "none";
+        if (pagePanelEl) {
+            pagePanelEl.style.display = "none";
+            delete pagePanelEl.dataset.openPageId;
+        }
         syncInlinePanelsVsGameplay();
     });
     if (pagePanelBodyEl) {
@@ -2925,12 +3251,26 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
         });
     }
 
+    if (ascensionReadyCtaEl) {
+        ascensionReadyCtaEl.addEventListener("click", () => beginNumber1AscensionFlow());
+    }
+
     if (pagePanelEl) {
         pagePanelEl.addEventListener("click", function(e) {
-            const ascBtn = e.target.closest("[data-asc-upgrade]");
-            if (ascBtn) {
-                const key = ascBtn.getAttribute("data-asc-upgrade");
-                if (key) buyAscensionUpgrade(key);
+            const ascBuy = e.target.closest("[data-asc-node-buy]");
+            if (ascBuy) {
+                const nid = ascBuy.getAttribute("data-asc-node-buy");
+                if (nid) tryBuyAscensionNode(nid);
+                return;
+            }
+            const ascGroupRespec = e.target.closest("[data-asc-respec-group]");
+            if (ascGroupRespec) {
+                const gk = ascGroupRespec.getAttribute("data-asc-respec-group");
+                if (gk) respecNumber1AscensionGroup(gk);
+                return;
+            }
+            if (e.target.closest("[data-asc-respec]")) {
+                respecNumber1AscensionSkillTrees();
                 return;
             }
             const btn = e.target.closest(".ascend-number-btn");
@@ -3020,7 +3360,9 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
             if (earnedInGroup.length === 0) continue;
             sum += earnedInGroup.reduce((m, c) => m * c.bonus, 1);
         }
-        return sum > 0 ? sum : 1;
+        const base = sum > 0 ? sum : 1;
+        const comboAdd = computeAscensionGrantTotals().comboMultAdd;
+        return base * (1 + comboAdd);
     }
     const comboBubbleContainerEl = document.getElementById("combo-bubble-container");
     const COMBO_BUBBLE_DURATION_MS = 3500;
@@ -3183,7 +3525,7 @@ You keep Ascension Essence forever. The Essence you gain scales with your total 
         if (!ascensionConfirmOverlayEl || !ascensionConfirmBodyEl) return;
         const gain = computeNumber1AscensionGain(totalChanges);
         const nextTotal = number1AscensionEssence + gain;
-        ascensionConfirmBodyEl.textContent = "Your total count is " + formatCount(totalChanges) + ". Ascending now grants " + formatCount(gain) + " Ascension Essence (you will have " + formatCount(nextTotal) + " total).\n\nThis resets Number 1 only: one hand, no upgrades, no combo bonuses, objectives unchecked, turbo reset.";
+        ascensionConfirmBodyEl.textContent = "Your total count is " + formatCount(totalChanges) + ". Ascending now grants " + formatCount(gain) + " Ascension Essence (you will have " + formatCount(nextTotal) + " total).\n\nThis resets Number 1 only: one hand, no upgrades, no combo bonuses, objectives unchecked, turbo reset.\n\nSpend Essence on permanent skill branches in Global Overview. Respec is always free.";
         ascensionConfirmOverlayEl.style.display = "flex";
     }
 
