@@ -405,7 +405,9 @@ After your first ascension, open Global Overview to spend Essence on permanent s
     let ascensionNumber1IntroSeen = false;
 
     function refreshTotalFromHandEarnings() {
-        totalChanges = handEarnings.reduce((a, b) => a + b, 0);
+        let s = 0;
+        for (let i = 0; i < unlockedHands; i++) s += handEarnings[i] || 0;
+        totalChanges = s;
         syncUnlocksWithTotalCount();
     }
 
@@ -1103,27 +1105,39 @@ After your first ascension, open Global Overview to spend Essence on permanent s
     function computeAscensionHandLayout() {
         return ASCENSION_TREE_EXPORT.computeAscensionHandLayout(ASCENSION_MAP_NODES);
     }
-    function ascensionSankeyEdgePath(x1, y1, x2, y2) {
-        const H = (ASCENSION_TREE_EXPORT && ASCENSION_TREE_EXPORT.HUB_CENTER) || { x: 50, y: 66 };
+    function ascensionSankeyEdgePath(x1, y1, x2, y2, fingerKey) {
+        const H = (ASCENSION_TREE_EXPORT && ASCENSION_TREE_EXPORT.HUB_CENTER) || { x: 50, y: 51 };
         const mx = (x1 + x2) / 2;
         const my = (y1 + y2) / 2;
         const vx = x2 - x1;
         const vy = y2 - y1;
         const len = Math.hypot(vx, vy) || 1;
-        const midOff = 2.85;
+        const midOff = Math.max(4.2, Math.min(14.5, len * 0.28)) + 1.8;
         const nx = (-vy / len) * midOff;
         const ny = (vx / len) * midOff;
         const hx = mx - H.x;
         const hy = my - H.y;
         const hlen = Math.hypot(hx, hy) || 1;
-        const flow = 1.1;
+        const flow = 1.35;
         const bx = nx + (hx / hlen) * flow;
         const by = ny + (hy / hlen) * flow;
-        const t = 0.4;
-        const c1x = x1 + t * (x2 - x1) + bx * 0.52;
-        const c1y = y1 + t * (y2 - y1) + by * 0.52;
-        const c2x = x2 - t * (x2 - x1) + bx * 0.52;
-        const c2y = y2 - t * (y2 - y1) + by * 0.52;
+        const tips = (ASCENSION_TREE_EXPORT && ASCENSION_TREE_EXPORT.FINGERTIP_TARGETS) || {};
+        const tip = fingerKey && tips[fingerKey] ? tips[fingerKey] : null;
+        let sx = 0;
+        let sy = 0;
+        if (tip) {
+            const rtx = tip.x - H.x;
+            const rty = tip.y - H.y;
+            const rlen = Math.hypot(rtx, rty) || 1;
+            const hand = (vx * rty - vy * rtx) >= 0 ? 1 : -1;
+            sx = (-rty / rlen) * 2.1 * hand;
+            sy = (rtx / rlen) * 2.1 * hand;
+        }
+        const t = 0.42;
+        const c1x = x1 + t * (x2 - x1) + bx * 0.58 + sx;
+        const c1y = y1 + t * (y2 - y1) + by * 0.58 + sy;
+        const c2x = x2 - t * (x2 - x1) + bx * 0.58 + sx;
+        const c2y = y2 - t * (y2 - y1) + by * 0.58 + sy;
         return "M " + x1.toFixed(3) + " " + y1.toFixed(3) +
             " C " + c1x.toFixed(3) + " " + c1y.toFixed(3) + " " + c2x.toFixed(3) + " " + c2y.toFixed(3) + " " + x2.toFixed(3) + " " + y2.toFixed(3);
     }
@@ -1136,6 +1150,32 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         if (!parentId) return true;
         return purchased.has(parentId);
     }
+    function ascensionMergePointForChild(node, L, np) {
+        const H = (ASCENSION_TREE_EXPORT && ASCENSION_TREE_EXPORT.HUB_CENTER) || { x: 50, y: 51 };
+        const parents = node.parents;
+        if (!parents.length) return null;
+        let ax = 0;
+        let ay = 0;
+        let n = 0;
+        parents.forEach(function (pid) {
+            const p = L[pid];
+            if (p) {
+                ax += p.x;
+                ay += p.y;
+                n++;
+            }
+        });
+        if (!n) return null;
+        ax /= n;
+        ay /= n;
+        const vx = np.x - H.x;
+        const vy = np.y - H.y;
+        const vlen = Math.hypot(vx, vy) || 1;
+        const px = -vy / vlen;
+        const py = vx / vlen;
+        const spread = parents.length > 1 ? 2.4 + Math.min(4, parents.length * 0.35) : 0;
+        return { x: (ax + np.x) / 2 + px * spread * 0.35, y: (ay + np.y) / 2 + py * spread * 0.35 };
+    }
     function renderAscensionMapEdgesSvg(layout) {
         const L = layout || computeAscensionHandLayout();
         const purchased = ascensionPurchasedSet();
@@ -1144,23 +1184,155 @@ After your first ascension, open Global Overview to spend Essence on permanent s
             const r = node.route || "combo";
             const np = L[node.id];
             if (!np) return;
+            const fk = node.finger || "";
+            const merge = node.parents.length > 1 ? ascensionMergePointForChild(node, L, np) : null;
             node.parents.forEach(pid => {
                 const pp = L[pid];
                 if (!pp) return;
                 const active = ascensionEdgePathActive(pid, node.id, purchased);
                 const stateClass = active ? " asc-map-edge--active" : " asc-map-edge--muted";
+                let d;
+                if (merge) {
+                    d = ascensionSankeyEdgePath(pp.x, pp.y, merge.x, merge.y, fk) + " " +
+                        ascensionSankeyEdgePath(merge.x, merge.y, np.x, np.y, fk);
+                } else {
+                    d = ascensionSankeyEdgePath(pp.x, pp.y, np.x, np.y, fk);
+                }
                 parts.push(
-                    "<path class=\"asc-map-edge asc-map-edge--" + r + stateClass + "\" d=\"" +
-                    ascensionSankeyEdgePath(pp.x, pp.y, np.x, np.y) + "\" />"
+                    "<path class=\"asc-map-edge asc-map-edge--" + r + stateClass + "\" d=\"" + d + "\" />"
                 );
             });
         });
         return parts.join("");
     }
     let ascensionMapPanZoomCleanup = null;
+    let ascensionMapResizeObserver = null;
+    let ascensionMapSyncCallSeq = 0;
     /** Survives overview re-renders (innerHTML refresh) so zoom/pan is not lost after buys or autosave. */
     const ascensionMapPanZoomState = { scale: 1, tx: 0, ty: 0 };
+    /**
+     * Map node x,y are in the same 0–100 space as the SVG viewBox. The SVG uses preserveAspectRatio meet,
+     * so the graph is letterboxed inside the SVG element; plain % left/top on the full box misaligns pins,
+     * hover, and popups. Position nodes with the same padding + scale as meet.
+     */
+    function syncAscensionMapNodeDomPositions() {
+        const viewport = document.getElementById("ascension-map-viewport");
+        if (!viewport) return;
+        const svg = viewport.querySelector(".ascension-map-svg");
+        const world = viewport.querySelector(".ascension-map-world");
+        if (!svg || !world) return;
+        ascensionMapSyncCallSeq++;
+        const W = svg.clientWidth;
+        const H = svg.clientHeight;
+        if (!Number.isFinite(W) || !Number.isFinite(H) || W < 2 || H < 2) return;
+        const unit = Math.min(W, H) / 100;
+        const padX = (W - 100 * unit) / 2;
+        const padY = (H - 100 * unit) / 2;
+        world.querySelectorAll(".asc-map-node[data-asc-vbx]").forEach(function (el) {
+            const nx = parseFloat(el.getAttribute("data-asc-vbx"), 10);
+            const ny = parseFloat(el.getAttribute("data-asc-vby"), 10);
+            if (!Number.isFinite(nx) || !Number.isFinite(ny)) return;
+            el.style.left = padX + nx * unit + "px";
+            el.style.top = padY + ny * unit + "px";
+        });
+        if (typeof updateAscensionMapDetailPanel === "function") updateAscensionMapDetailPanel();
+    }
+    const ASCENSION_MAP_PICK_RADIUS_VB = 0.78;
+    /** Last clicked node on the map; persists across overview refresh for the detail strip. */
+    let ascensionMapSelectedNodeId = null;
+    function ascensionMapDebugEnabled() {
+        try {
+            if (typeof localStorage !== "undefined" && localStorage.getItem("ascensionMapDebug") === "1") return true;
+        } catch (e) {}
+        try {
+            return typeof location !== "undefined" && /(?:\?|&)ascdev=1(?:&|$)/.test(String(location.search || ""));
+        } catch (e2) {
+            return false;
+        }
+    }
+    function ascensionClientToViewBox(svgEl, clientX, clientY) {
+        if (!svgEl || typeof svgEl.createSVGPoint !== "function") return null;
+        const pt = svgEl.createSVGPoint();
+        pt.x = clientX;
+        pt.y = clientY;
+        const ctm = svgEl.getScreenCTM();
+        if (!ctm) return null;
+        let inv;
+        try {
+            inv = ctm.inverse();
+        } catch (e) {
+            return null;
+        }
+        const loc = pt.matrixTransform(inv);
+        return { x: loc.x, y: loc.y };
+    }
+    function ascensionPickNearestNodeId(vbX, vbY) {
+        const L = computeAscensionHandLayout();
+        let best = null;
+        let bestD = ASCENSION_MAP_PICK_RADIUS_VB;
+        ASCENSION_MAP_NODES.forEach(function (node) {
+            const p = L[node.id];
+            if (!p) return;
+            const d = Math.hypot(p.x - vbX, p.y - vbY);
+            if (d < bestD) {
+                bestD = d;
+                best = node.id;
+            }
+        });
+        return best;
+    }
+    function ascensionResolveNodeIdAtClient(clientX, clientY) {
+        const viewport = document.getElementById("ascension-map-viewport");
+        if (!viewport) return null;
+        const svg = viewport.querySelector(".ascension-map-svg");
+        if (!svg) return null;
+        const vb = ascensionClientToViewBox(svg, clientX, clientY);
+        if (!vb) return null;
+        return ascensionPickNearestNodeId(vb.x, vb.y);
+    }
+    function updateAscensionMapDetailPanel() {
+        const titleEl = document.getElementById("ascension-map-detail-title");
+        const effectEl = document.getElementById("ascension-map-detail-effect");
+        const metaEl = document.getElementById("ascension-map-detail-meta");
+        const kickerEl = document.getElementById("ascension-map-detail-kicker");
+        if (!titleEl || !effectEl || !metaEl) return;
+        const id = ascensionMapSelectedNodeId;
+        if (kickerEl) kickerEl.textContent = "";
+        if (!id || !ASCENSION_MAP_NODE_BY_ID[id]) {
+            titleEl.textContent = "Ascension node";
+            effectEl.textContent = "Click a skill gem on the map. Details stay here while you pan and zoom; the panel is translucent so you can see the map underneath.";
+            metaEl.textContent = "";
+            return;
+        }
+        const def = ASCENSION_MAP_NODE_BY_ID[id];
+        const owned = ascensionPurchasedSet().has(id);
+        const prereqOk = ascensionNodePrereqsMet(id);
+        const cost = getAscensionNodePurchaseCost(id);
+        let status = owned ? "Owned" : (prereqOk ? "Available" : "Locked");
+        if (kickerEl) kickerEl.textContent = (def.route || "").charAt(0).toUpperCase() + (def.route || "").slice(1) + " · " + (def.finger || "");
+        titleEl.textContent = def.title || id;
+        effectEl.textContent = def.effect || "";
+        let meta = "Essence cost: " + formatCount(cost) + " · " + status;
+        if (!owned && prereqOk) meta += " · Your pool: " + formatCount(number1AscensionEssence);
+        metaEl.textContent = meta;
+    }
+    function setAscensionMapSelectedNode(id, skipIfSame) {
+        if (skipIfSame && id === ascensionMapSelectedNodeId) return;
+        ascensionMapSelectedNodeId = id || null;
+        document.querySelectorAll(".asc-map-node.asc-map-node--selected").forEach(function (el) {
+            el.classList.remove("asc-map-node--selected");
+        });
+        if (id) {
+            const nodeEl = document.querySelector('.asc-map-node[data-asc-node-id="' + String(id).replace(/"/g, "") + '"]');
+            if (nodeEl) nodeEl.classList.add("asc-map-node--selected");
+        }
+        updateAscensionMapDetailPanel();
+    }
     function teardownAscensionMapPanZoom() {
+        if (ascensionMapResizeObserver) {
+            ascensionMapResizeObserver.disconnect();
+            ascensionMapResizeObserver = null;
+        }
         if (typeof ascensionMapPanZoomCleanup === "function") {
             ascensionMapPanZoomCleanup();
             ascensionMapPanZoomCleanup = null;
@@ -1193,15 +1365,53 @@ After your first ascension, open Global Overview to spend Essence on permanent s
             layer.style.transform = "translate(" + tx.toFixed(2) + "px," + ty.toFixed(2) + "px) scale(" + scale.toFixed(3) + ")";
         }
         apply();
+        const svg = viewport.querySelector(".ascension-map-svg");
+        function zoomBy(factor, clientX, clientY) {
+            if (!svg) {
+                scale = Math.max(0.45, Math.min(2.6, scale * factor));
+                apply();
+                syncAscensionMapNodeDomPositions();
+                return;
+            }
+            const vb = ascensionClientToViewBox(svg, clientX, clientY);
+            if (!vb) {
+                scale = Math.max(0.45, Math.min(2.6, scale * factor));
+                apply();
+                syncAscensionMapNodeDomPositions();
+                return;
+            }
+            const prev = scale;
+            scale = Math.max(0.45, Math.min(2.6, scale * factor));
+            if (scale === prev) return;
+            apply();
+            syncAscensionMapNodeDomPositions();
+            const pt = svg.createSVGPoint();
+            pt.x = vb.x;
+            pt.y = vb.y;
+            const ctm = svg.getScreenCTM();
+            if (!ctm) return;
+            const screenPt = pt.matrixTransform(ctm);
+            tx += clientX - screenPt.x;
+            ty += clientY - screenPt.y;
+            clampPan();
+            apply();
+            syncAscensionMapNodeDomPositions();
+        }
         function onWheel(e) {
-            if (!e.ctrlKey && !e.metaKey) return;
+            const overMap = e.target && typeof e.target.closest === "function" && e.target.closest("#ascension-map-viewport");
+            if (!overMap && !e.ctrlKey && !e.metaKey) return;
             e.preventDefault();
             const factor = e.deltaY > 0 ? 0.9 : 1.11;
-            scale = Math.max(0.45, Math.min(2.6, scale * factor));
-            apply();
+            zoomBy(factor, e.clientX, e.clientY);
         }
         function onPointerDown(e) {
             if (e.button !== 0) return;
+            const t = e.target;
+            // Don't capture the pointer for map pan when starting on a skill node — otherwise the click
+            // never reaches #page-panel delegation for select + purchase.
+            if (t && typeof t.closest === "function" && t.closest(".asc-map-node")) {
+                return;
+            }
             dragging = true;
             ptrId = e.pointerId;
             startX = e.clientX;
@@ -1231,6 +1441,7 @@ After your first ascension, open Global Overview to spend Essence on permanent s
             ascensionMapPanZoomState.tx = 0;
             ascensionMapPanZoomState.ty = 0;
             apply();
+            syncAscensionMapNodeDomPositions();
         }
         viewport.addEventListener("wheel", onWheel, { passive: false });
         viewport.addEventListener("pointerdown", onPointerDown);
@@ -1239,19 +1450,62 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         viewport.addEventListener("pointercancel", onPointerUp);
         const resetBtn = document.getElementById("ascension-map-reset-view");
         if (resetBtn) resetBtn.addEventListener("click", onResetClick);
+        const zoomInBtn = document.getElementById("ascension-map-zoom-in");
+        const zoomOutBtn = document.getElementById("ascension-map-zoom-out");
+        function zoomFromButton(factor) {
+            const r = viewport.getBoundingClientRect();
+            zoomBy(factor, r.left + r.width / 2, r.top + r.height / 2);
+        }
+        function onZoomInClick(e) {
+            e.preventDefault();
+            zoomFromButton(1.15);
+        }
+        function onZoomOutClick(e) {
+            e.preventDefault();
+            zoomFromButton(1 / 1.15);
+        }
+        if (zoomInBtn) zoomInBtn.addEventListener("click", onZoomInClick);
+        if (zoomOutBtn) zoomOutBtn.addEventListener("click", onZoomOutClick);
+        function scheduleAscensionNodeLayoutSync() {
+            syncAscensionMapNodeDomPositions();
+            requestAnimationFrame(syncAscensionMapNodeDomPositions);
+        }
+        let ascensionResizeSyncRaf = 0;
+        function requestDebouncedAscensionNodeLayoutSync() {
+            if (ascensionResizeSyncRaf) return;
+            ascensionResizeSyncRaf = requestAnimationFrame(function () {
+                ascensionResizeSyncRaf = 0;
+                scheduleAscensionNodeLayoutSync();
+            });
+        }
+        scheduleAscensionNodeLayoutSync();
+        if (ascensionMapSelectedNodeId) {
+            setAscensionMapSelectedNode(ascensionMapSelectedNodeId, false);
+        } else {
+            updateAscensionMapDetailPanel();
+        }
+        if (typeof ResizeObserver !== "undefined") {
+            ascensionMapResizeObserver = new ResizeObserver(requestDebouncedAscensionNodeLayoutSync);
+            ascensionMapResizeObserver.observe(viewport);
+        }
         ascensionMapPanZoomCleanup = function () {
+            if (ascensionResizeSyncRaf) {
+                cancelAnimationFrame(ascensionResizeSyncRaf);
+                ascensionResizeSyncRaf = 0;
+            }
             viewport.removeEventListener("wheel", onWheel);
             viewport.removeEventListener("pointerdown", onPointerDown);
             viewport.removeEventListener("pointermove", onPointerMove);
             viewport.removeEventListener("pointerup", onPointerUp);
             viewport.removeEventListener("pointercancel", onPointerUp);
             if (resetBtn) resetBtn.removeEventListener("click", onResetClick);
+            if (zoomInBtn) zoomInBtn.removeEventListener("click", onZoomInClick);
+            if (zoomOutBtn) zoomOutBtn.removeEventListener("click", onZoomOutClick);
         };
     }
-    function renderAscensionUpgradesHtml() {
+    /** Stat pills only — used for live ticks without rebuilding the ascension map DOM. */
+    function renderAscensionHubStatsPillsHtml() {
         if (!number1HasAscended) return "";
-        const esc = escapeAscensionHtml;
-        const s = ascensionPurchasedSet();
         const totals = computeAscensionGrantTotals();
         const totalNodes = ASCENSION_MAP_NODES.length;
         const ownedCount = number1AscensionNodeIds.length;
@@ -1260,6 +1514,44 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         const comboBonusPct = totals.comboMultAdd * 100;
         const comboPulsePct = totals.comboTriggerProductionFrac * 100;
         const turboPtsPct = (totals.comboTurboPointsMult - 1) * 100;
+        return (
+            "<span class=\"asc-stat-pill asc-stat-pill--wide\"><span class=\"asc-stat-pill-k\">Nodes</span> <span class=\"asc-stat-pill-v\">" + ownedCount + " / " + totalNodes + "</span></span>" +
+            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">In nodes</span> <span class=\"asc-stat-pill-v\">" + formatCount(invested) + " Essence</span></span>" +
+            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Pool</span> <span class=\"asc-stat-pill-v\">" + formatCount(number1AscensionEssence) + "</span></span>" +
+            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Cheapen cap</span> <span class=\"asc-stat-pill-v\">" + getMaxCheapenLevel() + "</span></span>" +
+            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Speed</span> <span class=\"asc-stat-pill-v\">−" + speedDiscountPct.toFixed(1) + "% cost</span></span>" +
+            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Combo</span> <span class=\"asc-stat-pill-v\">+" + comboBonusPct.toFixed(1) + "% mult</span></span>" +
+            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Combo pulse</span> <span class=\"asc-stat-pill-v\">" + comboPulsePct.toFixed(1) + "% CPS</span></span>" +
+            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Turbo pts</span> <span class=\"asc-stat-pill-v\">+" + turboPtsPct.toFixed(0) + "%</span></span>" +
+            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Turbo cap</span> <span class=\"asc-stat-pill-v\">" + formatCount(Math.round(getTurboCountMultiplierMax() * 100) / 100) + "×</span></span>" +
+            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Meter</span> <span class=\"asc-stat-pill-v\">" + formatCount(getTurboMeterMax()) + "</span></span>" +
+            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Warp</span> <span class=\"asc-stat-pill-v\">" + (getTimeWarpOverflowRatio() * 100).toFixed(0) + "%</span></span>" +
+            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Warp aura</span> <span class=\"asc-stat-pill-v\">≤" + formatCount(Math.round(getTimeWarpAuraSpawnSpanMaxSec())) + "s</span></span>"
+        );
+    }
+    function renderAscensionMapDebugOverlaySvg() {
+        if (!ascensionMapDebugEnabled()) return "";
+        const H = (ASCENSION_TREE_EXPORT && ASCENSION_TREE_EXPORT.HUB_CENTER) || { x: 50, y: 51 };
+        const tips = (ASCENSION_TREE_EXPORT && ASCENSION_TREE_EXPORT.FINGERTIP_TARGETS) || {};
+        const lines = [];
+        let g;
+        for (g = 0; g <= 100; g += 10) {
+            lines.push("<line class=\"asc-map-debug-line\" x1=\"" + g + "\" y1=\"0\" x2=\"" + g + "\" y2=\"100\" />");
+            lines.push("<line class=\"asc-map-debug-line\" x1=\"0\" y1=\"" + g + "\" x2=\"100\" y2=\"" + g + "\" />");
+        }
+        let dots = "<circle class=\"asc-map-debug-hub\" cx=\"" + H.x + "\" cy=\"" + H.y + "\" r=\"0.85\" />";
+        Object.keys(tips).forEach(function (k) {
+            const t = tips[k];
+            if (t && typeof t.x === "number" && typeof t.y === "number") {
+                dots += "<circle class=\"asc-map-debug-tip\" cx=\"" + t.x + "\" cy=\"" + t.y + "\" r=\"0.6\" />";
+            }
+        });
+        return "<svg class=\"ascension-map-debug-svg\" viewBox=\"0 0 100 100\" preserveAspectRatio=\"xMidYMid meet\" aria-hidden=\"true\">" + lines.join("") + dots + "</svg>";
+    }
+    function renderAscensionUpgradesHtml() {
+        if (!number1HasAscended) return "";
+        const esc = escapeAscensionHtml;
+        const s = ascensionPurchasedSet();
         const respecBtn = "<button type=\"button\" class=\"page-btn ascension-respec-btn\" data-asc-respec=\"1\"" + (number1AscensionNodeIds.length === 0 ? " disabled" : "") + ">Respec all</button>";
         const fingerRespecs = ASCENSION_FINGER_KEYS.map(fk => {
             const has = ascensionFingerHasPurchasedNodes(fk);
@@ -1275,23 +1567,12 @@ After your first ascension, open Global Overview to spend Essence on permanent s
             const ly = pt.y.toFixed(3);
             const owned = s.has(node.id);
             const prereqOk = ascensionNodePrereqsMet(node.id);
-            const cost = getAscensionNodePurchaseCost(node.id);
-            const canBuy = !owned && prereqOk && number1AscensionEssence >= cost;
             let stateClass = "asc-map-node--locked";
             if (owned) stateClass = "asc-map-node--owned";
             else if (prereqOk) stateClass = "asc-map-node--available";
-            const btn = owned
-                ? "<span class=\"asc-map-node-badge\">Owned</span>"
-                : (prereqOk
-                    ? "<button type=\"button\" class=\"page-btn asc-node-buy-btn asc-map-node-buy\" data-asc-node-buy=\"" + esc(node.id) + "\"" + (canBuy ? "" : " disabled") + ">" + formatCount(cost) + "</button>"
-                    : "<span class=\"asc-map-node-badge asc-map-node-badge--locked\">Locked</span>");
             return (
-                "<div class=\"asc-map-node asc-map-node--route-" + esc(node.route) + " " + stateClass + "\" style=\"left:" + lx + "%;top:" + ly + "%;\" data-asc-node-id=\"" + esc(node.id) + "\" role=\"group\" aria-label=\"" + esc(node.title) + "\" tabindex=\"0\">" +
-                "<div class=\"asc-map-node-pin\" aria-hidden=\"true\"></div>" +
-                "<div class=\"asc-map-node-card\">" +
-                "<div class=\"asc-map-node-title\">" + esc(node.title) + "</div>" +
-                "<div class=\"asc-map-node-effect\">" + esc(node.effect) + "</div>" +
-                "<div class=\"asc-map-node-action\">" + btn + "</div></div></div>"
+                "<div class=\"asc-map-node asc-map-node--route-" + esc(node.route) + " " + stateClass + "\" data-asc-vbx=\"" + lx + "\" data-asc-vby=\"" + ly + "\" data-asc-node-id=\"" + esc(node.id) + "\" role=\"button\" aria-label=\"" + esc(node.title) + " — click to select and attempt purchase\" tabindex=\"-1\">" +
+                "<div class=\"asc-map-node-pin\" aria-hidden=\"true\"></div></div>"
             );
         }).join("");
         const legend =
@@ -1306,33 +1587,30 @@ After your first ascension, open Global Overview to spend Essence on permanent s
             "<section class=\"ascension-hub\" aria-label=\"Number 1 ascension skill map\">" +
             "<header class=\"ascension-hub-header\">" +
             "<h4 class=\"ascension-hub-title\"><span class=\"ascension-hub-glyph\" aria-hidden=\"true\">◇</span> Ascension map</h4>" +
-            "<p class=\"ascension-hub-sub\">Branches run from the open ASCII hand hub along each fingertip. Links curve with a hub bias (Sankey-style flow). Combo pulse production is split across <strong>hands that satisfy that pattern</strong>. <strong>Respec is free</strong>. <strong>Ctrl+scroll</strong> (or ⌘+scroll) zooms; drag to pan.</p>" +
-            "<div class=\"ascension-hub-stats\">" +
-            "<span class=\"asc-stat-pill asc-stat-pill--wide\"><span class=\"asc-stat-pill-k\">Nodes</span> <span class=\"asc-stat-pill-v\">" + ownedCount + " / " + totalNodes + "</span></span>" +
-            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">In nodes</span> <span class=\"asc-stat-pill-v\">" + formatCount(invested) + " Essence</span></span>" +
-            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Pool</span> <span class=\"asc-stat-pill-v\">" + formatCount(number1AscensionEssence) + "</span></span>" +
-            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Cheapen cap</span> <span class=\"asc-stat-pill-v\">" + getMaxCheapenLevel() + "</span></span>" +
-            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Speed</span> <span class=\"asc-stat-pill-v\">−" + speedDiscountPct.toFixed(1) + "% cost</span></span>" +
-            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Combo</span> <span class=\"asc-stat-pill-v\">+" + comboBonusPct.toFixed(1) + "% mult</span></span>" +
-            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Combo pulse</span> <span class=\"asc-stat-pill-v\">" + comboPulsePct.toFixed(1) + "% CPS</span></span>" +
-            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Turbo pts</span> <span class=\"asc-stat-pill-v\">+" + turboPtsPct.toFixed(0) + "%</span></span>" +
-            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Turbo cap</span> <span class=\"asc-stat-pill-v\">" + formatCount(Math.round(getTurboCountMultiplierMax() * 100) / 100) + "×</span></span>" +
-            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Meter</span> <span class=\"asc-stat-pill-v\">" + formatCount(getTurboMeterMax()) + "</span></span>" +
-            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Warp</span> <span class=\"asc-stat-pill-v\">" + (getTimeWarpOverflowRatio() * 100).toFixed(0) + "%</span></span>" +
-            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Warp aura</span> <span class=\"asc-stat-pill-v\">≤" + formatCount(Math.round(getTimeWarpAuraSpawnSpanMaxSec())) + "s</span></span>" +
-            "</div>" +
+            "<p class=\"ascension-hub-sub\">Branches run from the open ASCII hand hub along each fingertip. Links curve with a hub bias (Sankey-style flow). Combo pulse production is split across <strong>hands that satisfy that pattern</strong>. <strong>Respec is free</strong>. <strong>Scroll wheel</strong> zooms (Ctrl/⌘+scroll also works); drag empty map to pan. <strong>Click a gem</strong> to show details in the bottom-left strip and attempt purchase (no button on the strip).</p>" +
+            "<div class=\"ascension-hub-stats\" id=\"ascension-hub-stats\">" + renderAscensionHubStatsPillsHtml() + "</div>" +
             "<div class=\"ascension-map-toolbar\">" +
+            "<button type=\"button\" class=\"page-btn ascension-map-zoom-btn\" id=\"ascension-map-zoom-out\" title=\"Zoom out\" aria-label=\"Zoom out\">−</button>" +
+            "<button type=\"button\" class=\"page-btn ascension-map-zoom-btn\" id=\"ascension-map-zoom-in\" title=\"Zoom in\" aria-label=\"Zoom in\">+</button>" +
             "<button type=\"button\" class=\"page-btn ascension-map-reset-btn\" id=\"ascension-map-reset-view\">Reset view</button>" +
             "</div>" +
             "<div class=\"ascension-respec-row\">" + respecBtn + "<div class=\"ascension-branch-respecs\">" + fingerRespecs + "</div></div>" +
             "</header>" +
             "<div class=\"ascension-map-viewport\" id=\"ascension-map-viewport\">" +
+            "<div class=\"ascension-map-detail-panel\" id=\"ascension-map-detail-panel\" aria-live=\"polite\">" +
+            "<div class=\"ascension-map-detail-panel-inner\">" +
+            "<div class=\"ascension-map-detail-kicker\" id=\"ascension-map-detail-kicker\"></div>" +
+            "<div class=\"ascension-map-detail-title\" id=\"ascension-map-detail-title\"></div>" +
+            "<div class=\"ascension-map-detail-effect\" id=\"ascension-map-detail-effect\"></div>" +
+            "<div class=\"ascension-map-detail-meta\" id=\"ascension-map-detail-meta\"></div>" +
+            "</div></div>" +
             "<div class=\"ascension-map-pan-zoom\" id=\"ascension-map-pan-zoom\">" +
             "<div class=\"ascension-map-world\">" +
             "<pre class=\"ascension-hand-backdrop\" aria-hidden=\"true\">" + esc(handArt) + "</pre>" +
             "<svg class=\"ascension-map-svg\" viewBox=\"0 0 100 100\" preserveAspectRatio=\"xMidYMid meet\" aria-hidden=\"true\">" +
             renderAscensionMapEdgesSvg(layout) +
             "</svg>" +
+            renderAscensionMapDebugOverlaySvg() +
             "<div class=\"ascension-map-nodes-layer\">" + nodeDots + "</div>" +
             "</div></div></div>" + legend + "</section>"
         );
@@ -1668,6 +1946,16 @@ After your first ascension, open Global Overview to spend Essence on permanent s
     const speedUpgradesContainerEl = document.getElementById("speed-upgrades-container");
     const speedRowRefs = [];
     let handUpgradeDetailTipLogged = false;
+    const UPGRADE_HOLD_REPEAT_MS = 100;
+    let upgradeHoldRepeatState = null;
+    let upgradeHoldSuppressClickBtn = null;
+    let upgradeHoldRepeatTipLogged = false;
+    function stopUpgradeHoldRepeat(setSuppressForClick) {
+        if (!upgradeHoldRepeatState) return;
+        clearInterval(upgradeHoldRepeatState.intervalId);
+        if (setSuppressForClick) upgradeHoldSuppressClickBtn = upgradeHoldRepeatState.buttonEl;
+        upgradeHoldRepeatState = null;
+    }
 
     function ensureSpeedRows() {
         if (!speedUpgradesContainerEl) return;
@@ -2324,7 +2612,8 @@ After your first ascension, open Global Overview to spend Essence on permanent s
     --------------------------------------------------------- */
     const SLOWDOWN_UNLOCK_COUNT = 1e15;
     const MAX_SLOWDOWN_LEVEL = 3;
-    const SLOWDOWN_COSTS = [1e16, 1e17, 1e18];
+    /* Level 1 unchanged; each further level is 1,000× the prior (before ascension slowdown cost mult). */
+    const SLOWDOWN_COSTS = [1e16, 1e19, 1e22];
     let slowdownLevel = Array(maxHands).fill(0);
     let slowdownUnlockLogged = false;
 
@@ -2992,6 +3281,7 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         timeWarpNextSpawnInSec = Number.isFinite(data.timeWarpNextSpawnInSec) && data.timeWarpNextSpawnInSec >= 0 ? data.timeWarpNextSpawnInSec : 0;
         timeWarpUnlockLogged = !!data.timeWarpUnlockLogged;
         unlockedHands = Math.max(1, Math.min(maxHands, Number(data.unlockedHands) || 1));
+        for (let i = unlockedHands; i < maxHands; i++) handEarnings[i] = 0;
         ensureSpeedRows();
         while (hands.length < unlockedHands) {
             const handNum = hands.length + 1;
@@ -3176,6 +3466,7 @@ After your first ascension, open Global Overview to spend Essence on permanent s
     function unlockHand() {
         if (unlockedHands >= maxHands) return;
         unlockedHands++;
+        handEarnings[unlockedHands - 1] = 0;
         markMeaningfulProgress();
         ensureSpeedRows();
         addToLog("Hand " + unlockedHands + " unlocked", "milestone");
@@ -3463,11 +3754,21 @@ After your first ascension, open Global Overview to spend Essence on permanent s
 
     if (pagePanelEl) {
         pagePanelEl.addEventListener("click", function(e) {
-            const ascBuy = e.target.closest("[data-asc-node-buy]");
-            if (ascBuy) {
-                const nid = ascBuy.getAttribute("data-asc-node-buy");
-                if (nid) tryBuyAscensionNode(nid);
-                return;
+            const ascMapViewport = e.target.closest("#ascension-map-viewport");
+            if (ascMapViewport && number1HasAscended) {
+                const blockAscMapInteract = e.target.closest(
+                    "button, a, [data-asc-respec-finger], [data-asc-respec], .ascension-respec-btn, .asc-tree-respec-btn, .ascension-map-toolbar"
+                );
+                if (!blockAscMapInteract) {
+                    const nid = ascensionResolveNodeIdAtClient(e.clientX, e.clientY);
+                    if (nid) {
+                        setAscensionMapSelectedNode(nid);
+                        tryBuyAscensionNode(nid);
+                    } else {
+                        setAscensionMapSelectedNode(null);
+                    }
+                    return;
+                }
             }
             const ascFingerRespec = e.target.closest("[data-asc-respec-finger]");
             if (ascFingerRespec) {
@@ -3685,6 +3986,59 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         pagePanelBodyEl.innerHTML = renderGlobalOverview();
         initAscensionMapPanZoom();
     }
+    /**
+     * Game loop calls this ~1/s. Must NOT replace ascension map innerHTML — that was resetting DOM every second
+     * (ResizeObserver + sync thrash, lost hover alignment). Only patch overview cards + hub stat pills + buy buttons.
+     */
+    function patchGlobalOverviewLiveDom() {
+        if (!pagePanelEl || pagePanelEl.style.display === "none" || !pagePanelBodyEl || !pagePanelTitleEl) return;
+        if (pagePanelTitleEl.textContent !== "Global Overview") return;
+        getUnlockedNumberModules().forEach(function (entry) {
+            const card = pagePanelBodyEl.querySelector('.overview-card[data-overview-number="' + entry.number + '"]');
+            if (!card) return;
+            const m = entry.module;
+            const milestone = m.getMilestone();
+            const rateStr = formatCount(Math.round(m.getRatePerSec() * 100) / 100) + "/s";
+            const pct = Math.max(0, Math.min(100, milestone.pct));
+            const stats = card.querySelectorAll(".overview-stat");
+            if (stats[0]) {
+                const v = stats[0].querySelector(".overview-stat-value");
+                if (v) v.textContent = rateStr;
+            }
+            if (stats[1]) {
+                const v = stats[1].querySelector(".overview-stat-milestone-text");
+                const fill = stats[1].querySelector(".overview-mini-fill");
+                const bar = stats[1].querySelector(".overview-mini-progress");
+                if (v) v.textContent = milestone.text + " · " + pct.toFixed(1) + "%";
+                if (fill) fill.style.width = pct + "%";
+                if (bar) bar.setAttribute("aria-valuenow", String(pct.toFixed(1)));
+            }
+            if (stats[2]) {
+                const v = stats[2].querySelector(".overview-stat-value");
+                if (v) v.textContent = m.getOverviewDetails();
+            }
+            if (entry.number === 1) {
+                const ascReady = m.isAscensionReady();
+                const gainPreview = ascReady ? computeNumber1AscensionGain(totalChanges) : 0;
+                const cell = card.querySelector(".overview-ascension-cell");
+                if (cell) {
+                    let ascPart = "Ascension: " + (ascReady ? "<span class=\"overview-asc-ready\">Ready</span>" : "Not ready");
+                    ascPart += " · Essence: " + formatCount(number1AscensionEssence);
+                    if (!ascReady) {
+                        ascPart += " · Requirement: " + formatCount(ASCENSION_1_REQUIRED_TOTAL) + " total and " + ASCENSION_1_MIN_HANDS + " hands";
+                    }
+                    if (ascReady) {
+                        ascPart += " · Next gain: " + formatCount(gainPreview);
+                        ascPart += " <button type=\"button\" class=\"page-btn ascend-number-btn\" data-number=\"1\">Ascend Number 1</button>";
+                    }
+                    cell.innerHTML = ascPart;
+                }
+            }
+        });
+        const statsEl = document.getElementById("ascension-hub-stats");
+        if (statsEl) statsEl.innerHTML = renderAscensionHubStatsPillsHtml();
+        if (typeof updateAscensionMapDetailPanel === "function") updateAscensionMapDetailPanel();
+    }
 
     function performNumber1Ascension() {
         if (!isNumber1AscensionReady()) return;
@@ -3865,11 +4219,18 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         return unlockedHands >= CLAP_UNLOCK_HANDS;
     }
     function playClapScreenAnimation(handIndexA, handIndexB, staggerDelayMs) {
-        if (settings.showClapAnimation === false) return;
+        function clapFxShouldDisplay() {
+            if (settings.showClapAnimation === false) return false;
+            if (typeof window.getCurrentNumberMode === "function" && window.getCurrentNumberMode() !== 1) return false;
+            if (isPagePanelOpen() && pagePanelEl && pagePanelEl.dataset.openPageId === "overview") return false;
+            return true;
+        }
+        if (!clapFxShouldDisplay()) return;
         const root = document.getElementById("clap-animation-root");
         if (!root) return;
         const art5 = hands1[4];
         window.setTimeout(() => {
+            if (!clapFxShouldDisplay()) return;
             const wrap = document.createElement("div");
             wrap.className = "clap-fx-burst";
             wrap.setAttribute("role", "presentation");
@@ -4068,7 +4429,7 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         const nowOverview = Date.now();
         if (nowOverview - lastOverviewUpdateMs >= 1000) {
             lastOverviewUpdateMs = nowOverview;
-            refreshGlobalOverviewPanelIfOpen();
+            patchGlobalOverviewLiveDom();
         }
     }
     let lastUIUpdateMs = 0;
@@ -4144,7 +4505,62 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         });
         window.addEventListener("resize", onWindowScrollResizeForUpgrades);
         window.addEventListener("scroll", onWindowScrollResizeForUpgrades, true);
+        window.addEventListener("pointerup", function () {
+            stopUpgradeHoldRepeat(true);
+        }, true);
+        window.addEventListener("pointercancel", function () {
+            stopUpgradeHoldRepeat(true);
+        }, true);
+        speedUpgradesContainerEl.addEventListener("pointerdown", function (e) {
+            if (e.button != null && e.button !== 0) return;
+            const speedBtn = e.target.closest(".speed-upgrade-btn");
+            const cheapenBtn = e.target.closest(".cheapen-upgrade-btn");
+            const slowdownBtn = e.target.closest(".slowdown-upgrade-btn");
+            const btn = speedBtn || cheapenBtn || slowdownBtn;
+            if (!btn) return;
+            if (btn.disabled) return;
+            const handIndex = parseInt(btn.getAttribute("data-hand-index"), 10);
+            if (isNaN(handIndex) || handIndex < 0 || handIndex >= unlockedHands) return;
+            e.preventDefault();
+            stopUpgradeHoldRepeat(false);
+            upgradeHoldSuppressClickBtn = null;
+            let buyFn;
+            if (speedBtn) {
+                buyFn = function () {
+                    buySpeedUpgradeForHand(handIndex, { confettiOrigin: btn });
+                };
+            } else if (cheapenBtn) {
+                buyFn = function () {
+                    buyCheapenUpgradeForHand(handIndex, btn);
+                };
+            } else {
+                buyFn = function () {
+                    buySlowdownUpgradeForHand(handIndex, btn);
+                };
+            }
+            buyFn();
+            let firstTick = true;
+            const intervalId = setInterval(function () {
+                if (firstTick) {
+                    firstTick = false;
+                    if (!upgradeHoldRepeatTipLogged) {
+                        upgradeHoldRepeatTipLogged = true;
+                        addToLog("Hold the mouse (or finger) on Speed, Cheapen, or Slowdown to buy upgrades one after another while you have enough currency.", "tip");
+                    }
+                }
+                buyFn();
+            }, UPGRADE_HOLD_REPEAT_MS);
+            upgradeHoldRepeatState = { intervalId: intervalId, buttonEl: btn };
+        }, true);
         speedUpgradesContainerEl.addEventListener("click", function(e) {
+            const suppressSpeed = e.target.closest(".speed-upgrade-btn");
+            const suppressCheap = e.target.closest(".cheapen-upgrade-btn");
+            const suppressSlow = e.target.closest(".slowdown-upgrade-btn");
+            const suppressBtn = suppressSpeed || suppressCheap || suppressSlow;
+            if (suppressBtn && upgradeHoldSuppressClickBtn === suppressBtn) {
+                upgradeHoldSuppressClickBtn = null;
+                return;
+            }
             const auraBtn = e.target.closest(".time-warp-aura-btn");
             if (auraBtn) {
                 const handIndex = parseInt(auraBtn.getAttribute("data-hand-index"), 10);

@@ -38,7 +38,13 @@
             if (!tags || !tags.length) {
                 tags = [route, n.finger].filter(Boolean);
             }
-            return {
+            var nx = n.x;
+            var ny = n.y;
+            var hasPos = typeof nx === "number" && typeof ny === "number" && isFinite(nx) && isFinite(ny);
+            var layoutT = n.layoutT;
+            var lateral = n.lateral;
+            var hasLayoutRay = typeof layoutT === "number" && isFinite(layoutT) && n.finger && FINGERTIP_TARGETS[n.finger];
+            var out = {
                 id: n.id,
                 finger: n.finger,
                 parents: Array.isArray(n.parents) ? n.parents.slice() : [],
@@ -50,11 +56,33 @@
                 grants: grants,
                 branchIndex: bi
             };
+            if (hasPos) {
+                out.x = nx;
+                out.y = ny;
+            } else if (hasLayoutRay) {
+                var tip = FINGERTIP_TARGETS[n.finger];
+                var hubX = HUB_CENTER.x;
+                var hubY = HUB_CENTER.y;
+                var rdx = tip.x - hubX;
+                var rdy = tip.y - hubY;
+                var rlen = Math.hypot(rdx, rdy) || 1;
+                var px = -rdy / rlen;
+                var py = rdx / rlen;
+                var u = Math.max(0, Math.min(1, layoutT));
+                var t = LAYOUT_T_START + (LAYOUT_T_END - LAYOUT_T_START) * u;
+                var bx = hubX + rdx * t;
+                var by = hubY + rdy * t;
+                var lat = typeof lateral === "number" && isFinite(lateral) ? lateral : 0;
+                out.x = bx + px * lat;
+                out.y = by + py * lat;
+            }
+            return out;
         });
     }
 
     /**
-     * Human-editable ascension nodes. Each row needs: id, finger, parents, route, cost, branchIndex, grants.
-     * Optional: title, effect, tags (derived from route / effectFromGrants when omitted).
+     * Human-editable ascension nodes. Each row needs: id, finger, parents, route, cost, branchIndex, x, y, grants.
+     * x,y in 0–100 viewBox space (same as map). Optional: layoutT (0–1 along hub→fingertip), lateral (perpendicular offset).
+     * Optional: title, effect, tags.
      */
 

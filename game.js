@@ -1,6 +1,11 @@
 let currentMode = 1;
 let count = 0;
 
+function getCurrentNumberMode() {
+    return currentMode;
+}
+window.getCurrentNumberMode = getCurrentNumberMode;
+
 const NUM_HANDS = 10;
 const countDisplay = document.getElementById("count-display");
 const countBtn = document.getElementById("count-btn");

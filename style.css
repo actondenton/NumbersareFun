@@ -3469,6 +3469,16 @@ html[data-theme="light"] .asc-stat-pill {
 }
 .ascension-map-toolbar {
     margin-top: 0.35rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+}
+.ascension-map-zoom-btn {
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0.18rem 0.45rem;
+    min-width: 2rem;
 }
 .ascension-map-reset-btn {
     font-size: 0.78rem;
@@ -3489,6 +3499,55 @@ html[data-theme="light"] .asc-stat-pill {
 .ascension-map-viewport:active {
     cursor: grabbing;
 }
+/* Fixed px typography — does not scale with map zoom (panel sits outside pan-zoom layer). */
+.ascension-map-detail-panel {
+    position: absolute;
+    left: 10px;
+    bottom: 10px;
+    z-index: 8;
+    width: 272px;
+    max-width: calc(100% - 20px);
+    pointer-events: none;
+}
+.ascension-map-detail-panel-inner {
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(100, 110, 160, 0.38);
+    background: rgba(16, 20, 34, 0.68);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 6px 26px rgba(0, 0, 0, 0.28);
+}
+html[data-theme="light"] .ascension-map-detail-panel-inner {
+    background: rgba(255, 255, 255, 0.7);
+    border-color: rgba(160, 170, 200, 0.5);
+    box-shadow: 0 6px 22px rgba(60, 70, 100, 0.12);
+}
+.ascension-map-detail-kicker {
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    opacity: 0.78;
+    margin-bottom: 4px;
+}
+.ascension-map-detail-title {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.25;
+    margin-bottom: 6px;
+}
+.ascension-map-detail-effect {
+    font-size: 13px;
+    line-height: 1.42;
+    opacity: 0.92;
+    margin-bottom: 8px;
+}
+.ascension-map-detail-meta {
+    font-size: 12px;
+    font-weight: 500;
+    opacity: 0.88;
+    letter-spacing: 0.02em;
+}
 html[data-theme="light"] .ascension-map-viewport {
     background: #f2f4fb;
     border-color: #c8d0e6;
@@ -3507,10 +3566,11 @@ html[data-theme="light"] .ascension-map-viewport {
     min-height: min(52vh, 400px);
     aspect-ratio: 1;
 }
+/* Center matches ascension-tree-data HUB_CENTER (50, 51) so palm aligns with SVG/node viewBox space */
 .ascension-hand-backdrop {
     position: absolute;
     left: 50%;
-    top: 56%;
+    top: 51%;
     transform: translate(-50%, -50%);
     margin: 0;
     font-family: "VT323", ui-monospace, monospace;
@@ -3540,21 +3600,49 @@ html[data-theme="light"] .ascension-hand-backdrop {
 .ascension-map-svg .asc-map-edge {
     fill: none;
     stroke-linecap: round;
-    stroke-width: 0.55;
+    stroke-width: 0.62;
     vector-effect: non-scaling-stroke;
-    opacity: 0.72;
+    opacity: 0.75;
     transition: opacity 0.2s ease, stroke-width 0.2s ease;
 }
 .ascension-map-svg .asc-map-edge--active {
-    opacity: 0.88;
-    stroke-width: 0.62;
+    opacity: 0.96;
+    stroke-width: 0.9;
 }
 .ascension-map-svg .asc-map-edge--muted {
-    opacity: 0.2;
-    stroke-width: 0.38;
+    opacity: 0.22;
+    stroke-width: 0.4;
 }
 html[data-theme="light"] .ascension-map-svg .asc-map-edge--muted {
-    opacity: 0.28;
+    opacity: 0.3;
+}
+.ascension-map-debug-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    min-height: min(52vh, 400px);
+    pointer-events: none;
+    display: block;
+    z-index: 2;
+}
+.asc-map-debug-line {
+    stroke: rgba(180, 190, 220, 0.12);
+    stroke-width: 0.08;
+    vector-effect: non-scaling-stroke;
+}
+.asc-map-debug-hub {
+    fill: rgba(255, 120, 200, 0.35);
+    stroke: rgba(255, 200, 240, 0.5);
+    stroke-width: 0.06;
+}
+.asc-map-debug-tip {
+    fill: rgba(120, 200, 255, 0.35);
+    stroke: rgba(180, 230, 255, 0.45);
+    stroke-width: 0.05;
+}
+html[data-theme="light"] .asc-map-debug-line {
+    stroke: rgba(80, 90, 120, 0.18);
 }
 .asc-map-edge--velocity {
     stroke: #64b5f6;
@@ -3605,23 +3693,40 @@ html[data-theme="light"] .asc-map-edge--clap {
 html[data-theme="light"] .asc-map-edge--synergy {
     stroke: #f9a825;
 }
+/* Overlay the SVG 1:1 (meet letterbox matches syncAscensionMapNodeDomPositions). Pass-through hit area so pan works on empty map. */
 .ascension-map-nodes-layer {
-    position: relative;
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
     z-index: 1;
-    min-height: min(52vh, 400px);
-    aspect-ratio: 1;
+    pointer-events: none;
 }
+/* Narrow column centered on the viewBox point; card overflows horizontally for hover/buy (pointer-events on card). */
 .asc-map-node {
     position: absolute;
     transform: translate(-50%, -50%);
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     z-index: 2;
     outline: none;
+    pointer-events: auto;
+}
+.asc-map-node.asc-map-node--selected {
+    z-index: 50;
+}
+.asc-map-node.asc-map-node--selected .asc-map-node-pin {
+    box-shadow:
+        0 0 0 2px rgba(255, 255, 255, 0.55),
+        0 0 14px rgba(130, 200, 255, 0.65);
+}
+.asc-map-node--available {
+    cursor: pointer;
 }
 .asc-map-node:focus-visible {
     box-shadow: 0 0 0 2px rgba(100, 181, 246, 0.85);
-    border-radius: 50%;
+    border-radius: 12px;
 }
 .asc-map-node-pin {
     position: absolute;
@@ -3660,98 +3765,82 @@ html[data-theme="light"] .asc-map-edge--synergy {
 .asc-map-node--route-synergy .asc-map-node-pin {
     background: linear-gradient(145deg, #ffe082, #f9a825);
 }
-.asc-map-node-card {
+/* Option A — purchased: readable “committed gem” on the map (glow + check); card effect text muted. */
+.asc-map-node--owned .asc-map-node-pin {
+    width: 14px;
+    height: 14px;
+    margin-left: -7px;
+    margin-top: -7px;
+    border-color: rgba(255, 255, 255, 0.5);
+    filter: saturate(1.12) brightness(1.06);
+    box-shadow:
+        0 0 0 2px rgba(129, 199, 132, 0.55),
+        0 0 12px rgba(129, 199, 132, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.38);
+}
+.asc-map-node--owned .asc-map-node-pin::after {
+    content: "✓";
     position: absolute;
     left: 50%;
-    top: calc(50% + 9px);
-    transform: translateX(-50%);
-    width: 152px;
-    max-width: min(40vw, 168px);
-    margin-top: 0;
-    padding: 0.5rem 0.55rem 0.55rem;
-    border-radius: 10px;
-    border: 1px solid rgba(90, 100, 140, 0.35);
-    background: rgba(16, 20, 34, 0.82);
-    font-size: 0.76rem;
-    line-height: 1.35;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-    transition: opacity 0.14s ease, visibility 0.14s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
-    z-index: 5;
+    top: 50%;
+    transform: translate(-50%, -54%);
+    font-size: 7.5px;
+    line-height: 1;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.96);
+    text-shadow: 0 0 2px rgba(0, 0, 0, 0.55);
+    pointer-events: none;
 }
-html[data-theme="light"] .asc-map-node-card {
-    background: rgba(255, 255, 255, 0.92);
-    border-color: #c8d0e8;
-    box-shadow: 0 4px 18px rgba(80, 90, 140, 0.1);
+.asc-map-node--owned.asc-map-node--route-velocity .asc-map-node-pin,
+.asc-map-node--owned.asc-map-node--route-speed .asc-map-node-pin {
+    box-shadow:
+        0 0 0 2px rgba(100, 181, 246, 0.75),
+        0 0 14px rgba(100, 181, 246, 0.45),
+        inset 0 1px 0 rgba(255, 255, 255, 0.38);
 }
-.asc-map-node--owned .asc-map-node-card {
-    border-color: rgba(76, 175, 80, 0.45);
-    background: linear-gradient(145deg, rgba(76, 175, 80, 0.14), rgba(16, 20, 34, 0.75));
+.asc-map-node--owned.asc-map-node--route-cheapen .asc-map-node-pin {
+    box-shadow:
+        0 0 0 2px rgba(232, 200, 74, 0.78),
+        0 0 14px rgba(212, 168, 74, 0.42),
+        inset 0 1px 0 rgba(255, 255, 255, 0.38);
 }
-html[data-theme="light"] .asc-map-node--owned .asc-map-node-card {
-    background: linear-gradient(145deg, rgba(129, 199, 132, 0.2), rgba(255, 255, 255, 0.95));
+.asc-map-node--owned.asc-map-node--route-combo .asc-map-node-pin {
+    box-shadow:
+        0 0 0 2px rgba(77, 208, 196, 0.78),
+        0 0 14px rgba(0, 137, 160, 0.42),
+        inset 0 1px 0 rgba(255, 255, 255, 0.38);
 }
-.asc-map-node--available .asc-map-node-card {
-    border-color: rgba(100, 181, 246, 0.5);
-    box-shadow: 0 0 0 1px rgba(100, 181, 246, 0.12), 0 6px 20px rgba(0, 0, 0, 0.18);
+.asc-map-node--owned.asc-map-node--route-turbo .asc-map-node-pin {
+    box-shadow:
+        0 0 0 2px rgba(206, 147, 216, 0.82),
+        0 0 14px rgba(123, 31, 162, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.38);
 }
-.asc-map-node--locked .asc-map-node-card {
-    opacity: 0.82;
+.asc-map-node--owned.asc-map-node--route-warp .asc-map-node-pin {
+    box-shadow:
+        0 0 0 2px rgba(77, 224, 225, 0.78),
+        0 0 14px rgba(0, 131, 143, 0.42),
+        inset 0 1px 0 rgba(255, 255, 255, 0.38);
 }
-@media (hover: hover) and (pointer: fine) {
-    .asc-map-node-card {
-        opacity: 0;
-        visibility: hidden;
-        pointer-events: none;
-    }
-    .asc-map-node:hover,
-    .asc-map-node:focus-within {
-        z-index: 40;
-    }
-    .asc-map-node:hover .asc-map-node-card,
-    .asc-map-node:focus-within .asc-map-node-card {
-        opacity: 1;
-        visibility: visible;
-        pointer-events: auto;
-    }
-    .asc-map-node--locked:hover .asc-map-node-card,
-    .asc-map-node--locked:focus-within .asc-map-node-card {
-        opacity: 0.92;
-    }
-    .asc-map-node--available:hover .asc-map-node-card,
-    .asc-map-node--available:focus-within .asc-map-node-card {
-        transform: translateX(-50%) translateY(-2px);
-    }
+.asc-map-node--owned.asc-map-node--route-clap .asc-map-node-pin {
+    box-shadow:
+        0 0 0 2px rgba(255, 183, 77, 0.82),
+        0 0 14px rgba(239, 108, 0, 0.42),
+        inset 0 1px 0 rgba(255, 255, 255, 0.38);
 }
-.asc-map-node-title {
-    font-weight: 600;
-    font-size: 0.78rem;
-    letter-spacing: 0.01em;
-    margin-bottom: 0.2rem;
+.asc-map-node--owned.asc-map-node--route-synergy .asc-map-node-pin {
+    box-shadow:
+        0 0 0 2px rgba(255, 213, 79, 0.82),
+        0 0 14px rgba(249, 168, 37, 0.42),
+        inset 0 1px 0 rgba(255, 255, 255, 0.38);
 }
-.asc-map-node-effect {
-    font-size: 0.7rem;
-    opacity: 0.86;
-    margin-bottom: 0.35rem;
-    line-height: 1.38;
+html[data-theme="light"] .asc-map-node--owned .asc-map-node-pin {
+    border-color: rgba(20, 24, 38, 0.35);
+    filter: saturate(1.08) brightness(0.98);
 }
-.asc-map-node-action {
-    display: flex;
-    justify-content: flex-end;
-}
-.asc-map-node-badge {
-    font-size: 0.66rem;
-    padding: 0.2rem 0.42rem;
-    border-radius: 6px;
-    background: rgba(120, 130, 160, 0.32);
-    font-weight: 500;
-}
-.asc-map-node-badge--locked {
-    opacity: 0.7;
-}
-.asc-map-node-buy {
-    font-size: 0.68rem;
-    padding: 0.24rem 0.48rem;
-    border-radius: 6px;
+html[data-theme="light"] .asc-map-node--owned .asc-map-node-pin::after {
+    color: #fff;
+    text-shadow: 0 0 2px rgba(0, 0, 0, 0.45);
 }
 .asc-map-legend {
     display: flex;
@@ -3798,12 +3887,6 @@ html[data-theme="light"] .asc-map-node--owned .asc-map-node-card {
 }
 .asc-map-legend-swatch--synergy {
     background: linear-gradient(90deg, #ffd54f, #f9a825);
-}
-@media (prefers-reduced-motion: reduce) {
-    .asc-map-node--available:hover .asc-map-node-card,
-    .asc-map-node--available:focus-within .asc-map-node-card {
-        transform: translateX(-50%);
-    }
 }
 .ascension-hub-trees {
     display: grid;

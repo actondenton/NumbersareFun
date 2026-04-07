@@ -1,5 +1,6 @@
-# Writes _ascension_nodes_array.txt (var ASCENSION_NODES = [ ... ];). To refresh ascension-tree-data.js
-# after editing this script, run _splice_ascension.ps1 (uses _ascension_finalize_block.js + the txt file).
+# Writes _ascension_nodes_array.txt (var ASCENSION_NODES = [ ... ];) including x,y in 0–100 viewBox space.
+# After editing, run: powershell -File _refresh_ascension_array.ps1
+# (Legacy: _splice_ascension.ps1 only if the file still uses pad2/buildNodes.)
 
 function Pad2([int]$n) { if ($n -lt 10) { "0$n" } else { "$n" } }
 function GVel([int]$i) {
@@ -28,6 +29,20 @@ function GClap([int]$i) {
     return '{ clapBonusChanceAdd: 0.006 }'
 }
 
+# Same 0–100 viewBox space as HUB_CENTER / FINGERTIP_TARGETS in ascension-tree-data.js
+$hubX = 50
+$hubY = 51
+$tLay0 = 0.09
+$tLay1 = 0.93
+$tipByFinger = @{
+    'index'  = @{ x = 44; y = 10 }
+    'middle' = @{ x = 33; y = 0 }
+    'ring'   = @{ x = 15; y = 15 }
+    'pinky'  = @{ x = 5; y = 30 }
+    'thumb'  = @{ x = 85; y = 80 }
+}
+$ci = [System.Globalization.CultureInfo]::InvariantCulture
+
 $nodeLines = New-Object System.Collections.ArrayList
 foreach ($finger in @('index', 'middle', 'ring', 'pinky', 'thumb')) {
     $route = switch ($finger) {
@@ -37,6 +52,10 @@ foreach ($finger in @('index', 'middle', 'ring', 'pinky', 'thumb')) {
         'index' { 'asc_ix' }; 'middle' { 'asc_md' }; 'ring' { 'asc_rg' }; 'pinky' { 'asc_pk' }; default { 'asc_th' }
     }
     $base = if ($finger -eq 'ring') { 7 } elseif ($finger -eq 'pinky') { 6 } else { 5 }
+    $tip = $tipByFinger[$finger]
+    $dx = $tip.x - $hubX
+    $dy = $tip.y - $hubY
+    $den = 24
     for ($i = 0; $i -lt 25; $i++) {
         $id = "$pfx`_$(Pad2 $i)"
         $parents = if ($i -eq 0) { '[]' } else { "['$pfx`_$(Pad2 ($i-1))']" }
@@ -44,7 +63,13 @@ foreach ($finger in @('index', 'middle', 'ring', 'pinky', 'thumb')) {
             'index' { GVel $i }; 'middle' { GCombo $i }; 'ring' { GTurbo $i }; 'pinky' { GWarp $i }; default { GClap $i }
         }
         $cost = [math]::Max(1, [math]::Floor($base * [math]::Pow(1.104, $i)))
-        [void]$nodeLines.Add('        { id: ''' + $id + ''', finger: ''' + $finger + ''', parents: ' + $parents + ', route: ''' + $route + ''', cost: ' + $cost + ', branchIndex: ' + $i + ', grants: ' + $g + ' }')
+        $u = if ($den -le 0) { 0.5 } else { $i / $den }
+        $tpar = $tLay0 + ($tLay1 - $tLay0) * $u
+        $px = $hubX + $dx * $tpar
+        $py = $hubY + $dy * $tpar
+        $xs = [string]::Format($ci, '{0:0.###}', $px)
+        $ys = [string]::Format($ci, '{0:0.###}', $py)
+        [void]$nodeLines.Add('        { id: ''' + $id + ''', finger: ''' + $finger + ''', parents: ' + $parents + ', route: ''' + $route + ''', cost: ' + $cost + ', branchIndex: ' + $i + ', x: ' + $xs + ', y: ' + $ys + ', grants: ' + $g + ' }')
     }
 }
 $body = @"

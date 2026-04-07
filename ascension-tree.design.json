@@ -10,15 +10,15 @@
     "coordinateSpace": "SVG viewBox 0 0 100 100; node positions use the same percent space as the map layer.",
     "hubHandArt": {
       "exportKey": "HUB_HAND_ART",
-      "hubCenter": { "x": 50, "y": 66, "note": "Palm / Essence hub — mirror in ascension-tree-data.js as HUB_CENTER." },
+      "hubCenter": { "x": 50, "y": 51, "note": "Palm / Essence hub — mirror in ascension-tree-data.js as HUB_CENTER." },
       "fingertips": {
-        "pinky": { "x": 17, "y": 23, "branch": "warp" },
-        "ring": { "x": 32, "y": 16, "branch": "turbo" },
-        "middle": { "x": 50, "y": 11, "branch": "combo" },
-        "index": { "x": 69, "y": 17, "branch": "velocity" },
-        "thumb": { "x": 91, "y": 41, "branch": "clap" }
+        "pinky": { "x": 5, "y": 30, "branch": "warp" },
+        "ring": { "x": 15, "y": 15, "branch": "turbo" },
+        "middle": { "x": 33, "y": 0, "branch": "combo" },
+        "index": { "x": 44, "y": 10, "branch": "velocity" },
+        "thumb": { "x": 85, "y": 80, "branch": "clap" }
       },
-      "interpolation": "Nodes along each branch use linear t from LAYOUT_T_START (0.11) to LAYOUT_T_END (0.93) along hub→fingertip vector (computeAscensionHandLayout)."
+      "interpolation": "Nodes along each branch use linear t from LAYOUT_T_START (0.09) to LAYOUT_T_END (0.93) along hub→fingertip vector (computeAscensionHandLayout). Optional layoutT/lateral in finalizeAscensionNodes."
     }
   },
   "planAlignment": {
@@ -123,9 +123,9 @@
   "edges": {
     "style": "sankeyInspired",
     "implementation": "SVG cubic Bézier (C): control points blend chord tangent with offset toward/away from HUB_CENTER for merge-friendly flow.",
-    "strokeWidthViewBox": 0.55,
-    "strokeWidthActive": 0.62,
-    "strokeWidthMuted": 0.38,
+    "strokeWidthViewBox": 0.62,
+    "strokeWidthActive": 0.88,
+    "strokeWidthMuted": 0.4,
     "linecap": "round",
     "opacityDefault": 0.72,
     "opacityActive": 0.88,
@@ -160,8 +160,9 @@
   },
   "mapInteraction": {
     "pan": { "pointer": "drag on viewport", "cursor": "grab" },
-    "zoom": { "modifierKeys": ["ctrlKey", "metaKey"], "wheel": true, "scaleMin": 0.45, "scaleMax": 2.6 },
-    "resetView": { "id": "ascension-map-reset-view" }
+    "zoom": { "wheelOnViewport": true, "modifierKeysOptional": ["ctrlKey", "metaKey"], "buttons": ["ascension-map-zoom-in", "ascension-map-zoom-out"], "scaleMin": 0.45, "scaleMax": 2.6 },
+    "resetView": { "id": "ascension-map-reset-view" },
+    "pick": { "nearestNodeViewBoxRadius": 0.78, "debugGrid": "localStorage ascensionMapDebug=1 or ?ascdev=1" }
   },
   "cssClassMap": {
     "section": "ascension-hub",
