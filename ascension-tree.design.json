@@ -1,0 +1,186 @@
+{
+  "name": "NumbersareFun — Ascension skill tree",
+  "version": "1.0.0",
+  "description": "Design tokens and UI rules for the Number 1 ascension map. Inspired by radial ARPG passive trees (strong per-branch color, clear node states, thick active paths vs muted locked paths). Use this file when editing style.css / index.html ascension markup.",
+  "reference": {
+    "layoutInspiration": "Three-branch radial passive tree: large readable nodes, branch-colored connectors, locked grey infrastructure, root at hub.",
+    "asciiHandHub": "Editor-style open hand with five digits + wrist '5' labels; source string is ASCENSION_TREE_EXPORT.HUB_HAND_ART in ascension-tree-data.js."
+  },
+  "layout": {
+    "coordinateSpace": "SVG viewBox 0 0 100 100; node positions use the same percent space as the map layer.",
+    "hubHandArt": {
+      "exportKey": "HUB_HAND_ART",
+      "hubCenter": { "x": 50, "y": 66, "note": "Palm / Essence hub — mirror in ascension-tree-data.js as HUB_CENTER." },
+      "fingertips": {
+        "pinky": { "x": 17, "y": 23, "branch": "warp" },
+        "ring": { "x": 32, "y": 16, "branch": "turbo" },
+        "middle": { "x": 50, "y": 11, "branch": "combo" },
+        "index": { "x": 69, "y": 17, "branch": "velocity" },
+        "thumb": { "x": 91, "y": 41, "branch": "clap" }
+      },
+      "interpolation": "Nodes along each branch use linear t from LAYOUT_T_START (0.11) to LAYOUT_T_END (0.93) along hub→fingertip vector (computeAscensionHandLayout)."
+    }
+  },
+  "planAlignment": {
+    "handHub": "Layout rays follow HUB_CENTER → FINGERTIP_TARGETS so branches align with HUB_HAND_ART, not a generic snowflake.",
+    "sankeyEdges": "Cubic Bézier with perpendicular offset + bias toward HUB_CENTER midpoint — see ascensionSankeyEdgePath in index.html.",
+    "comboPulse": "Production split across getComboParticipatingHandIndices (pattern hands), not all unlocked hands.",
+    "warpCadence": "warpSpawnIntervalMult grant + getTimeWarpAuraSpawnSpanMaxSec (60s × mult, floor 1s).",
+    "deferredFromPlan": ["turbo refinement persistent meta (save)", "clap rare cheapen/slowdown rolls", "velocity bonus-speed / free-purchase chances"]
+  },
+  "semanticBranches": {
+    "velocity": {
+      "finger": "index",
+      "route": "velocity",
+      "playerLabel": "Index · velocity",
+      "cssEdgeClass": "asc-map-edge--velocity",
+      "cssNodeRouteClass": "asc-map-node--route-velocity"
+    },
+    "combo": {
+      "finger": "middle",
+      "route": "combo",
+      "playerLabel": "Middle · combo",
+      "cssEdgeClass": "asc-map-edge--combo",
+      "cssNodeRouteClass": "asc-map-node--route-combo"
+    },
+    "turbo": {
+      "finger": "ring",
+      "route": "turbo",
+      "playerLabel": "Ring · turbo",
+      "cssEdgeClass": "asc-map-edge--turbo",
+      "cssNodeRouteClass": "asc-map-node--route-turbo"
+    },
+    "warp": {
+      "finger": "pinky",
+      "route": "warp",
+      "playerLabel": "Pinky · warp",
+      "cssEdgeClass": "asc-map-edge--warp",
+      "cssNodeRouteClass": "asc-map-node--route-warp"
+    },
+    "clap": {
+      "finger": "thumb",
+      "route": "clap",
+      "playerLabel": "Thumb · clap",
+      "cssEdgeClass": "asc-map-edge--clap",
+      "cssNodeRouteClass": "asc-map-node--route-clap"
+    }
+  },
+  "color": {
+    "dark": {
+      "canvas": {
+        "hex": "#2b2d39",
+        "usage": "Primary map viewport background (ARPG-style navy charcoal)."
+      },
+      "canvasBorder": {
+        "rgba": "rgba(100, 110, 160, 0.28)",
+        "usage": "1px border on ascension-map-viewport."
+      },
+      "panelChrome": {
+        "rgba": "rgba(18, 22, 36, 0.96)",
+        "usage": "Fallback / inner panels when not using canvas hex."
+      },
+      "asciiHand": {
+        "hex": "#e0b0ff",
+        "opacityBackdrop": 0.28,
+        "usage": "Monospace hand art on the map; soft lavender on dark (editor reference)."
+      },
+      "branches": {
+        "velocity": { "stroke": "#64b5f6", "pinGradient": ["#64b5f6", "#1565c0"] },
+        "combo": { "stroke": "#4dd0c4", "pinGradient": ["#4dd0c4", "#00897b"] },
+        "turbo": { "stroke": "#ce93d8", "pinGradient": ["#e1bee7", "#7b1fa2"] },
+        "warp": { "stroke": "#4dd0e1", "pinGradient": ["#80deea", "#00838f"] },
+        "clap": { "stroke": "#ffb74d", "pinGradient": ["#ffe082", "#ef6c00"] }
+      },
+      "nodeLocked": {
+        "mutedOpacity": 0.82,
+        "badgeBackground": "rgba(120, 130, 160, 0.32)",
+        "usage": "Locked nodes and inactive feel — analogous to grey locked passives."
+      },
+      "nodeAvailable": {
+        "border": "rgba(100, 181, 246, 0.5)",
+        "glow": "0 0 0 1px rgba(100, 181, 246, 0.12), 0 6px 20px rgba(0, 0, 0, 0.18)",
+        "usage": "Purchasable — high contrast vs locked (ARPG 'allocatable')."
+      },
+      "nodeOwned": {
+        "border": "rgba(76, 175, 80, 0.45)",
+        "fillTint": "linear-gradient(145deg, rgba(76, 175, 80, 0.14), rgba(16, 20, 34, 0.75))",
+        "usage": "Allocated / owned — green success, like filled passive nodes."
+      }
+    },
+    "light": {
+      "canvas": { "hex": "#f2f4fb" },
+      "canvasBorder": { "hex": "#c8d0e6" },
+      "asciiHand": { "hex": "#6a5080", "opacityBackdrop": 0.38 },
+      "branches": {
+        "velocity": { "stroke": "#1565c0" },
+        "combo": { "stroke": "#00897b" },
+        "turbo": { "stroke": "#7b1fa2" },
+        "warp": { "stroke": "#00838f" },
+        "clap": { "stroke": "#ef6c00" }
+      }
+    }
+  },
+  "edges": {
+    "style": "sankeyInspired",
+    "implementation": "SVG cubic Bézier (C): control points blend chord tangent with offset toward/away from HUB_CENTER for merge-friendly flow.",
+    "strokeWidthViewBox": 0.55,
+    "strokeWidthActive": 0.62,
+    "strokeWidthMuted": 0.38,
+    "linecap": "round",
+    "opacityDefault": 0.72,
+    "opacityActive": 0.88,
+    "opacityMuted": 0.2,
+    "cssActiveClass": "asc-map-edge--active",
+    "cssMutedClass": "asc-map-edge--muted",
+    "activeRule": "Edge lit when parent owned (or root) and child owned or purchasable (prereqs met)."
+  },
+  "nodes": {
+    "pin": {
+      "diameterPx": 12,
+      "border": "2px solid rgba(20, 24, 38, 0.9)",
+      "shape": "circle"
+    },
+    "card": {
+      "maxWidth": "min(40vw, 168px)",
+      "padding": "0.5rem 0.55rem 0.55rem",
+      "borderRadius": "10px",
+      "title": { "fontSizeRem": 0.78, "fontWeight": 600 },
+      "effect": { "fontSizeRem": 0.7, "opacity": 0.86 }
+    },
+    "states": {
+      "locked": { "cardOpacity": 0.82, "action": "badge text 'Locked'" },
+      "available": { "action": "primary button with Essence cost" },
+      "owned": { "action": "badge text 'Owned'" }
+    }
+  },
+  "typography": {
+    "fontStack": "\"VT323\", ui-monospace, monospace",
+    "hubTitle": { "usesGlyph": true, "glyph": "◇" },
+    "statsPills": { "uppercaseLabels": true, "letterSpacing": "0.04em" }
+  },
+  "mapInteraction": {
+    "pan": { "pointer": "drag on viewport", "cursor": "grab" },
+    "zoom": { "modifierKeys": ["ctrlKey", "metaKey"], "wheel": true, "scaleMin": 0.45, "scaleMax": 2.6 },
+    "resetView": { "id": "ascension-map-reset-view" }
+  },
+  "cssClassMap": {
+    "section": "ascension-hub",
+    "viewport": "ascension-map-viewport",
+    "panLayer": "ascension-map-pan-zoom",
+    "world": "ascension-map-world",
+    "handBackdrop": "ascension-hand-backdrop",
+    "svg": "ascension-map-svg",
+    "nodesLayer": "ascension-map-nodes-layer",
+    "node": "asc-map-node",
+    "nodePin": "asc-map-node-pin",
+    "nodeCard": "asc-map-node-card",
+    "legend": "asc-map-legend"
+  },
+  "cursorAgentNotes": [
+    "Prefer editing tokens in this JSON first, then mirror values into style.css for the classes listed in cssClassMap.",
+    "Branch colors must stay distinct for color-blind safety: rely on hue separation + legend labels, not color alone.",
+    "Hub art: ASCENSION_TREE_EXPORT.HUB_HAND_ART only on the ascension map; hands1[4] stays the compact clap glyph.",
+    "When changing fingertip positions, update both ascension-tree-data.js (HUB_CENTER, FINGERTIP_TARGETS) and this file layout.hubHandArt for Cursor parity.",
+    "When adding node states, follow locked → available → owned hierarchy from reference trees."
+  ]
+}

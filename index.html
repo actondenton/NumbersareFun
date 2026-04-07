@@ -231,6 +231,7 @@ After your first ascension, open Global Overview to spend Essence on permanent s
     </div>
 
     <script src="game.js"></script>
+    <script src="ascension-tree-data.js"></script>
     <script>
     /* ---------------------------------------------------------
        ASCII HANDS (1–10)
@@ -902,46 +903,31 @@ After your first ascension, open Global Overview to spend Essence on permanent s
     function isNumber1AscensionReady() {
         return unlockedHands >= ASCENSION_1_MIN_HANDS && totalChanges >= ASCENSION_1_REQUIRED_TOTAL;
     }
-    /** One arm per distinct route (clockwise from top). Positions come from `computeAscensionSnowflakeLayout()`. */
-    const ASCENSION_SNOWFLAKE_ARM_ROUTES = ["combo", "cheapen", "turbo", "speed", "warp"];
-    const ASCENSION_MAP_NODES = [
-        { id: "asc_chp_a", parents: [], route: "cheapen", tags: ["cheapen"], title: "Haggle primer", effect: "+1 max Cheapen level", cost: 5, grants: { cheapenCap: 1 } },
-        { id: "asc_chp_b", parents: ["asc_chp_a"], route: "cheapen", tags: ["cheapen"], title: "Bulk discount lore", effect: "+1 max Cheapen level", cost: 10, grants: { cheapenCap: 1 } },
-        { id: "asc_chp_c", parents: ["asc_chp_b"], route: "cheapen", tags: ["cheapen"], title: "Guild recognition", effect: "+1 max Cheapen level", cost: 20, grants: { cheapenCap: 1 } },
-        { id: "asc_chp_d", parents: ["asc_chp_c"], route: "cheapen", tags: ["cheapen"], title: "Master haggler", effect: "+1 max Cheapen level", cost: 40, grants: { cheapenCap: 1 } },
-        { id: "asc_cmb_a", parents: [], route: "combo", tags: ["combo"], title: "Pattern sense", effect: "+0.4% Combo multiplier", cost: 6, grants: { comboMultAdd: 0.004 } },
-        { id: "asc_cmb_b", parents: ["asc_cmb_a"], route: "combo", tags: ["combo"], title: "Rhythm counting", effect: "+0.4% Combo multiplier", cost: 12, grants: { comboMultAdd: 0.004 } },
-        { id: "asc_cmb_c", parents: ["asc_cmb_b"], route: "combo", tags: ["combo"], title: "Stack reader", effect: "+0.5% Combo multiplier", cost: 24, grants: { comboMultAdd: 0.005 } },
-        { id: "asc_cmb_d", parents: ["asc_cmb_c"], route: "combo", tags: ["combo"], title: "Grand patterns", effect: "+0.5% Combo multiplier", cost: 36, grants: { comboMultAdd: 0.005 } },
-        { id: "asc_spd_a", parents: [], route: "speed", tags: ["speed"], title: "Slick procurement", effect: "Speed upgrades cost 2% less", cost: 6, grants: { speedCostMult: 0.98 } },
-        { id: "asc_spd_b", parents: ["asc_spd_a"], route: "speed", tags: ["speed"], title: "Floor negotiator", effect: "Speed upgrades cost 2% less", cost: 12, grants: { speedCostMult: 0.98 } },
-        { id: "asc_spd_c", parents: ["asc_spd_b"], route: "speed", tags: ["speed"], title: "Velocity habits", effect: "Speed upgrades cost 2% less", cost: 24, grants: { speedCostMult: 0.98 } },
-        { id: "asc_spd_d", parents: ["asc_spd_c"], route: "speed", tags: ["speed"], title: "Bulk velocity", effect: "Speed upgrades cost 2% less", cost: 36, grants: { speedCostMult: 0.98 } },
-        { id: "asc_tur_a", parents: [], route: "turbo", tags: ["turbo"], title: "Overcharge basics", effect: "+25 Turbo meter; ×1.25 turbo cap", cost: 8, grants: { turboScaling: 1 } },
-        { id: "asc_tur_b", parents: ["asc_tur_a"], route: "turbo", tags: ["turbo"], title: "Gauge tuning", effect: "+25 Turbo meter; ×1.25 turbo cap", cost: 16, grants: { turboScaling: 1 } },
-        { id: "asc_tur_c", parents: ["asc_tur_b"], route: "turbo", tags: ["turbo"], title: "Burn efficiency", effect: "+25 Turbo meter; ×1.25 turbo cap", cost: 32, grants: { turboScaling: 1 } },
-        { id: "asc_wrp_a", parents: ["asc_tur_b"], route: "warp", tags: ["warp"], title: "Spillover I", effect: "+5% Time Warp overflow (cap 90%)", cost: 10, grants: { warpOverflow: 1 } },
-        { id: "asc_wrp_b", parents: ["asc_wrp_a"], route: "warp", tags: ["warp"], title: "Spillover II", effect: "+5% Time Warp overflow (cap 90%)", cost: 20, grants: { warpOverflow: 1 } },
-        { id: "asc_syn_ct", parents: ["asc_chp_c", "asc_tur_b"], route: "synergy", tags: ["cheapen", "turbo", "synergy"], title: "Tempo × Surge", effect: "+1 Cheapen cap & +1 Turbo scaling", cost: 35, grants: { cheapenCap: 1, turboScaling: 1 } },
-        { id: "asc_syn_cs", parents: ["asc_cmb_d", "asc_spd_d"], route: "synergy", tags: ["combo", "speed", "synergy"], title: "Patterns × Pace", effect: "+0.8% Combo & 3% cheaper speed", cost: 30, grants: { comboMultAdd: 0.008, speedCostMult: 0.97 } }
-    ];
+    const ASCENSION_TREE_EXPORT = window.ASCENSION_TREE_EXPORT;
+    const ASCENSION_TREE_VERSION = ASCENSION_TREE_EXPORT.VERSION;
+    const ASCENSION_MAP_NODES = ASCENSION_TREE_EXPORT.NODES;
+    const ASCENSION_FINGER_KEYS = ["index", "middle", "ring", "pinky", "thumb"];
     const ASCENSION_MAP_NODE_BY_ID = {};
     ASCENSION_MAP_NODES.forEach(n => { ASCENSION_MAP_NODE_BY_ID[n.id] = n; });
     /** Pre-map ascension ids from early builds — any match clears the whole node list on load (no migration). */
-    const ASCENSION_LEGACY_NODE_ID_RE = /^(?:tempo_cheapen_|boost_turbo_|boost_warp_)/;
-    const ASCENSION_RESPEC_GROUP_TAGS = {
-        economy: ["cheapen", "combo", "speed"],
-        overdrive: ["turbo", "warp"]
-    };
+    const ASCENSION_LEGACY_NODE_ID_RE = /^(?:tempo_cheapen_|boost_turbo_|boost_warp_|asc_(?:chp|cmb|spd|tur|wrp|syn)_)/;
     function ascensionPurchasedSet() {
         return new Set(number1AscensionNodeIds);
     }
+    const ASCENSION_COMBO_PRODUCTION_FRAC_CAP = 0.5;
     function computeAscensionGrantTotals() {
         let cheapenCap = 0;
         let turboScaling = 0;
         let warpOverflow = 0;
         let speedMult = 1;
         let comboMultAdd = 0;
+        let comboTriggerProductionFrac = 0;
+        let comboTurboPointsMult = 1;
+        let autoBuyDelayMult = 1;
+        let slowdownCostMult = 1;
+        let clapCooldownMult = 1;
+        let clapBonusChanceAdd = 0;
+        let warpSpawnIntervalMult = 1;
         number1AscensionNodeIds.forEach(id => {
             const def = ASCENSION_MAP_NODE_BY_ID[id];
             if (!def || !def.grants) return;
@@ -951,8 +937,32 @@ After your first ascension, open Global Overview to spend Essence on permanent s
             if (typeof g.warpOverflow === "number") warpOverflow += g.warpOverflow;
             if (typeof g.speedCostMult === "number" && g.speedCostMult > 0 && g.speedCostMult <= 1) speedMult *= g.speedCostMult;
             if (typeof g.comboMultAdd === "number") comboMultAdd += g.comboMultAdd;
+            if (typeof g.comboTriggerProductionFrac === "number" && g.comboTriggerProductionFrac > 0) comboTriggerProductionFrac += g.comboTriggerProductionFrac;
+            if (typeof g.comboTurboPointsMult === "number" && g.comboTurboPointsMult > 0) comboTurboPointsMult *= 1 + g.comboTurboPointsMult;
+            if (typeof g.autoBuyDelayMult === "number" && g.autoBuyDelayMult > 0 && g.autoBuyDelayMult <= 1) autoBuyDelayMult *= g.autoBuyDelayMult;
+            if (typeof g.slowdownCostMult === "number" && g.slowdownCostMult > 0 && g.slowdownCostMult <= 1) slowdownCostMult *= g.slowdownCostMult;
+            if (typeof g.clapCooldownMult === "number" && g.clapCooldownMult > 0 && g.clapCooldownMult <= 1) clapCooldownMult *= g.clapCooldownMult;
+            if (typeof g.clapBonusChanceAdd === "number" && g.clapBonusChanceAdd > 0) clapBonusChanceAdd += g.clapBonusChanceAdd;
+            if (typeof g.warpSpawnIntervalMult === "number" && g.warpSpawnIntervalMult > 0 && g.warpSpawnIntervalMult <= 1) {
+                warpSpawnIntervalMult *= g.warpSpawnIntervalMult;
+            }
         });
-        return { cheapenCap, turboScaling, warpOverflow, speedMult, comboMultAdd };
+        comboTriggerProductionFrac = Math.min(ASCENSION_COMBO_PRODUCTION_FRAC_CAP, comboTriggerProductionFrac);
+        clapBonusChanceAdd = Math.min(0.45, clapBonusChanceAdd);
+        return {
+            cheapenCap,
+            turboScaling,
+            warpOverflow,
+            speedMult,
+            comboMultAdd,
+            comboTriggerProductionFrac,
+            comboTurboPointsMult,
+            autoBuyDelayMult,
+            slowdownCostMult,
+            clapCooldownMult,
+            clapBonusChanceAdd,
+            warpSpawnIntervalMult
+        };
     }
     function getAscensionCheapenCapBonusFromTree() {
         return computeAscensionGrantTotals().cheapenCap;
@@ -974,6 +984,11 @@ After your first ascension, open Global Overview to spend Essence on permanent s
     }
     function getTimeWarpOverflowRatio() {
         return Math.min(0.9, TIME_WARP_OVERFLOW_BASE_RATIO + getAscensionWarpOverflowBonusFromTree() * 0.05);
+    }
+    /** Max seconds until next aura roll (uniform 0…max); ascension shortens span, floor 1s. */
+    function getTimeWarpAuraSpawnSpanMaxSec() {
+        const m = computeAscensionGrantTotals().warpSpawnIntervalMult || 1;
+        return Math.max(1, 60 * m);
     }
     function getAscensionNodePurchaseCost(id) {
         const def = ASCENSION_MAP_NODE_BY_ID[id];
@@ -1044,22 +1059,27 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         refreshGlobalOverviewPanelIfOpen();
         autosaveNow();
     }
-    function ascensionNodeMatchesRespecGroup(nodeId, groupKey) {
-        const pathTags = ASCENSION_RESPEC_GROUP_TAGS[groupKey];
-        if (!pathTags) return false;
-        const def = ASCENSION_MAP_NODE_BY_ID[nodeId];
-        if (!def || !def.tags) return false;
-        return def.tags.some(t => pathTags.indexOf(t) >= 0);
+    const ASCENSION_FINGER_RESPEC_LABELS = {
+        index: "Index (velocity)",
+        middle: "Middle (combo)",
+        ring: "Ring (turbo)",
+        pinky: "Pinky (warp)",
+        thumb: "Thumb (clap)"
+    };
+    function ascensionFingerHasPurchasedNodes(finger) {
+        return number1AscensionNodeIds.some(id => {
+            const def = ASCENSION_MAP_NODE_BY_ID[id];
+            return def && def.finger === finger;
+        });
     }
-    function ascensionGroupHasPurchasedNodes(groupKey) {
-        return number1AscensionNodeIds.some(id => ascensionNodeMatchesRespecGroup(id, groupKey));
-    }
-    function respecNumber1AscensionGroup(groupKey) {
+    function respecNumber1AscensionFinger(finger) {
         if (!number1HasAscended) return;
+        if (ASCENSION_FINGER_KEYS.indexOf(finger) < 0) return;
         const kept = [];
         let refund = 0;
         number1AscensionNodeIds.forEach(nodeId => {
-            if (ascensionNodeMatchesRespecGroup(nodeId, groupKey)) {
+            const def = ASCENSION_MAP_NODE_BY_ID[nodeId];
+            if (def && def.finger === finger) {
                 const c = getAscensionNodePurchaseCost(nodeId);
                 if (Number.isFinite(c) && c > 0 && c < Number.MAX_SAFE_INTEGER / 4) refund += c;
             } else {
@@ -1067,11 +1087,10 @@ After your first ascension, open Global Overview to spend Essence on permanent s
             }
         });
         if (refund <= 0) return;
-        const labels = { economy: "Economy paths (Cheapen · Combo · Speed)", overdrive: "Overdrive paths (Turbo · Warp)" };
         number1AscensionNodeIds = kept;
         normalizeAscensionNodeIds();
         number1AscensionEssence += refund;
-        addToLog((labels[groupKey] || groupKey) + " reset — " + formatCount(refund) + " Essence refunded.", "milestone");
+        addToLog((ASCENSION_FINGER_RESPEC_LABELS[finger] || finger) + " reset — " + formatCount(refund) + " Essence refunded.", "milestone");
         updateCheapenUpgradeUI();
         updateTurboBoostUI();
         updateRateDisplay();
@@ -1081,70 +1100,153 @@ After your first ascension, open Global Overview to spend Essence on permanent s
     function escapeAscensionHtml(t) {
         return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     }
-    /** Radial snowflake: one arm per entry in ASCENSION_SNOWFLAKE_ARM_ROUTES (clockwise from top). Synergy nodes sit at parent midpoints. */
-    function computeAscensionSnowflakeLayout() {
-        const cx = 50;
-        const cy = 50;
-        const nArms = ASCENSION_SNOWFLAKE_ARM_ROUTES.length;
-        const r0 = 13.25;
-        const dr = 8.65;
-        const armAngle = k => -Math.PI / 2 + (k * 2 * Math.PI) / nArms;
-        function atArmRing(armIdx, ring) {
-            const rad = r0 + ring * dr;
-            const th = armAngle(armIdx);
-            return { x: cx + rad * Math.cos(th), y: cy + rad * Math.sin(th) };
-        }
-        const arm = {};
-        ASCENSION_SNOWFLAKE_ARM_ROUTES.forEach((route, i) => { arm[route] = i; });
-        const pos = {};
-        pos.asc_cmb_a = atArmRing(arm.combo, 0);
-        pos.asc_cmb_b = atArmRing(arm.combo, 1);
-        pos.asc_cmb_c = atArmRing(arm.combo, 2);
-        pos.asc_cmb_d = atArmRing(arm.combo, 3);
-        pos.asc_chp_a = atArmRing(arm.cheapen, 0);
-        pos.asc_chp_b = atArmRing(arm.cheapen, 1);
-        pos.asc_chp_c = atArmRing(arm.cheapen, 2);
-        pos.asc_chp_d = atArmRing(arm.cheapen, 3);
-        pos.asc_tur_a = atArmRing(arm.turbo, 0);
-        pos.asc_tur_b = atArmRing(arm.turbo, 1);
-        pos.asc_tur_c = atArmRing(arm.turbo, 2);
-        pos.asc_spd_a = atArmRing(arm.speed, 0);
-        pos.asc_spd_b = atArmRing(arm.speed, 1);
-        pos.asc_spd_c = atArmRing(arm.speed, 2);
-        pos.asc_spd_d = atArmRing(arm.speed, 3);
-        pos.asc_wrp_a = atArmRing(arm.warp, 1);
-        pos.asc_wrp_b = atArmRing(arm.warp, 2.38);
-        function mid(a, b) {
-            return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-        }
-        pos.asc_syn_ct = mid(pos.asc_chp_c, pos.asc_tur_b);
-        pos.asc_syn_cs = mid(pos.asc_cmb_d, pos.asc_spd_d);
-        return pos;
+    function computeAscensionHandLayout() {
+        return ASCENSION_TREE_EXPORT.computeAscensionHandLayout(ASCENSION_MAP_NODES);
     }
-    function renderAscensionMapHubSvg() {
-        return (
-            "<g class=\"asc-map-snowflake-hub\" aria-hidden=\"true\">" +
-            "<circle class=\"asc-map-hub-ring\" cx=\"50\" cy=\"50\" r=\"5.4\" />" +
-            "<circle class=\"asc-map-hub-core\" cx=\"50\" cy=\"50\" r=\"1.85\" />" +
-            "</g>"
-        );
+    function ascensionSankeyEdgePath(x1, y1, x2, y2) {
+        const H = (ASCENSION_TREE_EXPORT && ASCENSION_TREE_EXPORT.HUB_CENTER) || { x: 50, y: 66 };
+        const mx = (x1 + x2) / 2;
+        const my = (y1 + y2) / 2;
+        const vx = x2 - x1;
+        const vy = y2 - y1;
+        const len = Math.hypot(vx, vy) || 1;
+        const midOff = 2.85;
+        const nx = (-vy / len) * midOff;
+        const ny = (vx / len) * midOff;
+        const hx = mx - H.x;
+        const hy = my - H.y;
+        const hlen = Math.hypot(hx, hy) || 1;
+        const flow = 1.1;
+        const bx = nx + (hx / hlen) * flow;
+        const by = ny + (hy / hlen) * flow;
+        const t = 0.4;
+        const c1x = x1 + t * (x2 - x1) + bx * 0.52;
+        const c1y = y1 + t * (y2 - y1) + by * 0.52;
+        const c2x = x2 - t * (x2 - x1) + bx * 0.52;
+        const c2y = y2 - t * (y2 - y1) + by * 0.52;
+        return "M " + x1.toFixed(3) + " " + y1.toFixed(3) +
+            " C " + c1x.toFixed(3) + " " + c1y.toFixed(3) + " " + c2x.toFixed(3) + " " + c2y.toFixed(3) + " " + x2.toFixed(3) + " " + y2.toFixed(3);
+    }
+    function ascensionEdgePathActive(parentId, childId, purchased) {
+        const childDef = ASCENSION_MAP_NODE_BY_ID[childId];
+        if (!childDef) return false;
+        const childOwned = purchased.has(childId);
+        const childReachable = childOwned || ascensionNodePrereqsMet(childId);
+        if (!childReachable) return false;
+        if (!parentId) return true;
+        return purchased.has(parentId);
     }
     function renderAscensionMapEdgesSvg(layout) {
-        const L = layout || computeAscensionSnowflakeLayout();
+        const L = layout || computeAscensionHandLayout();
+        const purchased = ascensionPurchasedSet();
         const parts = [];
         ASCENSION_MAP_NODES.forEach(node => {
-            const r = node.route || "synergy";
+            const r = node.route || "combo";
             const np = L[node.id];
             if (!np) return;
             node.parents.forEach(pid => {
                 const pp = L[pid];
                 if (!pp) return;
+                const active = ascensionEdgePathActive(pid, node.id, purchased);
+                const stateClass = active ? " asc-map-edge--active" : " asc-map-edge--muted";
                 parts.push(
-                    "<line class=\"asc-map-edge asc-map-edge--" + r + "\" x1=\"" + pp.x.toFixed(3) + "\" y1=\"" + pp.y.toFixed(3) + "\" x2=\"" + np.x.toFixed(3) + "\" y2=\"" + np.y.toFixed(3) + "\" />"
+                    "<path class=\"asc-map-edge asc-map-edge--" + r + stateClass + "\" d=\"" +
+                    ascensionSankeyEdgePath(pp.x, pp.y, np.x, np.y) + "\" />"
                 );
             });
         });
         return parts.join("");
+    }
+    let ascensionMapPanZoomCleanup = null;
+    /** Survives overview re-renders (innerHTML refresh) so zoom/pan is not lost after buys or autosave. */
+    const ascensionMapPanZoomState = { scale: 1, tx: 0, ty: 0 };
+    function teardownAscensionMapPanZoom() {
+        if (typeof ascensionMapPanZoomCleanup === "function") {
+            ascensionMapPanZoomCleanup();
+            ascensionMapPanZoomCleanup = null;
+        }
+    }
+    function initAscensionMapPanZoom() {
+        teardownAscensionMapPanZoom();
+        const viewport = document.getElementById("ascension-map-viewport");
+        const layer = document.getElementById("ascension-map-pan-zoom");
+        if (!viewport || !layer) return;
+        let scale = Math.max(0.45, Math.min(2.6, ascensionMapPanZoomState.scale || 1));
+        let tx = ascensionMapPanZoomState.tx || 0;
+        let ty = ascensionMapPanZoomState.ty || 0;
+        let dragging = false;
+        let startX = 0;
+        let startY = 0;
+        let startTx = 0;
+        let startTy = 0;
+        let ptrId = null;
+        function clampPan() {
+            const maxT = 220 * scale;
+            tx = Math.max(-maxT, Math.min(maxT, tx));
+            ty = Math.max(-maxT, Math.min(maxT, ty));
+        }
+        function apply() {
+            clampPan();
+            ascensionMapPanZoomState.scale = scale;
+            ascensionMapPanZoomState.tx = tx;
+            ascensionMapPanZoomState.ty = ty;
+            layer.style.transform = "translate(" + tx.toFixed(2) + "px," + ty.toFixed(2) + "px) scale(" + scale.toFixed(3) + ")";
+        }
+        apply();
+        function onWheel(e) {
+            if (!e.ctrlKey && !e.metaKey) return;
+            e.preventDefault();
+            const factor = e.deltaY > 0 ? 0.9 : 1.11;
+            scale = Math.max(0.45, Math.min(2.6, scale * factor));
+            apply();
+        }
+        function onPointerDown(e) {
+            if (e.button !== 0) return;
+            dragging = true;
+            ptrId = e.pointerId;
+            startX = e.clientX;
+            startY = e.clientY;
+            startTx = tx;
+            startTy = ty;
+            viewport.setPointerCapture(ptrId);
+        }
+        function onPointerMove(e) {
+            if (!dragging || e.pointerId !== ptrId) return;
+            tx = startTx + (e.clientX - startX);
+            ty = startTy + (e.clientY - startY);
+            apply();
+        }
+        function onPointerUp(e) {
+            if (e.pointerId !== ptrId) return;
+            dragging = false;
+            ptrId = null;
+            try { viewport.releasePointerCapture(e.pointerId); } catch (_) {}
+        }
+        function onResetClick(e) {
+            e.preventDefault();
+            scale = 1;
+            tx = 0;
+            ty = 0;
+            ascensionMapPanZoomState.scale = 1;
+            ascensionMapPanZoomState.tx = 0;
+            ascensionMapPanZoomState.ty = 0;
+            apply();
+        }
+        viewport.addEventListener("wheel", onWheel, { passive: false });
+        viewport.addEventListener("pointerdown", onPointerDown);
+        viewport.addEventListener("pointermove", onPointerMove);
+        viewport.addEventListener("pointerup", onPointerUp);
+        viewport.addEventListener("pointercancel", onPointerUp);
+        const resetBtn = document.getElementById("ascension-map-reset-view");
+        if (resetBtn) resetBtn.addEventListener("click", onResetClick);
+        ascensionMapPanZoomCleanup = function () {
+            viewport.removeEventListener("wheel", onWheel);
+            viewport.removeEventListener("pointerdown", onPointerDown);
+            viewport.removeEventListener("pointermove", onPointerMove);
+            viewport.removeEventListener("pointerup", onPointerUp);
+            viewport.removeEventListener("pointercancel", onPointerUp);
+            if (resetBtn) resetBtn.removeEventListener("click", onResetClick);
+        };
     }
     function renderAscensionUpgradesHtml() {
         if (!number1HasAscended) return "";
@@ -1156,11 +1258,17 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         const invested = getAscensionEssenceInvestedInNodes();
         const speedDiscountPct = (1 - totals.speedMult) * 100;
         const comboBonusPct = totals.comboMultAdd * 100;
+        const comboPulsePct = totals.comboTriggerProductionFrac * 100;
+        const turboPtsPct = (totals.comboTurboPointsMult - 1) * 100;
         const respecBtn = "<button type=\"button\" class=\"page-btn ascension-respec-btn\" data-asc-respec=\"1\"" + (number1AscensionNodeIds.length === 0 ? " disabled" : "") + ">Respec all</button>";
-        const economyRespec = "<button type=\"button\" class=\"page-btn asc-tree-respec-btn\" data-asc-respec-group=\"economy\"" + (ascensionGroupHasPurchasedNodes("economy") ? "" : " disabled") + " title=\"Cheapen, Combo, Speed, and matching synergy\">Respec economy</button>";
-        const overdriveRespec = "<button type=\"button\" class=\"page-btn asc-tree-respec-btn\" data-asc-respec-group=\"overdrive\"" + (ascensionGroupHasPurchasedNodes("overdrive") ? "" : " disabled") + " title=\"Turbo, Warp, and matching synergy\">Respec overdrive</button>";
-        const branchRespecs = economyRespec + overdriveRespec;
-        const layout = computeAscensionSnowflakeLayout();
+        const fingerRespecs = ASCENSION_FINGER_KEYS.map(fk => {
+            const has = ascensionFingerHasPurchasedNodes(fk);
+            return "<button type=\"button\" class=\"page-btn asc-tree-respec-btn\" data-asc-respec-finger=\"" + esc(fk) + "\"" + (has ? "" : " disabled") + " title=\"" + esc(ASCENSION_FINGER_RESPEC_LABELS[fk] || fk) + "\">" + esc(fk.charAt(0).toUpperCase() + fk.slice(1)) + "</button>";
+        }).join("");
+        const layout = computeAscensionHandLayout();
+        const handArt = (ASCENSION_TREE_EXPORT && ASCENSION_TREE_EXPORT.HUB_HAND_ART)
+            ? String(ASCENSION_TREE_EXPORT.HUB_HAND_ART)
+            : (typeof hands1 !== "undefined" && hands1[4] ? String(hands1[4]) : "");
         const nodeDots = ASCENSION_MAP_NODES.map(node => {
             const pt = layout[node.id] || { x: 50, y: 50 };
             const lx = pt.x.toFixed(3);
@@ -1178,7 +1286,7 @@ After your first ascension, open Global Overview to spend Essence on permanent s
                     ? "<button type=\"button\" class=\"page-btn asc-node-buy-btn asc-map-node-buy\" data-asc-node-buy=\"" + esc(node.id) + "\"" + (canBuy ? "" : " disabled") + ">" + formatCount(cost) + "</button>"
                     : "<span class=\"asc-map-node-badge asc-map-node-badge--locked\">Locked</span>");
             return (
-                "<div class=\"asc-map-node asc-map-node--route-" + esc(node.route) + " " + stateClass + "\" style=\"left:" + lx + "%;top:" + ly + "%;\" data-asc-node-id=\"" + esc(node.id) + "\" role=\"group\" aria-label=\"" + esc(node.title) + "\">" +
+                "<div class=\"asc-map-node asc-map-node--route-" + esc(node.route) + " " + stateClass + "\" style=\"left:" + lx + "%;top:" + ly + "%;\" data-asc-node-id=\"" + esc(node.id) + "\" role=\"group\" aria-label=\"" + esc(node.title) + "\" tabindex=\"0\">" +
                 "<div class=\"asc-map-node-pin\" aria-hidden=\"true\"></div>" +
                 "<div class=\"asc-map-node-card\">" +
                 "<div class=\"asc-map-node-title\">" + esc(node.title) + "</div>" +
@@ -1188,18 +1296,17 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         }).join("");
         const legend =
             "<ul class=\"asc-map-legend\" aria-label=\"Path colors\">" +
-            "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--cheapen\"></span> Cheapen</li>" +
-            "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--combo\"></span> Combo</li>" +
-            "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--speed\"></span> Speed</li>" +
-            "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--turbo\"></span> Turbo</li>" +
-            "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--warp\"></span> Warp</li>" +
-            "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--synergy\"></span> Synergy</li>" +
+            "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--velocity\"></span> Index · velocity</li>" +
+            "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--combo\"></span> Middle · combo</li>" +
+            "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--turbo\"></span> Ring · turbo</li>" +
+            "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--warp\"></span> Pinky · warp</li>" +
+            "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--clap\"></span> Thumb · clap</li>" +
             "</ul>";
         return (
             "<section class=\"ascension-hub\" aria-label=\"Number 1 ascension skill map\">" +
             "<header class=\"ascension-hub-header\">" +
             "<h4 class=\"ascension-hub-title\"><span class=\"ascension-hub-glyph\" aria-hidden=\"true\">◇</span> Ascension map</h4>" +
-            "<p class=\"ascension-hub-sub\">Five arms from the center (Combo, Cheapen, Turbo, Speed, Warp) with crisp links and synergy junctions. <strong>Respec is free</strong> — reset everything, economy (Cheapen · Combo · Speed), or overdrive (Turbo · Warp).</p>" +
+            "<p class=\"ascension-hub-sub\">Branches run from the open ASCII hand hub along each fingertip. Links curve with a hub bias (Sankey-style flow). Combo pulse production is split across <strong>hands that satisfy that pattern</strong>. <strong>Respec is free</strong>. <strong>Ctrl+scroll</strong> (or ⌘+scroll) zooms; drag to pan.</p>" +
             "<div class=\"ascension-hub-stats\">" +
             "<span class=\"asc-stat-pill asc-stat-pill--wide\"><span class=\"asc-stat-pill-k\">Nodes</span> <span class=\"asc-stat-pill-v\">" + ownedCount + " / " + totalNodes + "</span></span>" +
             "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">In nodes</span> <span class=\"asc-stat-pill-v\">" + formatCount(invested) + " Essence</span></span>" +
@@ -1207,19 +1314,27 @@ After your first ascension, open Global Overview to spend Essence on permanent s
             "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Cheapen cap</span> <span class=\"asc-stat-pill-v\">" + getMaxCheapenLevel() + "</span></span>" +
             "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Speed</span> <span class=\"asc-stat-pill-v\">−" + speedDiscountPct.toFixed(1) + "% cost</span></span>" +
             "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Combo</span> <span class=\"asc-stat-pill-v\">+" + comboBonusPct.toFixed(1) + "% mult</span></span>" +
-            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Turbo</span> <span class=\"asc-stat-pill-v\">" + formatCount(Math.round(getTurboCountMultiplierMax() * 100) / 100) + "×</span></span>" +
+            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Combo pulse</span> <span class=\"asc-stat-pill-v\">" + comboPulsePct.toFixed(1) + "% CPS</span></span>" +
+            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Turbo pts</span> <span class=\"asc-stat-pill-v\">+" + turboPtsPct.toFixed(0) + "%</span></span>" +
+            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Turbo cap</span> <span class=\"asc-stat-pill-v\">" + formatCount(Math.round(getTurboCountMultiplierMax() * 100) / 100) + "×</span></span>" +
             "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Meter</span> <span class=\"asc-stat-pill-v\">" + formatCount(getTurboMeterMax()) + "</span></span>" +
             "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Warp</span> <span class=\"asc-stat-pill-v\">" + (getTimeWarpOverflowRatio() * 100).toFixed(0) + "%</span></span>" +
+            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Warp aura</span> <span class=\"asc-stat-pill-v\">≤" + formatCount(Math.round(getTimeWarpAuraSpawnSpanMaxSec())) + "s</span></span>" +
             "</div>" +
-            "<div class=\"ascension-respec-row\">" + respecBtn + "<div class=\"ascension-branch-respecs\">" + branchRespecs + "</div></div>" +
+            "<div class=\"ascension-map-toolbar\">" +
+            "<button type=\"button\" class=\"page-btn ascension-map-reset-btn\" id=\"ascension-map-reset-view\">Reset view</button>" +
+            "</div>" +
+            "<div class=\"ascension-respec-row\">" + respecBtn + "<div class=\"ascension-branch-respecs\">" + fingerRespecs + "</div></div>" +
             "</header>" +
-            "<div class=\"ascension-map-wrap\">" +
+            "<div class=\"ascension-map-viewport\" id=\"ascension-map-viewport\">" +
+            "<div class=\"ascension-map-pan-zoom\" id=\"ascension-map-pan-zoom\">" +
+            "<div class=\"ascension-map-world\">" +
+            "<pre class=\"ascension-hand-backdrop\" aria-hidden=\"true\">" + esc(handArt) + "</pre>" +
             "<svg class=\"ascension-map-svg\" viewBox=\"0 0 100 100\" preserveAspectRatio=\"xMidYMid meet\" aria-hidden=\"true\">" +
-            renderAscensionMapHubSvg() +
             renderAscensionMapEdgesSvg(layout) +
             "</svg>" +
             "<div class=\"ascension-map-nodes-layer\">" + nodeDots + "</div>" +
-            "</div>" + legend + "</section>"
+            "</div></div></div>" + legend + "</section>"
         );
     }
     function getNumber2Milestone() {
@@ -1463,6 +1578,7 @@ After your first ascension, open Global Overview to spend Essence on permanent s
     }
     function showPagePanel(pageId) {
         if (!pagePanelEl || !pagePanelTitleEl || !pagePanelBodyEl) return;
+        teardownAscensionMapPanZoom();
         closeInlineMainStagePanels({ keep: "page" });
         let title = "";
         let bodyHtml = "";
@@ -1502,6 +1618,9 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         if (pageId === "combinations") {
             requestAnimationFrame(() => updateEarnedBonusesUI());
         }
+        if (pageId === "overview") {
+            requestAnimationFrame(() => initAscensionMapPanZoom());
+        }
     }
 
     /* ---------------------------------------------------------
@@ -1518,7 +1637,11 @@ After your first ascension, open Global Overview to spend Essence on permanent s
     let autoBuyEnabledByHand = [];
     const AUTO_BUY_DELAY_SECONDS = 30;
     let devAutoBuyDelaySeconds = null;
-    function getAutoBuyDelaySeconds() { return devAutoBuyDelaySeconds !== null ? devAutoBuyDelaySeconds : AUTO_BUY_DELAY_SECONDS; }
+    function getAutoBuyDelaySeconds() {
+        var base = devAutoBuyDelaySeconds !== null ? devAutoBuyDelaySeconds : AUTO_BUY_DELAY_SECONDS;
+        var mult = computeAscensionGrantTotals().autoBuyDelayMult || 1;
+        return Math.max(0.05, base * mult);
+    }
     let autoBuyCountdownSecondsByHand = [];
     function getSpeedMultiplierForLevel(level) {
         if (level === 0) return 1;
@@ -2211,7 +2334,9 @@ After your first ascension, open Global Overview to spend Essence on permanent s
     }
     function getSlowdownUpgradeCost(nextLevel) {
         if (nextLevel <= 0 || nextLevel > MAX_SLOWDOWN_LEVEL) return null;
-        return SLOWDOWN_COSTS[nextLevel - 1];
+        var raw = SLOWDOWN_COSTS[nextLevel - 1];
+        var m = computeAscensionGrantTotals().slowdownCostMult || 1;
+        return Math.max(1, Math.floor(raw * m));
     }
     function isSlowdownUnlocked() {
         return totalChanges >= SLOWDOWN_UNLOCK_COUNT;
@@ -2338,8 +2463,7 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         while (timeWarpAuraActiveByHand.length < unlockedHands) timeWarpAuraActiveByHand.push(false);
     }
     function scheduleNextTimeWarpSpawn() {
-        // Keep logic simple and cheap: one random roll per cycle.
-        timeWarpNextSpawnInSec = Math.random() * 60;
+        timeWarpNextSpawnInSec = Math.random() * getTimeWarpAuraSpawnSpanMaxSec();
     }
     function formatCpsForDisplay(cps) {
         if (!isFinite(cps) || cps <= 0) return "0/s";
@@ -2622,7 +2746,9 @@ After your first ascension, open Global Overview to spend Essence on permanent s
     // Current mapping uses an exponential curve: points = base^(minHands-offset)
     function getTurboComboPoints(minHands) {
         if (minHands < 2) return 0;
-        return Math.pow(TURBO_COMBO_POINTS_BASE, minHands - TURBO_COMBO_POINTS_EXP_OFFSET);
+        let pts = Math.pow(TURBO_COMBO_POINTS_BASE, minHands - TURBO_COMBO_POINTS_EXP_OFFSET);
+        const mult = computeAscensionGrantTotals().comboTurboPointsMult || 1;
+        return pts * mult;
     }
 
     // Applied turbo multiplier. If turbo is toggled Off, this returns 1× (no effect).
@@ -2835,6 +2961,7 @@ After your first ascension, open Global Overview to spend Essence on permanent s
             number1HasAscended,
             number1AscensionNodeIds,
             ascensionNumber1IntroSeen,
+            ascensionTreeVersion: ASCENSION_TREE_VERSION,
             clapCooldownUntilMsByHand
         };
     }
@@ -2919,7 +3046,9 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         reconcileNumber2LockState();
         updateNumber2SidebarUnlockUI();
         number1AscensionNodeIds = [];
-        if (Array.isArray(data.number1AscensionNodeIds)) {
+        const savedAscTreeVer = Number(data.ascensionTreeVersion);
+        const ascTreeOk = Number.isFinite(savedAscTreeVer) && savedAscTreeVer >= ASCENSION_TREE_VERSION;
+        if (ascTreeOk && Array.isArray(data.number1AscensionNodeIds)) {
             data.number1AscensionNodeIds.forEach(id => {
                 if (typeof id === "string") number1AscensionNodeIds.push(id);
             });
@@ -3340,10 +3469,10 @@ After your first ascension, open Global Overview to spend Essence on permanent s
                 if (nid) tryBuyAscensionNode(nid);
                 return;
             }
-            const ascGroupRespec = e.target.closest("[data-asc-respec-group]");
-            if (ascGroupRespec) {
-                const gk = ascGroupRespec.getAttribute("data-asc-respec-group");
-                if (gk) respecNumber1AscensionGroup(gk);
+            const ascFingerRespec = e.target.closest("[data-asc-respec-finger]");
+            if (ascFingerRespec) {
+                const fk = ascFingerRespec.getAttribute("data-asc-respec-finger");
+                if (fk) respecNumber1AscensionFinger(fk);
                 return;
             }
             if (e.target.closest("[data-asc-respec]")) {
@@ -3412,6 +3541,46 @@ After your first ascension, open Global Overview to spend Essence on permanent s
     function getActiveCombos() {
         const v = getHandValues();
         return COMBOS.filter(c => v.length >= c.minHands && c.check(v));
+    }
+    /** Hand indices that participate in an active combo (for ascension pulse split). */
+    function getComboParticipatingHandIndices(c, v) {
+        const uh = Math.min(v.length, unlockedHands);
+        if (uh <= 0) return [];
+        const all = () => Array.from({ length: uh }, (_, i) => i);
+        if (c.name === "Two Pair") {
+            const cv = countValues(v);
+            const ranks = [];
+            for (let r = 1; r <= 10; r++) if (cv[r] >= 2) ranks.push(r);
+            const out = [];
+            for (let i = 0; i < uh; i++) if (ranks.indexOf(v[i]) >= 0) out.push(i);
+            return out.length ? out : all();
+        }
+        if (c.name === "Full House") {
+            const cv = countValues(v);
+            let tri = 0;
+            let pair = 0;
+            for (let r = 1; r <= 10; r++) if (cv[r] >= 3) { tri = r; break; }
+            for (let r = 1; r <= 10; r++) if (cv[r] >= 2 && r !== tri) { pair = r; break; }
+            if (!tri) return all();
+            const out = [];
+            for (let i = 0; i < uh; i++) if (v[i] === tri || v[i] === pair) out.push(i);
+            return out.length ? out : all();
+        }
+        const pairOf = c.name.match(/^Pair of (\d+)s$/);
+        if (pairOf) {
+            const d = parseInt(pairOf[1], 10);
+            const out = [];
+            for (let i = 0; i < uh; i++) if (v[i] === d) out.push(i);
+            return out.length ? out : all();
+        }
+        const nk = c.name.match(/^(?:Three|Four|Five|Six|Seven|Eight|Nine|Ten) (\d+)s$/);
+        if (nk) {
+            const d = parseInt(nk[1], 10);
+            const out = [];
+            for (let i = 0; i < uh; i++) if (v[i] === d) out.push(i);
+            return out.length ? out : all();
+        }
+        return all().slice(0, Math.min(c.minHands || uh, uh));
     }
     const earnedComboNames = [];
     let comboActivationCounts = {};
@@ -3512,7 +3681,9 @@ After your first ascension, open Global Overview to spend Essence on permanent s
     function refreshGlobalOverviewPanelIfOpen() {
         if (!pagePanelEl || pagePanelEl.style.display === "none" || !pagePanelBodyEl || !pagePanelTitleEl) return;
         if (pagePanelTitleEl.textContent !== "Global Overview") return;
+        teardownAscensionMapPanZoom();
         pagePanelBodyEl.innerHTML = renderGlobalOverview();
+        initAscensionMapPanZoom();
     }
 
     function performNumber1Ascension() {
@@ -3623,9 +3794,37 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         showAscensionConfirmDialog();
     }
 
+    function applyAscensionComboPulseProduction(active) {
+        const frac = computeAscensionGrantTotals().comboTriggerProductionFrac;
+        if (frac <= 0 || !active || active.length === 0) return;
+        const newlyPulsing = active.filter(c => !previousTickActiveComboNames.has(c.name));
+        if (newlyPulsing.length === 0) return;
+        const cpsPerHand = getRawCpsPerHand();
+        const rawCps = cpsPerHand.reduce((a, b) => a + b, 0);
+        if (rawCps <= 0) return;
+        const totalCps = rawCps * getComboMultiplier() * getTurboCountMultiplier();
+        const v = getHandValues();
+        let any = false;
+        newlyPulsing.forEach(combo => {
+            const idxs = getComboParticipatingHandIndices(combo, v);
+            const nPart = Math.max(1, idxs.length);
+            const per = (totalCps * frac) / nPart;
+            idxs.forEach(i => {
+                if (i < 0 || i >= unlockedHands) return;
+                handEarnings[i] = (handEarnings[i] || 0) + per;
+                any = true;
+            });
+        });
+        if (any) {
+            refreshTotalFromHandEarnings();
+            if (incrementalEl) incrementalEl.textContent = formatCount(totalChanges);
+        }
+    }
+
     function updateComboUI() {
         if (unlockedHands < 2) return;
         const active = getActiveCombos();
+        if (active.length > 0) applyAscensionComboPulseProduction(active);
         active.forEach(c => { comboActivationCounts[c.name] = (comboActivationCounts[c.name] || 0) + 1; });
         const newlyEarned = active.filter(c => earnedComboNames.indexOf(c.name) === -1);
         if (newlyEarned.length > 0) {
@@ -3655,6 +3854,13 @@ After your first ascension, open Global Overview to spend Essence on permanent s
     const CLAP_MAX_PAIRS_PER_TICK = 2;
     const CLAP_ANIM_STAGGER_MS = 220;
     const CLAP_COOLDOWN_MS = 10000;
+    function getClapCooldownMs() {
+        const m = computeAscensionGrantTotals().clapCooldownMult || 1;
+        return Math.max(2500, Math.floor(CLAP_COOLDOWN_MS * m));
+    }
+    function getClapBonusChance() {
+        return Math.min(0.95, CLAP_BONUS_CHANCE + (computeAscensionGrantTotals().clapBonusChanceAdd || 0));
+    }
     function isClappingUnlocked() {
         return unlockedHands >= CLAP_UNLOCK_HANDS;
     }
@@ -3719,17 +3925,18 @@ After your first ascension, open Global Overview to spend Essence on permanent s
                     clapPairsThisTick++;
                     playClapScreenAnimation(a, b, stagger);
                     stagger += CLAP_ANIM_STAGGER_MS;
-                    clapCooldownUntilMsByHand[a] = nowMs + CLAP_COOLDOWN_MS;
-                    clapCooldownUntilMsByHand[b] = nowMs + CLAP_COOLDOWN_MS;
+                    const clapCd = getClapCooldownMs();
+                    clapCooldownUntilMsByHand[a] = nowMs + clapCd;
+                    clapCooldownUntilMsByHand[b] = nowMs + clapCd;
                     let bonusA = false;
                     let bonusB = false;
-                    if (Math.random() < CLAP_BONUS_CHANCE) {
+                    if (Math.random() < getClapBonusChance()) {
                         speedBonusLevel[a] = (speedBonusLevel[a] || 0) + 1;
                         bonusHandsOneIndexed.push(a + 1);
                         if (hands[a]) hands[a].tickAccBig = 0n;
                         bonusA = true;
                     }
-                    if (Math.random() < CLAP_BONUS_CHANCE) {
+                    if (Math.random() < getClapBonusChance()) {
                         speedBonusLevel[b] = (speedBonusLevel[b] || 0) + 1;
                         bonusHandsOneIndexed.push(b + 1);
                         if (hands[b]) hands[b].tickAccBig = 0n;
