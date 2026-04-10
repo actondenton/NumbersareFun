@@ -36,6 +36,7 @@
             <button type="button" class="page-btn" data-page="combinations" style="display: none;">Combinations</button>
             <button type="button" class="page-btn" data-page="messages">Message Log</button>
             <button type="button" class="page-btn" data-page="overview">Global Overview</button>
+            <button type="button" class="page-btn" data-page="ascension" style="display: none;">Ascension</button>
         </div>
         <div id="milestone-box" class="milestone-box">
             <div id="milestone-title" class="milestone-title">Next milestone</div>
@@ -91,7 +92,7 @@
                 <div class="ascension-ready-banner__icon" aria-hidden="true">✦</div>
                 <div class="ascension-ready-banner__copy">
                     <span class="ascension-ready-banner__title">Ascension is ready</span>
-                    <span class="ascension-ready-banner__sub">Start a new Number 1 run and earn <strong>Ascension Essence</strong> — your skill trees stay forever.</span>
+                    <span class="ascension-ready-banner__sub">Start a new Number 1 run and earn <strong>Ascension Essence</strong> — your skill trees stay forever. <span id="ascension-ready-banner-essence-suffix"></span></span>
                 </div>
                 <button type="button" id="ascension-ready-cta" class="ascension-ready-banner__cta">Ascend now</button>
             </div>
@@ -159,7 +160,7 @@
 
 You keep Ascension Essence forever. The Essence you gain scales with your total count at the moment you ascend — push higher before ascending to earn more.
 
-After your first ascension, open Global Overview to spend Essence on permanent skill branches (Tempo, Overdrive, …). You can respec for free any time.</div>
+After your first ascension, open Ascension to spend Essence on permanent skill branches (Tempo, Overdrive, …). You can respec for free any time.</div>
             <button type="button" id="ascension-intro-continue" class="story-banner-close">Continue</button>
         </div>
     </div>
@@ -403,6 +404,8 @@ After your first ascension, open Global Overview to spend Essence on permanent s
     let number1AscensionNodeIds = [];
     /** If false, first ascend shows the teaching overlay (PRD: first completion only). */
     let ascensionNumber1IntroSeen = false;
+    /** Selected number tab on the Ascension page (1 = skill map). Preserved for the session. */
+    let ascensionPageActiveNumber = 1;
 
     function refreshTotalFromHandEarnings() {
         let s = 0;
@@ -431,8 +434,9 @@ After your first ascension, open Global Overview to spend Essence on permanent s
     const milestoneProgressFillEl = document.getElementById("milestone-progress-fill");
     const playStageEl = document.getElementById("play-stage");
     const ascensionReadyBannerEl = document.getElementById("ascension-ready-banner");
+    const ascensionReadyBannerEssenceSuffixEl = document.getElementById("ascension-ready-banner-essence-suffix");
     const ascensionReadyCtaEl = document.getElementById("ascension-ready-cta");
-    const globalOverviewPageBtn = document.querySelector(".page-btn[data-page=\"overview\"]");
+    const ascensionPageBtn = document.querySelector(".page-btn[data-page=\"ascension\"]");
     const menuBtn = document.getElementById("menu-btn");
     const settingsPanelEl = document.getElementById("settings-panel");
     const settingsCloseBtn = document.getElementById("settings-close");
@@ -468,16 +472,19 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         upgradeContainer.style.display = panelOpen ? "none" : "";
         const topCountRow = document.querySelector(".top-count-row");
         if (topCountRow) {
-            const overviewOpen = isPagePanelOpen() && pagePanelEl && pagePanelEl.dataset.openPageId === "overview";
-            topCountRow.style.display = overviewOpen ? "none" : "";
+            const wideReading = isPagePanelOpen() && pagePanelEl &&
+                (pagePanelEl.dataset.openPageId === "overview" || pagePanelEl.dataset.openPageId === "ascension");
+            topCountRow.style.display = wideReading ? "none" : "";
         }
     }
     function closeInlineMainStagePanels(opts) {
         const keep = (opts && opts.keep) || "";
         if (settingsPanelEl && keep !== "settings") settingsPanelEl.style.display = "none";
         if (pagePanelEl && keep !== "page") {
+            const wasAscension = pagePanelEl.dataset.openPageId === "ascension";
             pagePanelEl.style.display = "none";
             delete pagePanelEl.dataset.openPageId;
+            if (wasAscension) teardownAscensionMapPanZoom();
         }
         syncInlinePanelsVsGameplay();
     }
@@ -572,16 +579,18 @@ After your first ascension, open Global Overview to spend Essence on permanent s
     }
     function updateNumber2SidebarUnlockUI() {
         const btn = document.querySelector(".nav-btn[data-mode=\"2\"]");
-        if (!btn) return;
-        if (isNumber2Unlocked()) {
-            btn.classList.remove("nav-btn--soon");
-            btn.setAttribute("aria-label", "Number 2");
-            btn.removeAttribute("title");
-        } else {
-            btn.classList.add("nav-btn--soon");
-            btn.setAttribute("aria-label", "Number 2 (coming soon)");
-            btn.setAttribute("title", "Coming soon");
+        if (btn) {
+            if (isNumber2Unlocked()) {
+                btn.classList.remove("nav-btn--soon");
+                btn.setAttribute("aria-label", "Number 2");
+                btn.removeAttribute("title");
+            } else {
+                btn.classList.add("nav-btn--soon");
+                btn.setAttribute("aria-label", "Number 2 (coming soon)");
+                btn.setAttribute("title", "Coming soon");
+            }
         }
+        updatePageButtonUnlocks();
     }
     window.onBeforeNumberModeSwitch = function() {
         closeInlineMainStagePanels();
@@ -592,7 +601,7 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         if (!number2State.started) {
             number2State.started = true;
             addToLog("Number 2 counting started in background.", "milestone");
-            refreshGlobalOverviewPanelIfOpen();
+            refreshOverviewAndAscensionPanelsIfOpen();
             autosaveNow();
         }
     };
@@ -842,7 +851,7 @@ After your first ascension, open Global Overview to spend Essence on permanent s
                 const ascPct = Math.max(0, Math.min(100, (totalChanges / ASCENSION_1_REQUIRED_TOTAL) * 100));
                 const handReqText = unlockedHands >= ASCENSION_1_MIN_HANDS ? "hands ready" : ("hands: " + unlockedHands + "/" + ASCENSION_1_MIN_HANDS);
                 const readinessText = isNumber1AscensionReady()
-                    ? " — Ascension ready! Use the banner on the main screen or Global Overview."
+                    ? " — Ascension ready! Use the banner on the main screen or open Ascension."
                     : (" — Ascension: " + formatCount(totalChanges) + " / " + formatCount(ASCENSION_1_REQUIRED_TOTAL) + " (" + ascPct.toFixed(2) + "%), " + handReqText);
                 milestoneEssenceLineEl.textContent = "Ascension Essence (Number 1): " + formatCount(number1AscensionEssence) + readinessText;
             } else {
@@ -854,16 +863,21 @@ After your first ascension, open Global Overview to spend Essence on permanent s
     }
     function updateAscensionReadyChrome() {
         const ready = isNumber1AscensionReady();
+        if (ascensionReadyBannerEssenceSuffixEl) {
+            ascensionReadyBannerEssenceSuffixEl.textContent = ready
+                ? "Ascend now for " + formatCount(computeNumber1AscensionGain(totalChanges)) + " essence."
+                : "";
+        }
         if (ascensionReadyBannerEl) {
             ascensionReadyBannerEl.hidden = !ready;
             ascensionReadyBannerEl.setAttribute("aria-hidden", ready ? "false" : "true");
         }
-        if (globalOverviewPageBtn) {
-            globalOverviewPageBtn.classList.toggle("page-btn--ascension-ready", ready);
+        if (ascensionPageBtn) {
+            ascensionPageBtn.classList.toggle("page-btn--ascension-ready", ready);
             if (ready) {
-                globalOverviewPageBtn.setAttribute("title", "Ascension ready — open to ascend or manage Essence");
+                ascensionPageBtn.setAttribute("title", "Ascension ready — open Ascension to ascend or manage Essence");
             } else {
-                globalOverviewPageBtn.removeAttribute("title");
+                ascensionPageBtn.removeAttribute("title");
             }
         }
     }
@@ -916,6 +930,48 @@ After your first ascension, open Global Overview to spend Essence on permanent s
     function ascensionPurchasedSet() {
         return new Set(number1AscensionNodeIds);
     }
+    const ASCENSION_NODE_AUTOBUY_DEFAULT_ON_ID = "asc_ix_00";
+    const ASCENSION_NODE_AUTOBUY_CHEAPEN_ID = "asc_ix_05";
+    const ASCENSION_NODE_AUTOBUY_SLOWDOWN_ID = "asc_ix_10";
+    function ascensionAutobuyDefaultOnForNewHands() {
+        return ascensionPurchasedSet().has(ASCENSION_NODE_AUTOBUY_DEFAULT_ON_ID);
+    }
+    function ascensionAutobuyIncludesCheapen() {
+        return ascensionPurchasedSet().has(ASCENSION_NODE_AUTOBUY_CHEAPEN_ID);
+    }
+    function ascensionAutobuyIncludesSlowdown() {
+        return ascensionPurchasedSet().has(ASCENSION_NODE_AUTOBUY_SLOWDOWN_ID);
+    }
+    /** Min count each unlocked hand should have from Velocity ascension nodes; raises totals and can cascade milestone hand unlocks. */
+    function getAscensionHandUnlockStartingCountFloor() {
+        return Math.max(0, Math.floor(computeAscensionGrantTotals().handUnlockStartingCount || 0));
+    }
+    function applyAscensionHandUnlockStartingCountFloorToUnlockedHands() {
+        if (!number1HasAscended) return false;
+        const floor = getAscensionHandUnlockStartingCountFloor();
+        if (floor <= 0) return false;
+        let any = false;
+        for (let i = 0; i < unlockedHands; i++) {
+            const cur = handEarnings[i] || 0;
+            if (cur < floor) {
+                handEarnings[i] = floor;
+                any = true;
+            }
+        }
+        if (any) {
+            refreshTotalFromHandEarnings();
+            if (incrementalEl) incrementalEl.textContent = formatCount(totalChanges);
+            updateObjectives();
+            updateMilestoneUI();
+            updateSpeedUpgradeUI();
+            updateCheapenUpgradeUI();
+            updateSlowdownUpgradeUI();
+            updateTimeWarpAuraUI();
+            updateEarnedBonusesUI();
+            updatePageButtonUnlocks();
+        }
+        return any;
+    }
     const ASCENSION_COMBO_PRODUCTION_FRAC_CAP = 0.5;
     function computeAscensionGrantTotals() {
         let cheapenCap = 0;
@@ -930,10 +986,15 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         let clapCooldownMult = 1;
         let clapBonusChanceAdd = 0;
         let warpSpawnIntervalMult = 1;
+        let handUnlockStartingCount = 0;
         number1AscensionNodeIds.forEach(id => {
             const def = ASCENSION_MAP_NODE_BY_ID[id];
             if (!def || !def.grants) return;
             const g = def.grants;
+            if (typeof g.handUnlockStartingCount === "number" && g.handUnlockStartingCount > 0) {
+                const cap = Math.floor(g.handUnlockStartingCount);
+                if (cap > handUnlockStartingCount) handUnlockStartingCount = cap;
+            }
             if (typeof g.cheapenCap === "number") cheapenCap += g.cheapenCap;
             if (typeof g.turboScaling === "number") turboScaling += g.turboScaling;
             if (typeof g.warpOverflow === "number") warpOverflow += g.warpOverflow;
@@ -963,7 +1024,8 @@ After your first ascension, open Global Overview to spend Essence on permanent s
             slowdownCostMult,
             clapCooldownMult,
             clapBonusChanceAdd,
-            warpSpawnIntervalMult
+            warpSpawnIntervalMult,
+            handUnlockStartingCount
         };
     }
     function getAscensionCheapenCapBonusFromTree() {
@@ -1039,10 +1101,16 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         number1AscensionNodeIds.push(id);
         normalizeAscensionNodeIds();
         addToLog("Ascension skill: " + ascensionNodeDisplayName(id) + " (" + formatCount(cost) + " Essence)", "milestone");
+        applyAscensionHandUnlockStartingCountFloorToUnlockedHands();
+        if (id === ASCENSION_NODE_AUTOBUY_DEFAULT_ON_ID) {
+            autoBuyUnlocked = true;
+            ensureSpeedRows();
+            for (let i = 0; i < unlockedHands; i++) autoBuyEnabledByHand[i] = true;
+        }
         updateCheapenUpgradeUI();
         updateTurboBoostUI();
         updateRateDisplay();
-        refreshGlobalOverviewPanelIfOpen();
+        refreshOverviewAndAscensionPanelsIfOpen();
         autosaveNow();
     }
     function respecNumber1AscensionSkillTrees() {
@@ -1058,7 +1126,7 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         updateCheapenUpgradeUI();
         updateTurboBoostUI();
         updateRateDisplay();
-        refreshGlobalOverviewPanelIfOpen();
+        refreshOverviewAndAscensionPanelsIfOpen();
         autosaveNow();
     }
     const ASCENSION_FINGER_RESPEC_LABELS = {
@@ -1096,7 +1164,7 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         updateCheapenUpgradeUI();
         updateTurboBoostUI();
         updateRateDisplay();
-        refreshGlobalOverviewPanelIfOpen();
+        refreshOverviewAndAscensionPanelsIfOpen();
         autosaveNow();
     }
     function escapeAscensionHtml(t) {
@@ -1238,8 +1306,13 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         if (typeof updateAscensionMapDetailPanel === "function") updateAscensionMapDetailPanel();
     }
     const ASCENSION_MAP_PICK_RADIUS_VB = 0.78;
-    /** Last clicked node on the map; persists across overview refresh for the detail strip. */
+    /** Last clicked node on the map; persists across overview refresh for the detail panel. */
     let ascensionMapSelectedNodeId = null;
+    /** Node under pointer; detail panel prefers this over selection while hovering. */
+    let ascensionMapHoverNodeId = null;
+    function getAscensionMapDetailPanelSourceNodeId() {
+        return ascensionMapHoverNodeId || ascensionMapSelectedNodeId;
+    }
     function ascensionMapDebugEnabled() {
         try {
             if (typeof localStorage !== "undefined" && localStorage.getItem("ascensionMapDebug") === "1") return true;
@@ -1296,11 +1369,11 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         const metaEl = document.getElementById("ascension-map-detail-meta");
         const kickerEl = document.getElementById("ascension-map-detail-kicker");
         if (!titleEl || !effectEl || !metaEl) return;
-        const id = ascensionMapSelectedNodeId;
+        const id = getAscensionMapDetailPanelSourceNodeId();
         if (kickerEl) kickerEl.textContent = "";
         if (!id || !ASCENSION_MAP_NODE_BY_ID[id]) {
             titleEl.textContent = "Ascension node";
-            effectEl.textContent = "Click a skill gem on the map. Details stay here while you pan and zoom; the panel is translucent so you can see the map underneath.";
+            effectEl.textContent = "Hover or click a skill gem on the map. Details stay here while you pan and zoom; the panel is translucent so you can see the map underneath.";
             metaEl.textContent = "";
             return;
         }
@@ -1343,6 +1416,35 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         const viewport = document.getElementById("ascension-map-viewport");
         const layer = document.getElementById("ascension-map-pan-zoom");
         if (!viewport || !layer) return;
+        ascensionMapHoverNodeId = null;
+        const nodesLayer = viewport.querySelector(".ascension-map-nodes-layer");
+        function onAscensionNodesPointerOver(e) {
+            if (!number1HasAscended || !nodesLayer) return;
+            const node = e.target && typeof e.target.closest === "function" ? e.target.closest(".asc-map-node") : null;
+            if (!node || !nodesLayer.contains(node)) return;
+            const hid = node.getAttribute("data-asc-node-id");
+            if (!hid) return;
+            if (ascensionMapHoverNodeId !== hid) {
+                ascensionMapHoverNodeId = hid;
+                updateAscensionMapDetailPanel();
+            }
+        }
+        function onAscensionNodesPointerOut(e) {
+            if (!number1HasAscended || !nodesLayer) return;
+            const node = e.target && typeof e.target.closest === "function" ? e.target.closest(".asc-map-node") : null;
+            if (!node || !nodesLayer.contains(node)) return;
+            const related = e.relatedTarget;
+            if (related && node.contains(related)) return;
+            const hid = node.getAttribute("data-asc-node-id");
+            if (ascensionMapHoverNodeId === hid) {
+                ascensionMapHoverNodeId = null;
+                updateAscensionMapDetailPanel();
+            }
+        }
+        if (nodesLayer) {
+            nodesLayer.addEventListener("pointerover", onAscensionNodesPointerOver);
+            nodesLayer.addEventListener("pointerout", onAscensionNodesPointerOut);
+        }
         let scale = Math.max(0.45, Math.min(2.6, ascensionMapPanZoomState.scale || 1));
         let tx = ascensionMapPanZoomState.tx || 0;
         let ty = ascensionMapPanZoomState.ty || 0;
@@ -1493,6 +1595,11 @@ After your first ascension, open Global Overview to spend Essence on permanent s
                 cancelAnimationFrame(ascensionResizeSyncRaf);
                 ascensionResizeSyncRaf = 0;
             }
+            ascensionMapHoverNodeId = null;
+            if (nodesLayer) {
+                nodesLayer.removeEventListener("pointerover", onAscensionNodesPointerOver);
+                nodesLayer.removeEventListener("pointerout", onAscensionNodesPointerOut);
+            }
             viewport.removeEventListener("wheel", onWheel);
             viewport.removeEventListener("pointerdown", onPointerDown);
             viewport.removeEventListener("pointermove", onPointerMove);
@@ -1571,7 +1678,7 @@ After your first ascension, open Global Overview to spend Essence on permanent s
             if (owned) stateClass = "asc-map-node--owned";
             else if (prereqOk) stateClass = "asc-map-node--available";
             return (
-                "<div class=\"asc-map-node asc-map-node--route-" + esc(node.route) + " " + stateClass + "\" data-asc-vbx=\"" + lx + "\" data-asc-vby=\"" + ly + "\" data-asc-node-id=\"" + esc(node.id) + "\" role=\"button\" aria-label=\"" + esc(node.title) + " — click to select and attempt purchase\" tabindex=\"-1\">" +
+                "<div class=\"asc-map-node asc-map-node--route-" + esc(node.route) + " " + stateClass + "\" data-asc-vbx=\"" + lx + "\" data-asc-vby=\"" + ly + "\" data-asc-node-id=\"" + esc(node.id) + "\" role=\"button\" aria-label=\"" + esc(node.title) + " — hover for details, click to select and attempt purchase\" tabindex=\"-1\">" +
                 "<div class=\"asc-map-node-pin\" aria-hidden=\"true\"></div></div>"
             );
         }).join("");
@@ -1587,7 +1694,7 @@ After your first ascension, open Global Overview to spend Essence on permanent s
             "<section class=\"ascension-hub\" aria-label=\"Number 1 ascension skill map\">" +
             "<header class=\"ascension-hub-header\">" +
             "<h4 class=\"ascension-hub-title\"><span class=\"ascension-hub-glyph\" aria-hidden=\"true\">◇</span> Ascension map</h4>" +
-            "<p class=\"ascension-hub-sub\">Branches run from the open ASCII hand hub along each fingertip. Links curve with a hub bias (Sankey-style flow). Combo pulse production is split across <strong>hands that satisfy that pattern</strong>. <strong>Respec is free</strong>. <strong>Scroll wheel</strong> zooms (Ctrl/⌘+scroll also works); drag empty map to pan. <strong>Click a gem</strong> to show details in the bottom-left strip and attempt purchase (no button on the strip).</p>" +
+            "<p class=\"ascension-hub-sub\">Branches run from the open ASCII hand hub along each fingertip. Links curve with a hub bias (Sankey-style flow). Combo pulse production is split across <strong>hands that satisfy that pattern</strong>. <strong>Respec is free</strong>. <strong>Scroll wheel</strong> zooms (Ctrl/⌘+scroll also works); drag empty map to pan. <strong>Hover or click a gem</strong> for details in the top-left panel; <strong>click</strong> also attempts purchase (no button on the panel).</p>" +
             "<div class=\"ascension-hub-stats\" id=\"ascension-hub-stats\">" + renderAscensionHubStatsPillsHtml() + "</div>" +
             "<div class=\"ascension-map-toolbar\">" +
             "<button type=\"button\" class=\"page-btn ascension-map-zoom-btn\" id=\"ascension-map-zoom-out\" title=\"Zoom out\" aria-label=\"Zoom out\">−</button>" +
@@ -1614,6 +1721,31 @@ After your first ascension, open Global Overview to spend Essence on permanent s
             "<div class=\"ascension-map-nodes-layer\">" + nodeDots + "</div>" +
             "</div></div></div>" + legend + "</section>"
         );
+    }
+    function renderAscensionNumber2PlaceholderHtml() {
+        return (
+            "<section class=\"ascension-placeholder\" aria-label=\"Number 2 ascension\">" +
+            "<p>Number 2 ascension skill tree — <span class=\"coming-soon-inline\">coming soon</span>.</p>" +
+            "<p class=\"coming-soon-note coming-soon-note--compact\">Background progress on Number 2 continues while you play Number 1.</p></section>"
+        );
+    }
+    function renderAscensionPageHtml() {
+        if (ascensionPageActiveNumber === 2 && !isNumber2Unlocked()) ascensionPageActiveNumber = 1;
+        const n = ascensionPageActiveNumber;
+        const tab2 = isNumber2Unlocked();
+        let tabsHtml = "";
+        if (tab2) {
+            tabsHtml =
+                "<div class=\"ascension-page-tabs\" role=\"tablist\" aria-label=\"Ascension by number\">" +
+                "<button type=\"button\" class=\"page-btn ascension-number-tab" + (n === 1 ? " ascension-number-tab--active" : "") + "\" data-asc-tab=\"1\" role=\"tab\" aria-selected=\"" + (n === 1 ? "true" : "false") + "\">Number 1</button>" +
+                "<button type=\"button\" class=\"page-btn ascension-number-tab" + (n === 2 ? " ascension-number-tab--active" : "") + "\" data-asc-tab=\"2\" role=\"tab\" aria-selected=\"" + (n === 2 ? "true" : "false") + "\">Number 2</button>" +
+                "</div>";
+        }
+        let body = "";
+        if (n === 1) body = renderAscensionUpgradesHtml();
+        else if (n === 2 && tab2) body = renderAscensionNumber2PlaceholderHtml();
+        else body = renderAscensionUpgradesHtml();
+        return "<div class=\"ascension-page\">" + tabsHtml + "<div class=\"ascension-page-body\">" + body + "</div></div>";
     }
     function getNumber2Milestone() {
         if (!isNumber2Unlocked()) return { text: "Number 2 is not available on this save", pct: 0 };
@@ -1714,6 +1846,9 @@ After your first ascension, open Global Overview to spend Essence on permanent s
                 ascPart += " · Next gain: " + formatCount(gainPreview);
                 ascPart += " <button type=\"button\" class=\"ascend-number-btn\" data-number=\"1\">Ascend Number 1</button>";
             }
+            if (entry.number === 1 && number1HasAscended) {
+                ascPart += " <button type=\"button\" class=\"page-btn overview-open-ascension-btn\" data-open-ascension>Skill tree</button>";
+            }
             const details = m.getOverviewDetails();
             const isLive = entry.number === 1;
             const badgeLabel = isLive ? "Main stage · live" : "Background · summarized";
@@ -1745,7 +1880,7 @@ After your first ascension, open Global Overview to spend Essence on permanent s
             );
         });
         const base = rows.join("") || "<div class=\"overview-empty\">No unlocked numbers on this save. Additional number modules — <span class=\"coming-soon-inline\">coming soon</span>.</div>";
-        return base + renderAscensionUpgradesHtml();
+        return base;
     }
     function logCategoryTag(category) {
         const c = normalizeLogCategory(category);
@@ -1791,6 +1926,9 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         if (combinationsPageBtn) {
             const unlocked = unlockedHands >= 2;
             combinationsPageBtn.style.display = unlocked ? "" : "none";
+        }
+        if (ascensionPageBtn) {
+            ascensionPageBtn.style.display = number1HasAscended ? "" : "none";
         }
     }
     function refreshMessageLogPanelIfOpen() {
@@ -1880,13 +2018,19 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         } else if (pageId === "combinations") {
             title = "Combinations";
             bodyHtml = renderCombinationsPageHtml();
+        } else if (pageId === "ascension") {
+            title = "Ascension";
+            bodyHtml = renderAscensionPageHtml();
+        } else if (pageId === "overview") {
+            title = "Global Overview";
+            bodyHtml = renderGlobalOverview();
         } else {
             title = "Global Overview";
             bodyHtml = renderGlobalOverview();
         }
         pagePanelTitleEl.textContent = title;
         pagePanelBodyEl.innerHTML = bodyHtml;
-        if (pageModalEl) pageModalEl.classList.toggle("page-modal--wide", pageId === "overview" || pageId === "combinations");
+        if (pageModalEl) pageModalEl.classList.toggle("page-modal--wide", pageId === "overview" || pageId === "combinations" || pageId === "ascension");
         pagePanelEl.dataset.openPageId = pageId;
         pagePanelEl.style.display = "block";
         syncInlinePanelsVsGameplay();
@@ -1896,7 +2040,7 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         if (pageId === "combinations") {
             requestAnimationFrame(() => updateEarnedBonusesUI());
         }
-        if (pageId === "overview") {
+        if (pageId === "ascension" && ascensionPageActiveNumber === 1 && number1HasAscended) {
             requestAnimationFrame(() => initAscensionMapPanZoom());
         }
     }
@@ -1959,7 +2103,9 @@ After your first ascension, open Global Overview to spend Essence on permanent s
 
     function ensureSpeedRows() {
         if (!speedUpgradesContainerEl) return;
-        while (autoBuyEnabledByHand.length < unlockedHands) autoBuyEnabledByHand.push(false);
+        while (autoBuyEnabledByHand.length < unlockedHands) {
+            autoBuyEnabledByHand.push(ascensionAutobuyDefaultOnForNewHands());
+        }
         while (autoBuyCountdownSecondsByHand.length < unlockedHands) autoBuyCountdownSecondsByHand.push(0);
         while (speedRowRefs.length < unlockedHands) {
             const i = speedRowRefs.length;
@@ -2525,7 +2671,7 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         updateHandUpgradeScrollHint();
     }
 
-    function buyCheapenUpgradeForHand(handIndex, confettiOriginEl) {
+    function buyCheapenUpgradeForHand(handIndex, confettiOriginEl, opts) {
         if (handIndex < 0 || handIndex >= unlockedHands) return;
         const level = cheapenLevel[handIndex] ?? 0;
         if (level >= getMaxCheapenLevel()) return;
@@ -2541,17 +2687,24 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         addToLog("Speed cheapen purchased for Hand " + handNum + " (level " + cheapenLevel[handIndex] + ")", "tip");
         incrementalEl.textContent = formatCount(totalChanges);
         const origin = confettiOriginEl || speedRowRefs[handIndex]?.cheapenBtn?.closest(".speed-upgrade-row");
-        if (origin) sprayConfettiFrom(origin);
+        if (origin && !opts?.fromAutobuy) sprayConfettiFrom(origin);
         updateSpeedUpgradeUI();
         updateCheapenUpgradeUI();
         updateSlowdownUpgradeUI();
     }
 
     function maybeAutoBuyCheapen() {
-        if (!devCheapenAutobuyOn) return;
+        const useDev = devCheapenAutobuyOn;
+        const useAsc = !useDev && ascensionAutobuyIncludesCheapen() && autoBuyUnlocked;
+        if (!useDev && !useAsc) return;
         while (cheapenAutoBuyCountdownByHand.length < unlockedHands) cheapenAutoBuyCountdownByHand.push(0);
         const dtSec = GAME_LOOP_MS / 1000;
+        const tickDelay = useDev ? DEV_CHEAPEN_AUTOBUY_DELAY : getAutoBuyDelaySeconds();
         for (let i = 0; i < unlockedHands; i++) {
+            if (useAsc) {
+                if (!autoBuyEnabledByHand[i]) continue;
+                if (!cheapenSectionUnlocked) continue;
+            }
             const level = cheapenLevel[i] ?? 0;
             if (level >= getMaxCheapenLevel()) continue;
             const nextLevel = level + 1;
@@ -2562,24 +2715,31 @@ After your first ascension, open Global Overview to spend Essence on permanent s
                 cheapenAutoBuyCountdownByHand[i] = countdown - dtSec;
                 if (cheapenAutoBuyCountdownByHand[i] <= 0) {
                     if (canAfford) {
-                        buyCheapenUpgradeForHand(i);
+                        buyCheapenUpgradeForHand(i, null, { fromAutobuy: true });
                         const stillCanAfford = (handEarnings[i] || 0) >= getCheapenUpgradeCost(i, cheapenLevel[i] + 1);
-                        cheapenAutoBuyCountdownByHand[i] = stillCanAfford && cheapenLevel[i] < getMaxCheapenLevel() ? DEV_CHEAPEN_AUTOBUY_DELAY : 0;
+                        cheapenAutoBuyCountdownByHand[i] = stillCanAfford && cheapenLevel[i] < getMaxCheapenLevel() ? tickDelay : 0;
                     } else {
                         cheapenAutoBuyCountdownByHand[i] = 0;
                     }
                 }
             } else if (canAfford) {
-                cheapenAutoBuyCountdownByHand[i] = DEV_CHEAPEN_AUTOBUY_DELAY;
+                cheapenAutoBuyCountdownByHand[i] = tickDelay;
             }
         }
     }
 
     function maybeAutoBuySlowdown() {
-        if (!devSlowdownAutobuyOn || !isSlowdownUnlocked()) return;
+        if (!isSlowdownUnlocked()) return;
+        const useDev = devSlowdownAutobuyOn;
+        const useAsc = !useDev && ascensionAutobuyIncludesSlowdown() && autoBuyUnlocked;
+        if (!useDev && !useAsc) return;
         while (slowdownAutoBuyCountdownByHand.length < unlockedHands) slowdownAutoBuyCountdownByHand.push(0);
         const dtSec = GAME_LOOP_MS / 1000;
+        const tickDelay = useDev ? DEV_SLOWDOWN_AUTOBUY_DELAY : getAutoBuyDelaySeconds();
         for (let i = 0; i < unlockedHands; i++) {
+            if (useAsc) {
+                if (!autoBuyEnabledByHand[i]) continue;
+            }
             const level = slowdownLevel[i] ?? 0;
             if (level >= MAX_SLOWDOWN_LEVEL) continue;
             const nextLevel = level + 1;
@@ -2590,17 +2750,17 @@ After your first ascension, open Global Overview to spend Essence on permanent s
                 slowdownAutoBuyCountdownByHand[i] = countdown - dtSec;
                 if (slowdownAutoBuyCountdownByHand[i] <= 0) {
                     if (canAfford) {
-                        buySlowdownUpgradeForHand(i);
+                        buySlowdownUpgradeForHand(i, null, { fromAutobuy: true });
                         const lv = slowdownLevel[i] ?? 0;
                         const nextCost = lv >= MAX_SLOWDOWN_LEVEL ? null : getSlowdownUpgradeCost(lv + 1);
                         const stillCanAfford = nextCost !== null && (handEarnings[i] || 0) >= nextCost;
-                        slowdownAutoBuyCountdownByHand[i] = stillCanAfford ? DEV_SLOWDOWN_AUTOBUY_DELAY : 0;
+                        slowdownAutoBuyCountdownByHand[i] = stillCanAfford ? tickDelay : 0;
                     } else {
                         slowdownAutoBuyCountdownByHand[i] = 0;
                     }
                 }
             } else if (canAfford) {
-                slowdownAutoBuyCountdownByHand[i] = DEV_SLOWDOWN_AUTOBUY_DELAY;
+                slowdownAutoBuyCountdownByHand[i] = tickDelay;
             }
         }
     }
@@ -2689,7 +2849,7 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         }
         updateHandUpgradeScrollHint();
     }
-    function buySlowdownUpgradeForHand(handIndex, originEl) {
+    function buySlowdownUpgradeForHand(handIndex, originEl, opts) {
         if (handIndex < 0 || handIndex >= unlockedHands) return;
         if (!isSlowdownUnlocked()) return;
         const level = slowdownLevel[handIndex] ?? 0;
@@ -2712,7 +2872,7 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         const targetHand = hands[handIndex];
         if (targetHand) targetHand.tickAccBig = 0n;
         const origin = originEl || speedRowRefs[handIndex]?.slowdownBtn?.closest(".speed-upgrade-row");
-        if (origin) sprayConfettiFrom(origin);
+        if (origin && !opts?.fromAutobuy) sprayConfettiFrom(origin);
         updateSpeedUpgradeUI();
         updateCheapenUpgradeUI();
         updateSlowdownUpgradeUI();
@@ -3466,7 +3626,7 @@ After your first ascension, open Global Overview to spend Essence on permanent s
     function unlockHand() {
         if (unlockedHands >= maxHands) return;
         unlockedHands++;
-        handEarnings[unlockedHands - 1] = 0;
+        handEarnings[unlockedHands - 1] = getAscensionHandUnlockStartingCountFloor();
         markMeaningfulProgress();
         ensureSpeedRows();
         addToLog("Hand " + unlockedHands + " unlocked", "milestone");
@@ -3711,8 +3871,10 @@ After your first ascension, open Global Overview to spend Essence on permanent s
     });
     if (pagePanelCloseBtn) pagePanelCloseBtn.addEventListener("click", () => {
         if (pagePanelEl) {
+            const wasAscension = pagePanelEl.dataset.openPageId === "ascension";
             pagePanelEl.style.display = "none";
             delete pagePanelEl.dataset.openPageId;
+            if (wasAscension) teardownAscensionMapPanZoom();
         }
         syncInlinePanelsVsGameplay();
     });
@@ -3754,13 +3916,40 @@ After your first ascension, open Global Overview to spend Essence on permanent s
 
     if (pagePanelEl) {
         pagePanelEl.addEventListener("click", function(e) {
+            const ascTab = e.target.closest("[data-asc-tab]");
+            if (ascTab && pagePanelEl.dataset.openPageId === "ascension" && pagePanelBodyEl) {
+                const t = parseInt(ascTab.getAttribute("data-asc-tab"), 10);
+                if (t === 1 || t === 2) {
+                    if (t === 2 && !isNumber2Unlocked()) return;
+                    if (ascensionPageActiveNumber === t) return;
+                    const wasTab1 = ascensionPageActiveNumber === 1;
+                    ascensionPageActiveNumber = t;
+                    if (wasTab1 && t !== 1) teardownAscensionMapPanZoom();
+                    pagePanelBodyEl.innerHTML = renderAscensionPageHtml();
+                    if (t === 1 && number1HasAscended) {
+                        requestAnimationFrame(() => initAscensionMapPanZoom());
+                    }
+                }
+                return;
+            }
+            const openAsc = e.target.closest("[data-open-ascension]");
+            if (openAsc) {
+                e.preventDefault();
+                const openAscPanel = () => showPagePanel("ascension");
+                if (typeof playCurtainAnimation === "function") playCurtainAnimation(openAscPanel);
+                else openAscPanel();
+                return;
+            }
             const ascMapViewport = e.target.closest("#ascension-map-viewport");
             if (ascMapViewport && number1HasAscended) {
                 const blockAscMapInteract = e.target.closest(
                     "button, a, [data-asc-respec-finger], [data-asc-respec], .ascension-respec-btn, .asc-tree-respec-btn, .ascension-map-toolbar"
                 );
                 if (!blockAscMapInteract) {
-                    const nid = ascensionResolveNodeIdAtClient(e.clientX, e.clientY);
+                    const nodeEl = e.target && typeof e.target.closest === "function" ? e.target.closest(".asc-map-node") : null;
+                    const nid = nodeEl && nodeEl.getAttribute("data-asc-node-id")
+                        ? nodeEl.getAttribute("data-asc-node-id")
+                        : ascensionResolveNodeIdAtClient(e.clientX, e.clientY);
                     if (nid) {
                         setAscensionMapSelectedNode(nid);
                         tryBuyAscensionNode(nid);
@@ -3980,19 +4169,30 @@ After your first ascension, open Global Overview to spend Essence on permanent s
     }
 
     function refreshGlobalOverviewPanelIfOpen() {
-        if (!pagePanelEl || pagePanelEl.style.display === "none" || !pagePanelBodyEl || !pagePanelTitleEl) return;
-        if (pagePanelTitleEl.textContent !== "Global Overview") return;
-        teardownAscensionMapPanZoom();
+        if (!pagePanelEl || pagePanelEl.style.display === "none" || !pagePanelBodyEl) return;
+        if (pagePanelEl.dataset.openPageId !== "overview") return;
         pagePanelBodyEl.innerHTML = renderGlobalOverview();
-        initAscensionMapPanZoom();
+    }
+    function refreshAscensionPanelIfOpen() {
+        if (!pagePanelEl || pagePanelEl.style.display === "none" || !pagePanelBodyEl) return;
+        if (pagePanelEl.dataset.openPageId !== "ascension") return;
+        teardownAscensionMapPanZoom();
+        pagePanelBodyEl.innerHTML = renderAscensionPageHtml();
+        if (ascensionPageActiveNumber === 1 && number1HasAscended) {
+            requestAnimationFrame(() => initAscensionMapPanZoom());
+        }
+    }
+    function refreshOverviewAndAscensionPanelsIfOpen() {
+        refreshGlobalOverviewPanelIfOpen();
+        refreshAscensionPanelIfOpen();
     }
     /**
-     * Game loop calls this ~1/s. Must NOT replace ascension map innerHTML — that was resetting DOM every second
-     * (ResizeObserver + sync thrash, lost hover alignment). Only patch overview cards + hub stat pills + buy buttons.
+     * Game loop calls this ~1/s. Must NOT replace overview innerHTML — only patch overview cards + ascend controls.
+     * Ascension hub live updates are in patchAscensionPanelLiveDom.
      */
     function patchGlobalOverviewLiveDom() {
-        if (!pagePanelEl || pagePanelEl.style.display === "none" || !pagePanelBodyEl || !pagePanelTitleEl) return;
-        if (pagePanelTitleEl.textContent !== "Global Overview") return;
+        if (!pagePanelEl || pagePanelEl.style.display === "none" || !pagePanelBodyEl) return;
+        if (pagePanelEl.dataset.openPageId !== "overview") return;
         getUnlockedNumberModules().forEach(function (entry) {
             const card = pagePanelBodyEl.querySelector('.overview-card[data-overview-number="' + entry.number + '"]');
             if (!card) return;
@@ -4031,10 +4231,18 @@ After your first ascension, open Global Overview to spend Essence on permanent s
                         ascPart += " · Next gain: " + formatCount(gainPreview);
                         ascPart += " <button type=\"button\" class=\"page-btn ascend-number-btn\" data-number=\"1\">Ascend Number 1</button>";
                     }
+                    if (number1HasAscended) {
+                        ascPart += " <button type=\"button\" class=\"page-btn overview-open-ascension-btn\" data-open-ascension>Skill tree</button>";
+                    }
                     cell.innerHTML = ascPart;
                 }
             }
         });
+    }
+    function patchAscensionPanelLiveDom() {
+        if (!pagePanelEl || pagePanelEl.style.display === "none" || !pagePanelBodyEl) return;
+        if (pagePanelEl.dataset.openPageId !== "ascension") return;
+        if (ascensionPageActiveNumber !== 1) return;
         const statsEl = document.getElementById("ascension-hub-stats");
         if (statsEl) statsEl.innerHTML = renderAscensionHubStatsPillsHtml();
         if (typeof updateAscensionMapDetailPanel === "function") updateAscensionMapDetailPanel();
@@ -4054,7 +4262,8 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         }
         unlockedHands = 1;
         handEarnings = Array(maxHands).fill(0);
-        handEarnings[0] = 1;
+        const ascHandStartFloor = getAscensionHandUnlockStartingCountFloor();
+        handEarnings[0] = ascHandStartFloor > 0 ? ascHandStartFloor : 1;
         speedLevel = Array(maxHands).fill(0);
         speedBonusLevel = Array(maxHands).fill(0);
         clapDigitPrevious = Array(maxHands).fill(-1);
@@ -4065,8 +4274,11 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         timeWarpAuraActiveByHand = [];
         timeWarpNextSpawnInSec = 0;
         timeWarpUnlockLogged = false;
-        autoBuyUnlocked = false;
-        autoBuyEnabledByHand = [false];
+        {
+            const autobuyDefaultAsc = ascensionAutobuyDefaultOnForNewHands();
+            autoBuyUnlocked = autobuyDefaultAsc;
+            autoBuyEnabledByHand = [autobuyDefaultAsc];
+        }
         autoBuyCountdownSecondsByHand = [0];
         cheapenSectionUnlocked = false;
         cheapenAutoBuyCountdownByHand = [];
@@ -4117,7 +4329,7 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         updateComboUI();
         updateEarnedBonusesUI();
         updatePageButtonUnlocks();
-        refreshGlobalOverviewPanelIfOpen();
+        refreshOverviewAndAscensionPanelsIfOpen();
         addToLog("Ascended Number 1 — +" + formatCount(gain) + " Ascension Essence (total " + formatCount(number1AscensionEssence) + ")", "milestone");
         markMeaningfulProgress();
         autosaveNow();
@@ -4127,7 +4339,7 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         if (!ascensionConfirmOverlayEl || !ascensionConfirmBodyEl) return;
         const gain = computeNumber1AscensionGain(totalChanges);
         const nextTotal = number1AscensionEssence + gain;
-        ascensionConfirmBodyEl.textContent = "Your total count is " + formatCount(totalChanges) + ". Ascending now grants " + formatCount(gain) + " Ascension Essence (you will have " + formatCount(nextTotal) + " total).\n\nThis resets Number 1 only: one hand, no upgrades, no combo bonuses, objectives unchecked, turbo reset.\n\nSpend Essence on permanent skill branches in Global Overview. Respec is always free.";
+        ascensionConfirmBodyEl.textContent = "Your total count is " + formatCount(totalChanges) + ". Ascending now grants " + formatCount(gain) + " Ascension Essence (you will have " + formatCount(nextTotal) + " total).\n\nThis resets Number 1 only: one hand, no upgrades, no combo bonuses, objectives unchecked, turbo reset.\n\nSpend Essence on permanent skill branches in Ascension. Respec is always free.";
         ascensionConfirmOverlayEl.style.display = "flex";
     }
 
@@ -4222,7 +4434,7 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         function clapFxShouldDisplay() {
             if (settings.showClapAnimation === false) return false;
             if (typeof window.getCurrentNumberMode === "function" && window.getCurrentNumberMode() !== 1) return false;
-            if (isPagePanelOpen() && pagePanelEl && pagePanelEl.dataset.openPageId === "overview") return false;
+            if (isPagePanelOpen() && pagePanelEl && (pagePanelEl.dataset.openPageId === "overview" || pagePanelEl.dataset.openPageId === "ascension")) return false;
             return true;
         }
         if (!clapFxShouldDisplay()) return;
@@ -4430,6 +4642,7 @@ After your first ascension, open Global Overview to spend Essence on permanent s
         if (nowOverview - lastOverviewUpdateMs >= 1000) {
             lastOverviewUpdateMs = nowOverview;
             patchGlobalOverviewLiveDom();
+            patchAscensionPanelLiveDom();
         }
     }
     let lastUIUpdateMs = 0;
