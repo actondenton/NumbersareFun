@@ -16,9 +16,23 @@
         "ring": { "x": 15, "y": 15, "branch": "turbo" },
         "middle": { "x": 33, "y": 0, "branch": "combo" },
         "index": { "x": 44, "y": 10, "branch": "velocity" },
-        "thumb": { "x": 85, "y": 80, "branch": "clap" }
+        "thumb": { "x": 90, "y": 10, "branch": "clap", "note": "Top-right from hub; frees bottom-right dead space vs old 85,80." }
       },
-      "interpolation": "Nodes along each branch use linear t from LAYOUT_T_START (0.09) to LAYOUT_T_END (0.93) along hub→fingertip vector (computeAscensionHandLayout). Optional layoutT/lateral in finalizeAscensionNodes."
+      "interpolation": "Finalized nodes get x,y from layoutT (0–1 along hub→fingertip) plus lateral offset in finalizeAscensionNodes. Legacy hub→tip lerp in computeAscensionHandLayout applies only when a node lacks explicit x,y.",
+      "ideaABraid": {
+        "version": 3,
+        "builder": "expandBraidedFromFingerSeeds(ASCENSION_ROUTE_SEEDS) in ascension-tree-data.js",
+        "pattern": "Per finger: linear tierId 00–11; fork _a12/_b12 from _11; arms _a13–_a15 and _b13–_b15 (seed tiers 12–19); merge _m16 (two parents, 1 Essence, empty grants); tail _20–_24 from merge.",
+        "layoutT": "depth / BRAID_MAX_GRAPH_DEPTH (21) for each node depth along the longest path.",
+        "lateral": "FINGER_BRAID_LATERAL[finger] * sin(depth*0.62) on trunk; ±1.38*W on A/B arms; confluence at 0."
+      },
+      "postLayoutRefine": {
+        "source": "refineAscensionLayoutPositions + refineCrossFingerLayoutPositions after finalizeAscensionNodes",
+        "nonThumbYShift": -5,
+        "minSameFingerGap": 1.5,
+        "minCrossFingerGap": 2.05,
+        "separation": "Same-finger pairwise repulsion, then cross-finger repulsion so index/middle (etc.) do not stack in the palm cluster. ASCENSION_ROUTE_SEEDS has no x,y — rendered positions come from NODES after finalize + refine."
+      }
     }
   },
   "planAlignment": {

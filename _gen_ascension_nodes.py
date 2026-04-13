@@ -1,4 +1,4 @@
-# One-off generator for ascension-tree-data.js ASCENSION_NODES array (run from repo root).
+# Obsolete one-off: used to emit a flat ASCENSION_NODES array. Current data is ASCENSION_ROUTE_SEEDS + braid expander.
 ROMAN = [
     "", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X",
     "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX", "XX",

@@ -1,6 +1,6 @@
-# Writes _ascension_nodes_array.txt (var ASCENSION_NODES = [ ... ];) including x,y in 0–100 viewBox space.
-# After editing, run: powershell -File _refresh_ascension_array.ps1
-# (Legacy: _splice_ascension.ps1 only if the file still uses pad2/buildNodes.)
+# Obsolete: emitted flat var ASCENSION_NODES = [ ... ] with x,y. The game now uses ASCENSION_ROUTE_SEEDS (cost+grants only)
+# and expandBraidedFromFingerSeeds in ascension-tree-data.js. To splice bulk edits: _ascension_route_seeds.txt +
+# powershell -File _refresh_ascension_array.ps1
 
 function Pad2([int]$n) { if ($n -lt 10) { "0$n" } else { "$n" } }
 function GVel([int]$i) {

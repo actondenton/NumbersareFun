@@ -93,6 +93,13 @@ html[data-theme="light"] .incremental-count {
   color: #1f2748;
   text-shadow: 0 0 8px rgba(92, 107, 192, 0.22);
 }
+html[data-theme="light"] .incremental-rate-value {
+  color: #243058;
+  text-shadow: 0 0 6px rgba(92, 107, 192, 0.18);
+}
+html[data-theme="light"] .incremental-rate-label {
+  color: #4a5688;
+}
 html[data-theme="light"] .multiplier-display,
 html[data-theme="light"] .turbo-boost-label,
 html[data-theme="light"] .turbo-boost-toggle-label {
@@ -505,25 +512,110 @@ html[data-theme="light"] .ascension-ready-banner__sub strong {
    =============================== */
 
 .top-count-row {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  align-items: stretch;
+  gap: 16px 20px;
   position: relative;
   z-index: 2;
-  padding: 14px 20px;
+  padding: 10px 20px;
   min-width: 200px;
+  box-sizing: border-box;
   background: rgba(12, 16, 38, 0.72);
   border: 1px solid rgba(201, 162, 39, 0.4);
   border-radius: 10px;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.28);
   font-family: var(--font-gameplay);
+  overflow: hidden;
+}
+
+.top-count-row__segment {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.top-count-row__segment--left {
+  --left-stack-scale: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  text-align: left;
+  min-height: 0;
+}
+
+.top-count-row__left-fit-wrap {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.top-count-row__segment--left .incremental-count-label {
+  margin-bottom: 0;
+  font-size: calc(0.75rem * var(--left-stack-scale, 1));
+}
+
+.top-count-row__segment--left .incremental-count {
+  font-size: calc(2.75rem * var(--left-stack-scale, 1));
+}
+
+.top-count-row__segment--left .multiplier-display {
+  margin-top: 0;
+  font-size: calc(0.85rem * var(--left-stack-scale, 1));
+}
+
+.top-count-row__segment--center {
+  --center-text-scale: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  text-align: center;
+  min-height: 0;
+}
+
+.top-count-row__center-fit-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  width: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+}
+
+.top-count-row__segment--center .incremental-rate-label {
+  font-size: calc(0.75rem * var(--center-text-scale, 1));
+  white-space: nowrap;
+  align-self: center;
+}
+
+.top-count-row__segment--center .incremental-rate-value {
+  font-size: calc(2rem * var(--center-text-scale, 1));
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
+}
+
+.top-count-row__segment--right {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
 }
 
 .incremental-count-container,
 .incremental-count-countainer {
   position: relative;
-  text-align: center;
+  text-align: left;
   background: none;
   padding: 0;
   min-width: 0;
@@ -560,6 +652,26 @@ html[data-theme="light"] .ascension-ready-banner__sub strong {
   margin-top: 4px;
 }
 
+.incremental-rate-label {
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #9aa0ff;
+  pointer-events: none;
+}
+
+.incremental-rate-value {
+  font-size: 2rem;
+  font-weight: 400;
+  line-height: 1.1;
+  color: #e8ecff;
+  text-shadow:
+    0 0 8px rgba(108, 124, 255, 0.35),
+    0 0 18px rgba(108, 124, 255, 0.2);
+  white-space: nowrap;
+  max-width: 100%;
+}
+
 /* ===============================
    TURBO BOOST GAUGE (right of total count)
    =============================== */
@@ -570,8 +682,11 @@ html[data-theme="light"] .ascension-ready-banner__sub strong {
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  padding: 10px 14px;
-  min-width: 140px;
+  padding: 4px 8px;
+  width: 100%;
+  max-width: 180px;
+  box-sizing: border-box;
+  min-width: 0;
   font-family: var(--font-gameplay);
 }
 
