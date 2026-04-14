@@ -65,7 +65,7 @@
                 <div class="top-count-row__left-fit-wrap">
                     <div id="incremental-count-label" class="incremental-count-label">Total Count</div>
                     <div id="incremental-count" class="incremental-count">1</div>
-                    <div id="bonus-multiplier-display" class="multiplier-display" style="display: none;">Bonus: 1.00×</div>
+                    <div id="bonus-multiplier-display" class="multiplier-display" style="display: none;">Total bonus: 1.00×</div>
                     <div id="turbo-multiplier-display" class="multiplier-display" style="display: none;">Turbo: 1.00×</div>
                 </div>
             </div>
@@ -76,20 +76,32 @@
                 </div>
             </div>
             <div class="top-count-row__segment top-count-row__segment--right">
-                <div id="turbo-boost-wrap" class="turbo-boost-wrap" style="display: none;" aria-hidden="true">
-                    <div id="turbo-gain-popup-container" class="turbo-gain-popup-container" aria-live="polite"></div>
-                    <div class="turbo-boost-label">Turbo Boost</div>
-                    <label class="turbo-boost-toggle-wrap" title="Turn boost on to multiply count and burn gauge">
-                        <span class="turbo-boost-toggle-label">Off</span>
-                        <input type="checkbox" id="turbo-boost-enabled" class="turbo-boost-toggle" aria-label="Turbo boost on or off">
-                        <span class="turbo-boost-toggle-slider"></span>
-                    </label>
-                    <div class="turbo-boost-gauge" role="meter" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" id="turbo-boost-gauge">
-                        <div class="turbo-boost-track"></div>
-                        <div class="turbo-boost-fill" id="turbo-boost-fill"></div>
+                <div id="turbo-right-cluster" class="turbo-right-cluster">
+                    <div id="turbo-boost-wrap" class="turbo-boost-wrap" style="display: none;" aria-hidden="true">
+                        <div id="turbo-gain-popup-container" class="turbo-gain-popup-container" aria-live="polite"></div>
+                        <div class="turbo-boost-label">Turbo Boost</div>
+                        <label class="turbo-boost-toggle-wrap" title="Turn boost on to multiply count and burn meter (boost scales with Burn rate; drain slows near empty)">
+                            <span class="turbo-boost-toggle-label">Off</span>
+                            <input type="checkbox" id="turbo-boost-enabled" class="turbo-boost-toggle" aria-label="Turbo boost on or off">
+                            <span class="turbo-boost-toggle-slider"></span>
+                        </label>
+                        <div class="turbo-boost-gauge" role="meter" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" id="turbo-boost-gauge">
+                            <div class="turbo-boost-track"></div>
+                            <div class="turbo-boost-fill" id="turbo-boost-fill"></div>
+                        </div>
+                        <div class="turbo-boost-multiplier" id="turbo-boost-multiplier">1.00×</div>
+                        <div class="turbo-boost-activations" id="turbo-boost-activations" title="Game ticks while Turbo is on and the meter has charge (resets on ascension)">Activations: 0</div>
                     </div>
-                    <div class="turbo-boost-multiplier" id="turbo-boost-multiplier">1.00×</div>
-                    <div class="turbo-boost-activations" id="turbo-boost-activations" title="Game ticks while Turbo is on and the meter has charge (resets on ascension)">Activations: 0</div>
+                    <div id="turbo-scension-panel" class="turbo-scension-panel" style="display: none;" aria-hidden="true">
+                        <div class="turbo-scension-levels" id="turbo-scension-levels" aria-label="Turbo-scension levels">
+                            <div class="turbo-scension-level-line turbo-scension-level-line--burn" id="turbo-scension-burn-line">Burn 0</div>
+                            <div class="turbo-scension-level-line turbo-scension-level-line--tank" id="turbo-scension-tank-line">Tank 0</div>
+                            <div class="turbo-scension-level-line turbo-scension-level-line--mult" id="turbo-scension-mult-line">Mult 0</div>
+                            <div class="turbo-scension-level-line turbo-scension-level-line--fill" id="turbo-scension-fill-line">Fill 0</div>
+                            <div class="turbo-scension-level-line turbo-scension-level-line--leveler" id="turbo-scension-leveler-line" style="display:none;" aria-hidden="true"></div>
+                        </div>
+                        <button type="button" id="turbo-scension-upgrade-btn" class="turbo-scension-upgrade-btn">Upgrade</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -134,6 +146,11 @@
             <label>Add to count:</label>
             <input type="number" id="dev-add-count-input" min="0" value="0" class="dev-input" />
             <button type="button" id="dev-add-count-btn" class="dev-btn">Add</button>
+        </div>
+        <div class="dev-tools-row">
+            <label>Add Number 1 Ascension Essence:</label>
+            <input type="number" id="dev-add-ascension-essence-input" min="0" value="0" class="dev-input" />
+            <button type="button" id="dev-add-ascension-essence-btn" class="dev-btn">Add</button>
         </div>
         <div class="dev-tools-row">
             <label><input type="checkbox" id="dev-all-autobuy" /> All autobuyers on</label>
@@ -407,6 +424,12 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     let unlockedHands = 1;
     /** Persistent prestige currency for Number 1 (run stats reset on ascend). */
     let number1AscensionEssence = 0;
+    /** Bonus essence banked this run from Warp pinky grants; added to next ascend payout, then reset. */
+    let number1AscensionPendingBonusEssence = 0;
+    /** Thumb clap route: run-local multiplier built from clap procs; applies to ascend payout, then resets. */
+    let number1AscensionClapEssenceMultiplier = 1;
+    /** Count of successful essence-multiplier clap procs this run (for messaging/debug). */
+    let number1AscensionClapEssenceProcCount = 0;
     let number1HasAscended = false;
     /** Purchased skill-tree node ids (Tempo / Overdrive chains — see PRD MVP). */
     let number1AscensionNodeIds = [];
@@ -414,11 +437,17 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     let ascensionNumber1IntroSeen = false;
     /** Selected number tab on the Ascension page (1 = skill map). Preserved for the session. */
     let ascensionPageActiveNumber = 1;
+    /** Ring Turbo-scension: per-run upgrade levels (reset on ascend). Each level doubles that axis (burn rate, meter cap, mult cap, or meter fill from combos + passive sustain). */
+    let turboScensionBurnLevel = 0;
+    let turboScensionTankLevel = 0;
+    let turboScensionMultLevel = 0;
+    let turboScensionFillLevel = 0;
 
     function refreshTotalFromHandEarnings() {
         let s = 0;
         for (let i = 0; i < unlockedHands; i++) s += handEarnings[i] || 0;
         totalChanges = s;
+        updateCpsDisplayEmaFromTotal(Date.now(), totalChanges, getInstantTotalCps());
         syncUnlocksWithTotalCount();
     }
 
@@ -426,7 +455,15 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     const incrementalRateEl = document.getElementById("incremental-rate");
     const bonusMultiplierEl = document.getElementById("bonus-multiplier-display");
     const turboMultiplierDisplayEl = document.getElementById("turbo-multiplier-display");
+    const turboRightClusterEl = document.getElementById("turbo-right-cluster");
     const turboBoostWrapEl = document.getElementById("turbo-boost-wrap");
+    const turboScensionPanelEl = document.getElementById("turbo-scension-panel");
+    const turboScensionUpgradeBtn = document.getElementById("turbo-scension-upgrade-btn");
+    const turboScensionBurnLineEl = document.getElementById("turbo-scension-burn-line");
+    const turboScensionTankLineEl = document.getElementById("turbo-scension-tank-line");
+    const turboScensionMultLineEl = document.getElementById("turbo-scension-mult-line");
+    const turboScensionFillLineEl = document.getElementById("turbo-scension-fill-line");
+    const turboScensionLevelerLineEl = document.getElementById("turbo-scension-leveler-line");
     const turboBoostFillEl = document.getElementById("turbo-boost-fill");
     const turboBoostGaugeEl = document.getElementById("turbo-boost-gauge");
     const turboBoostMultiplierEl = document.getElementById("turbo-boost-multiplier");
@@ -669,12 +706,12 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             return "Tip: Match hand digits to discover combos and build stronger multipliers.";
         }
         if (!isSlowdownUnlocked()) {
-            return "Tip: Turbo is unlocked. Build meter from combos, then toggle Turbo on for bursts.";
+            return "Tip: Turbo is unlocked. Build meter from combos, then toggle Turbo on. Boost scales with your Burn tier; a full tank runs longer with a bigger cap, and the gauge eases off near empty.";
         }
         if (!isTimeWarpUnlocked()) {
             return "Tip: Slowdown can trade speed for heavier ticks per hand. Use it where upgrades are expensive.";
         }
-        return "Tip: Watch for Time Warp auras and click them for a large production burst (" + TIME_WARP_MANUAL_CLICK_SCALE + "× 60s of that hand's rate).";
+        return "Tip: Watch for Time Warp auras and click them for a large production burst (" + TIME_WARP_MANUAL_CLICK_SCALE + "× " + getTimeWarpProductionSecondsBonus() + "s of that hand's rate).";
     }
     function maybeEmitAdaptiveTip(nowMs) {
         if (settings.adaptiveTipsEnabled === false) return;
@@ -742,6 +779,17 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         const exp = Math.floor(Math.log10(n));
         const tier = Math.floor(exp / 3);
         const mantissa = (n / Math.pow(10, tier * 3)).toFixed(2);
+        const name = NAMES[tier] || "e" + (tier * 3);
+        return mantissa + " " + name;
+    }
+    /** Turbo-scension level lines: whole numbers only (internal bank/cost may be fractional). */
+    function formatTurboScensionLevelDisplay(n) {
+        const r = Math.round(Number(n) || 0);
+        if (!Number.isFinite(r) || r <= 0) return "0";
+        if (r < 1e6) return formatWithCommas(r);
+        const exp = Math.floor(Math.log10(r));
+        const tier = Math.floor(exp / 3);
+        const mantissa = Math.round(r / Math.pow(10, tier * 3));
         const name = NAMES[tier] || "e" + (tier * 3);
         return mantissa + " " + name;
     }
@@ -862,7 +910,9 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
                 const readinessText = isNumber1AscensionReady()
                     ? " — Ascension ready! Use the banner on the main screen or open Ascension."
                     : (" — Ascension: " + formatCount(totalChanges) + " / " + formatCount(ASCENSION_1_REQUIRED_TOTAL) + " (" + ascPct.toFixed(2) + "%), " + handReqText);
-                milestoneEssenceLineEl.textContent = "Ascension Essence (Number 1): " + formatCount(number1AscensionEssence) + readinessText;
+                const pendingBonus = getNumber1AscensionPendingBonusEssence();
+                const pendingText = pendingBonus > 0 ? (" · Pending warp bonus: +" + formatCount(pendingBonus)) : "";
+                milestoneEssenceLineEl.textContent = "Ascension Essence (Number 1): " + formatCount(number1AscensionEssence) + pendingText + readinessText;
             } else {
                 milestoneEssenceLineEl.textContent = "";
                 milestoneEssenceLineEl.style.display = "none";
@@ -873,8 +923,15 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     function updateAscensionReadyChrome() {
         const ready = isNumber1AscensionReady();
         if (ascensionReadyBannerEssenceSuffixEl) {
+            const gainInfo = computeNumber1AscensionGainBreakdown(totalChanges);
+            const parts = ["base " + formatCount(gainInfo.baseGain)];
+            if (gainInfo.pendingBonus > 0) parts.push("warp bonus " + formatCount(gainInfo.pendingBonus));
+            if (gainInfo.multiplierBonus > 0) {
+                parts.push("clap mult +" + formatCount(gainInfo.multiplierBonus) + " (" + gainInfo.clapMult.toFixed(3) + "x)");
+            }
+            const bonusText = parts.length > 1 ? (" (" + parts.join(" + ") + ")") : "";
             ascensionReadyBannerEssenceSuffixEl.textContent = ready
-                ? "Ascend now for " + formatCount(computeNumber1AscensionGain(totalChanges)) + " essence."
+                ? "Ascend now for " + formatCount(computeNumber1AscensionGain(totalChanges)) + " essence" + bonusText + "."
                 : "";
         }
         if (ascensionReadyBannerEl) {
@@ -921,9 +978,64 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         });
         return module;
     }
+    function getNumber1AscensionPendingBonusEssence() {
+        const b = Math.floor(Number(number1AscensionPendingBonusEssence) || 0);
+        return b > 0 ? b : 0;
+    }
+    function getNumber1AscensionClapEssenceMultiplier() {
+        const m = Number(number1AscensionClapEssenceMultiplier);
+        return Number.isFinite(m) && m >= 1 ? m : 1;
+    }
+    /**
+     * Base ascension essence scaling on log10(total count).
+     * Anchors: 1e35 -> ~35, 1e42 -> ~75, 1e100 -> ~1000.
+     * Two smooth power segments keep growth readable early and rewarding deep runs.
+     */
+    const ASC_ESSENCE_ANCHOR_X0 = 35;
+    const ASC_ESSENCE_ANCHOR_Y0 = 35;
+    const ASC_ESSENCE_ANCHOR_X1 = 42;
+    const ASC_ESSENCE_ANCHOR_Y1 = 75;
+    const ASC_ESSENCE_ANCHOR_X2 = 100;
+    const ASC_ESSENCE_ANCHOR_Y2 = 1000;
+    const ASC_ESSENCE_SEGMENT1_POWER = 1.08;
+    const ASC_ESSENCE_SEGMENT2_POWER = 1.22;
+    function computeNumber1AscensionBaseGain(fromTotal) {
+        const t = Math.max(1, Number(fromTotal) || 1);
+        const x = Math.max(0, Math.log10(t));
+        let y;
+        if (x <= ASC_ESSENCE_ANCHOR_X0) {
+            // Keep pre-ascension-ramp behavior intuitive before deep scaling kicks in.
+            y = Math.max(1, x);
+        } else if (x <= ASC_ESSENCE_ANCHOR_X1) {
+            const u = (x - ASC_ESSENCE_ANCHOR_X0) / (ASC_ESSENCE_ANCHOR_X1 - ASC_ESSENCE_ANCHOR_X0);
+            y = ASC_ESSENCE_ANCHOR_Y0 + (ASC_ESSENCE_ANCHOR_Y1 - ASC_ESSENCE_ANCHOR_Y0) * Math.pow(Math.max(0, Math.min(1, u)), ASC_ESSENCE_SEGMENT1_POWER);
+        } else if (x <= ASC_ESSENCE_ANCHOR_X2) {
+            const u = (x - ASC_ESSENCE_ANCHOR_X1) / (ASC_ESSENCE_ANCHOR_X2 - ASC_ESSENCE_ANCHOR_X1);
+            y = ASC_ESSENCE_ANCHOR_Y1 + (ASC_ESSENCE_ANCHOR_Y2 - ASC_ESSENCE_ANCHOR_Y1) * Math.pow(Math.max(0, Math.min(1, u)), ASC_ESSENCE_SEGMENT2_POWER);
+        } else {
+            // Continue beyond 1e100 with diminishing relative gains.
+            const over = x - ASC_ESSENCE_ANCHOR_X2;
+            y = ASC_ESSENCE_ANCHOR_Y2 + 80 * Math.pow(over, 0.72);
+        }
+        return Math.max(1, Math.floor(y));
+    }
+    function computeNumber1AscensionGainBreakdown(fromTotal) {
+        const baseGain = computeNumber1AscensionBaseGain(fromTotal);
+        const pendingBonus = getNumber1AscensionPendingBonusEssence();
+        const beforeMult = baseGain + pendingBonus;
+        const clapMult = getNumber1AscensionClapEssenceMultiplier();
+        const finalGain = Math.max(beforeMult, Math.floor(beforeMult * clapMult));
+        return {
+            baseGain,
+            pendingBonus,
+            beforeMult,
+            clapMult,
+            multiplierBonus: Math.max(0, finalGain - beforeMult),
+            finalGain
+        };
+    }
     function computeNumber1AscensionGain(fromTotal) {
-        const t = Math.max(1, fromTotal);
-        return Math.max(1, Math.min(500, Math.floor(Math.log10(t))));
+        return computeNumber1AscensionGainBreakdown(fromTotal).finalGain;
     }
     function isNumber1AscensionReady() {
         return unlockedHands >= ASCENSION_1_MIN_HANDS && totalChanges >= ASCENSION_1_REQUIRED_TOTAL;
@@ -934,6 +1046,18 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     const ASCENSION_FINGER_KEYS = ["index", "middle", "ring", "pinky", "thumb"];
     const ASCENSION_MAP_NODE_BY_ID = {};
     ASCENSION_MAP_NODES.forEach(n => { ASCENSION_MAP_NODE_BY_ID[n.id] = n; });
+    function isTurboScensionUnlocked() {
+        return number1AscensionNodeIds.some(function (id) {
+            const def = ASCENSION_MAP_NODE_BY_ID[id];
+            return def && def.finger === "ring" && def.grants && def.grants.turboScensionUnlock === true;
+        });
+    }
+    function isTurboScensionUpgradeAutobuyUnlocked() {
+        return number1AscensionNodeIds.some(function (id) {
+            const def = ASCENSION_MAP_NODE_BY_ID[id];
+            return def && def.finger === "ring" && def.grants && def.grants.turboScensionUpgradeAutobuy === true;
+        });
+    }
     /** Pre-map ascension ids from early builds — any match clears the whole node list on load (no migration). */
     const ASCENSION_LEGACY_NODE_ID_RE = /^(?:tempo_cheapen_|boost_turbo_|boost_warp_|asc_(?:chp|cmb|spd|tur|wrp|syn)_)/;
     function ascensionPurchasedSet() {
@@ -1001,6 +1125,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         }
         return any;
     }
+    const ASCENSION_TURBO_BURN_EFFICIENCY_MAX_REDUCE = 0.99;
     const ASCENSION_COMBO_PRODUCTION_FRAC_CAP = 0.5;
     /** Middle-finger only: `comboEarnedPatternMultAdd` multiplies as Π(1 + x) over purchased middle nodes; product capped. Tuning target ~6–7× product at full middle (see combo sustain + pulse scaling for ~10× end-to-end reference). */
     const ASCENSION_COMBO_EARNED_PATTERN_MULT_CAP = 10;
@@ -1014,23 +1139,56 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     const COMBO_SUSTAIN_MAX_MULT_ADD_SUM_CAP = 0.38;
     const COMBO_ACTIVATION_LOG_COEFF_CAP = 0.065;
     const COMBO_ACTIVATION_LOG_BONUS_CAP = 0.45;
+    /** Save/load sanity only (corrupted saves); no gameplay cap on run ramp. */
+    const COMBO_RUN_BONUS_RAMP_LOAD_CAP = 1e15;
     function computeAscensionGrantTotals() {
         let cheapenCap = 0;
         let turboScaling = 0;
         let warpOverflow = 0;
         let speedMult = 1;
         let comboMultAdd = 0;
+        let comboRunBonusAddPerTick = 0;
         let comboEarnedPatternMult = 1;
         let comboSustainMaxMultAdd = 0;
         let comboSustainFillPerTick = 0;
         let comboActivationLogCoeff = 0;
         let comboTriggerProductionFrac = 0;
         let comboTurboPointsMult = 1;
+        let turboBoostComboFillAdd = 0;
         let autoBuyDelayMult = 1;
         let slowdownCostMult = 1;
         let clapCooldownMult = 1;
         let clapBonusChanceAdd = 0;
+        let clapCheapenBonusChanceAdd = 0;
+        let clapSlowdownBonusChanceAdd = 0;
+        let clapEssenceProcChanceAdd = 0;
+        let clapEssenceMultiplierStepAdd = 0;
+        let clapCheapenExtraRoll = false;
+        let clapCheapenChainRolls = false;
+        let clapSlowdownExtraRoll = false;
+        let clapSlowdownChainRolls = false;
+        let comboClapExtraRoll = false;
+        let comboClapChainRolls = false;
+        let comboTimeWarpDelayReduceSec = 0;
+        let comboTimeWarpDelayReduceMult = 1;
         let warpSpawnIntervalMult = 1;
+        let warpManualGrantSeconds = 60;
+        let warpAutoBuyAssist = false;
+        let warpFactor36AllHandsOverflow = false;
+        let warpPotencyMaxTiers = 0;
+        let warpClickAscensionEssenceChance = 0;
+        let warpOverflowAscensionEssenceChance = 0;
+        let turboScensionActivationCostMult = 1;
+        let turboBurnEfficiencyReduceSum = 0;
+        let turboTankSizeMult = 1;
+        let turboBurnRateMult = 1;
+        let turboScensionExtraUpgradeRolls = 0;
+        let turboLeveler = false;
+        let turboScensionAllAxesUpgrade = false;
+        let turboMeterFromComboMult = 1;
+        let turboMeterDrainMult = 1;
+        let turboOffMeterFillMult = 1;
+        let turboPassiveMeterPerSec = 0;
         let handUnlockStartingCount = 0n;
         number1AscensionNodeIds.forEach(id => {
             const def = ASCENSION_MAP_NODE_BY_ID[id];
@@ -1050,15 +1208,74 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
                 if (typeof g.comboSustainMaxMultAdd === "number" && g.comboSustainMaxMultAdd > 0) comboSustainMaxMultAdd += g.comboSustainMaxMultAdd;
                 if (typeof g.comboSustainFillPerTick === "number" && g.comboSustainFillPerTick > 0) comboSustainFillPerTick += g.comboSustainFillPerTick;
                 if (typeof g.comboActivationLogCoeff === "number" && g.comboActivationLogCoeff > 0) comboActivationLogCoeff += g.comboActivationLogCoeff;
+                if (typeof g.comboRunBonusAddPerTick === "number" && g.comboRunBonusAddPerTick > 0) comboRunBonusAddPerTick += g.comboRunBonusAddPerTick;
+                if (g.comboClapExtraRoll === true) comboClapExtraRoll = true;
+                if (g.comboClapChainRolls === true) comboClapChainRolls = true;
+                if (typeof g.comboTimeWarpDelayReduceSec === "number" && g.comboTimeWarpDelayReduceSec > 0) {
+                    comboTimeWarpDelayReduceSec += g.comboTimeWarpDelayReduceSec;
+                }
+                if (typeof g.comboTimeWarpDelayReduceMult === "number" && g.comboTimeWarpDelayReduceMult > 1) {
+                    comboTimeWarpDelayReduceMult *= g.comboTimeWarpDelayReduceMult;
+                }
             }
             if (typeof g.comboTriggerProductionFrac === "number" && g.comboTriggerProductionFrac > 0) comboTriggerProductionFrac += g.comboTriggerProductionFrac;
             if (typeof g.comboTurboPointsMult === "number" && g.comboTurboPointsMult > 0) comboTurboPointsMult *= 1 + g.comboTurboPointsMult;
+            if (typeof g.turboBoostComboFillAdd === "number" && g.turboBoostComboFillAdd > 0) turboBoostComboFillAdd += g.turboBoostComboFillAdd;
             if (typeof g.autoBuyDelayMult === "number" && g.autoBuyDelayMult > 0 && g.autoBuyDelayMult <= 1) autoBuyDelayMult *= g.autoBuyDelayMult;
             if (typeof g.slowdownCostMult === "number" && g.slowdownCostMult > 0 && g.slowdownCostMult <= 1) slowdownCostMult *= g.slowdownCostMult;
             if (typeof g.clapCooldownMult === "number" && g.clapCooldownMult > 0 && g.clapCooldownMult <= 1) clapCooldownMult *= g.clapCooldownMult;
             if (typeof g.clapBonusChanceAdd === "number" && g.clapBonusChanceAdd > 0) clapBonusChanceAdd += g.clapBonusChanceAdd;
+            if (typeof g.clapCheapenBonusChanceAdd === "number" && g.clapCheapenBonusChanceAdd > 0) clapCheapenBonusChanceAdd += g.clapCheapenBonusChanceAdd;
+            if (typeof g.clapSlowdownBonusChanceAdd === "number" && g.clapSlowdownBonusChanceAdd > 0) clapSlowdownBonusChanceAdd += g.clapSlowdownBonusChanceAdd;
+            if (typeof g.clapEssenceProcChanceAdd === "number" && g.clapEssenceProcChanceAdd > 0) clapEssenceProcChanceAdd += g.clapEssenceProcChanceAdd;
+            if (typeof g.clapEssenceMultiplierStepAdd === "number" && g.clapEssenceMultiplierStepAdd > 0) clapEssenceMultiplierStepAdd += g.clapEssenceMultiplierStepAdd;
+            if (def.finger === "thumb" && g.clapCheapenExtraRoll === true) clapCheapenExtraRoll = true;
+            if (def.finger === "thumb" && g.clapCheapenChainRolls === true) clapCheapenChainRolls = true;
+            if (def.finger === "thumb" && g.clapSlowdownExtraRoll === true) clapSlowdownExtraRoll = true;
+            if (def.finger === "thumb" && g.clapSlowdownChainRolls === true) clapSlowdownChainRolls = true;
             if (typeof g.warpSpawnIntervalMult === "number" && g.warpSpawnIntervalMult > 0 && g.warpSpawnIntervalMult <= 1) {
                 warpSpawnIntervalMult *= g.warpSpawnIntervalMult;
+            }
+            if (def.finger === "pinky" && typeof g.warpManualGrantSeconds === "number" && Number.isFinite(g.warpManualGrantSeconds) && g.warpManualGrantSeconds >= 60) {
+                warpManualGrantSeconds = Math.max(warpManualGrantSeconds, g.warpManualGrantSeconds);
+            }
+            if (def.finger === "pinky" && g.warpAutoBuyAssist === true) warpAutoBuyAssist = true;
+            if (def.finger === "pinky" && g.warpFactor36AllHandsOverflow === true) warpFactor36AllHandsOverflow = true;
+            if (def.finger === "pinky" && typeof g.warpPotencyMaxTiers === "number" && Number.isFinite(g.warpPotencyMaxTiers) && g.warpPotencyMaxTiers > 0) {
+                warpPotencyMaxTiers += Math.floor(g.warpPotencyMaxTiers);
+            }
+            if (def.finger === "pinky" && typeof g.warpClickAscensionEssenceChance === "number" && Number.isFinite(g.warpClickAscensionEssenceChance) && g.warpClickAscensionEssenceChance > 0) {
+                warpClickAscensionEssenceChance += g.warpClickAscensionEssenceChance;
+            }
+            if (def.finger === "pinky" && typeof g.warpOverflowAscensionEssenceChance === "number" && Number.isFinite(g.warpOverflowAscensionEssenceChance) && g.warpOverflowAscensionEssenceChance > 0) {
+                warpOverflowAscensionEssenceChance += g.warpOverflowAscensionEssenceChance;
+            }
+            if (def.finger === "ring" && typeof g.turboScensionActivationCostMult === "number" && g.turboScensionActivationCostMult > 0 && g.turboScensionActivationCostMult <= 1) {
+                turboScensionActivationCostMult *= g.turboScensionActivationCostMult;
+            }
+            if (def.finger === "ring" && typeof g.turboBurnEfficiencyReduce === "number" && g.turboBurnEfficiencyReduce > 0) {
+                turboBurnEfficiencyReduceSum += g.turboBurnEfficiencyReduce;
+            }
+            if (def.finger === "ring" && typeof g.turboTankSizeMultAdd === "number" && g.turboTankSizeMultAdd > 0) {
+                turboTankSizeMult *= 1 + g.turboTankSizeMultAdd;
+            }
+            if (def.finger === "ring" && typeof g.turboBurnRateMultAdd === "number" && g.turboBurnRateMultAdd > 0) {
+                turboBurnRateMult *= 1 + g.turboBurnRateMultAdd;
+            }
+            if (def.finger === "ring" && g.turboScensionDoubleUpgrade === true) turboScensionExtraUpgradeRolls++;
+            if (def.finger === "ring" && g.turboLeveler === true) turboLeveler = true;
+            if (def.finger === "ring" && g.turboScensionAllAxesUpgrade === true) turboScensionAllAxesUpgrade = true;
+            if (def.finger === "ring" && typeof g.turboMeterFromComboMultAdd === "number" && g.turboMeterFromComboMultAdd > 0) {
+                turboMeterFromComboMult *= 1 + g.turboMeterFromComboMultAdd;
+            }
+            if (def.finger === "ring" && typeof g.turboMeterDrainMult === "number" && g.turboMeterDrainMult > 0 && g.turboMeterDrainMult <= 1) {
+                turboMeterDrainMult *= g.turboMeterDrainMult;
+            }
+            if (def.finger === "ring" && typeof g.turboOffMeterFillMultAdd === "number" && g.turboOffMeterFillMultAdd > 0) {
+                turboOffMeterFillMult *= 1 + g.turboOffMeterFillMultAdd;
+            }
+            if (def.finger === "ring" && typeof g.turboPassiveMeterPerSec === "number" && g.turboPassiveMeterPerSec > 0) {
+                turboPassiveMeterPerSec += g.turboPassiveMeterPerSec;
             }
         });
         comboTriggerProductionFrac = Math.min(ASCENSION_COMBO_PRODUCTION_FRAC_CAP, comboTriggerProductionFrac);
@@ -1067,23 +1284,59 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         comboSustainFillPerTick = Math.min(COMBO_SUSTAIN_FILL_EXTRA_CAP, comboSustainFillPerTick);
         comboActivationLogCoeff = Math.min(COMBO_ACTIVATION_LOG_COEFF_CAP, comboActivationLogCoeff);
         clapBonusChanceAdd = Math.min(0.45, clapBonusChanceAdd);
+        clapCheapenBonusChanceAdd = Math.min(0.9, clapCheapenBonusChanceAdd);
+        clapSlowdownBonusChanceAdd = Math.min(0.75, clapSlowdownBonusChanceAdd);
+        clapEssenceProcChanceAdd = Math.min(0.85, clapEssenceProcChanceAdd);
+        clapEssenceMultiplierStepAdd = Math.min(0.05, clapEssenceMultiplierStepAdd);
+        turboBurnEfficiencyReduceSum = Math.min(ASCENSION_TURBO_BURN_EFFICIENCY_MAX_REDUCE, turboBurnEfficiencyReduceSum);
         return {
             cheapenCap,
             turboScaling,
             warpOverflow,
             speedMult,
             comboMultAdd,
+            comboRunBonusAddPerTick,
             comboEarnedPatternMult,
             comboSustainMaxMultAdd,
             comboSustainFillPerTick,
             comboActivationLogCoeff,
             comboTriggerProductionFrac,
             comboTurboPointsMult,
+            turboBoostComboFillAdd,
             autoBuyDelayMult,
             slowdownCostMult,
             clapCooldownMult,
             clapBonusChanceAdd,
+            clapCheapenBonusChanceAdd,
+            clapSlowdownBonusChanceAdd,
+            clapEssenceProcChanceAdd,
+            clapEssenceMultiplierStepAdd,
+            clapCheapenExtraRoll,
+            clapCheapenChainRolls,
+            clapSlowdownExtraRoll,
+            clapSlowdownChainRolls,
+            comboClapExtraRoll,
+            comboClapChainRolls,
+            comboTimeWarpDelayReduceSec,
+            comboTimeWarpDelayReduceMult,
             warpSpawnIntervalMult,
+            warpManualGrantSeconds,
+            warpAutoBuyAssist,
+            warpFactor36AllHandsOverflow,
+            warpPotencyMaxTiers,
+            warpClickAscensionEssenceChance,
+            warpOverflowAscensionEssenceChance,
+            turboScensionActivationCostMult,
+            turboBurnEfficiencyReduceSum,
+            turboTankSizeMult,
+            turboBurnRateMult,
+            turboScensionExtraUpgradeRolls,
+            turboLeveler,
+            turboScensionAllAxesUpgrade,
+            turboMeterFromComboMult,
+            turboMeterDrainMult,
+            turboOffMeterFillMult,
+            turboPassiveMeterPerSec,
             handUnlockStartingCount
         };
     }
@@ -1099,14 +1352,29 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     function getMaxCheapenLevel() {
         return BASE_MAX_CHEAPEN_LEVEL + getAscensionCheapenCapBonusFromTree();
     }
+    function turboMeterCurveScaleFromTotals(t) {
+        return Math.max(1, TURBO_BOOST_METER_BASE_MAX + (t.turboScaling || 0) * 25);
+    }
+    /** Base meter capacity for the turbo mult curve (not multiplied by tank size). */
+    function getTurboMeterCurveScale() {
+        return turboMeterCurveScaleFromTotals(computeAscensionGrantTotals());
+    }
     function getTurboMeterMax() {
-        return TURBO_BOOST_METER_BASE_MAX + getAscensionTurboScalingBonusFromTree() * 25;
+        const t = computeAscensionGrantTotals();
+        return turboMeterCurveScaleFromTotals(t) * (t.turboTankSizeMult || 1) * Math.pow(2, Math.max(0, turboScensionTankLevel));
     }
     function getTurboCountMultiplierMax() {
-        return TURBO_COUNT_MULTIPLIER_BASE_MAX * Math.pow(1.25, getAscensionTurboScalingBonusFromTree());
+        const base = TURBO_COUNT_MULTIPLIER_BASE_MAX * Math.pow(1.25, getAscensionTurboScalingBonusFromTree());
+        return base * Math.pow(2, Math.max(0, turboScensionMultLevel));
+    }
+    function getTimeWarpOverflowRatioFromTotals(t) {
+        const w = Number(t && t.warpOverflow) || 0;
+        let r = Math.min(0.9, TIME_WARP_OVERFLOW_BASE_RATIO + w * 0.05);
+        if (t && t.warpFactor36AllHandsOverflow) r *= 0.75;
+        return r;
     }
     function getTimeWarpOverflowRatio() {
-        return Math.min(0.9, TIME_WARP_OVERFLOW_BASE_RATIO + getAscensionWarpOverflowBonusFromTree() * 0.05);
+        return getTimeWarpOverflowRatioFromTotals(computeAscensionGrantTotals());
     }
     /** Max seconds until next aura roll (uniform 0…max); ascension shortens span, floor 1s. */
     function getTimeWarpAuraSpawnSpanMaxSec() {
@@ -1150,18 +1418,58 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         const def = ASCENSION_MAP_NODE_BY_ID[id];
         return def && def.title ? def.title : id;
     }
+    function collectAscensionChainToNode(id, purchased, visited, outOrdered) {
+        const def = ASCENSION_MAP_NODE_BY_ID[id];
+        if (!def) return;
+        if (visited.has(id)) return;
+        visited.add(id);
+        (def.parents || []).forEach(function (pid) {
+            collectAscensionChainToNode(pid, purchased, visited, outOrdered);
+        });
+        outOrdered.push(id);
+    }
+    function getAscensionPurchaseChainInfoToNode(id) {
+        const purchased = ascensionPurchasedSet();
+        const visited = new Set();
+        const ordered = [];
+        collectAscensionChainToNode(id, purchased, visited, ordered);
+        const missingOrdered = ordered.filter(function (nid) {
+            return !purchased.has(nid);
+        });
+        let missingCost = 0;
+        missingOrdered.forEach(function (nid) {
+            const c = getAscensionNodePurchaseCost(nid);
+            if (Number.isFinite(c) && c > 0 && c < Number.MAX_SAFE_INTEGER / 4) missingCost += c;
+        });
+        const targetOwned = purchased.has(id);
+        return {
+            ordered,
+            missingOrdered,
+            missingCost,
+            totalCount: ordered.length,
+            ownedCount: ordered.length - missingOrdered.length,
+            targetOwned
+        };
+    }
     function tryBuyAscensionNode(id) {
         if (!number1HasAscended) return;
-        if (ascensionPurchasedSet().has(id)) return;
-        if (!ascensionNodePrereqsMet(id)) return;
-        const cost = getAscensionNodePurchaseCost(id);
-        if (!Number.isFinite(cost) || cost >= Number.MAX_SAFE_INTEGER / 4 || number1AscensionEssence < cost) return;
-        number1AscensionEssence -= cost;
-        number1AscensionNodeIds.push(id);
+        const chain = getAscensionPurchaseChainInfoToNode(id);
+        if (chain.targetOwned) return;
+        const spend = chain.missingCost;
+        if (!(spend > 0) || number1AscensionEssence < spend) {
+            addToLog("Ascension skill: " + ascensionNodeDisplayName(id) + " requires " + formatCount(spend) + " Essence to buy-to-here.", "warning");
+            return;
+        }
+        number1AscensionEssence -= spend;
+        chain.missingOrdered.forEach(function (nid) {
+            number1AscensionNodeIds.push(nid);
+        });
         normalizeAscensionNodeIds();
-        addToLog("Ascension skill: " + ascensionNodeDisplayName(id) + " (" + formatCount(cost) + " Essence)", "milestone");
+        const buyCount = chain.missingOrdered.length;
+        const boughtLabel = buyCount > 1 ? ("buy-to-here " + buyCount + " nodes") : "single node";
+        addToLog("Ascension skill: " + ascensionNodeDisplayName(id) + " (" + boughtLabel + ", " + formatCount(spend) + " Essence)", "milestone");
         applyAscensionHandUnlockStartingCountFloorToUnlockedHands();
-        if (id === ASCENSION_NODE_AUTOBUY_DEFAULT_ON_ID) {
+        if (chain.missingOrdered.indexOf(ASCENSION_NODE_AUTOBUY_DEFAULT_ON_ID) >= 0) {
             autoBuyUnlocked = true;
             ensureSpeedRows();
             for (let i = 0; i < unlockedHands; i++) autoBuyEnabledByHand[i] = true;
@@ -1169,7 +1477,12 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         updateCheapenUpgradeUI();
         updateTurboBoostUI();
         updateRateDisplay();
+        updateTimeWarpAuraUI();
         refreshOverviewAndAscensionPanelsIfOpen();
+        if (chain.missingOrdered.some(function (nid) {
+            const bought = ASCENSION_MAP_NODE_BY_ID[nid];
+            return bought && bought.grants && bought.grants.turboLeveler === true;
+        })) tryTurboLevelerPurchases();
         autosaveNow();
     }
     function respecNumber1AscensionSkillTrees() {
@@ -1181,10 +1494,13 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         });
         number1AscensionNodeIds = [];
         number1AscensionEssence += refund;
+        turboLevelerBank = 0;
+        turboLevelerPurchases = 0;
         addToLog("Ascension trees reset — " + formatCount(refund) + " Essence refunded (free respec).", "milestone");
         updateCheapenUpgradeUI();
         updateTurboBoostUI();
         updateRateDisplay();
+        updateTimeWarpAuraUI();
         refreshOverviewAndAscensionPanelsIfOpen();
         autosaveNow();
     }
@@ -1440,12 +1756,16 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         const owned = ascensionPurchasedSet().has(id);
         const prereqOk = ascensionNodePrereqsMet(id);
         const cost = getAscensionNodePurchaseCost(id);
+        const chain = getAscensionPurchaseChainInfoToNode(id);
         let status = owned ? "Owned" : (prereqOk ? "Available" : "Locked");
         if (kickerEl) kickerEl.textContent = (def.route || "").charAt(0).toUpperCase() + (def.route || "").slice(1) + " · " + (def.finger || "");
         titleEl.textContent = def.title || id;
         effectEl.textContent = def.effect || "";
-        let meta = "Essence cost: " + formatCount(cost) + " · " + status;
-        if (!owned && prereqOk) meta += " · Your pool: " + formatCount(number1AscensionEssence);
+        let meta = "Essence cost: " + formatCount(cost) +
+            " · Cost to here: " + formatCount(chain.missingCost) +
+            " · Chain: " + chain.ownedCount + "/" + chain.totalCount + " owned" +
+            " · " + status;
+        if (!owned) meta += " · Your pool: " + formatCount(number1AscensionEssence);
         metaEl.textContent = meta;
     }
     function setAscensionMapSelectedNode(id, skipIfSame) {
@@ -1677,36 +1997,47 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         const ownedCount = number1AscensionNodeIds.length;
         const invested = getAscensionEssenceInvestedInNodes();
         const speedDiscountPct = (1 - totals.speedMult) * 100;
-        const comboBonusPct = totals.comboMultAdd * 100;
         const earnedPatMult = totals.comboEarnedPatternMult > 1 ? totals.comboEarnedPatternMult : 1;
+        /** Middle-branch combo purchases: (1 + comboMultAdd) × comboEarnedPatternMult — same factors as in total bonus (without pattern base or rhythm). */
+        const comboUpgradesMult = (1 + (totals.comboMultAdd || 0)) * earnedPatMult;
         const comboPulsePct = totals.comboTriggerProductionFrac * 100;
         const turboPtsPct = (totals.comboTurboPointsMult - 1) * 100;
+        const turboSustainParts = [];
+        if ((totals.turboMeterFromComboMult || 1) > 1.001) turboSustainParts.push("×" + (totals.turboMeterFromComboMult || 1).toFixed(2) + " combo→meter");
+        if ((totals.turboMeterDrainMult || 1) < 0.999) turboSustainParts.push("×" + (totals.turboMeterDrainMult || 1).toFixed(2) + " drain");
+        if ((totals.turboOffMeterFillMult || 1) > 1.001) turboSustainParts.push("×" + (totals.turboOffMeterFillMult || 1).toFixed(2) + " fill Off");
+        if ((totals.turboPassiveMeterPerSec || 0) > 0) turboSustainParts.push("+" + totals.turboPassiveMeterPerSec + "/s On");
+        const turboSustainPill = turboSustainParts.length
+            ? "<span class=\"asc-stat-pill asc-stat-pill--wide\"><span class=\"asc-stat-pill-k\">Turbo sustain</span> <span class=\"asc-stat-pill-v\">" + turboSustainParts.join(" · ") + "</span></span>"
+            : "";
         const sustainFillAsc = totals.comboSustainFillPerTick || 0;
         const sustainMaxAsc = totals.comboSustainMaxMultAdd || 0;
         const pulseLogCoeff = totals.comboActivationLogCoeff || 0;
-        const earnedPatPill = earnedPatMult > 1.0005
-            ? "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Earned patterns</span> <span class=\"asc-stat-pill-v\">×" + earnedPatMult.toFixed(2) + "</span></span>"
-            : "";
         const sustainPill = sustainFillAsc > 1e-9 || sustainMaxAsc > 1e-9
             ? "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Sustain</span> <span class=\"asc-stat-pill-v\">+" + (sustainFillAsc * 100).toFixed(2) + "% fill/tick · +" + (sustainMaxAsc * 100).toFixed(0) + "% cap</span></span>"
             : "";
         const pulseScalePill = pulseLogCoeff > 1e-9
             ? "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Pulse log</span> <span class=\"asc-stat-pill-v\">×" + pulseLogCoeff.toFixed(3) + "</span></span>"
             : "";
+        const pendingBonusEss = getNumber1AscensionPendingBonusEssence();
+        const pendingBonusPill = pendingBonusEss > 0
+            ? "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Next bonus</span> <span class=\"asc-stat-pill-v\">+" + formatCount(pendingBonusEss) + " Essence</span></span>"
+            : "";
         return (
             "<span class=\"asc-stat-pill asc-stat-pill--wide\"><span class=\"asc-stat-pill-k\">Nodes</span> <span class=\"asc-stat-pill-v\">" + ownedCount + " / " + totalNodes + "</span></span>" +
             "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">In nodes</span> <span class=\"asc-stat-pill-v\">" + formatCount(invested) + " Essence</span></span>" +
             "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Pool</span> <span class=\"asc-stat-pill-v\">" + formatCount(number1AscensionEssence) + "</span></span>" +
+            pendingBonusPill +
             "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Cheapen cap</span> <span class=\"asc-stat-pill-v\">" + getMaxCheapenLevel() + "</span></span>" +
             "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Speed</span> <span class=\"asc-stat-pill-v\">−" + speedDiscountPct.toFixed(1) + "% cost</span></span>" +
-            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Combo</span> <span class=\"asc-stat-pill-v\">+" + comboBonusPct.toFixed(1) + "% mult</span></span>" +
-            earnedPatPill +
+            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Combo upgrades</span> <span class=\"asc-stat-pill-v\">×" + comboUpgradesMult.toFixed(2) + "</span></span>" +
             sustainPill +
             pulseScalePill +
             "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Combo pulse</span> <span class=\"asc-stat-pill-v\">" + comboPulsePct.toFixed(1) + "% CPS</span></span>" +
             "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Turbo pts</span> <span class=\"asc-stat-pill-v\">+" + turboPtsPct.toFixed(0) + "%</span></span>" +
             "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Turbo cap</span> <span class=\"asc-stat-pill-v\">" + formatCount(Math.round(getTurboCountMultiplierMax() * 100) / 100) + "×</span></span>" +
             "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Meter</span> <span class=\"asc-stat-pill-v\">" + formatCount(getTurboMeterMax()) + "</span></span>" +
+            turboSustainPill +
             "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Warp</span> <span class=\"asc-stat-pill-v\">" + (getTimeWarpOverflowRatio() * 100).toFixed(0) + "%</span></span>" +
             "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Warp aura</span> <span class=\"asc-stat-pill-v\">≤" + formatCount(Math.round(getTimeWarpAuraSpawnSpanMaxSec())) + "s</span></span>"
         );
@@ -1868,9 +2199,6 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             }),
             applySaveData: (data) => {
                 if (!data || typeof data !== "object") return;
-                if (Number.isFinite(data.ascensionEssence) && data.ascensionEssence >= 0) {
-                    number1AscensionEssence = Math.floor(data.ascensionEssence);
-                }
                 if (typeof data.ascensionIntroSeen === "boolean") {
                     ascensionNumber1IntroSeen = data.ascensionIntroSeen;
                 }
@@ -1911,7 +2239,8 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             const m = entry.module;
             const milestone = m.getMilestone();
             const ascReady = m.isAscensionReady();
-            const gainPreview = entry.number === 1 && ascReady ? computeNumber1AscensionGain(totalChanges) : 0;
+            const gainPreviewInfo = entry.number === 1 && ascReady ? computeNumber1AscensionGainBreakdown(totalChanges) : null;
+            const gainPreview = gainPreviewInfo ? gainPreviewInfo.finalGain : 0;
             let ascPart = "Ascension: " + (ascReady ? "<span class=\"overview-asc-ready\">Ready</span>" : "Not ready");
             if (entry.number === 1) ascPart += " · Essence: " + formatCount(number1AscensionEssence);
             if (entry.number === 1 && !ascReady) {
@@ -1919,6 +2248,9 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             }
             if (entry.number === 1 && ascReady) {
                 ascPart += " · Next gain: " + formatCount(gainPreview);
+                if (gainPreviewInfo && gainPreviewInfo.multiplierBonus > 0) {
+                    ascPart += " (clap mult +" + formatCount(gainPreviewInfo.multiplierBonus) + ")";
+                }
                 ascPart += " <button type=\"button\" class=\"ascend-number-btn\" data-number=\"1\">Ascend Number 1</button>";
             }
             if (entry.number === 1 && number1HasAscended) {
@@ -2043,7 +2375,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             renderComboPagePerHandStatusSectionHtml() +
             "<section class=\"combo-earned-bonuses-section\" aria-labelledby=\"combo-bonus-breakdown-heading\">" +
             "<h3 id=\"combo-bonus-breakdown-heading\" class=\"combo-earned-bonuses-heading\">Bonus breakdown</h3>" +
-            "<p class=\"combo-earned-bonuses-intro\">How pattern bonuses stack into the <strong>Bonus</strong> multiplier on Count per second (tiers add; patterns multiply within a tier).</p>" +
+            "<p class=\"combo-earned-bonuses-intro\">How pattern bonuses feed the <strong>total bonus</strong> on Count per second (tiers add; patterns multiply within a tier; combo upgrades and rhythm multiply on top).</p>" +
             "<ul id=\"earned-bonuses-list\" class=\"earned-bonuses-list--page\"></ul></section>" +
             "<div class=\"combo-filter-row\">" + statusButtons + "</div>" +
             "<div class=\"combo-filter-row\">" + handButtons + "</div>" +
@@ -2076,7 +2408,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         if (pageId === "achievements") {
             title = "Achievements";
             bodyHtml = renderComingSoonPoster("Achievement boards", "<p>Global and per-number achievement lists, filters, and rewards will live here.</p>" +
-                "<p class=\"coming-soon-note\">Until then, pattern bonuses and your combined Bonus multiplier are on the <strong>Combinations</strong> page.</p>");
+                "<p class=\"coming-soon-note\">Until then, pattern bonuses and your total bonus multiplier are on the <strong>Combinations</strong> page.</p>");
         } else if (pageId === "unlocks") {
             title = "Unlocks";
             bodyHtml = renderComingSoonPoster("Unlock atlas", "<p>A full unlock tree (hands, turbo, numbers, and cross-number gates) will be mapped here with clearer progress links.</p>") +
@@ -2198,8 +2530,8 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             auraBtn.type = "button";
             auraBtn.className = "time-warp-aura-btn";
             auraBtn.setAttribute("data-hand-index", String(i));
-            auraBtn.setAttribute("aria-label", "Activate Time Warp aura for hand " + handNum + " (" + TIME_WARP_MANUAL_CLICK_SCALE + "× 60 seconds of effective production)");
-            auraBtn.title = "Grants " + TIME_WARP_MANUAL_CLICK_SCALE + "× 60s of this hand's effective rate";
+            auraBtn.setAttribute("aria-label", "Activate Time Warp aura for hand " + handNum + " (" + TIME_WARP_MANUAL_CLICK_SCALE + "× " + getTimeWarpProductionSecondsBonus() + " seconds of effective production)");
+            auraBtn.title = "Grants " + TIME_WARP_MANUAL_CLICK_SCALE + "× " + getTimeWarpProductionSecondsBonus() + "s of this hand's effective rate";
             auraBtn.style.display = "none";
             auraBtn.textContent = "Time Warp";
             const handSlotMain = document.createElement("div");
@@ -2645,7 +2977,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         const handNum = handIndex + 1;
         const upgradedHand = hands[handIndex];
         if (upgradedHand) upgradedHand.tickAccBig = 0n;
-        addToLog("Speed upgrade purchased for Hand " + handNum + " (level " + speedLevel[handIndex] + ")", "tip");
+        if (!opts?.silentLog) addToLog("Speed upgrade purchased for Hand " + handNum + " (level " + speedLevel[handIndex] + ")", "tip");
         incrementalEl.textContent = formatCount(totalChanges);
         hands.forEach(h => h.restartTimer());
         if (autoBuyUnlocked) {
@@ -2667,8 +2999,12 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     --------------------------------------------------------- */
     const BASE_MAX_CHEAPEN_LEVEL = 6;
     let cheapenLevel = Array(maxHands).fill(0);
+    let cheapenBonusLevel = Array(maxHands).fill(0);
+    function getEffectiveCheapenLevel(handIndex) {
+        return Math.max(0, (cheapenLevel[handIndex] ?? 0) + (cheapenBonusLevel[handIndex] ?? 0));
+    }
     function getCheapenMultiplier(handIndex) {
-        const level = cheapenLevel[handIndex] ?? 0;
+        const level = getEffectiveCheapenLevel(handIndex);
         return level === 0 ? 1 : Math.pow(10, -(level + 1));
     }
     function getCheapenUpgradeCost(handIndex, nextLevel) {
@@ -2682,11 +3018,16 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     let slowdownAutoBuyCountdownByHand = [];
     const DEV_SLOWDOWN_AUTOBUY_DELAY = 0.1;
 
-    function getCheapenEffectText(nextLevel) {
-        if (nextLevel <= 0 || nextLevel > getMaxCheapenLevel()) return "";
-        if (nextLevel === 1) return "99% off speed upgrade cost";
-        const decimals = nextLevel - 1;
+    /** Discount / wording for a given achieved Cheapen level (1…cap). */
+    function getCheapenEffectTextForAchievedLevel(level) {
+        if (level <= 0) return "";
+        if (level === 1) return "99% off speed upgrade cost";
+        const decimals = level - 1;
         return "99." + "9".repeat(decimals) + "% off speed upgrade cost";
+    }
+    /** Effect after purchasing the next tier (same as achieved level once bought). */
+    function getCheapenEffectText(nextLevel) {
+        return getCheapenEffectTextForAchievedLevel(nextLevel);
     }
 
     function updateCheapenUpgradeUI() {
@@ -2709,6 +3050,8 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             if (!ref || !ref.cheapenWrapEl) continue;
             ref.cheapenWrapEl.style.display = "";
             const level = cheapenLevel[i] ?? 0;
+            const bonusLevel = cheapenBonusLevel[i] ?? 0;
+            const effectiveLevel = getEffectiveCheapenLevel(i);
             const nextLevel = level + 1;
             const cap = getMaxCheapenLevel();
             const cost = level >= cap ? null : getCheapenUpgradeCost(i, nextLevel);
@@ -2716,21 +3059,25 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             const canAfford = cost !== null && balance >= cost;
             if (level >= cap) {
                 if (ref.cheapenLevelEl) {
-                    ref.cheapenLevelEl.textContent = level > 0 ? level + "/" + cap : "";
-                    ref.cheapenLevelEl.classList.toggle("upgrade-btn-level--hidden", level <= 0);
+                    ref.cheapenLevelEl.innerHTML = level > 0 || bonusLevel > 0
+                        ? (level + "/" + cap + (bonusLevel > 0 ? " <span class=\"speed-level-bonus\" title=\"Clap bonus\">+" + bonusLevel + "</span>" : ""))
+                        : "";
+                    ref.cheapenLevelEl.classList.toggle("upgrade-btn-level--hidden", level <= 0 && bonusLevel <= 0);
                 }
                 ref.cheapenBtn.style.display = "";
                 ref.cheapenBtn.disabled = true;
                 setUpgradeButtonProgress(ref.cheapenBtn, 1);
                 ref.cheapenBtn.classList.add("upgrade-btn-maxed");
                 ref.cheapenBtn.classList.remove("upgrade-btn--afford-pulse");
-                setUpgradeTooltipText(ref.cheapenBtn, "Level: " + level + "/" + cap + "\nBalance/Cost: MAX\nEffect: Maxed");
+                setUpgradeTooltipText(ref.cheapenBtn, "Base level: " + level + "/" + cap + "\nBonus (clap): " + bonusLevel + "\nEffective: " + effectiveLevel + "\nBalance/Cost: MAX\nEffect: " + getCheapenEffectTextForAchievedLevel(effectiveLevel));
                 const cheapenLbl = ref.cheapenBtn && ref.cheapenBtn.querySelector(".upgrade-btn-label");
                 if (cheapenLbl) cheapenLbl.textContent = level > 0 ? "" : "Cheapen";
             } else {
                 if (ref.cheapenLevelEl) {
-                    ref.cheapenLevelEl.textContent = level > 0 ? level + "/" + cap : "";
-                    ref.cheapenLevelEl.classList.toggle("upgrade-btn-level--hidden", level <= 0);
+                    ref.cheapenLevelEl.innerHTML = level > 0 || bonusLevel > 0
+                        ? (level + "/" + cap + (bonusLevel > 0 ? " <span class=\"speed-level-bonus\" title=\"Clap bonus\">+" + bonusLevel + "</span>" : ""))
+                        : "";
+                    ref.cheapenLevelEl.classList.toggle("upgrade-btn-level--hidden", level <= 0 && bonusLevel <= 0);
                 }
                 const cheapenLbl = ref.cheapenBtn && ref.cheapenBtn.querySelector(".upgrade-btn-label");
                 if (cheapenLbl) cheapenLbl.textContent = level > 0 ? "" : "Cheapen";
@@ -2740,7 +3087,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
                 setUpgradeButtonProgress(ref.cheapenBtn, progress);
                 ref.cheapenBtn.classList.remove("upgrade-btn-maxed");
                 ref.cheapenBtn.classList.toggle("upgrade-btn--afford-pulse", canAfford);
-                setUpgradeTooltipText(ref.cheapenBtn, "Level: " + level + "/" + cap + "\nBalance/Cost: " + formatCount(balance) + " / " + formatCount(cost) + "\nEffect: " + getCheapenEffectText(nextLevel));
+                setUpgradeTooltipText(ref.cheapenBtn, "Base level: " + level + "/" + cap + "\nBonus (clap): " + bonusLevel + "\nEffective: " + effectiveLevel + "\nBalance/Cost: " + formatCount(balance) + " / " + formatCount(cost) + "\nEffect next base: " + getCheapenEffectText(nextLevel));
             }
         }
         updateHandUpgradeScrollHint();
@@ -2759,7 +3106,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         refreshTotalFromHandEarnings();
         cheapenLevel[handIndex] = level + 1;
         const handNum = handIndex + 1;
-        addToLog("Speed cheapen purchased for Hand " + handNum + " (level " + cheapenLevel[handIndex] + ")", "tip");
+        if (!opts?.silentLog) addToLog("Speed cheapen purchased for Hand " + handNum + " (level " + cheapenLevel[handIndex] + ")", "tip");
         incrementalEl.textContent = formatCount(totalChanges);
         const origin = confettiOriginEl || speedRowRefs[handIndex]?.cheapenBtn?.closest(".speed-upgrade-row");
         if (origin && !opts?.fromAutobuy) sprayConfettiFrom(origin);
@@ -2850,10 +3197,14 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     /* Level 1 unchanged; each further level is 1,000× the prior (before ascension slowdown cost mult). */
     const SLOWDOWN_COSTS = [1e16, 1e19, 1e22];
     let slowdownLevel = Array(maxHands).fill(0);
+    let slowdownBonusLevel = Array(maxHands).fill(0);
     let slowdownUnlockLogged = false;
+    function getEffectiveSlowdownLevel(handIndex) {
+        return Math.max(0, (slowdownLevel[handIndex] ?? 0) + (slowdownBonusLevel[handIndex] ?? 0));
+    }
 
     function getSlowdownMultiplier(handIndex) {
-        const lv = slowdownLevel[handIndex] ?? 0;
+        const lv = getEffectiveSlowdownLevel(handIndex);
         return lv <= 0 ? 1 : Math.pow(10, lv);
     }
     function getSlowdownUpgradeCost(nextLevel) {
@@ -2889,27 +3240,33 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             }
             ref.slowdownWrapEl.style.display = "";
             const level = slowdownLevel[i] ?? 0;
+            const bonusLevel = slowdownBonusLevel[i] ?? 0;
+            const effectiveLevel = getEffectiveSlowdownLevel(i);
             const nextLevel = level + 1;
             const cost = level >= MAX_SLOWDOWN_LEVEL ? null : getSlowdownUpgradeCost(nextLevel);
             const balance = handEarnings[i] || 0;
             const canAfford = cost !== null && balance >= cost;
             if (level >= MAX_SLOWDOWN_LEVEL) {
                 if (ref.slowdownLevelEl) {
-                    ref.slowdownLevelEl.textContent = level > 0 ? level + "/" + MAX_SLOWDOWN_LEVEL : "";
-                    ref.slowdownLevelEl.classList.toggle("upgrade-btn-level--hidden", level <= 0);
+                    ref.slowdownLevelEl.innerHTML = level > 0 || bonusLevel > 0
+                        ? (level + "/" + MAX_SLOWDOWN_LEVEL + (bonusLevel > 0 ? " <span class=\"speed-level-bonus\" title=\"Clap bonus\">+" + bonusLevel + "</span>" : ""))
+                        : "";
+                    ref.slowdownLevelEl.classList.toggle("upgrade-btn-level--hidden", level <= 0 && bonusLevel <= 0);
                 }
                 ref.slowdownBtn.style.display = "";
                 ref.slowdownBtn.disabled = true;
                 setUpgradeButtonProgress(ref.slowdownBtn, 1);
                 ref.slowdownBtn.classList.add("upgrade-btn-maxed");
                 ref.slowdownBtn.classList.remove("upgrade-btn--afford-pulse");
-                setUpgradeTooltipText(ref.slowdownBtn, "Level: " + level + "/" + MAX_SLOWDOWN_LEVEL + "\nBalance/Cost: MAX\nEffect: Maxed");
+                setUpgradeTooltipText(ref.slowdownBtn, "Base level: " + level + "/" + MAX_SLOWDOWN_LEVEL + "\nBonus (clap): " + bonusLevel + "\nEffective: " + effectiveLevel + "\nBalance/Cost: MAX\nEffect: " + getSlowdownEffectText(effectiveLevel));
                 const slowLbl = ref.slowdownBtn && ref.slowdownBtn.querySelector(".upgrade-btn-label");
                 if (slowLbl) slowLbl.textContent = level > 0 ? "" : "Slowdown";
             } else {
                 if (ref.slowdownLevelEl) {
-                    ref.slowdownLevelEl.textContent = level > 0 ? level + "/" + MAX_SLOWDOWN_LEVEL : "";
-                    ref.slowdownLevelEl.classList.toggle("upgrade-btn-level--hidden", level <= 0);
+                    ref.slowdownLevelEl.innerHTML = level > 0 || bonusLevel > 0
+                        ? (level + "/" + MAX_SLOWDOWN_LEVEL + (bonusLevel > 0 ? " <span class=\"speed-level-bonus\" title=\"Clap bonus\">+" + bonusLevel + "</span>" : ""))
+                        : "";
+                    ref.slowdownLevelEl.classList.toggle("upgrade-btn-level--hidden", level <= 0 && bonusLevel <= 0);
                 }
                 const slowLbl = ref.slowdownBtn && ref.slowdownBtn.querySelector(".upgrade-btn-label");
                 if (slowLbl) slowLbl.textContent = level > 0 ? "" : "Slowdown";
@@ -2919,7 +3276,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
                 setUpgradeButtonProgress(ref.slowdownBtn, progress);
                 ref.slowdownBtn.classList.remove("upgrade-btn-maxed");
                 ref.slowdownBtn.classList.toggle("upgrade-btn--afford-pulse", canAfford);
-                setUpgradeTooltipText(ref.slowdownBtn, "Level: " + level + "/" + MAX_SLOWDOWN_LEVEL + "\nBalance/Cost: " + formatCount(balance) + " / " + formatCount(cost) + "\nEffect: " + getSlowdownEffectText(nextLevel));
+                setUpgradeTooltipText(ref.slowdownBtn, "Base level: " + level + "/" + MAX_SLOWDOWN_LEVEL + "\nBonus (clap): " + bonusLevel + "\nEffective: " + effectiveLevel + "\nBalance/Cost: " + formatCount(balance) + " / " + formatCount(cost) + "\nEffect next base: " + getSlowdownEffectText(nextLevel));
             }
         }
         updateHandUpgradeScrollHint();
@@ -2942,7 +3299,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         // Reset speed upgrades so displayed speed/CPS state and progression align.
         speedLevel[handIndex] = 0;
         const handNum = handIndex + 1;
-        addToLog("Slowdown purchased for Hand " + handNum + " (level " + nextLevel + "). Speed level reset.", "tip");
+        if (!opts?.silentLog) addToLog("Slowdown purchased for Hand " + handNum + " (level " + nextLevel + "). Speed level reset.", "tip");
         incrementalEl.textContent = formatCount(totalChanges);
         const targetHand = hands[handIndex];
         if (targetHand) targetHand.tickAccBig = 0n;
@@ -2956,7 +3313,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
 
     /* ---------------------------------------------------------
        TIME WARP (per-hand aura), unlock at 1e18.
-       Random aura every 0–60s. Manual click grants 10× 60s production for that hand.
+       Random aura every 0–60s span (see spawn mult). Manual click grants 10× (60s or ascension-boosted seconds) of that hand's effective rate; Pinky Warp Potency can multiply manual clicks when the aura idles (overflow unchanged).
        If all hands already have aura, auto-grant 25% value to a random hand.
     --------------------------------------------------------- */
     const TIME_WARP_UNLOCK_COUNT = 1e18;
@@ -2964,7 +3321,13 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     /** Multiplier when the player clicks an active aura (overflow random grants use a separate ratio). */
     const TIME_WARP_MANUAL_CLICK_SCALE = 10;
     const TIME_WARP_OVERFLOW_BASE_RATIO = 0.25;
+    /** Idle time (manual aura only) before potency doubles the click grant. */
+    const WARP_POTENCY_TIER1_SEC = 10;
+    const WARP_POTENCY_TIER2_SEC = 100;
+    const WARP_POTENCY_TIER3_SEC = 1000;
     let timeWarpAuraActiveByHand = [];
+    /** Wall-clock ms when each hand’s aura appeared (0 if inactive); used for Warp Potency (manual only). */
+    let timeWarpAuraAppearedAtMsByHand = [];
     let timeWarpNextSpawnInSec = 0;
     let timeWarpUnlockLogged = false;
 
@@ -2985,6 +3348,30 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     }
     function ensureTimeWarpArrays() {
         while (timeWarpAuraActiveByHand.length < unlockedHands) timeWarpAuraActiveByHand.push(false);
+        while (timeWarpAuraAppearedAtMsByHand.length < unlockedHands) timeWarpAuraAppearedAtMsByHand.push(0);
+    }
+    /** Capped potency steps (10s → ×2, 100s → ×4, 1000s → ×8); overflow warps ignore this. */
+    function getWarpPotencyMaxTiersEffective() {
+        const raw = Math.floor(Number(computeAscensionGrantTotals().warpPotencyMaxTiers) || 0);
+        return Math.max(0, Math.min(3, raw));
+    }
+    /** 0 = base, 1 = ×2 eligible, 2 = ×4 eligible, 3 = ×8 eligible (manual aura, by idle time). */
+    function getWarpPotencyTierForHandNow(handIndex, nowMs) {
+        const cap = getWarpPotencyMaxTiersEffective();
+        if (cap <= 0) return 0;
+        if (handIndex < 0 || handIndex >= unlockedHands || !isTimeWarpUnlocked()) return 0;
+        ensureTimeWarpArrays();
+        if (!timeWarpAuraActiveByHand[handIndex]) return 0;
+        const t0 = timeWarpAuraAppearedAtMsByHand[handIndex];
+        if (!(t0 > 0)) return 0;
+        const elapsedSec = (nowMs - t0) / 1000;
+        if (cap >= 3 && elapsedSec >= WARP_POTENCY_TIER3_SEC) return 3;
+        if (cap >= 2 && elapsedSec >= WARP_POTENCY_TIER2_SEC) return 2;
+        if (cap >= 1 && elapsedSec >= WARP_POTENCY_TIER1_SEC) return 1;
+        return 0;
+    }
+    function getWarpPotencyMultiplierForHandNow(handIndex, nowMs) {
+        return Math.pow(2, getWarpPotencyTierForHandNow(handIndex, nowMs));
     }
     function scheduleNextTimeWarpSpawn() {
         timeWarpNextSpawnInSec = Math.random() * getTimeWarpAuraSpawnSpanMaxSec();
@@ -3030,9 +3417,69 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     function getHandEffectiveCps(handIndex) {
         return clampFiniteNonNegative(getHandPerHandRawCps(handIndex) * getComboMultiplier() * getTurboCountMultiplier());
     }
+    /** Sum of per-hand raw tick CPS (before combo × turbo). */
+    function getTotalRawCpsSum() {
+        let sum = 0;
+        for (let i = 0; i < unlockedHands; i++) sum += getHandPerHandRawCps(i);
+        return sum;
+    }
+    /** Instantaneous total CPS from current sim state (same formula as the old rate line). */
+    function getInstantTotalCps() {
+        const raw = getTotalRawCpsSum();
+        return clampFiniteNonNegative(raw * getComboMultiplier() * getTurboCountMultiplier());
+    }
+    /** EMA of measured Δtotal/Δwall-clock to align displayed CPS with real growth (Option B). */
+    const CPS_DISPLAY_EMA_TAU_SEC = 0.15;
+    const CPS_DISPLAY_EMA_GAP_RESET_SEC = 2.5;
+    let cpsDisplayEma = { value: null, lastTotal: null, lastMs: null };
+    function resetCpsDisplayEma() {
+        cpsDisplayEma = { value: null, lastTotal: null, lastMs: null };
+    }
+    function updateCpsDisplayEmaFromTotal(nowMs, totalNow, instantCpsFallback) {
+        const inst = Number.isFinite(instantCpsFallback) && instantCpsFallback >= 0 ? instantCpsFallback : 0;
+        if (cpsDisplayEma.lastTotal != null && totalNow < cpsDisplayEma.lastTotal) {
+            cpsDisplayEma.lastTotal = totalNow;
+            cpsDisplayEma.lastMs = nowMs;
+            cpsDisplayEma.value = inst;
+            return;
+        }
+        if (cpsDisplayEma.lastTotal == null || cpsDisplayEma.lastMs == null) {
+            cpsDisplayEma.lastTotal = totalNow;
+            cpsDisplayEma.lastMs = nowMs;
+            cpsDisplayEma.value = inst;
+            return;
+        }
+        let dt = (nowMs - cpsDisplayEma.lastMs) / 1000;
+        if (dt <= 0) return;
+        if (dt > CPS_DISPLAY_EMA_GAP_RESET_SEC) {
+            cpsDisplayEma.lastTotal = totalNow;
+            cpsDisplayEma.lastMs = nowMs;
+            cpsDisplayEma.value = inst;
+            return;
+        }
+        const measured = (totalNow - cpsDisplayEma.lastTotal) / dt;
+        cpsDisplayEma.lastTotal = totalNow;
+        cpsDisplayEma.lastMs = nowMs;
+        const m = Number.isFinite(measured) && measured >= 0 ? measured : 0;
+        const alpha = 1 - Math.exp(-dt / CPS_DISPLAY_EMA_TAU_SEC);
+        const prev = cpsDisplayEma.value != null && Number.isFinite(cpsDisplayEma.value) ? cpsDisplayEma.value : inst;
+        cpsDisplayEma.value = alpha * m + (1 - alpha) * prev;
+        if (!Number.isFinite(cpsDisplayEma.value) || cpsDisplayEma.value < 0) cpsDisplayEma.value = 0;
+    }
+    function getDisplayTotalCpsSmoothed() {
+        if (cpsDisplayEma.value != null && Number.isFinite(cpsDisplayEma.value) && cpsDisplayEma.value >= 0) {
+            return cpsDisplayEma.value;
+        }
+        return getInstantTotalCps();
+    }
+    function getTimeWarpProductionSecondsBonus() {
+        const s = computeAscensionGrantTotals().warpManualGrantSeconds;
+        return Number.isFinite(s) && s >= 60 ? s : TIME_WARP_SECONDS_BONUS;
+    }
     function getTimeWarpGrantForHand(handIndex, scale) {
         const effectiveCps = getHandEffectiveCps(handIndex);
-        return Math.max(1, Math.round(effectiveCps * TIME_WARP_SECONDS_BONUS * (scale || 1)));
+        const secBonus = getTimeWarpProductionSecondsBonus();
+        return Math.max(1, Math.round(effectiveCps * secBonus * (scale || 1)));
     }
     function applyTimeWarpGrant(handIndex, scale, reasonLabel) {
         if (handIndex < 0 || handIndex >= unlockedHands) return;
@@ -3048,14 +3495,137 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         updateTimeWarpAuraUI();
         addToLog("Time Warp " + (reasonLabel || "activated") + " on Hand " + (handIndex + 1) + " for +" + formatCount(gain) + ".", "milestone");
     }
+    /** Pinky grants: chance to bank +1 bonus Essence for next ascend (manual click / overflow trigger). */
+    function tryGrantAscensionBonusEssenceFromWarp(sourceLabel) {
+        if (!number1HasAscended) return false;
+        const t = computeAscensionGrantTotals();
+        const chance = sourceLabel === "overflow"
+            ? (Number(t.warpOverflowAscensionEssenceChance) || 0)
+            : (Number(t.warpClickAscensionEssenceChance) || 0);
+        if (!(chance > 0) || Math.random() >= chance) return false;
+        number1AscensionPendingBonusEssence = getNumber1AscensionPendingBonusEssence() + 1;
+        updateMilestoneUI();
+        refreshOverviewAndAscensionPanelsIfOpen();
+        autosaveNow();
+        addToLog("Warp essence bonus: banked +1 Ascension Essence for your next ascend (" + sourceLabel + " trigger).", "milestone");
+        return true;
+    }
+    /** Warp Factor 36: one overflow tick at reduced ratio, applied to every hand (single UI refresh + log). */
+    function applyTimeWarpOverflowToAllHands(ratio) {
+        if (unlockedHands <= 0) return;
+        const pct = (ratio * 100).toFixed(0);
+        const bits = [];
+        for (let i = 0; i < unlockedHands; i++) {
+            const gain = getTimeWarpGrantForHand(i, ratio);
+            handEarnings[i] = (handEarnings[i] || 0) + gain;
+            bits.push("H" + (i + 1) + " +" + formatCount(gain));
+        }
+        refreshTotalFromHandEarnings();
+        if (incrementalEl) incrementalEl.textContent = formatCount(totalChanges);
+        updateObjectives();
+        updateSpeedUpgradeUI();
+        updateCheapenUpgradeUI();
+        updateSlowdownUpgradeUI();
+        updateRateDisplay();
+        updateTimeWarpAuraUI();
+        addToLog("Time Warp overflow (all hands, " + pct + "% of each hand's rate — Warp Factor 36): " + bits.join(" · ") + ".", "milestone");
+    }
+    /** Pinky ascension: after a manual aura click grant, spend that hand’s balance on every affordable Speed/Cheapen/Slowdown upgrade (cheapens first for better prices). */
+    function applyTimeWarpManualAutoBuyAssistForHand(handIndex) {
+        if (handIndex < 0 || handIndex >= unlockedHands) return;
+        if (!computeAscensionGrantTotals().warpAutoBuyAssist) return;
+        const buyOpts = { fromAutobuy: true, silentLog: true };
+        const sl0 = speedLevel[handIndex] ?? 0;
+        const ch0 = cheapenLevel[handIndex] ?? 0;
+        const sd0 = slowdownLevel[handIndex] ?? 0;
+        let guard = 0;
+        while (guard++ < 400) {
+            let progressed = false;
+            let inner = 0;
+            while (inner++ < 500) {
+                const ch = cheapenLevel[handIndex] ?? 0;
+                if (ch >= getMaxCheapenLevel()) break;
+                const nextCh = ch + 1;
+                const cCost = getCheapenUpgradeCost(handIndex, nextCh);
+                if ((handEarnings[handIndex] || 0) < cCost) break;
+                buyCheapenUpgradeForHand(handIndex, null, buyOpts);
+                progressed = true;
+            }
+            inner = 0;
+            while (inner++ < 5000) {
+                const nextSp = speedLevel[handIndex] + 1;
+                const sCost = getUpgradeCost(handIndex, nextSp);
+                if ((handEarnings[handIndex] || 0) < sCost) break;
+                buySpeedUpgradeForHand(handIndex, buyOpts);
+                progressed = true;
+            }
+            if (isSlowdownUnlocked()) {
+                const sd = slowdownLevel[handIndex] ?? 0;
+                if (sd < MAX_SLOWDOWN_LEVEL) {
+                    const nextSd = sd + 1;
+                    const dCost = getSlowdownUpgradeCost(nextSd);
+                    if (dCost != null && (handEarnings[handIndex] || 0) >= dCost) {
+                        buySlowdownUpgradeForHand(handIndex, null, buyOpts);
+                        progressed = true;
+                    }
+                }
+            }
+            if (!progressed) break;
+        }
+        const any = (speedLevel[handIndex] ?? 0) !== sl0 || (cheapenLevel[handIndex] ?? 0) !== ch0 || (slowdownLevel[handIndex] ?? 0) !== sd0;
+        if (any) {
+            updateSpeedUpgradeUI();
+            updateCheapenUpgradeUI();
+            updateSlowdownUpgradeUI();
+            updateRateDisplay();
+            updateTimeWarpAuraUI();
+            addToLog("Warp auto buy assist: bought upgrades for Hand " + (handIndex + 1) + " after your manual Time Warp.", "tip");
+        }
+    }
     function updateTimeWarpAuraUI() {
         const unlocked = isTimeWarpUnlocked();
         ensureTimeWarpArrays();
+        const twSec = getTimeWarpProductionSecondsBonus();
+        const nowMs = Date.now();
+        const potencyUnlocked = getWarpPotencyMaxTiersEffective() > 0;
         for (let i = 0; i < unlockedHands; i++) {
             const ref = speedRowRefs[i];
             if (!ref || !ref.timeWarpAuraBtn) continue;
             const active = unlocked && !!timeWarpAuraActiveByHand[i];
             ref.timeWarpAuraBtn.style.display = active ? "" : "none";
+            const hi = i + 1;
+            const btn = ref.timeWarpAuraBtn;
+            btn.classList.remove("time-warp-aura-btn--potency-1", "time-warp-aura-btn--potency-2", "time-warp-aura-btn--potency-3");
+            let titleExtra = "";
+            let ariaExtra = "";
+            if (active && potencyUnlocked) {
+                const tier = getWarpPotencyTierForHandNow(i, nowMs);
+                const cap = getWarpPotencyMaxTiersEffective();
+                if (tier >= 3) {
+                    btn.classList.add("time-warp-aura-btn--potency-3");
+                    titleExtra = " — ×8 potency (idle " + WARP_POTENCY_TIER3_SEC + "s+)";
+                    ariaExtra = ", ×8 potency charged";
+                } else if (tier >= 2) {
+                    btn.classList.add("time-warp-aura-btn--potency-2");
+                    titleExtra = " — ×4 potency (idle " + WARP_POTENCY_TIER2_SEC + "s+)";
+                    ariaExtra = ", ×4 potency charged";
+                } else if (tier >= 1) {
+                    btn.classList.add("time-warp-aura-btn--potency-1");
+                    titleExtra = " — ×2 potency (idle " + WARP_POTENCY_TIER1_SEC + "s+)";
+                    ariaExtra = ", ×2 potency charged";
+                } else if (cap >= 3) {
+                    titleExtra = " — charging: ×2 after " + WARP_POTENCY_TIER1_SEC + "s idle, ×4 after " + WARP_POTENCY_TIER2_SEC + "s, ×8 after " + WARP_POTENCY_TIER3_SEC + "s";
+                    ariaExtra = "; charges ×2 / ×4 / ×8 when left unclicked";
+                } else if (cap >= 2) {
+                    titleExtra = " — charging: ×2 after " + WARP_POTENCY_TIER1_SEC + "s idle, ×4 after " + WARP_POTENCY_TIER2_SEC + "s";
+                    ariaExtra = "; charges ×2 / ×4 when left unclicked";
+                } else {
+                    titleExtra = " — charging: ×2 after " + WARP_POTENCY_TIER1_SEC + "s idle";
+                    ariaExtra = "; charges ×2 when left unclicked";
+                }
+            }
+            btn.setAttribute("aria-label", "Activate Time Warp on hand " + hi + ": " + TIME_WARP_MANUAL_CLICK_SCALE + "× " + twSec + " seconds of production" + ariaExtra);
+            btn.title = "Grants " + TIME_WARP_MANUAL_CLICK_SCALE + "× " + twSec + "s of this hand's effective rate" + titleExtra;
         }
         scheduleHandUpgradeScrollHintUpdate();
     }
@@ -3085,9 +3655,16 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         ensureTimeWarpArrays();
         if (!isTimeWarpUnlocked()) return;
         if (!timeWarpAuraActiveByHand[handIndex]) return;
+        const nowMs = Date.now();
+        const potencyMult = getWarpPotencyMultiplierForHandNow(handIndex, nowMs);
         timeWarpAuraActiveByHand[handIndex] = false;
+        timeWarpAuraAppearedAtMsByHand[handIndex] = 0;
         markMeaningfulProgress();
-        applyTimeWarpGrant(handIndex, TIME_WARP_MANUAL_CLICK_SCALE, "aura (" + TIME_WARP_MANUAL_CLICK_SCALE + "× manual)");
+        let reason = "aura (" + TIME_WARP_MANUAL_CLICK_SCALE + "× manual)";
+        if (potencyMult > 1) reason += ", ×" + potencyMult + " potency";
+        applyTimeWarpGrant(handIndex, TIME_WARP_MANUAL_CLICK_SCALE * potencyMult, reason);
+        tryGrantAscensionBonusEssenceFromWarp("manual");
+        applyTimeWarpManualAutoBuyAssistForHand(handIndex);
     }
     function updateTimeWarpSystem(dtSec) {
         if (!isTimeWarpUnlocked()) return;
@@ -3098,7 +3675,10 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         }
         if (timeWarpNextSpawnInSec <= 0) scheduleNextTimeWarpSpawn();
         timeWarpNextSpawnInSec -= dtSec;
-        if (timeWarpNextSpawnInSec > 0) return;
+        if (timeWarpNextSpawnInSec > 0) {
+            updateTimeWarpAuraUI();
+            return;
+        }
         const available = [];
         for (let i = 0; i < unlockedHands; i++) {
             if (!timeWarpAuraActiveByHand[i]) available.push(i);
@@ -3106,13 +3686,37 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         if (available.length > 0) {
             const idx = available[Math.floor(Math.random() * available.length)];
             timeWarpAuraActiveByHand[idx] = true;
+            timeWarpAuraAppearedAtMsByHand[idx] = Date.now();
             addToLog("A Time Warp aura appeared on Hand " + (idx + 1) + ".", "milestone");
         } else if (unlockedHands > 0) {
-            const idx = Math.floor(Math.random() * unlockedHands);
-            applyTimeWarpGrant(idx, getTimeWarpOverflowRatio(), "overflow");
+            const twTotals = computeAscensionGrantTotals();
+            const ratio = getTimeWarpOverflowRatioFromTotals(twTotals);
+            if (twTotals.warpFactor36AllHandsOverflow) applyTimeWarpOverflowToAllHands(ratio);
+            else {
+                const idx = Math.floor(Math.random() * unlockedHands);
+                applyTimeWarpGrant(idx, ratio, "overflow");
+            }
+            tryGrantAscensionBonusEssenceFromWarp("overflow");
         }
         scheduleNextTimeWarpSpawn();
         updateTimeWarpAuraUI();
+    }
+    /** Middle-branch: each combo that newly appears this tick trims the Time Warp aura countdown (per trigger). */
+    function getAscensionComboTimeWarpDelayReductionPerTriggerSec() {
+        const t = computeAscensionGrantTotals();
+        const base = Number(t.comboTimeWarpDelayReduceSec) || 0;
+        const mult = Number(t.comboTimeWarpDelayReduceMult) || 1;
+        if (base <= 0 || mult <= 0) return 0;
+        return base * mult;
+    }
+    function applyAscensionComboTimeWarpDelayReduction(newComboTriggerCount) {
+        if (newComboTriggerCount <= 0 || !isTimeWarpUnlocked()) return;
+        const per = getAscensionComboTimeWarpDelayReductionPerTriggerSec();
+        if (per <= 0) return;
+        const total = per * newComboTriggerCount;
+        if (!(timeWarpNextSpawnInSec > 0)) return;
+        const minLeft = 1e-4;
+        timeWarpNextSpawnInSec = Math.max(minLeft, timeWarpNextSpawnInSec - total);
     }
 
     /* ---------------------------------------------------------
@@ -3124,10 +3728,10 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         return baseSpeed / mult;
     }
     // Updates the "Count per second" UI:
-    // - Total shows effective CPS and an optional "base × bonus × turbo" breakdown.
-    // - Per-hand Hn lines are raw tick-rate CPS only (do not sum them and expect Total; Total = sum(H) × Bonus × Turbo).
+    // - Total line uses an EMA of real Δtotal/Δwall-clock (see updateCpsDisplayEmaFromTotal) so it tracks actual growth, not instantaneous spike CPS.
+    // - "base × bonus × turbo" is scaled so the product matches that smoothed total (instant factors, scaled base).
+    // - Per-hand Hn lines are raw tick-rate CPS only (do not sum them and expect Total).
     // - Bonus/Turbo lines are hidden until those features are unlocked.
-    // - CPS matches nominal 50ms sim steps; gameLoopTick catch-up keeps wall-clock production aligned when timers lag.
     function updateRateDisplay() {
         const cpsPerHand = [];
         let cpsTotalRaw = 0;
@@ -3139,25 +3743,39 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         const comboMult = getComboMultiplier();
         const turboMult = getTurboCountMultiplier ? getTurboCountMultiplier() : 1;
         const turboDisplayMult = getTurboCountMultiplierFromMeter ? getTurboCountMultiplierFromMeter() : 1;
-        const cpsTotal = clampFiniteNonNegative(cpsTotalRaw * comboMult * turboMult);
+        const cpsInstant = clampFiniteNonNegative(cpsTotalRaw * comboMult * turboMult);
+        const cpsTotal = getDisplayTotalCpsSmoothed();
         const bonusUnlocked = unlockedHands >= 2;
         const turboUnlocked = turboBoostUnlocked;
         if (bonusMultiplierEl) {
-            bonusMultiplierEl.textContent = "Bonus: " + comboMult.toFixed(2) + "×";
+            const bonusDisplayMult = getDisplayedTotalComboBonus();
+            bonusMultiplierEl.textContent = "Total bonus: " + bonusDisplayMult.toFixed(2) + "×";
             bonusMultiplierEl.style.display = bonusUnlocked ? "" : "none";
+            bonusMultiplierEl.title = "Full bonus from every pattern you have earned, all combo upgrades, and a full rhythm bar. Count/s total is smoothed from real gains; the shown base is scaled so base × bonus × turbo matches that smoothed total.";
         }
         if (turboMultiplierDisplayEl) {
             turboMultiplierDisplayEl.textContent = "Turbo: " + turboDisplayMult.toFixed(2) + "×";
             turboMultiplierDisplayEl.style.display = turboUnlocked ? "" : "none";
         }
-        if (incrementalRateEl) incrementalRateEl.classList.toggle("rate-turbo-active", turboBoostEnabled && turboMult > 1);
+        if (incrementalRateEl) {
+            incrementalRateEl.classList.toggle("rate-turbo-active", turboBoostEnabled && turboMult > 1);
+            incrementalRateEl.title = "Total rate is smoothed (exponential moving average of your real total count gain) with time constant ≈" + CPS_DISPLAY_EMA_TAU_SEC + "s — closer to short-term average growth than the old instantaneous formula.";
+        }
         if (unlockedHands >= 2) {
             const totalFormatted = formatCount(cpsTotal < 1e6 ? Math.round(cpsTotal * 100) / 100 : cpsTotal);
-            const baseFormatted = formatCount(cpsTotalRaw < 1e6 ? Math.round(cpsTotalRaw * 100) / 100 : cpsTotalRaw);
+            const bonusDisplayMult = getDisplayedTotalComboBonus();
+            const appliedComboMult = comboMult;
+            let cpsRateDisplayBase = cpsTotalRaw;
+            if (bonusUnlocked && Number.isFinite(bonusDisplayMult) && bonusDisplayMult > 0) {
+                cpsRateDisplayBase = (cpsTotalRaw * appliedComboMult) / bonusDisplayMult;
+            }
+            if (cpsInstant > 1e-15) {
+                cpsRateDisplayBase = (cpsRateDisplayBase * cpsTotal) / cpsInstant;
+            }
+            const baseFormatted = formatCount(cpsRateDisplayBase < 1e6 ? Math.round(cpsRateDisplayBase * 100) / 100 : cpsRateDisplayBase);
             const calcParts = [baseFormatted];
-            if (bonusUnlocked) calcParts.push(comboMult.toFixed(2));
-            // For the CPS calculation, only include turbo's *actual* applied multiplier.
-            // When turbo is toggled off, turboMult is 1×, so it won't look like it boosts CPS.
+            if (bonusUnlocked) calcParts.push(bonusDisplayMult.toFixed(2));
+            // bonusDisplayMult matches the right-column “Total bonus”; cpsRateDisplayBase is scaled so base × bonus × turbo === cpsTotal.
             if (turboUnlocked) calcParts.push(turboMult.toFixed(2));
             const calcStr = calcParts.length > 1 ? " (" + calcParts.join(" × ") + ")" : "";
             const totalStr = "Total: " + totalFormatted + "/s" + calcStr;
@@ -3250,10 +3868,11 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
 
         const hLeft = Math.ceil(leftInner.getBoundingClientRect().height);
         let hRight = 0;
-        if (turboBoostWrapEl) {
-            const tws = window.getComputedStyle(turboBoostWrapEl);
+        const turboFitEl = turboRightClusterEl || turboBoostWrapEl;
+        if (turboFitEl) {
+            const tws = window.getComputedStyle(turboFitEl);
             if (tws.display !== "none" && tws.visibility !== "hidden") {
-                hRight = Math.ceil(turboBoostWrapEl.getBoundingClientRect().height);
+                hRight = Math.ceil(turboFitEl.getBoundingClientRect().height);
             }
         }
         const anchorH = Math.max(hLeft, hRight, TOP_COUNT_ROW_MIN_CONTENT_H);
@@ -3373,52 +3992,100 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
        Design goals:
        - Meter is fueled by repeatable hand combos (after unlock).
        - Turbo can be toggled On/Off. Off: meter can grow, but no bonus and no burn.
-       - On: applies a non-linear multiplier to counting and burns the meter faster at higher multipliers.
+       - On: count multiplier is burn-driven (Turbo-scension Burn + base rate); tank fullness and size
+         scale how much of that ceiling you get; a larger full tank runs hotter for longer. Drain uses a
+         piecewise curve so burn slows as the meter nears empty.
 
        Balance knobs:
-       - Combo → meter points (`getTurboComboPoints`)
-       - Meter → multiplier curve (max + exponent)
-       - Burn rate and burn scaling
+       - Combo → meter points (`getTurboComboPoints`; Turbo-scension Fill doubles this and passive sustain feed per level)
+       - Nominal burn rate → boost shape (`getTurboBurnIntensityRatio`, exponent)
+       - Ring Mult cap (`getTurboCountMultiplierMax`), tank fullness × tank-size peak (`TURBO_TANK_PEAK_*`)
+       - Piecewise drain floor / exponent (`TURBO_DRAIN_*`), Burn Efficiency ascension
+       - Ring sustain: extra combo→meter mult, drain mult, Off-only fill mult, passive meter/sec while On (Fill scales passive regen too)
     --------------------------------------------------------- */
     const TURBO_UNLOCK_COUNT = 1e12;
     const TURBO_BOOST_METER_BASE_MAX = 100;
     // Combo size → boost points: 2 hands = 1, 6 hands = 16, 10 hands = 256 (2^(minHands-2))
     const TURBO_COMBO_POINTS_BASE = 2;
     const TURBO_COMBO_POINTS_EXP_OFFSET = 2;   // points = TURBO_COMBO_POINTS_BASE^(minHands - TURBO_COMBO_POINTS_EXP_OFFSET)
-    const TURBO_COUNT_MULTIPLIER_BASE_MAX = 100;    // at full meter, count is multiplied by this (100×)
-    const TURBO_MULTIPLIER_CURVE_EXPONENT = 2; // non-linear: levelRatio^exp rewards filling the gauge (2 = quadratic)
-    const TURBO_BURN_RATE_PER_SEC = 3;         // meter drained per second at 1× multiplier (half of original)
-    const TURBO_BURN_MULTIPLIER_SCALE = 0.25;   // burn rate scales with count multiplier (higher mult = faster drain)
+    const TURBO_COUNT_MULTIPLIER_BASE_MAX = 100;    // ceiling from Ring scaling before Turbo-scension Mult (×2 per Mult level)
+    const TURBO_MULTIPLIER_CURVE_EXPONENT = 2; // applied to burn intensity ratio (shape of burn → boost)
+    const TURBO_BURN_RATE_PER_SEC = 3;         // base meter drain per second (doubled per Turbo-scension Burn level)
+    /** Maps nominal burn to [0,1); higher Burn upgrades → stronger boost (asymptotic). */
+    const TURBO_BURN_INTENSITY_K = 8;
+    /** Extra boost when the tank is large and full: peak mult scales by 1 + WEIGHT * (min(ratio, MAX) - 1). */
+    const TURBO_TANK_PEAK_MAX_RATIO = 16;
+    const TURBO_TANK_PEAK_WEIGHT = 0.06;
+    /** Near-empty drain: rate multiplier from u = meter/max; u→0 approaches FLOOR; u=1 is full speed. */
+    const TURBO_DRAIN_FLOOR = 0.07;
+    const TURBO_DRAIN_PIECE_EXP = 0.55;
+    const TURBO_SCENSION_ACTIVATION_BASE_COST = 10000;
+    /** Point cost for first Turbo Leveler purchase; each completed purchase doubles this baseline for the next. */
+    const TURBO_LEVELER_BASE_POINT_COST = 48;
+    function getTurboScensionActivationCost() {
+        const m = computeAscensionGrantTotals().turboScensionActivationCostMult || 1;
+        return Math.max(1, Math.floor(TURBO_SCENSION_ACTIVATION_BASE_COST * m));
+    }
+    /** Independent random Burn/Tank/Mult/Fill rolls per Upgrade click (1 base + ascension extras). */
+    function getTurboScensionUpgradeRollCount() {
+        return 1 + (computeAscensionGrantTotals().turboScensionExtraUpgradeRolls || 0);
+    }
 
     let turboBoostMeter = 0;
     let turboBoostUnlocked = false;
     let turboBoostEnabled = false;
     let turboActivationCount = 0;
+    /** Turbo Leveler (Ring): overflow combo fill while Turbo off + full meter → bank; spend for random scension levels. */
+    let turboLevelerBank = 0;
+    let turboLevelerPurchases = 0;
 
     // Converts combo size (minHands) into meter points.
     // Current mapping uses an exponential curve: points = base^(minHands-offset)
+    function getTurboScensionFillMult() {
+        return Math.pow(2, Math.max(0, turboScensionFillLevel));
+    }
     function getTurboComboPoints(minHands) {
         if (minHands < 2) return 0;
         let pts = Math.pow(TURBO_COMBO_POINTS_BASE, minHands - TURBO_COMBO_POINTS_EXP_OFFSET);
-        const mult = computeAscensionGrantTotals().comboTurboPointsMult || 1;
-        return pts * mult;
+        const totals = computeAscensionGrantTotals();
+        const mult = totals.comboTurboPointsMult || 1;
+        const flat = totals.turboBoostComboFillAdd || 0;
+        const meterExtra = totals.turboMeterFromComboMult || 1;
+        return (pts * mult + flat) * meterExtra * getTurboScensionFillMult();
     }
 
+    function getTurboNominalBurnPerSec() {
+        const ascBurn = computeAscensionGrantTotals().turboBurnRateMult || 1;
+        return TURBO_BURN_RATE_PER_SEC * Math.pow(2, Math.max(0, turboScensionBurnLevel)) * ascBurn;
+    }
+    /** 0..~1 from current Burn tier (not reduced by Burn Efficiency — that only affects drain). */
+    function getTurboBurnIntensityRatio() {
+        const nominal = getTurboNominalBurnPerSec();
+        return nominal / (nominal + TURBO_BURN_INTENSITY_K);
+    }
+    function getTurboTankPeakMult(meterMax, curveScale) {
+        const tr = Math.min(TURBO_TANK_PEAK_MAX_RATIO, meterMax / Math.max(1e-9, curveScale));
+        return 1 + TURBO_TANK_PEAK_WEIGHT * (tr - 1);
+    }
+    /** Burn-driven boost, scaled by tank fullness and (when full) larger tanks hit harder. */
+    function getTurboBoostMultiplierFromState() {
+        const curveScale = getTurboMeterCurveScale();
+        const meterMax = getTurboMeterMax();
+        const fullness = Math.min(1, turboBoostMeter / Math.max(1e-9, meterMax));
+        const burnCurve = Math.pow(getTurboBurnIntensityRatio(), TURBO_MULTIPLIER_CURVE_EXPONENT);
+        const tankPeakMult = getTurboTankPeakMult(meterMax, curveScale);
+        const multCap = getTurboCountMultiplierMax();
+        return 1 + burnCurve * (multCap - 1) * fullness * tankPeakMult;
+    }
     // Applied turbo multiplier. If turbo is toggled Off, this returns 1× (no effect).
     function getTurboCountMultiplier() {
         if (!turboBoostUnlocked || !turboBoostEnabled || turboBoostMeter <= 0) return 1;
-        const levelRatio = Math.min(1, turboBoostMeter / getTurboMeterMax());
-        const curve = Math.pow(levelRatio, TURBO_MULTIPLIER_CURVE_EXPONENT);
-        return 1 + curve * (getTurboCountMultiplierMax() - 1);
+        return getTurboBoostMultiplierFromState();
     }
-
-    // Display-only turbo multiplier: shows the potential multiplier from the current meter,
-    // even if the toggle is Off (so players can see what they'd get by turning it on).
+    // Display-only: potential multiplier from current meter (even if toggle Off).
     function getTurboCountMultiplierFromMeter() {
         if (!turboBoostUnlocked || turboBoostMeter <= 0) return 1;
-        const levelRatio = Math.min(1, turboBoostMeter / getTurboMeterMax());
-        const curve = Math.pow(levelRatio, TURBO_MULTIPLIER_CURVE_EXPONENT);
-        return 1 + curve * (getTurboCountMultiplierMax() - 1);
+        return getTurboBoostMultiplierFromState();
     }
 
     const TURBO_GAIN_POPUP_DURATION_MS = 1000;
@@ -3446,14 +4113,62 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         }, TURBO_GAIN_POPUP_DURATION_MS);
     }
 
+    function isTurboLevelerMode() {
+        return turboBoostUnlocked && isTurboScensionUnlocked() && !!computeAscensionGrantTotals().turboLeveler && !turboBoostEnabled;
+    }
+    function getTurboLevelerNextPointCost() {
+        return TURBO_LEVELER_BASE_POINT_COST * Math.pow(2, turboLevelerPurchases);
+    }
+    /** Spend bank on random Burn/Tank/Mult/Fill while Turbo is off (Turbo Leveler grant). */
+    function tryTurboLevelerPurchases() {
+        if (!turboBoostUnlocked || !isTurboScensionUnlocked() || !computeAscensionGrantTotals().turboLeveler) return;
+        if (turboBoostEnabled) return;
+        let any = false;
+        let nextCost = getTurboLevelerNextPointCost();
+        while (turboLevelerBank >= nextCost) {
+            turboLevelerBank -= nextCost;
+            turboLevelerPurchases++;
+            const axis = applyOneTurboScensionRandomLevel();
+            const labels = ["Burn rate", "Boost tank", "Boost multiplier", "Meter fill"];
+            const now = axis === 0 ? turboScensionBurnLevel : axis === 1 ? turboScensionTankLevel : axis === 2 ? turboScensionMultLevel : turboScensionFillLevel;
+            addToLog("Turbo Leveler: +1 " + labels[axis] + " (now level " + now + ").", "tip");
+            turboBoostMeter = Math.min(turboBoostMeter, getTurboMeterMax());
+            any = true;
+            nextCost = getTurboLevelerNextPointCost();
+        }
+        if (any) {
+            markMeaningfulProgress();
+            updateTurboBoostUI();
+            updateRateDisplay();
+            autosaveNow();
+        }
+    }
     // Adds meter charge (clamped). This does NOT care whether turbo is toggled On;
     // players can still build meter while turbo is Off.
     function addTurboBoostMeter(points) {
-        if (!turboBoostUnlocked) return;
+        if (!turboBoostUnlocked || points <= 0) return;
+        const totals = computeAscensionGrantTotals();
+        if (!turboBoostEnabled) {
+            points *= (totals.turboOffMeterFillMult || 1);
+        }
+        const maxM = getTurboMeterMax();
         const prev = turboBoostMeter;
-        turboBoostMeter = Math.min(getTurboMeterMax(), turboBoostMeter + points);
+        let popupPts = points;
+        if (isTurboLevelerMode()) {
+            const space = Math.max(0, maxM - turboBoostMeter);
+            const toMeter = Math.min(points, space);
+            if (toMeter > 0) turboBoostMeter = Math.min(maxM, turboBoostMeter + toMeter);
+            popupPts = toMeter;
+            const overflow = points - toMeter;
+            if (overflow > 0 && turboBoostMeter >= maxM - 1e-12) {
+                turboLevelerBank += overflow;
+                tryTurboLevelerPurchases();
+            }
+        } else {
+            turboBoostMeter = Math.min(maxM, turboBoostMeter + points);
+        }
         if (turboBoostMeter > prev && turboBoostFillEl) {
-            showTurboGainPopup(points);
+            showTurboGainPopup(popupPts > 0 ? popupPts : points);
             turboBoostFillEl.classList.remove("turbo-boost-fill-gain");
             void turboBoostFillEl.offsetWidth;
             turboBoostFillEl.classList.add("turbo-boost-fill-gain");
@@ -3466,8 +4181,13 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     // Also auto-switches the toggle Off when the meter hits 0.
     function updateTurboBurn(dtSec) {
         if (!turboBoostUnlocked || !turboBoostEnabled || turboBoostMeter <= 0) return;
-        const mult = getTurboCountMultiplier();
-        const burnRate = TURBO_BURN_RATE_PER_SEC * (1 + (mult - 1) * TURBO_BURN_MULTIPLIER_SCALE);
+        const meterMax = getTurboMeterMax();
+        const u = Math.max(0, Math.min(1, turboBoostMeter / Math.max(1e-9, meterMax)));
+        const piecewise = TURBO_DRAIN_FLOOR + (1 - TURBO_DRAIN_FLOOR) * Math.pow(u, TURBO_DRAIN_PIECE_EXP);
+        const reduce = computeAscensionGrantTotals().turboBurnEfficiencyReduceSum || 0;
+        const effMult = Math.max(0, 1 - reduce);
+        const drainM = computeAscensionGrantTotals().turboMeterDrainMult || 1;
+        const burnRate = getTurboNominalBurnPerSec() * effMult * piecewise * drainM;
         const drain = dtSec * burnRate;
         turboBoostMeter = Math.max(0, turboBoostMeter - drain);
         if (turboBoostMeter <= 0) {
@@ -3483,6 +4203,16 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             setTimeout(() => turboBoostGaugeEl.classList.remove("turbo-boost-gauge-burning"), 250);
         }
         updateTurboBoostUI();
+    }
+
+    /** Flat meter per second while Turbo On and meter has charge (Ring sustain nodes). */
+    function applyTurboPassiveMeterRegen(dtSec) {
+        if (!turboBoostUnlocked || !turboBoostEnabled || turboBoostMeter <= 0) return;
+        const rate = computeAscensionGrantTotals().turboPassiveMeterPerSec || 0;
+        if (!(rate > 0) || !(dtSec > 0)) return;
+        const maxM = getTurboMeterMax();
+        if (turboBoostMeter >= maxM) return;
+        turboBoostMeter = Math.min(maxM, turboBoostMeter + rate * dtSec * getTurboScensionFillMult());
     }
 
     function tryUnlockTurboIfEligible() {
@@ -3523,9 +4253,123 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         }
     }
 
+    /** @returns {0|1|2|3} axis: 0 burn, 1 tank, 2 mult, 3 fill */
+    function applyOneTurboScensionRandomLevel() {
+        const pick = Math.floor(Math.random() * 4);
+        if (pick === 0) turboScensionBurnLevel++;
+        else if (pick === 1) turboScensionTankLevel++;
+        else if (pick === 2) turboScensionMultLevel++;
+        else turboScensionFillLevel++;
+        return pick;
+    }
+    function formatTurboScensionUpgradeTipLine(gainedBurn, gainedTank, gainedMult, gainedFill) {
+        const labels = ["Burn rate", "Boost tank", "Boost multiplier", "Meter fill"];
+        const gained = [gainedBurn, gainedTank, gainedMult, gainedFill || 0];
+        const parts = [];
+        for (let i = 0; i < 4; i++) {
+            const n = gained[i];
+            if (n <= 0) continue;
+            const now = i === 0 ? turboScensionBurnLevel : i === 1 ? turboScensionTankLevel : i === 2 ? turboScensionMultLevel : turboScensionFillLevel;
+            parts.push("+" + n + " " + labels[i] + " (now level " + now + ")");
+        }
+        return parts.length ? "Turbo-scension: " + parts.join("; ") + "." : "";
+    }
+    /**
+     * @param {object} [opts]
+     * @param {boolean} [opts.skipLog] Omit tip log (autobuy).
+     * @param {boolean} [opts.skipAutosave] Batch autobuy: caller saves once.
+     * @param {boolean} [opts.skipUIUpdate] Batch autobuy: caller refreshes UI once.
+     * @returns {boolean} true if a level was purchased
+     */
+    function tryTurboScensionActivationUpgrade(opts) {
+        opts = opts || {};
+        if (!isTurboScensionUnlocked() || !turboBoostUnlocked || gamePaused) return false;
+        const cost = getTurboScensionActivationCost();
+        if (turboActivationCount < cost) return false;
+        turboActivationCount -= cost;
+        const rolls = getTurboScensionUpgradeRollCount();
+        const allAxes = !!computeAscensionGrantTotals().turboScensionAllAxesUpgrade;
+        let gainedBurn = 0;
+        let gainedTank = 0;
+        let gainedMult = 0;
+        let gainedFill = 0;
+        if (allAxes) {
+            for (let r = 0; r < rolls; r++) {
+                turboScensionBurnLevel++;
+                turboScensionTankLevel++;
+                turboScensionMultLevel++;
+                turboScensionFillLevel++;
+                gainedBurn++;
+                gainedTank++;
+                gainedMult++;
+                gainedFill++;
+            }
+        } else {
+            for (let r = 0; r < rolls; r++) {
+                const axis = applyOneTurboScensionRandomLevel();
+                if (axis === 0) gainedBurn++;
+                else if (axis === 1) gainedTank++;
+                else if (axis === 2) gainedMult++;
+                else gainedFill++;
+            }
+        }
+        turboBoostMeter = Math.min(turboBoostMeter, getTurboMeterMax());
+        markMeaningfulProgress();
+        if (!opts.skipUIUpdate) {
+            updateTurboBoostUI();
+            updateRateDisplay();
+        }
+        if (!opts.skipAutosave) autosaveNow();
+        if (!opts.skipLog) {
+            const line = formatTurboScensionUpgradeTipLine(gainedBurn, gainedTank, gainedMult, gainedFill);
+            if (line) addToLog(line, "tip");
+        }
+        return true;
+    }
     // Syncs the turbo UI (unlock visibility, gauge fill, and displayed multiplier).
     function updateTurboBoostUI() {
         tryUnlockTurboIfEligible();
+        const showScisionPanel = isTurboScensionUnlocked() && turboBoostUnlocked;
+        if (turboScensionPanelEl) {
+            turboScensionPanelEl.style.display = showScisionPanel ? "" : "none";
+            turboScensionPanelEl.setAttribute("aria-hidden", showScisionPanel ? "false" : "true");
+        }
+        if (turboRightClusterEl) turboRightClusterEl.classList.toggle("turbo-right-cluster--scision", showScisionPanel);
+        if (!showScisionPanel && turboScensionLevelerLineEl) {
+            turboScensionLevelerLineEl.style.display = "none";
+            turboScensionLevelerLineEl.setAttribute("aria-hidden", "true");
+        }
+        if (showScisionPanel) {
+            if (turboScensionBurnLineEl) turboScensionBurnLineEl.textContent = "Burn " + Math.round(Number(turboScensionBurnLevel) || 0);
+            if (turboScensionTankLineEl) turboScensionTankLineEl.textContent = "Tank " + Math.round(Number(turboScensionTankLevel) || 0);
+            if (turboScensionMultLineEl) turboScensionMultLineEl.textContent = "Mult " + Math.round(Number(turboScensionMultLevel) || 0);
+            if (turboScensionFillLineEl) turboScensionFillLineEl.textContent = "Fill " + Math.round(Number(turboScensionFillLevel) || 0);
+            if (turboScensionUpgradeBtn) {
+                const actCost = getTurboScensionActivationCost();
+                const can = turboActivationCount >= actCost;
+                const rollN = getTurboScensionUpgradeRollCount();
+                const allAxes = !!computeAscensionGrantTotals().turboScensionAllAxesUpgrade;
+                turboScensionUpgradeBtn.disabled = !can;
+                turboScensionUpgradeBtn.title = can
+                    ? (allAxes
+                        ? "Spend " + formatCount(actCost) + " activations for +" + rollN + " each on Burn, Tank, Mult, and Fill (no random)"
+                        : "Spend " + formatCount(actCost) + " activations for " + rollN + " independent random level" + (rollN === 1 ? "" : "s") + " on Burn, Tank, Mult, or Fill")
+                    : "Need " + formatCount(actCost) + " activations (have " + formatCount(turboActivationCount) + ")";
+            }
+            if (turboScensionLevelerLineEl) {
+                const tl = computeAscensionGrantTotals().turboLeveler === true;
+                if (tl) {
+                    turboScensionLevelerLineEl.style.display = "";
+                    turboScensionLevelerLineEl.setAttribute("aria-hidden", "false");
+                    const next = getTurboLevelerNextPointCost();
+                    turboScensionLevelerLineEl.textContent = "Leveler " + formatTurboScensionLevelDisplay(turboLevelerBank) + " / " + formatTurboScensionLevelDisplay(next) + " pts";
+                    turboScensionLevelerLineEl.title = "While Turbo is off, combo fill past a full meter banks here. With Turbo still off, meeting the point cost buys one random Burn/Tank/Mult/Fill level; that cost doubles each purchase.";
+                } else {
+                    turboScensionLevelerLineEl.style.display = "none";
+                    turboScensionLevelerLineEl.setAttribute("aria-hidden", "true");
+                }
+            }
+        }
         if (!turboBoostWrapEl || !turboBoostUnlocked) return;
         if (turboBoostEnabledCheckbox) turboBoostEnabledCheckbox.checked = !!turboBoostEnabled;
         if (turboBoostToggleLabelEl) turboBoostToggleLabelEl.textContent = turboBoostEnabled ? "On" : "Off";
@@ -3539,10 +4383,14 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         if (turboBoostActivationsEl) turboBoostActivationsEl.textContent = "Activations: " + formatCount(turboActivationCount);
     }
 
+    if (turboScensionUpgradeBtn) {
+        turboScensionUpgradeBtn.addEventListener("click", () => { tryTurboScensionActivationUpgrade(); });
+    }
     if (turboBoostEnabledCheckbox) {
         turboBoostEnabledCheckbox.addEventListener("change", () => {
             turboBoostEnabled = turboBoostEnabledCheckbox.checked;
             if (turboBoostToggleLabelEl) turboBoostToggleLabelEl.textContent = turboBoostEnabled ? "On" : "Off";
+            if (!turboBoostEnabled) tryTurboLevelerPurchases();
             updateTurboBoostUI();
             updateRateDisplay();
         });
@@ -3587,9 +4435,12 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             speedLevel,
             speedBonusLevel,
             cheapenLevel,
+            cheapenBonusLevel,
             slowdownLevel,
+            slowdownBonusLevel,
             slowdownUnlockLogged,
             timeWarpAuraActiveByHand,
+            timeWarpAuraAppearedAtMsByHand,
             timeWarpNextSpawnInSec,
             timeWarpUnlockLogged,
             autoBuyUnlocked,
@@ -3599,11 +4450,18 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             turboBoostUnlocked,
             turboBoostEnabled,
             turboActivationCount,
+            turboScensionBurnLevel,
+            turboScensionTankLevel,
+            turboScensionMultLevel,
+            turboScensionFillLevel,
+            turboLevelerBank,
+            turboLevelerPurchases,
             earnedComboNames,
             comboActivationCounts,
             comboActivationEdgeVersion: COMBO_ACTIVATION_EDGE_SAVE_VERSION,
             comboSustainPrimaryName,
             comboSustainAccumulator,
+            comboRunBonusRampAccumulator,
             adaptiveLastProgressAtMs,
             adaptiveLastHintAtMs,
             previousTickActiveComboNames: Array.from(previousTickActiveComboNames),
@@ -3614,6 +4472,9 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             settings,
             numberModulesState,
             number1AscensionEssence,
+            number1AscensionPendingBonusEssence,
+            number1AscensionClapEssenceMultiplier,
+            number1AscensionClapEssenceProcCount,
             number1HasAscended,
             number1AscensionNodeIds,
             ascensionNumber1IntroSeen,
@@ -3624,6 +4485,41 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     function autosaveNow() {
         if (suppressAutosave) return;
         try { localStorage.setItem(SAVE_KEY, JSON.stringify(getSaveState(Date.now()))); } catch (_) {}
+    }
+    /** Non-null only for valid non-negative saved essence (Number 1); avoids losing essence to parse quirks. */
+    function parseNumber1AscensionEssenceFromSaveValue(v) {
+        if (v == null) return null;
+        if (typeof v === "bigint") {
+            if (v < 0n) return null;
+            const n = Number(v);
+            return Number.isFinite(n) ? Math.min(Number.MAX_SAFE_INTEGER, Math.floor(n)) : Number.MAX_SAFE_INTEGER;
+        }
+        let n;
+        if (typeof v === "string") {
+            const t = v.trim();
+            if (!/^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(t)) return null;
+            n = Number(t);
+        } else {
+            n = Number(v);
+        }
+        if (!Number.isFinite(n) || n < 0) return null;
+        return Math.min(Number.MAX_SAFE_INTEGER, Math.floor(n));
+    }
+    /** Essence is stored top-level and under numberModulesState[1]; use max so 0 in one field cannot wipe the other. */
+    function mergeNumber1AscensionEssenceFromSaveData(data) {
+        if (!data || typeof data !== "object") return;
+        const candidates = [];
+        const add = (v) => {
+            const p = parseNumber1AscensionEssenceFromSaveValue(v);
+            if (p !== null) candidates.push(p);
+        };
+        add(data.number1AscensionEssence);
+        if (data.numberModulesState && typeof data.numberModulesState === "object") {
+            const n1 = data.numberModulesState["1"];
+            if (n1 && typeof n1 === "object" && n1.ascensionEssence != null) add(n1.ascensionEssence);
+        }
+        if (candidates.length === 0) return;
+        number1AscensionEssence = Math.max(number1AscensionEssence, Math.min(Number.MAX_SAFE_INTEGER, Math.max(...candidates)));
     }
     function applyLoadedState(data) {
         if (!data || typeof data !== "object") return;
@@ -3642,13 +4538,31 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             }
         }
         if (Array.isArray(data.cheapenLevel)) cheapenLevel = data.cheapenLevel.slice(0, maxHands).concat(Array(Math.max(0, maxHands - data.cheapenLevel.length)).fill(0));
+        if (Array.isArray(data.cheapenBonusLevel)) cheapenBonusLevel = data.cheapenBonusLevel.slice(0, maxHands).concat(Array(Math.max(0, maxHands - data.cheapenBonusLevel.length)).fill(0));
+        else cheapenBonusLevel = Array(maxHands).fill(0);
         if (Array.isArray(data.slowdownLevel)) slowdownLevel = data.slowdownLevel.slice(0, maxHands).concat(Array(Math.max(0, maxHands - data.slowdownLevel.length)).fill(0));
+        if (Array.isArray(data.slowdownBonusLevel)) slowdownBonusLevel = data.slowdownBonusLevel.slice(0, maxHands).concat(Array(Math.max(0, maxHands - data.slowdownBonusLevel.length)).fill(0));
+        else slowdownBonusLevel = Array(maxHands).fill(0);
         slowdownUnlockLogged = !!data.slowdownUnlockLogged;
         if (Array.isArray(data.timeWarpAuraActiveByHand)) timeWarpAuraActiveByHand = data.timeWarpAuraActiveByHand.slice(0, maxHands).map(v => !!v).concat(Array(Math.max(0, maxHands - data.timeWarpAuraActiveByHand.length)).fill(false));
+        if (Array.isArray(data.timeWarpAuraAppearedAtMsByHand)) {
+            timeWarpAuraAppearedAtMsByHand = data.timeWarpAuraAppearedAtMsByHand.slice(0, maxHands).map(v => {
+                const t = Number(v);
+                return Number.isFinite(t) && t > 0 ? t : 0;
+            }).concat(Array(Math.max(0, maxHands - data.timeWarpAuraAppearedAtMsByHand.length)).fill(0));
+        } else {
+            timeWarpAuraAppearedAtMsByHand = [];
+        }
         timeWarpNextSpawnInSec = Number.isFinite(data.timeWarpNextSpawnInSec) && data.timeWarpNextSpawnInSec >= 0 ? data.timeWarpNextSpawnInSec : 0;
         timeWarpUnlockLogged = !!data.timeWarpUnlockLogged;
         unlockedHands = Math.max(1, Math.min(maxHands, Number(data.unlockedHands) || 1));
         for (let i = unlockedHands; i < maxHands; i++) handEarnings[i] = 0;
+        while (timeWarpAuraAppearedAtMsByHand.length < maxHands) timeWarpAuraAppearedAtMsByHand.push(0);
+        for (let i = 0; i < unlockedHands; i++) {
+            if (timeWarpAuraActiveByHand[i] && !(timeWarpAuraAppearedAtMsByHand[i] > 0)) {
+                timeWarpAuraAppearedAtMsByHand[i] = Date.now();
+            }
+        }
         ensureSpeedRows();
         while (hands.length < unlockedHands) {
             const handNum = hands.length + 1;
@@ -3662,6 +4576,16 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         turboBoostUnlocked = !!data.turboBoostUnlocked;
         turboBoostEnabled = data.turboBoostEnabled !== false;
         turboActivationCount = Number.isFinite(data.turboActivationCount) && data.turboActivationCount >= 0 ? Math.floor(data.turboActivationCount) : 0;
+        turboScensionBurnLevel = Number.isFinite(data.turboScensionBurnLevel) && data.turboScensionBurnLevel >= 0 ? Math.floor(data.turboScensionBurnLevel) : 0;
+        turboScensionTankLevel = Number.isFinite(data.turboScensionTankLevel) && data.turboScensionTankLevel >= 0 ? Math.floor(data.turboScensionTankLevel) : 0;
+        turboScensionMultLevel = Number.isFinite(data.turboScensionMultLevel) && data.turboScensionMultLevel >= 0 ? Math.floor(data.turboScensionMultLevel) : 0;
+        turboScensionFillLevel = Number.isFinite(data.turboScensionFillLevel) && data.turboScensionFillLevel >= 0 ? Math.floor(data.turboScensionFillLevel) : 0;
+        {
+            const b = Number(data.turboLevelerBank);
+            turboLevelerBank = Number.isFinite(b) && b >= 0 ? Math.min(Number.MAX_SAFE_INTEGER, b) : 0;
+        }
+        turboLevelerPurchases = Number.isFinite(data.turboLevelerPurchases) && data.turboLevelerPurchases >= 0 ? Math.floor(data.turboLevelerPurchases) : 0;
+        if (!turboBoostEnabled) tryTurboLevelerPurchases();
         adaptiveLastProgressAtMs = Number.isFinite(data.adaptiveLastProgressAtMs) && data.adaptiveLastProgressAtMs > 0 ? data.adaptiveLastProgressAtMs : Date.now();
         adaptiveLastHintAtMs = Number.isFinite(data.adaptiveLastHintAtMs) && data.adaptiveLastHintAtMs > 0 ? data.adaptiveLastHintAtMs : 0;
         if (Array.isArray(data.earnedComboNames)) {
@@ -3682,6 +4606,10 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         {
             const acc = Number(data.comboSustainAccumulator);
             comboSustainAccumulator = Number.isFinite(acc) && acc >= 0 ? Math.min(COMBO_SUSTAIN_ACC_MAX, acc) : 0;
+        }
+        {
+            const rra = Number(data.comboRunBonusRampAccumulator);
+            comboRunBonusRampAccumulator = Number.isFinite(rra) && rra >= 0 ? Math.min(COMBO_RUN_BONUS_RAMP_LOAD_CAP, rra) : 0;
         }
         if (Array.isArray(data.previousTickActiveComboNames)) previousTickActiveComboNames = new Set(data.previousTickActiveComboNames);
         if (Array.isArray(data.objectivesAchieved)) objectives.forEach((o, i) => { o.achieved = !!data.objectivesAchieved[i]; });
@@ -3704,9 +4632,16 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
                 if (m) m.applySaveData(data.numberModulesState[k]);
             });
         }
-        if (Number.isFinite(data.number1AscensionEssence) && data.number1AscensionEssence >= 0) {
-            number1AscensionEssence = Math.floor(data.number1AscensionEssence);
-        }
+        mergeNumber1AscensionEssenceFromSaveData(data);
+        number1AscensionPendingBonusEssence = Number.isFinite(data.number1AscensionPendingBonusEssence) && data.number1AscensionPendingBonusEssence >= 0
+            ? Math.floor(data.number1AscensionPendingBonusEssence)
+            : 0;
+        number1AscensionClapEssenceMultiplier = Number.isFinite(data.number1AscensionClapEssenceMultiplier) && data.number1AscensionClapEssenceMultiplier >= 1
+            ? data.number1AscensionClapEssenceMultiplier
+            : 1;
+        number1AscensionClapEssenceProcCount = Number.isFinite(data.number1AscensionClapEssenceProcCount) && data.number1AscensionClapEssenceProcCount >= 0
+            ? Math.floor(data.number1AscensionClapEssenceProcCount)
+            : 0;
         number1HasAscended = !!data.number1HasAscended;
         reconcileNumber2LockState();
         updateNumber2SidebarUnlockUI();
@@ -3722,12 +4657,17 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         if (typeof data.ascensionNumber1IntroSeen === "boolean") {
             ascensionNumber1IntroSeen = data.ascensionNumber1IntroSeen;
         }
+        if (turboBoostUnlocked) turboBoostMeter = Math.min(turboBoostMeter, getTurboMeterMax());
+        resetCpsDisplayEma();
         refreshTotalFromHandEarnings();
     }
-    function applyOfflineProgress(offlineMs) {
+    function applyOfflineProgress(offlineMs, opts) {
+        const options = opts || {};
+        const showSummary = options.showSummary !== false;
         const capMs = Math.max(0, settings.offlineCapHours * 3600 * 1000);
         const effectiveMs = Math.min(Math.max(0, offlineMs), capMs);
         if (effectiveMs <= 0) return;
+        resetCpsDisplayEma();
         tickBackgroundNumberModules(effectiveMs / 1000);
         const cpsPerHand = getRawCpsPerHand();
         const rawCps = cpsPerHand.reduce((a, b) => a + b, 0);
@@ -3740,7 +4680,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             handEarnings[i] = (handEarnings[i] || 0) + Math.round((weight / totalWeight) * gained);
         }
         refreshTotalFromHandEarnings();
-        if (offlineSummaryBodyEl && offlineSummaryPanelEl) {
+        if (showSummary && offlineSummaryBodyEl && offlineSummaryPanelEl) {
             const capped = offlineMs > capMs;
             offlineSummaryBodyEl.textContent = "Simulated " + (effectiveMs / 1000).toFixed(1) + "s offline and gained " + formatCount(gained) + (capped ? " (capped)." : ".");
             offlineSummaryPanelEl.style.display = "flex";
@@ -3758,6 +4698,37 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     const GAME_LOOP_MAX_LAG_MS = 120000;
     const GAME_LOOP_MAX_CATCHUP_STEPS = 240;
     let gameLoopTimer = null;
+    let hiddenStartedAtMs = null;
+
+    function beginHiddenOfflineTracking() {
+        // If gameplay is intentionally paused by a modal/overlay, do not accrue offline gains.
+        if (gamePaused) {
+            hiddenStartedAtMs = null;
+            lastGameLoopPerfMs = null;
+            simLagMs = 0;
+            return;
+        }
+        if (hiddenStartedAtMs == null) hiddenStartedAtMs = Date.now();
+        // Prevent the fixed-step loop from attempting to catch up on return.
+        lastGameLoopPerfMs = null;
+        simLagMs = 0;
+    }
+
+    function endHiddenOfflineTracking() {
+        const hiddenAt = hiddenStartedAtMs;
+        hiddenStartedAtMs = null;
+        if (hiddenAt == null) {
+            lastGameLoopPerfMs = null;
+            simLagMs = 0;
+            return;
+        }
+        const offlineMs = Math.max(0, Date.now() - hiddenAt);
+        if (!gamePaused && offlineMs > 0) {
+            applyOfflineProgress(offlineMs, { showSummary: false });
+        }
+        lastGameLoopPerfMs = null;
+        simLagMs = 0;
+    }
 
     class HandCounter {
         constructor(id, speed, parentEl) {
@@ -3893,7 +4864,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             order: 3,
             trigger: () => totalChanges >= TURBO_UNLOCK_COUNT,
             title: "Turbo Boost unlocked!",
-            body: storyTotalCountLead(TURBO_UNLOCK_COUNT) + "you unlocked Turbo Boost. These hands aren't going to get you to a quadrillion on their own, but with Turbo Boost you can push much further! The gauge to the right of your total count fills when you land hand combos—bigger combos add more. While the meter has charge, all hand counts are multiplied. The higher the boost level, the bigger the multiplier, but the faster the meter drains. Balance building combos with burning through the boost!"
+            body: storyTotalCountLead(TURBO_UNLOCK_COUNT) + "you unlocked Turbo Boost. These hands aren't going to get you to a quadrillion on their own, but with Turbo Boost you can push much further! The gauge to the right of your total count fills when you land hand combos—bigger combos add more. While the meter has charge and Turbo is on, all hand counts are multiplied. After you unlock Turbo-scension on the Ring route, your Burn rate drives how strong the boost is; a bigger tank lets a full bar sustain that intensity longer, and the meter drains more slowly when it is almost empty. Balance building combos with burning through the boost!"
         },
         {
             id: "fourth-hand",
@@ -4349,6 +5320,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     let previousTickActiveComboNames = new Set();
     let comboSustainPrimaryName = null;
     let comboSustainAccumulator = 0;
+    let comboRunBonusRampAccumulator = 0;
     function getCombosByMinHands() {
         const byMinHands = {};
         COMBOS.forEach(c => {
@@ -4358,24 +5330,24 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         return byMinHands;
     }
     /**
-     * Within each hand-count tier (2…10), earned pattern bonuses multiply; tier totals add.
-     * Stack: tier sum (each pattern × bonus × (1 + min(cap, coeff·log1p(pulseEdges)))) → ×(1 + comboMultAdd) → ×comboEarnedPatternMult → ×(1 + sustainAcc·sustainMaxAdd).
+     * Per hand-count tier (2…10): product of bonuses for earned combos that match current hands, including pulse log scaling.
+     * Null when no such pattern is active in that tier.
      */
-    function getComboMultiplier() {
+    function computeActiveEarnedComboTierProducts() {
         const earnedSet = new Set(earnedComboNames);
         const v = getHandValues();
         const byMinHands = getCombosByMinHands();
         const totals = computeAscensionGrantTotals();
         const pulseCoeff = totals.comboActivationLogCoeff || 0;
-        const ascSustainMax = totals.comboSustainMaxMultAdd || 0;
-        const maxSustainAdd = Math.min(COMBO_SUSTAIN_MAX_MULT_ADD_CAP, COMBO_SUSTAIN_BASE_MAX_MULT_ADD + ascSustainMax);
-        const sustainMult = 1 + comboSustainAccumulator * maxSustainAdd;
-        let sum = 0;
+        const tier = {};
         for (let n = 2; n <= 10; n++) {
             const group = byMinHands[n] || [];
             const earnedInGroup = group.filter(c => earnedSet.has(c.name) && comboMatchesActive(c, v));
-            if (earnedInGroup.length === 0) continue;
-            sum += earnedInGroup.reduce((m, c) => {
+            if (earnedInGroup.length === 0) {
+                tier[n] = null;
+                continue;
+            }
+            tier[n] = earnedInGroup.reduce((m, c) => {
                 const edges = comboActivationCounts[c.name] || 0;
                 const logBonus = pulseCoeff > 0
                     ? Math.min(COMBO_ACTIVATION_LOG_BONUS_CAP, pulseCoeff * Math.log1p(edges))
@@ -4383,10 +5355,98 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
                 return m * c.bonus * (1 + logBonus);
             }, 1);
         }
+        return tier;
+    }
+    /**
+     * Per tier: product of every earned combo in that tier (no “matching hands” filter), optional pulse log from activation counts.
+     * Used only for the headline “Total bonus” display — not for ticks or CPS.
+     */
+    function computeEarnedCatalogComboTierProducts(includePulseLog) {
+        const earnedSet = new Set(earnedComboNames);
+        const byMinHands = getCombosByMinHands();
+        const totals = computeAscensionGrantTotals();
+        const pulseCoeff = totals.comboActivationLogCoeff || 0;
+        const usePulse = !!includePulseLog && pulseCoeff > 0;
+        const tier = {};
+        for (let n = 2; n <= 10; n++) {
+            if (unlockedHands < n) {
+                tier[n] = null;
+                continue;
+            }
+            const group = byMinHands[n] || [];
+            const earnedInGroup = group.filter(c => earnedSet.has(c.name));
+            if (earnedInGroup.length === 0) {
+                tier[n] = null;
+                continue;
+            }
+            tier[n] = earnedInGroup.reduce((m, c) => {
+                let factor = c.bonus;
+                if (usePulse) {
+                    const edges = comboActivationCounts[c.name] || 0;
+                    const logBonus = Math.min(COMBO_ACTIVATION_LOG_BONUS_CAP, pulseCoeff * Math.log1p(edges));
+                    factor *= 1 + logBonus;
+                }
+                return m * factor;
+            }, 1);
+        }
+        return tier;
+    }
+    /**
+     * Headline “Total bonus” for the top row and Combinations summary only.
+     * Same factor stack as production, but pattern base = full earned catalog (not “matching hands now”),
+     * and rhythm = full bar — so buying combo ascension upgrades never lowers this number while CPS can still rise from other sources.
+     * Count/s total CPS and ticks still use getComboMultiplier() (applied truth); the top-row rate breakdown rescales aggregate base CPS so base × this bonus × turbo matches that total.
+     */
+    function getDisplayedTotalComboBonus() {
+        const totals = computeAscensionGrantTotals();
+        const ascSustainMax = totals.comboSustainMaxMultAdd || 0;
+        const maxSustainAdd = Math.min(COMBO_SUSTAIN_MAX_MULT_ADD_CAP, COMBO_SUSTAIN_BASE_MAX_MULT_ADD + ascSustainMax);
+        const sustainDisplayMult = 1 + COMBO_SUSTAIN_ACC_MAX * maxSustainAdd;
+        const tier = computeEarnedCatalogComboTierProducts(true);
+        let sum = 0;
+        for (let n = 2; n <= 10; n++) {
+            const p = tier[n];
+            if (p == null) continue;
+            sum += p;
+        }
         const base = sum > 0 ? sum : 1;
         const comboAdd = totals.comboMultAdd;
-        const earnedMult = totals.comboEarnedPatternMult > 1 ? totals.comboEarnedPatternMult : 1;
-        return base * (1 + comboAdd) * earnedMult * sustainMult;
+        const runRamp = Math.max(0, comboRunBonusRampAccumulator);
+        const earnedPatternMult = totals.comboEarnedPatternMult > 1 ? totals.comboEarnedPatternMult : 1;
+        return base * (1 + comboAdd + runRamp) * earnedPatternMult * sustainDisplayMult;
+    }
+    /**
+     * Applied combo multiplier for ticks, hand CPS, and the Count/s parenthetical (honest arithmetic with raw CPS).
+     *   base × (1 + comboMultAdd + runRamp) × comboEarnedPatternMult × sustainMult
+     * Base = sum over tiers of products for earned combos that match current hands (includes pulse log).
+     */
+    function getComboBonusFactors() {
+        const totals = computeAscensionGrantTotals();
+        const ascSustainMax = totals.comboSustainMaxMultAdd || 0;
+        const maxSustainAdd = Math.min(COMBO_SUSTAIN_MAX_MULT_ADD_CAP, COMBO_SUSTAIN_BASE_MAX_MULT_ADD + ascSustainMax);
+        const sustainMult = 1 + comboSustainAccumulator * maxSustainAdd;
+        const tier = computeActiveEarnedComboTierProducts();
+        let sum = 0;
+        for (let n = 2; n <= 10; n++) {
+            const p = tier[n];
+            if (p == null) continue;
+            sum += p;
+        }
+        const base = sum > 0 ? sum : 1;
+        const comboAdd = totals.comboMultAdd;
+        const runRamp = Math.max(0, comboRunBonusRampAccumulator);
+        const earnedPatternMult = totals.comboEarnedPatternMult > 1 ? totals.comboEarnedPatternMult : 1;
+        const comboFlatMult = 1 + comboAdd + runRamp;
+        return {
+            base,
+            comboFlatMult,
+            earnedPatternMult,
+            sustainMult,
+            total: base * comboFlatMult * earnedPatternMult * sustainMult
+        };
+    }
+    function getComboMultiplier() {
+        return getComboBonusFactors().total;
     }
     function getPrimaryComboName(active) {
         if (!active || active.length === 0) return null;
@@ -4457,10 +5517,12 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         }
         const earnedSet = new Set(earnedComboNames);
         const byMinHands = getCombosByMinHands();
-        const combinedMult = getComboMultiplier();
+        const combinedMult = getDisplayedTotalComboBonus();
+        const tierActive = computeActiveEarnedComboTierProducts();
+        const appliedMult = getComboMultiplier();
         const combinedLi = document.createElement("li");
         combinedLi.className = "earned-bonuses-combined";
-        combinedLi.textContent = "Bonus: " + combinedMult.toFixed(2) + "× (same as Count per second; sum of each hand-count tier below — within a tier, patterns multiply)";
+        combinedLi.textContent = "Total bonus: " + combinedMult.toFixed(2) + "× (everything earned × combo upgrades × full rhythm; Count/s breakdown uses this factor; live production uses " + appliedMult.toFixed(2) + "× until all earned patterns match your hands and rhythm fills)";
         listEl.appendChild(combinedLi);
         for (let n = 2; n <= 10; n++) {
             if (unlockedHands < n) continue;
@@ -4470,9 +5532,13 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             const allEarned = earnedInGroup.length === group.length;
             if (allEarned) {
                 const totalMult = earnedInGroup.reduce((m, c) => m * c.bonus, 1);
+                const ap = tierActive[n];
+                const activePart = ap == null
+                    ? "Matching your hands now: —"
+                    : "Matching your hands now: ×" + ap.toFixed(2);
                 const li = document.createElement("li");
                 li.className = "earned-bonuses-summary";
-                li.textContent = "All " + n + "-hand pattern bonuses (complete): ×" + totalMult.toFixed(2) + " (this tier’s contribution to Bonus)";
+                li.textContent = "All " + n + "-hand patterns discovered · reference ×" + totalMult.toFixed(2) + " (if all could apply at once) · " + activePart;
                 listEl.appendChild(li);
             } else {
                 group.forEach(c => {
@@ -4537,7 +5603,8 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             }
             if (entry.number === 1) {
                 const ascReady = m.isAscensionReady();
-                const gainPreview = ascReady ? computeNumber1AscensionGain(totalChanges) : 0;
+                const gainPreviewInfo = ascReady ? computeNumber1AscensionGainBreakdown(totalChanges) : null;
+                const gainPreview = gainPreviewInfo ? gainPreviewInfo.finalGain : 0;
                 const cell = card.querySelector(".overview-ascension-cell");
                 if (cell) {
                     let ascPart = "Ascension: " + (ascReady ? "<span class=\"overview-asc-ready\">Ready</span>" : "Not ready");
@@ -4547,6 +5614,9 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
                     }
                     if (ascReady) {
                         ascPart += " · Next gain: " + formatCount(gainPreview);
+                        if (gainPreviewInfo && gainPreviewInfo.multiplierBonus > 0) {
+                            ascPart += " (clap mult +" + formatCount(gainPreviewInfo.multiplierBonus) + ")";
+                        }
                         ascPart += " <button type=\"button\" class=\"page-btn ascend-number-btn\" data-number=\"1\">Ascend Number 1</button>";
                     }
                     if (number1HasAscended) {
@@ -4568,8 +5638,15 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
 
     function performNumber1Ascension() {
         if (!isNumber1AscensionReady()) return;
-        const gain = computeNumber1AscensionGain(totalChanges);
+        const gainInfo = computeNumber1AscensionGainBreakdown(totalChanges);
+        const baseGain = gainInfo.baseGain;
+        const bonusGain = gainInfo.pendingBonus;
+        const multBonusGain = gainInfo.multiplierBonus;
+        const gain = gainInfo.finalGain;
         number1AscensionEssence += gain;
+        number1AscensionPendingBonusEssence = 0;
+        number1AscensionClapEssenceMultiplier = 1;
+        number1AscensionClapEssenceProcCount = 0;
         number1HasAscended = true;
         updateNumber2SidebarUnlockUI();
 
@@ -4587,9 +5664,12 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         clapDigitPrevious = Array(maxHands).fill(-1);
         clapCooldownUntilMsByHand = Array(maxHands).fill(0);
         cheapenLevel = Array(maxHands).fill(0);
+        cheapenBonusLevel = Array(maxHands).fill(0);
         slowdownLevel = Array(maxHands).fill(0);
+        slowdownBonusLevel = Array(maxHands).fill(0);
         slowdownUnlockLogged = false;
         timeWarpAuraActiveByHand = [];
+        timeWarpAuraAppearedAtMsByHand = [];
         timeWarpNextSpawnInSec = 0;
         timeWarpUnlockLogged = false;
         {
@@ -4606,6 +5686,12 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         turboBoostUnlocked = false;
         turboBoostEnabled = true;
         turboActivationCount = 0;
+        turboScensionBurnLevel = 0;
+        turboScensionTankLevel = 0;
+        turboScensionMultLevel = 0;
+        turboScensionFillLevel = 0;
+        turboLevelerBank = 0;
+        turboLevelerPurchases = 0;
         if (turboBoostEnabledCheckbox) turboBoostEnabledCheckbox.checked = true;
         if (turboBoostToggleLabelEl) turboBoostToggleLabelEl.textContent = "On";
         if (turboBoostWrapEl) {
@@ -4620,6 +5706,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         previousTickActiveComboNames = new Set();
         comboSustainPrimaryName = null;
         comboSustainAccumulator = 0;
+        comboRunBonusRampAccumulator = 0;
         objectives.forEach(o => { o.achieved = false; });
         longTermObjectives.forEach(o => { o.achieved = false; });
 
@@ -4633,6 +5720,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             h0.render();
         }
 
+        resetCpsDisplayEma();
         refreshTotalFromHandEarnings();
         if (upgradeContainer && totalChanges < 10) upgradeContainer.classList.remove("show-upgrade-content");
 
@@ -4650,16 +5738,28 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         updateEarnedBonusesUI();
         updatePageButtonUnlocks();
         refreshOverviewAndAscensionPanelsIfOpen();
-        addToLog("Ascended Number 1 — +" + formatCount(gain) + " Ascension Essence (total " + formatCount(number1AscensionEssence) + ")", "milestone");
+        const gainParts = bonusGain > 0
+            ? (formatCount(baseGain) + " base + " + formatCount(bonusGain) + " bonus")
+            : (formatCount(baseGain) + " base");
+        const multPart = multBonusGain > 0 ? (" + " + formatCount(multBonusGain) + " clap multiplier") : "";
+        addToLog("Ascended Number 1 — +" + formatCount(gain) + " Ascension Essence (" + gainParts + multPart + "; total " + formatCount(number1AscensionEssence) + ")", "milestone");
         markMeaningfulProgress();
         autosaveNow();
     }
 
     function showAscensionConfirmDialog() {
         if (!ascensionConfirmOverlayEl || !ascensionConfirmBodyEl) return;
-        const gain = computeNumber1AscensionGain(totalChanges);
+        const gainInfo = computeNumber1AscensionGainBreakdown(totalChanges);
+        const baseGain = gainInfo.baseGain;
+        const bonusGain = gainInfo.pendingBonus;
+        const multBonusGain = gainInfo.multiplierBonus;
+        const gain = gainInfo.finalGain;
         const nextTotal = number1AscensionEssence + gain;
-        ascensionConfirmBodyEl.textContent = "Your total count is " + formatCount(totalChanges) + ". Ascending now grants " + formatCount(gain) + " Ascension Essence (you will have " + formatCount(nextTotal) + " total).\n\nThis resets Number 1 only: one hand, no upgrades, no combo bonuses, objectives unchecked, turbo reset.\n\nSpend Essence on permanent skill branches in Ascension. Respec is always free.";
+        const gainBits = ["base " + formatCount(baseGain)];
+        if (bonusGain > 0) gainBits.push("warp bonus " + formatCount(bonusGain));
+        if (multBonusGain > 0) gainBits.push("clap mult +" + formatCount(multBonusGain) + " (" + gainInfo.clapMult.toFixed(3) + "x)");
+        const bonusLine = gainBits.length > 1 ? (" (" + gainBits.join(" + ") + ")") : "";
+        ascensionConfirmBodyEl.textContent = "Your total count is " + formatCount(totalChanges) + ". Ascending now grants " + formatCount(gain) + " Ascension Essence" + bonusLine + " (you will have " + formatCount(nextTotal) + " total).\n\nThis resets Number 1 only: one hand, no upgrades, no combo bonuses, objectives unchecked, turbo reset.\n\nSpend Essence on permanent skill branches in Ascension. Respec is always free.";
         ascensionConfirmOverlayEl.style.display = "flex";
     }
 
@@ -4714,7 +5814,14 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         newlyPulsingEdge.forEach(c => {
             comboActivationCounts[c.name] = (comboActivationCounts[c.name] || 0) + 1;
         });
+        if (newlyPulsingEdge.length > 0) applyAscensionComboTimeWarpDelayReduction(newlyPulsingEdge.length);
         updateComboSustainState(active);
+        {
+            const rampTick = computeAscensionGrantTotals().comboRunBonusAddPerTick || 0;
+            if (active.length > 0 && rampTick > 0) {
+                comboRunBonusRampAccumulator += rampTick;
+            }
+        }
         if (active.length > 0) applyAscensionComboPulseProduction(active);
         const newlyEarned = active.filter(c => earnedComboNames.indexOf(c.name) === -1).sort((a, b) => {
             if (b.minHands !== a.minHands) return b.minHands - a.minHands;
@@ -4748,6 +5855,11 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     const CLAP_MAX_PAIRS_PER_TICK = 2;
     const CLAP_ANIM_STAGGER_MS = 220;
     const CLAP_COOLDOWN_MS = 10000;
+    /** Middle-branch Combo Claps: fixed 10% per roll (ascension nodes gate which rolls exist). */
+    const COMBO_CLAP_INSTANT_CHANCE = 0.1;
+    const COMBO_CLAP_CHAIN_MAX_WAVES = 64;
+    const CLAP_BONUS_CHEAPEN_CHAIN_MAX_WAVES = 64;
+    const CLAP_BONUS_SLOWDOWN_CHAIN_MAX_WAVES = 64;
     function getClapCooldownMs() {
         const m = computeAscensionGrantTotals().clapCooldownMult || 1;
         return Math.max(2500, Math.floor(CLAP_COOLDOWN_MS * m));
@@ -4757,6 +5869,84 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     }
     function isClappingUnlocked() {
         return unlockedHands >= CLAP_UNLOCK_HANDS;
+    }
+    function getClapCheapenBonusChance() {
+        return Math.min(0.95, Math.max(0, computeAscensionGrantTotals().clapCheapenBonusChanceAdd || 0));
+    }
+    function getClapSlowdownBonusChance() {
+        return Math.min(0.95, Math.max(0, computeAscensionGrantTotals().clapSlowdownBonusChanceAdd || 0));
+    }
+    function getClapEssenceProcChance() {
+        return Math.min(0.95, Math.max(0, computeAscensionGrantTotals().clapEssenceProcChanceAdd || 0));
+    }
+    function getClapEssenceProcMultiplierStep() {
+        const step = Number(computeAscensionGrantTotals().clapEssenceMultiplierStepAdd) || 0;
+        return Math.max(0, step);
+    }
+    function maybeRunThumbClapChain(extraUnlocked, chainUnlocked, maxWaves, onWave) {
+        if (!extraUnlocked || typeof onWave !== "function") return;
+        if (Math.random() >= COMBO_CLAP_INSTANT_CHANCE) return;
+        let waves = 0;
+        while (waves < maxWaves) {
+            onWave();
+            waves++;
+            if (!chainUnlocked || Math.random() >= COMBO_CLAP_INSTANT_CHANCE) break;
+        }
+    }
+    function grantClapBonusCheapenLevelForHand(handIndex) {
+        if (handIndex < 0 || handIndex >= unlockedHands) return;
+        cheapenBonusLevel[handIndex] = (cheapenBonusLevel[handIndex] || 0) + 1;
+    }
+    function grantClapBonusSlowdownLevelForHand(handIndex) {
+        if (handIndex < 0 || handIndex >= unlockedHands) return;
+        slowdownBonusLevel[handIndex] = (slowdownBonusLevel[handIndex] || 0) + 1;
+        // Same functional reset behavior as buying a slowdown level: purchased speed levels are reset.
+        speedLevel[handIndex] = 0;
+        const h = hands[handIndex];
+        if (h) h.tickAccBig = 0n;
+    }
+    function tryGrantClapEssenceMultiplierForHand(handIndex) {
+        if (handIndex < 0 || handIndex >= unlockedHands) return false;
+        const chance = getClapEssenceProcChance();
+        if (!(chance > 0) || Math.random() >= chance) return false;
+        const step = getClapEssenceProcMultiplierStep();
+        if (!(step > 0)) return false;
+        number1AscensionClapEssenceMultiplier *= 1 + step;
+        number1AscensionClapEssenceProcCount++;
+        return true;
+    }
+    function rollClapSpeedBonusesForPairHands(a, b, bonusHandsOneIndexed, logIfNeitherMiss) {
+        let bonusA = false;
+        let bonusB = false;
+        if (Math.random() < getClapBonusChance()) {
+            speedBonusLevel[a] = (speedBonusLevel[a] || 0) + 1;
+            bonusHandsOneIndexed.push(a + 1);
+            if (hands[a]) hands[a].tickAccBig = 0n;
+            bonusA = true;
+        }
+        if (Math.random() < getClapBonusChance()) {
+            speedBonusLevel[b] = (speedBonusLevel[b] || 0) + 1;
+            bonusHandsOneIndexed.push(b + 1);
+            if (hands[b]) hands[b].tickAccBig = 0n;
+            bonusB = true;
+        }
+        if (logIfNeitherMiss && !bonusA && !bonusB) {
+            addToLog("Clap! Hand " + (a + 1) + " and Hand " + (b + 1) + "—no bonus this time. Better luck next round.", "tip");
+        }
+    }
+    function maybeComboClapChainFromAscension(a, b, staggerStartMs, bonusHandsOneIndexed) {
+        const asc = computeAscensionGrantTotals();
+        if (!asc.comboClapExtraRoll || Math.random() >= COMBO_CLAP_INSTANT_CHANCE) return;
+        let staggerMs = staggerStartMs;
+        let chainCount = 0;
+        while (true) {
+            staggerMs += CLAP_ANIM_STAGGER_MS;
+            playClapScreenAnimation(a, b, staggerMs);
+            rollClapSpeedBonusesForPairHands(a, b, bonusHandsOneIndexed, false);
+            chainCount++;
+            if (!asc.comboClapChainRolls || chainCount >= COMBO_CLAP_CHAIN_MAX_WAVES) break;
+            if (Math.random() >= COMBO_CLAP_INSTANT_CHANCE) break;
+        }
     }
     function playClapScreenAnimation(handIndexA, handIndexB, staggerDelayMs) {
         function clapFxShouldDisplay() {
@@ -4812,6 +6002,10 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         let clapPairsThisTick = 0;
         let stagger = 0;
         const bonusHandsOneIndexed = [];
+        const cheapenBonusHandsOneIndexed = [];
+        const slowdownBonusHandsOneIndexed = [];
+        let essenceProcCountThisTick = 0;
+        const asc = computeAscensionGrantTotals();
         for (let ia = 0; ia < fives.length && clapPairsThisTick < CLAP_MAX_PAIRS_PER_TICK; ia++) {
             if (usedFiveSlot[ia]) continue;
             const a = fives[ia];
@@ -4829,33 +6023,59 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
                     const clapCd = getClapCooldownMs();
                     clapCooldownUntilMsByHand[a] = nowMs + clapCd;
                     clapCooldownUntilMsByHand[b] = nowMs + clapCd;
-                    let bonusA = false;
-                    let bonusB = false;
-                    if (Math.random() < getClapBonusChance()) {
-                        speedBonusLevel[a] = (speedBonusLevel[a] || 0) + 1;
-                        bonusHandsOneIndexed.push(a + 1);
-                        if (hands[a]) hands[a].tickAccBig = 0n;
-                        bonusA = true;
-                    }
-                    if (Math.random() < getClapBonusChance()) {
-                        speedBonusLevel[b] = (speedBonusLevel[b] || 0) + 1;
-                        bonusHandsOneIndexed.push(b + 1);
-                        if (hands[b]) hands[b].tickAccBig = 0n;
-                        bonusB = true;
-                    }
-                    if (!bonusA && !bonusB) {
-                        addToLog("Clap! Hand " + (a + 1) + " and Hand " + (b + 1) + "—no bonus this time. Better luck next round.", "tip");
-                    }
+                    rollClapSpeedBonusesForPairHands(a, b, bonusHandsOneIndexed, true);
+                    [a, b].forEach(handIndex => {
+                        if (Math.random() < getClapCheapenBonusChance()) {
+                            grantClapBonusCheapenLevelForHand(handIndex);
+                            cheapenBonusHandsOneIndexed.push(handIndex + 1);
+                            maybeRunThumbClapChain(
+                                asc.clapCheapenExtraRoll,
+                                asc.clapCheapenChainRolls,
+                                CLAP_BONUS_CHEAPEN_CHAIN_MAX_WAVES,
+                                () => {
+                                    grantClapBonusCheapenLevelForHand(handIndex);
+                                    cheapenBonusHandsOneIndexed.push(handIndex + 1);
+                                }
+                            );
+                        }
+                        if (Math.random() < getClapSlowdownBonusChance()) {
+                            grantClapBonusSlowdownLevelForHand(handIndex);
+                            slowdownBonusHandsOneIndexed.push(handIndex + 1);
+                            maybeRunThumbClapChain(
+                                asc.clapSlowdownExtraRoll,
+                                asc.clapSlowdownChainRolls,
+                                CLAP_BONUS_SLOWDOWN_CHAIN_MAX_WAVES,
+                                () => {
+                                    grantClapBonusSlowdownLevelForHand(handIndex);
+                                    slowdownBonusHandsOneIndexed.push(handIndex + 1);
+                                }
+                            );
+                        }
+                        if (tryGrantClapEssenceMultiplierForHand(handIndex)) essenceProcCountThisTick++;
+                    });
+                    maybeComboClapChainFromAscension(a, b, stagger, bonusHandsOneIndexed);
                     break;
                 }
             }
         }
         for (let i = 0; i < unlockedHands; i++) clapDigitPrevious[i] = current[i];
-        if (bonusHandsOneIndexed.length > 0) {
+        const hadClapBonusEvent = bonusHandsOneIndexed.length > 0 || cheapenBonusHandsOneIndexed.length > 0 || slowdownBonusHandsOneIndexed.length > 0 || essenceProcCountThisTick > 0;
+        if (hadClapBonusEvent) {
             markMeaningfulProgress();
-            addToLog("Clap! Bonus speed level on " + bonusHandsOneIndexed.map(n => "Hand " + n).join(", ") + ".", "tip");
+            const bits = [];
+            if (bonusHandsOneIndexed.length > 0) bits.push("bonus speed on " + bonusHandsOneIndexed.map(n => "Hand " + n).join(", "));
+            if (cheapenBonusHandsOneIndexed.length > 0) bits.push("bonus cheapen on " + cheapenBonusHandsOneIndexed.map(n => "Hand " + n).join(", "));
+            if (slowdownBonusHandsOneIndexed.length > 0) bits.push("bonus slowdown on " + slowdownBonusHandsOneIndexed.map(n => "Hand " + n).join(", "));
+            if (essenceProcCountThisTick > 0) {
+                bits.push("essence multiplier proc ×" + essenceProcCountThisTick + " (now " + getNumber1AscensionClapEssenceMultiplier().toFixed(3) + "x)");
+            }
+            addToLog("Clap! " + bits.join(" · ") + ".", "tip");
             updateSpeedUpgradeUI();
+            updateCheapenUpgradeUI();
+            updateSlowdownUpgradeUI();
             updateRateDisplay();
+            updateMilestoneUI();
+            refreshOverviewAndAscensionPanelsIfOpen();
         }
     }
 
@@ -4910,11 +6130,20 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         processClappingThisTick();
         const totalTicks = ticksPerHand.reduce((a, b) => a + b, 0);
         if (totalChanges >= TURBO_UNLOCK_COUNT) {
+            let turboScensionAutobuyDidUpgrade = false;
             if (turboBoostUnlocked) {
                 if (turboBoostEnabled && turboBoostMeter > 0) turboActivationCount++;
                 updateTurboBurn(dtSec);
+                applyTurboPassiveMeterRegen(dtSec);
+            }
+            if (isTurboScensionUpgradeAutobuyUnlocked()) {
+                while (!gamePaused && tryTurboScensionActivationUpgrade({ skipLog: true, skipAutosave: true, skipUIUpdate: true })) {
+                    turboScensionAutobuyDidUpgrade = true;
+                }
+                if (turboScensionAutobuyDidUpgrade) autosaveNow();
             }
             updateTurboBoostUI();
+            if (turboScensionAutobuyDidUpgrade) updateRateDisplay();
         }
         updateComboUI();
         if (totalTicks > 0) {
@@ -4977,6 +6206,10 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     let lastOverviewUpdateMs = 0;
     const UI_UPDATE_THROTTLE_MS = 150;
     if (!gameLoopTimer) gameLoopTimer = setInterval(gameLoopTick, GAME_LOOP_MS);
+    document.addEventListener("visibilitychange", () => {
+        if (document.hidden) beginHiddenOfflineTracking();
+        else endHiddenOfflineTracking();
+    });
 
     setInterval(() => {
         if (gamePaused) return;
@@ -5191,7 +6424,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             const data = JSON.parse(rawSave);
             applyLoadedState(data);
             const savedAt = Number(data.savedAt) || Date.now();
-            applyOfflineProgress(Date.now() - savedAt);
+            applyOfflineProgress(Date.now() - savedAt, { showSummary: true });
         }
     } catch (_) {}
     updateObjectives();
@@ -5215,6 +6448,8 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     const devSecondsElapsed = document.getElementById("dev-seconds-elapsed");
     const devAddCountInput = document.getElementById("dev-add-count-input");
     const devAddCountBtn = document.getElementById("dev-add-count-btn");
+    const devAddAscensionEssenceInput = document.getElementById("dev-add-ascension-essence-input");
+    const devAddAscensionEssenceBtn = document.getElementById("dev-add-ascension-essence-btn");
     const devAllAutobuyCheckbox = document.getElementById("dev-all-autobuy");
     const devAutobuyDelay01Checkbox = document.getElementById("dev-autobuy-delay-01");
     const devAutobuyCheapenCheckbox = document.getElementById("dev-autobuy-cheapen");
@@ -5308,6 +6543,19 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         updateSlowdownUpgradeUI();
         updateRateDisplay();
     });
+    if (devAddAscensionEssenceBtn && devAddAscensionEssenceInput) {
+        devAddAscensionEssenceBtn.addEventListener("click", () => {
+            const val = parseInt(devAddAscensionEssenceInput.value, 10) || 0;
+            if (val <= 0) return;
+            const add = Math.min(Number.MAX_SAFE_INTEGER, Math.floor(val));
+            number1AscensionEssence = Math.min(Number.MAX_SAFE_INTEGER, number1AscensionEssence + add);
+            markMeaningfulProgress();
+            updateMilestoneUI();
+            patchAscensionPanelLiveDom();
+            refreshGlobalOverviewPanelIfOpen();
+            autosaveNow();
+        });
+    }
 
     /* ---------------------------------------------------------
        Hand milestones: checkUnlockHands() via syncUnlocksWithTotalCount → refreshTotalFromHandEarnings()

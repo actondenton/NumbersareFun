@@ -5,7 +5,7 @@
 (function (global) {
     "use strict";
 
-    var VERSION = 3;
+    var VERSION = 13;
 
     var ROMAN = [
         "", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X",
@@ -67,8 +67,11 @@
         if (g.comboMultAdd != null) {
             parts.push("Adds +" + (g.comboMultAdd * 100).toFixed(2) + "% to your overall combo bonus on Number 1");
         }
+        if (g.comboRunBonusAddPerTick != null && g.comboRunBonusAddPerTick > 0) {
+            parts.push("Increases bonus for this ascension run by +" + (g.comboRunBonusAddPerTick * 100).toFixed(2) + "% each tick while a combo bonus is active; never decreases until you Ascend");
+        }
         if (g.comboEarnedPatternMultAdd != null && g.comboEarnedPatternMultAdd > 0) {
-            parts.push("Makes discovered patterns on the Combo branch multiply your bonus a bit harder (+" + (g.comboEarnedPatternMultAdd * 100).toFixed(2) + "% this step; stacks with other middle ranks, with a ceiling for the whole branch)");
+            parts.push("Makes discovered patterns on the Combo branch multiply your bonus a bit harder (+" + (g.comboEarnedPatternMultAdd * 100).toFixed(2) + "% this step; compounds across middle ranks as successive ×(1+step) with a branch cap — not as a sum of these %)");
         }
         if (g.comboSustainMaxMultAdd != null && g.comboSustainMaxMultAdd > 0) {
             parts.push("Raises how high your rhythm bonus can climb when you keep the same main combo—about +" + (g.comboSustainMaxMultAdd * 100).toFixed(1) + "% more headroom (stacks with other middle ranks, within a cap)");
@@ -90,11 +93,108 @@
             parts.push("When a combo appears fresh, matching hands get a splash of extra count—about " + (g.comboTriggerProductionFrac * 100).toFixed(2) + "% of your total count per second, split across those hands");
         }
         if (g.turboScaling != null) parts.push("+25 turbo meter & \u00d71.25 turbo cap stack");
+        if (g.turboTankSizeMultAdd != null && g.turboTankSizeMultAdd > 0) {
+            parts.push("Tank Growth: turbo meter max +" + (g.turboTankSizeMultAdd * 100).toFixed(0) + "% (\u00d7" + (1 + g.turboTankSizeMultAdd).toLocaleString("en-US") + "; multiplicative with other ring Tank Growth)");
+        }
+        if (g.turboScensionUnlock === true) {
+            parts.push("Turbo-scension: spend Turbo activations (base 10,000; reduced by some ring nodes) for a random Burn Rate, Boost Tank, Boost Multiplier, or Meter Fill level (each level doubles that stat for this run; Fill doubles combo→meter points and passive sustain meter/sec)");
+        }
+        if (g.turboScensionActivationCostMult != null && g.turboScensionActivationCostMult > 0 && g.turboScensionActivationCostMult < 1) {
+            parts.push("Turbo-scension Upgrade activation cost \u00d7" + g.turboScensionActivationCostMult + " (50% less; stacks multiplicatively with other ring nodes of this type)");
+        }
+        if (g.turboScensionUpgradeAutobuy === true) {
+            parts.push("Turbo-scension Upgrade autobuy: spends activations for random Burn/Tank/Mult/Fill levels automatically whenever you can afford it (no toggle)");
+        }
+        if (g.turboScensionDoubleUpgrade === true) {
+            parts.push("Turbo-scension Upgrade: +1 extra random Burn/Tank/Mult/Fill roll per purchase (same activation cost; each roll is independent; stacks with other nodes of this type)");
+        }
+        if (g.turboScensionAllAxesUpgrade === true) {
+            parts.push("Turbo-scension Upgrade: each activation adds +1 Burn, +1 Tank, +1 Mult, and +1 Fill (no random picks; if you have Upgrade Upgrade!, each extra wave applies the full quadruple again)");
+        }
+        if (g.turboMeterFromComboMultAdd != null && g.turboMeterFromComboMultAdd > 0) {
+            parts.push("Turbo meter from combos +" + (g.turboMeterFromComboMultAdd * 100).toFixed(0) + "% (\u00d7" + (1 + g.turboMeterFromComboMultAdd).toLocaleString("en-US") + " on combo fill; multiplicative with other ring nodes of this type)");
+        }
+        if (g.turboMeterDrainMult != null && g.turboMeterDrainMult > 0 && g.turboMeterDrainMult < 1) {
+            parts.push("Turbo drain \u00d7" + g.turboMeterDrainMult + " (slower meter loss while Turbo is on; multiplicative with other ring nodes of this type)");
+        }
+        if (g.turboOffMeterFillMultAdd != null && g.turboOffMeterFillMultAdd > 0) {
+            parts.push("Turbo meter from combos +" + (g.turboOffMeterFillMultAdd * 100).toFixed(0) + "% extra while Turbo is Off (\u00d7" + (1 + g.turboOffMeterFillMultAdd).toLocaleString("en-US") + "; multiplicative with other ring Off-fill nodes)");
+        }
+        if (g.turboPassiveMeterPerSec != null && g.turboPassiveMeterPerSec > 0) {
+            parts.push("While Turbo is On with meter charge, +" + g.turboPassiveMeterPerSec + " meter per second (flat; stacks additively with other ring nodes of this type)");
+        }
+        if (g.turboLeveler === true) {
+            parts.push("Turbo Leveler: while Turbo is off and the meter is full, combo fill that would overflow pays toward random Burn/Tank/Mult/Fill levels (cost doubles each time; bank spends only while Turbo stays off)");
+        }
+        if (g.turboBurnEfficiencyReduce != null && g.turboBurnEfficiencyReduce > 0) {
+            parts.push("Burn Efficiency: total Turbo meter drain \u2212" + (g.turboBurnEfficiencyReduce * 100).toFixed(0) + "% (additive with other ring Burn Efficiency, max 99%; same multiplier curve, slower drain)");
+        }
+        if (g.turboBurnRateMultAdd != null && g.turboBurnRateMultAdd > 0) {
+            parts.push("Turbo burn rate +" + (g.turboBurnRateMultAdd * 100).toFixed(0) + "% (\u00d7" + (1 + g.turboBurnRateMultAdd).toLocaleString("en-US") + "; multiplicative with other ring burn-rate nodes)");
+        }
         if (g.comboTurboPointsMult != null) parts.push("+" + (g.comboTurboPointsMult * 100).toFixed(1) + "% turbo points from combos");
+        if (g.turboBoostComboFillAdd != null && g.turboBoostComboFillAdd > 0) {
+            parts.push("Increases the turbo boost fill for each combo by " + (g.turboBoostComboFillAdd === 1 ? "1" : String(g.turboBoostComboFillAdd)));
+        }
         if (g.warpOverflow != null) parts.push("+" + (g.warpOverflow * 5) + "% Time Warp overflow (toward 90% cap)");
         if (g.warpSpawnIntervalMult != null) parts.push("Time Warp aura spawn span \u00d7" + g.warpSpawnIntervalMult.toFixed(3) + " (min 1s)");
+        if (g.warpAutoBuyAssist === true) {
+            parts.push("When you manually click a Time Warp aura on a hand, after the normal warp grant that hand also buys every Speed, Cheapen, and Slowdown upgrade it can afford (repeats until nothing left; Slowdown still resets Speed on that hand)");
+        }
+        if (g.warpManualGrantSeconds != null && Number.isFinite(g.warpManualGrantSeconds) && g.warpManualGrantSeconds >= 60) {
+            parts.push("Manual Time Warp burst uses " + g.warpManualGrantSeconds + " seconds of that hand's effective rate at the usual click multiplier (base 60s without this; highest purchased seconds value wins)");
+        }
+        if (g.warpFactor36AllHandsOverflow === true) {
+            parts.push("Time Warp overflow uses \u00be of the usual overflow strength, but when it fires it hits every unlocked hand at once (instead of one random hand)");
+        }
+        if (g.warpPotencyMaxTiers != null && Number.isFinite(g.warpPotencyMaxTiers) && g.warpPotencyMaxTiers > 0) {
+            parts.push("+" + Math.floor(g.warpPotencyMaxTiers) + " Warp Potency tier cap (manual Time Warp auras only): each tier unlocks the next idle charge step\u2014after 10s unclicked the burst is \u00d72; with 2+ total tiers from Pinky, after 100s it is \u00d74; with 3+ total tiers, after 1000s it is \u00d78. Overflow warps unchanged.");
+        }
+        if (g.warpClickAscensionEssenceChance != null && Number.isFinite(g.warpClickAscensionEssenceChance) && g.warpClickAscensionEssenceChance > 0) {
+            parts.push("Manual Time Warp click has +" + (g.warpClickAscensionEssenceChance * 100).toFixed(1) + "% chance to bank +1 bonus Ascension Essence for your next ascend");
+        }
+        if (g.warpOverflowAscensionEssenceChance != null && Number.isFinite(g.warpOverflowAscensionEssenceChance) && g.warpOverflowAscensionEssenceChance > 0) {
+            parts.push("Time Warp overflow trigger has +" + (g.warpOverflowAscensionEssenceChance * 100).toFixed(2) + "% chance to bank +1 bonus Ascension Essence for your next ascend");
+        }
         if (g.clapCooldownMult != null) parts.push("Clap cooldown \u00d7" + g.clapCooldownMult.toFixed(3));
         if (g.clapBonusChanceAdd != null) parts.push("+" + (g.clapBonusChanceAdd * 100).toFixed(2) + "% clap bonus chance");
+        if (g.clapCheapenBonusChanceAdd != null && g.clapCheapenBonusChanceAdd > 0) {
+            parts.push("Each clap roll has +" + (g.clapCheapenBonusChanceAdd * 100).toFixed(2) + "% chance to grant a bonus Cheapen level on that hand (bonus levels do not consume balance)");
+        }
+        if (g.clapCheapenExtraRoll === true) {
+            parts.push("Cheapen Clap Echo: when a cheapen clap bonus procs, 10% chance for an immediate extra bonus roll on that same hand");
+        }
+        if (g.clapCheapenChainRolls === true) {
+            parts.push("Cheapen Clap Echo chain: each cheapen echo roll can continue chaining at 10% per wave");
+        }
+        if (g.clapSlowdownBonusChanceAdd != null && g.clapSlowdownBonusChanceAdd > 0) {
+            parts.push("Each clap roll has +" + (g.clapSlowdownBonusChanceAdd * 100).toFixed(2) + "% chance to grant a bonus Slowdown level on that hand (uses normal slowdown behavior: resets purchased Speed levels only)");
+        }
+        if (g.clapSlowdownExtraRoll === true) {
+            parts.push("Slowdown Clap Echo: when a slowdown clap bonus procs, 10% chance for an immediate extra bonus roll on that same hand");
+        }
+        if (g.clapSlowdownChainRolls === true) {
+            parts.push("Slowdown Clap Echo chain: each slowdown echo roll can continue chaining at 10% per wave");
+        }
+        if (g.clapEssenceProcChanceAdd != null && g.clapEssenceProcChanceAdd > 0) {
+            parts.push("Each clap roll has +" + (g.clapEssenceProcChanceAdd * 100).toFixed(2) + "% chance to strengthen this run's Ascension Essence multiplier");
+        }
+        if (g.clapEssenceMultiplierStepAdd != null && g.clapEssenceMultiplierStepAdd > 0) {
+            parts.push("Each essence clap proc multiplies your next Ascension Essence gain by an extra \u00d7" + (1 + g.clapEssenceMultiplierStepAdd).toFixed(4) + " this run (uncapped; resets after you Ascend)");
+        }
+        if (g.comboClapExtraRoll === true) {
+            parts.push("Combo Claps: 10% chance on each clap that the same pair immediately claps again (bonus speed rolls only; no extra clap cooldown)");
+        }
+        if (g.comboClapChainRolls === true) {
+            parts.push("Combo Claps chain: after each Combo Clap bonus wave, 10% chance for another (repeats while it succeeds; needs the first Combo Claps node)");
+        }
+        if (g.comboTimeWarpDelayReduceSec != null && g.comboTimeWarpDelayReduceSec > 0) {
+            var ctw = g.comboTimeWarpDelayReduceSec;
+            parts.push("Combos reduce the next Time Warp delay by " + ctw + " second" + (ctw === 1 ? "" : "s") + ".");
+        }
+        if (g.comboTimeWarpDelayReduceMult != null && g.comboTimeWarpDelayReduceMult > 1) {
+            parts.push("Increase the previous Combo Time Warp nodes by " + g.comboTimeWarpDelayReduceMult + "x!");
+        }
         if (g.handUnlockStartingCount != null && g.handUnlockStartingCount !== 0 && g.handUnlockStartingCount !== "0") {
             var huscStr;
             if (typeof g.handUnlockStartingCount === "string" && /^[0-9]+$/.test(g.handUnlockStartingCount)) {
@@ -166,54 +266,63 @@
             nodes.push(node);
         }
 
+        function augFromSeed(node, seed) {
+            if (seed && seed.title) node.title = seed.title;
+            if (seed && seed.effect) node.effect = seed.effect;
+            return node;
+        }
+
         var i;
         for (i = 0; i < 12; i++) {
             var s = seeds[i];
             var id = tierId(prefix, i);
             var parents = i === 0 ? [] : [tierId(prefix, i - 1)];
-            push({
+            var lin = {
                 id: id,
                 finger: finger,
                 route: route,
                 parents: parents,
                 cost: s.cost,
                 grants: s.grants || {}
-            }, i, "sin");
+            };
+            if (s.title) lin.title = s.title;
+            if (s.effect) lin.effect = s.effect;
+            push(lin, i, "sin");
         }
 
         var lastLinear = tierId(prefix, 11);
         var a12 = prefix + "_a12";
         var b12 = prefix + "_b12";
-        push({
+        push(augFromSeed({
             id: a12,
             finger: finger,
             route: route,
             parents: [lastLinear],
             cost: seeds[12].cost,
             grants: seeds[12].grants || {}
-        }, 12, "A");
-        push({
+        }, seeds[12]), 12, "A");
+        push(augFromSeed({
             id: b12,
             finger: finger,
             route: route,
             parents: [lastLinear],
             cost: seeds[16].cost,
             grants: seeds[16].grants || {}
-        }, 12, "B");
+        }, seeds[16]), 12, "B");
 
         var aPrev = a12;
         var d;
         for (d = 13; d <= 15; d++) {
             var si = d - 1;
             var aid = prefix + "_a" + d;
-            push({
+            push(augFromSeed({
                 id: aid,
                 finger: finger,
                 route: route,
                 parents: [aPrev],
                 cost: seeds[si].cost,
                 grants: seeds[si].grants || {}
-            }, d, "A");
+            }, seeds[si]), d, "A");
             aPrev = aid;
         }
 
@@ -221,14 +330,14 @@
         for (d = 13; d <= 15; d++) {
             var sj = d + 3;
             var bid = prefix + "_b" + d;
-            push({
+            push(augFromSeed({
                 id: bid,
                 finger: finger,
                 route: route,
                 parents: [bPrev],
                 cost: seeds[sj].cost,
                 grants: seeds[sj].grants || {}
-            }, d, "B");
+            }, seeds[sj]), d, "B");
             bPrev = bid;
         }
 
@@ -248,14 +357,14 @@
             var t = seeds[i];
             var tid = tierId(prefix, i);
             var par = i === 20 ? mergeId : tierId(prefix, i - 1);
-            push({
+            push(augFromSeed({
                 id: tid,
                 finger: finger,
                 route: route,
                 parents: [par],
                 cost: t.cost,
                 grants: t.grants || {}
-            }, 17 + (i - 20), "sin");
+            }, t), 17 + (i - 20), "sin");
         }
 
         return nodes;
@@ -468,112 +577,112 @@
             { cost: 53, grants: { speedCostMult: 0.99, handUnlockStartingCount: "1000000000000000000000000000" } },
         ],
         middle: [
-            { cost: 5, grants: { comboMultAdd: 0.004, comboEarnedPatternMultAdd: 0.015, comboSustainFillPerTick: 0.002 } },
-            { cost: 5, grants: { comboTriggerProductionFrac: 0.004, comboEarnedPatternMultAdd: 0.020333, comboActivationLogCoeff: 0.008 } },
-            { cost: 6, grants: { comboMultAdd: 0.003, comboEarnedPatternMultAdd: 0.025667, comboSustainMaxMultAdd: 0.04 } },
-            { cost: 6, grants: { comboMultAdd: 0.004, comboEarnedPatternMultAdd: 0.031, comboSustainFillPerTick: 0.002 } },
-            { cost: 7, grants: { comboTriggerProductionFrac: 0.004, comboEarnedPatternMultAdd: 0.036333, nearMissToleranceRank: 2, comboActivationLogCoeff: 0.008 } },
-            { cost: 8, grants: { comboMultAdd: 0.003, comboEarnedPatternMultAdd: 0.041667, comboSustainMaxMultAdd: 0.04 } },
-            { cost: 9, grants: { comboMultAdd: 0.004, comboEarnedPatternMultAdd: 0.047, comboSustainFillPerTick: 0.002 } },
-            { cost: 9, grants: { comboTriggerProductionFrac: 0.004, comboEarnedPatternMultAdd: 0.052333, comboActivationLogCoeff: 0.008 } },
-            { cost: 11, grants: { comboMultAdd: 0.003, comboEarnedPatternMultAdd: 0.057667, comboSustainMaxMultAdd: 0.04 } },
-            { cost: 12, grants: { comboMultAdd: 0.004, comboEarnedPatternMultAdd: 0.063, nearMissToleranceRank: 4, comboSustainFillPerTick: 0.002 } },
-            { cost: 13, grants: { comboTriggerProductionFrac: 0.004, comboEarnedPatternMultAdd: 0.068333, comboActivationLogCoeff: 0.008 } },
-            { cost: 14, grants: { comboMultAdd: 0.003, comboEarnedPatternMultAdd: 0.073667, comboSustainMaxMultAdd: 0.04 } },
-            { cost: 16, grants: { comboMultAdd: 0.004, comboEarnedPatternMultAdd: 0.079, comboSustainFillPerTick: 0.002 } },
-            { cost: 18, grants: { comboTriggerProductionFrac: 0.004, comboEarnedPatternMultAdd: 0.084333, nearMissToleranceRank: 6, comboActivationLogCoeff: 0.008 } },
-            { cost: 19, grants: { comboMultAdd: 0.003, comboEarnedPatternMultAdd: 0.089667, comboSustainMaxMultAdd: 0.04 } },
-            { cost: 22, grants: { comboMultAdd: 0.004, comboEarnedPatternMultAdd: 0.095, comboSustainFillPerTick: 0.002 } },
-            { cost: 24, grants: { comboTriggerProductionFrac: 0.004, comboEarnedPatternMultAdd: 0.100333, comboActivationLogCoeff: 0.008 } },
-            { cost: 26, grants: { comboMultAdd: 0.003, comboEarnedPatternMultAdd: 0.105667, comboSustainMaxMultAdd: 0.04 } },
-            { cost: 29, grants: { comboMultAdd: 0.004, comboEarnedPatternMultAdd: 0.111, nearMissToleranceRank: 8, comboSustainFillPerTick: 0.002 } },
-            { cost: 32, grants: { comboTriggerProductionFrac: 0.004, comboEarnedPatternMultAdd: 0.116333, comboActivationLogCoeff: 0.008 } },
-            { cost: 36, grants: { comboMultAdd: 0.003, comboEarnedPatternMultAdd: 0.121667, comboSustainMaxMultAdd: 0.04 } },
-            { cost: 39, grants: { comboMultAdd: 0.004, comboEarnedPatternMultAdd: 0.127, comboSustainFillPerTick: 0.002 } },
-            { cost: 44, grants: { comboTriggerProductionFrac: 0.004, comboEarnedPatternMultAdd: 0.132333, comboActivationLogCoeff: 0.008 } },
-            { cost: 48, grants: { comboMultAdd: 0.003, comboEarnedPatternMultAdd: 0.137667, comboSustainMaxMultAdd: 0.04 } },
-            { cost: 53, grants: { comboMultAdd: 0.004, comboEarnedPatternMultAdd: 0.143, nearMissToleranceRank: 10, comboSustainFillPerTick: 0.002 } },
+            { cost: 5, grants: { comboSustainMaxMultAdd: 0.08, comboTriggerProductionFrac: 0.008, comboActivationLogCoeff: 0.016 } },
+            { cost: 5, grants: { comboMultAdd: 0.015 } },
+            { cost: 6, grants: { comboRunBonusAddPerTick: 0.001 } },
+            { cost: 6, grants: { comboEarnedPatternMultAdd: 0.46, nearMissToleranceRank: 2, comboSustainFillPerTick: 0.006 } },
+            { cost: 7, grants: { turboBoostComboFillAdd: 1 }, title: "Combo Fill Boost" },
+            { cost: 8, grants: { comboTimeWarpDelayReduceSec: 0.25 } },
+            { cost: 9, grants: { comboTimeWarpDelayReduceSec: 0.25 } },
+            { cost: 9, grants: { comboMultAdd: 0.015, turboBoostComboFillAdd: 1 } },
+            { cost: 11, grants: { comboSustainMaxMultAdd: 0.08, comboTriggerProductionFrac: 0.008, comboActivationLogCoeff: 0.016 } },
+            { cost: 12, grants: { comboEarnedPatternMultAdd: 0.46, nearMissToleranceRank: 4, comboSustainFillPerTick: 0.006 } },
+            { cost: 13, grants: { comboRunBonusAddPerTick: 0.001, turboBoostComboFillAdd: 1 } },
+            { cost: 14, grants: { comboTimeWarpDelayReduceSec: 0.25 } },
+            { cost: 16, grants: { comboTimeWarpDelayReduceSec: 0.25 } },
+            { cost: 18, grants: { comboTimeWarpDelayReduceSec: 1 } },
+            { cost: 19, grants: { comboSustainMaxMultAdd: 0.08, comboTriggerProductionFrac: 0.008, comboActivationLogCoeff: 0.016 } },
+            { cost: 22, grants: { comboEarnedPatternMultAdd: 0.46, nearMissToleranceRank: 6, comboSustainFillPerTick: 0.006 } },
+            { cost: 24, grants: { comboMultAdd: 0.015 } },
+            { cost: 26, grants: { comboTimeWarpDelayReduceMult: 3 } },
+            { cost: 29, grants: { comboRunBonusAddPerTick: 0.001 } },
+            { cost: 32, grants: { comboClapExtraRoll: true }, title: "Combo Clap" },
+            { cost: 36, grants: { comboEarnedPatternMultAdd: 0.46, nearMissToleranceRank: 8 } },
+            { cost: 39, grants: { comboSustainMaxMultAdd: 0.08, comboTriggerProductionFrac: 0.008, comboActivationLogCoeff: 0.016 } },
+            { cost: 44, grants: { comboMultAdd: 0.015 } },
+            { cost: 48, grants: { comboClapChainRolls: true }, title: "Combo Chain Clap" },
+            { cost: 53, grants: { comboEarnedPatternMultAdd: 0.46, nearMissToleranceRank: 10 } },
         ],
         ring: [
-            { cost: 7, grants: { turboScaling: 1 } },
-            { cost: 7, grants: { comboTurboPointsMult: 0.07 } },
-            { cost: 8, grants: { turboScaling: 1 } },
-            { cost: 9, grants: { comboTurboPointsMult: 0.07 } },
-            { cost: 10, grants: { turboScaling: 1 } },
-            { cost: 11, grants: { comboTurboPointsMult: 0.07 } },
-            { cost: 12, grants: { turboScaling: 1 } },
-            { cost: 13, grants: { comboTurboPointsMult: 0.07 } },
-            { cost: 15, grants: { turboScaling: 1 } },
-            { cost: 17, grants: { comboTurboPointsMult: 0.07 } },
-            { cost: 18, grants: { turboScaling: 1 } },
-            { cost: 20, grants: { comboTurboPointsMult: 0.07 } },
-            { cost: 22, grants: { turboScaling: 1 } },
-            { cost: 25, grants: { comboTurboPointsMult: 0.07 } },
-            { cost: 27, grants: { turboScaling: 1 } },
-            { cost: 30, grants: { comboTurboPointsMult: 0.07 } },
-            { cost: 34, grants: { turboScaling: 1 } },
-            { cost: 37, grants: { comboTurboPointsMult: 0.07 } },
-            { cost: 41, grants: { turboScaling: 1 } },
-            { cost: 45, grants: { comboTurboPointsMult: 0.07 } },
-            { cost: 50, grants: { turboScaling: 1 } },
-            { cost: 55, grants: { comboTurboPointsMult: 0.07 } },
-            { cost: 61, grants: { turboScaling: 1 } },
-            { cost: 68, grants: { comboTurboPointsMult: 0.07 } },
-            { cost: 75, grants: { turboScaling: 1 } },
+            { cost: 7, grants: { turboScensionUnlock: true }, title: "Turbo-scension" },
+            { cost: 7, grants: { turboScensionActivationCostMult: 0.5 } },
+            { cost: 8, grants: { turboScensionActivationCostMult: 0.5 } },
+            { cost: 9, grants: { turboScaling: 3 } },
+            { cost: 10, grants: { turboBurnEfficiencyReduce: 0.25 } },
+            { cost: 11, grants: { comboTurboPointsMult: 0.25 } },
+            { cost: 12, grants: { turboLeveler: true }, title: "Turbo Leveler" },
+            { cost: 13, grants: { turboTankSizeMultAdd: 10 }, title: "Tank Growth" },
+            { cost: 15, grants: { turboScaling: 3 } },
+            { cost: 17, grants: {turboBurnEfficiencyReduce: 0.25} },
+            { cost: 18, grants: { comboTurboPointsMult: 0.25 } },
+            { cost: 20, grants: {turboBurnEfficiencyReduce: 0.24} },
+            { cost: 22, grants: { turboBurnRateMultAdd: 1 }, title: "Burn baby Burn" },
+            { cost: 25, grants: { turboScensionDoubleUpgrade: true }, title: "Upgrade Upgrade!" },
+            { cost: 27, grants: { turboScaling: 3 } },
+            { cost: 30, grants: {turboBurnEfficiencyReduce: 0.25} },
+            { cost: 34, grants: { comboTurboPointsMult: 1.25 } },
+            { cost: 37, grants: { turboMeterFromComboMultAdd: 0.28 }, title: "Reservoir I" },
+            { cost: 41, grants: { turboMeterFromComboMultAdd: 0.24 }, title: "Reservoir II" },
+            { cost: 45, grants: { turboMeterDrainMult: 0.91 }, title: "Slow Burn I" },
+            { cost: 50, grants: { turboScaling: 4 } },
+            { cost: 55, grants: { turboMeterDrainMult: 0.91 }, title: "Slow Burn II" },
+            { cost: 61, grants: { turboOffMeterFillMultAdd: 0.55, turboPassiveMeterPerSec: 5 }, title: "Steady State" },
+            { cost: 68, grants: { comboTurboPointsMult: 10, turboScensionAllAxesUpgrade: true }, title: "Turbo-scension Upgrade All"},
+            { cost: 75, grants: { turboScensionUpgradeAutobuy: true }, title: "Turbo-scension Upgrade Autobuy"},
         ],
         pinky: [
-            { cost: 6, grants: { warpOverflow: 1 } },
+            { cost: 6, grants: { warpOverflow: 3 } },
             { cost: 6, grants: { warpSpawnIntervalMult: 0.965 } },
-            { cost: 7, grants: { warpOverflow: 1 } },
+            { cost: 7, grants: { warpAutoBuyAssist: true }, title: "Warp auto buy assist" },
             { cost: 8, grants: { warpSpawnIntervalMult: 0.965 } },
-            { cost: 8, grants: { warpOverflow: 1 } },
+            { cost: 8, grants: { warpManualGrantSeconds: 90 }, title: "Warp Factor 9" },
             { cost: 9, grants: { warpSpawnIntervalMult: 0.965 } },
-            { cost: 10, grants: { warpOverflow: 1 } },
+            { cost: 10, grants: { warpOverflow: 3 } },
             { cost: 11, grants: { warpSpawnIntervalMult: 0.965 } },
-            { cost: 13, grants: { warpOverflow: 1 } },
+            { cost: 13, grants: { warpPotencyMaxTiers: 1 }, title: "Warp Potency" },
             { cost: 14, grants: { warpSpawnIntervalMult: 0.965 } },
-            { cost: 16, grants: { warpOverflow: 1 } },
+            { cost: 16, grants: { warpPotencyMaxTiers: 1 }, title: "Warp Potency — Surge" },
             { cost: 17, grants: { warpSpawnIntervalMult: 0.965 } },
-            { cost: 19, grants: { warpOverflow: 1 } },
+            { cost: 19, grants: { warpClickAscensionEssenceChance: 0.05 }, title: "Essence Echo (Warp Click)" },
             { cost: 21, grants: { warpSpawnIntervalMult: 0.965 } },
-            { cost: 23, grants: { warpOverflow: 1 } },
+            { cost: 23, grants: { warpPotencyMaxTiers: 1 }, title: "Warp Potency — Surge Dos" },
             { cost: 26, grants: { warpSpawnIntervalMult: 0.965 } },
-            { cost: 29, grants: { warpOverflow: 1 } },
+            { cost: 29, grants: { warpOverflow: 3 } },
             { cost: 32, grants: { warpSpawnIntervalMult: 0.965 } },
-            { cost: 35, grants: { warpOverflow: 1 } },
+            { cost: 35, grants: { warpOverflowAscensionEssenceChance: 0.005 }, title: "Essence Drift (Overflow)" },
             { cost: 39, grants: { warpSpawnIntervalMult: 0.965 } },
-            { cost: 43, grants: { warpOverflow: 1 } },
+            { cost: 43, grants: { warpClickAscensionEssenceChance: 0.05 }, title: "Essence Echo II (Warp Click)" },
             { cost: 47, grants: { warpSpawnIntervalMult: 0.965 } },
-            { cost: 52, grants: { warpOverflow: 1 } },
+            { cost: 52, grants: { warpOverflowAscensionEssenceChance: 0.005 }, title: "Essence Drift II (Overflow)" },
             { cost: 58, grants: { warpSpawnIntervalMult: 0.965 } },
-            { cost: 64, grants: { warpOverflow: 1 } },
+            { cost: 64, grants: { warpFactor36AllHandsOverflow: true }, title: "Warp Factor 36" },
         ],
         thumb: [
-            { cost: 5, grants: { clapCooldownMult: 0.987 } },
-            { cost: 5, grants: { clapBonusChanceAdd: 0.006 } },
-            { cost: 6, grants: { clapCooldownMult: 0.987 } },
-            { cost: 6, grants: { clapBonusChanceAdd: 0.006 } },
-            { cost: 7, grants: { clapCooldownMult: 0.987 } },
-            { cost: 8, grants: { clapBonusChanceAdd: 0.006 } },
-            { cost: 9, grants: { clapCooldownMult: 0.987 } },
-            { cost: 9, grants: { clapBonusChanceAdd: 0.006 } },
-            { cost: 11, grants: { clapCooldownMult: 0.987 } },
-            { cost: 12, grants: { clapBonusChanceAdd: 0.006 } },
-            { cost: 13, grants: { clapCooldownMult: 0.987 } },
-            { cost: 14, grants: { clapBonusChanceAdd: 0.006 } },
-            { cost: 16, grants: { clapCooldownMult: 0.987 } },
-            { cost: 18, grants: { clapBonusChanceAdd: 0.006 } },
-            { cost: 19, grants: { clapCooldownMult: 0.987 } },
-            { cost: 22, grants: { clapBonusChanceAdd: 0.006 } },
-            { cost: 24, grants: { clapCooldownMult: 0.987 } },
-            { cost: 26, grants: { clapBonusChanceAdd: 0.006 } },
-            { cost: 29, grants: { clapCooldownMult: 0.987 } },
-            { cost: 32, grants: { clapBonusChanceAdd: 0.006 } },
-            { cost: 36, grants: { clapCooldownMult: 0.987 } },
-            { cost: 39, grants: { clapBonusChanceAdd: 0.006 } },
-            { cost: 44, grants: { clapCooldownMult: 0.987 } },
-            { cost: 48, grants: { clapBonusChanceAdd: 0.006 } },
-            { cost: 53, grants: { clapCooldownMult: 0.987 } },
+            { cost: 5, grants: { clapCheapenBonusChanceAdd: 0.01 }, title: "Cheapen Clap I" },
+            { cost: 5, grants: { clapBonusChanceAdd: 0.012 } },
+            { cost: 6, grants: { clapCooldownMult: 0.97 } },
+            { cost: 6, grants: { clapEssenceProcChanceAdd: 0.007, clapEssenceMultiplierStepAdd: 0.0012 }, title: "Essence Echo I" },
+            { cost: 7, grants: { clapCheapenBonusChanceAdd: 0.006 }, title: "Cheapen Clap II" },
+            { cost: 8, grants: { clapBonusChanceAdd: 0.012 } },
+            { cost: 9, grants: { clapSlowdownBonusChanceAdd: 0.004 }, title: "Slowdown Clap I" },
+            { cost: 9, grants: { clapCheapenExtraRoll: true }, title: "Cheapen Echo" },
+            { cost: 11, grants: { clapEssenceProcChanceAdd: 0.007, clapEssenceMultiplierStepAdd: 0.0012 }, title: "Essence Echo II" },
+            { cost: 12, grants: { clapBonusChanceAdd: 0.012 } },
+            { cost: 13, grants: { clapCooldownMult: 0.97 } },
+            { cost: 14, grants: { clapSlowdownBonusChanceAdd: 0.004 }, title: "Slowdown Clap II" },
+            { cost: 16, grants: { clapCheapenBonusChanceAdd: 0.007 }, title: "Cheapen Clap III" },
+            { cost: 18, grants: { clapCheapenChainRolls: true }, title: "Cheapen Echo Chain" },
+            { cost: 19, grants: { clapEssenceProcChanceAdd: 0.008, clapEssenceMultiplierStepAdd: 0.0014 }, title: "Essence Echo III" },
+            { cost: 22, grants: { clapSlowdownExtraRoll: true }, title: "Slowdown Echo" },
+            { cost: 24, grants: { clapCooldownMult: 0.97 } },
+            { cost: 26, grants: { clapBonusChanceAdd: 0.012 } },
+            { cost: 29, grants: { clapSlowdownBonusChanceAdd: 0.005 }, title: "Slowdown Clap III" },
+            { cost: 32, grants: { clapEssenceProcChanceAdd: 0.01, clapEssenceMultiplierStepAdd: 0.0018 }, title: "Essence Echo IV" },
+            { cost: 36, grants: { clapCheapenBonusChanceAdd: 0.008 }, title: "Cheapen Clap IV" },
+            { cost: 39, grants: { clapSlowdownChainRolls: true }, title: "Slowdown Echo Chain" },
+            { cost: 44, grants: { clapEssenceProcChanceAdd: 0.012, clapEssenceMultiplierStepAdd: 0.0024 }, title: "Essence Surge I" },
+            { cost: 48, grants: { clapBonusChanceAdd: 0.012, clapCooldownMult: 0.96 } },
+            { cost: 53, grants: { clapCheapenBonusChanceAdd: 0.01, clapSlowdownBonusChanceAdd: 0.006, clapEssenceProcChanceAdd: 0.014, clapEssenceMultiplierStepAdd: 0.003 }, title: "Essence Surge II" },
         ],
     };
 
