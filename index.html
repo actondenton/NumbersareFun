@@ -59,6 +59,7 @@
 
     <!-- Play stage: marquee count + hands (theater / Mario 3-style foreground) -->
     <main class="play-stage" id="play-stage" aria-label="Play area">
+        <div id="number1-stage-root" class="number1-stage-root">
         <!-- Global Incremental Counter -->
         <div class="top-count-row">
             <div class="top-count-row__segment top-count-row__segment--left incremental-count-container">
@@ -125,6 +126,31 @@
                 <div id="upgrade-scroll-hint-jumps" class="upgrade-scroll-hint-jumps"></div>
             </div>
             <div id="speed-upgrades-container" class="speed-upgrades-container"></div>
+        </div>
+        </div>
+        <div id="number2-stage" class="number2-stage" style="display: none;" aria-hidden="true">
+            <div class="number2-stage__header">
+                <h2 class="number2-stage__title">Double or Nothing</h2>
+                <p class="number2-stage__sub">Each roll: <strong>Double</strong> multiplies your Number 2 total by 2. <strong>Nothing</strong> resets your Number 2 total to 0 (streaks and Luck still move).</p>
+            </div>
+            <div class="number2-stage__total-row">
+                <span class="number2-stage__total-label">Total</span>
+                <span id="number2-total-display" class="number2-stage__total-value" aria-live="polite">2</span>
+            </div>
+            <div class="number2-stage__dice-row" aria-live="polite">
+                <div id="number2-die-a" class="number2-die" data-face="1">⚀</div>
+                <div id="number2-die-b" class="number2-die" data-face="1">⚀</div>
+                <div id="number2-roll-result" class="number2-roll-result" role="status"></div>
+            </div>
+            <div class="number2-stage__controls">
+                <button type="button" id="number2-roll-btn" class="number2-roll-btn">Roll</button>
+                <div class="number2-stage__stats" id="number2-inline-stats"></div>
+            </div>
+            <div class="number2-stage__upgrades">
+                <h3 class="number2-upgrades-heading">Boom &amp; Bust upgrades</h3>
+                <div id="number2-upgrade-list" class="number2-upgrade-list"></div>
+            </div>
+            <p id="number2-bg-hint" class="number2-bg-hint" role="note"></p>
         </div>
     </main>
 
@@ -258,6 +284,8 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
 
     <script src="game.js"></script>
     <script src="ascension-tree-data.js"></script>
+    <script src="number2-upgrades.js"></script>
+    <script src="ascension2-tree-data.js"></script>
     <script>
     /* ---------------------------------------------------------
        ASCII HANDS (1–10)
@@ -535,15 +563,25 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     }
     function initInlineRightPanels() {
         if (!playStageEl) return;
+        /** insertBefore(ref) requires ref be a direct child of #play-stage; #upgrade-container lives under #number1-stage-root. */
+        function playStageInlineInsertBeforeRef() {
+            if (upgradeContainer && upgradeContainer.parentElement === playStageEl) return upgradeContainer;
+            const n1 = document.getElementById("number1-stage-root");
+            if (n1 && n1.parentElement === playStageEl) return n1;
+            const n2 = document.getElementById("number2-stage");
+            if (n2 && n2.parentElement === playStageEl) return n2;
+            return null;
+        }
+        const inlinePanelRef = playStageInlineInsertBeforeRef();
         if (settingsPanelEl) {
             settingsPanelEl.classList.add("settings-panel--inline");
             settingsPanelEl.setAttribute("aria-modal", "false");
-            if (settingsPanelEl.parentElement !== playStageEl) playStageEl.insertBefore(settingsPanelEl, upgradeContainer || null);
+            if (settingsPanelEl.parentElement !== playStageEl) playStageEl.insertBefore(settingsPanelEl, inlinePanelRef);
         }
         if (pagePanelEl) {
             pagePanelEl.classList.add("page-panel--inline");
             pagePanelEl.setAttribute("aria-modal", "false");
-            if (pagePanelEl.parentElement !== playStageEl) playStageEl.insertBefore(pagePanelEl, upgradeContainer || null);
+            if (pagePanelEl.parentElement !== playStageEl) playStageEl.insertBefore(pagePanelEl, inlinePanelRef);
         }
         if (pageModalEl) pageModalEl.classList.add("page-modal--inline");
         syncInlinePanelsVsGameplay();
@@ -590,17 +628,169 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     let adaptiveLastProgressAtMs = Date.now();
     let adaptiveLastHintAtMs = 0;
     const unlockedNumbers = new Set([1, 2]);
+    /** Number 2 — Double or Nothing (isolated from Number 1 economy). */
     const number2State = {
+        totalStr: "2",
+        luck: 0,
+        boomTokens: 0,
+        bustTokens: 0,
+        tokenGainCarry: 0,
+        streakDouble: 0,
+        streakNothing: 0,
+        lifetimeDoubles: 0,
+        lifetimeNothings: 0,
+        upgradeLevels: {},
+        started: false,
+        autoTickCarry: 0,
+        bgTickCarry: 0,
+        lastDieA: 1,
+        lastDieB: 1,
+        lastOutcome: "",
+        playingFairActive: false,
+        runTheTableUntilMs: 0,
+        runTheTableReadyAtMs: 0,
+        sandbagReadyAtMs: 0,
+        forceNextNothing: false,
+        hotStreakEnabled: true,
+        gamblersParadoxEnabled: true,
+        number2SaveVersion: 2,
+        ascensionEssence: 0,
+        ascensionNodeIds: [],
+        /** Legacy stub fields (migrated once). */
         totalTwos: 0,
-        tickCarry: 0,
-        started: false
+        tickCarry: 0
     };
-    const NUMBER_2_BASE_RATE_PER_SEC = 2;
+    const NUMBER2_ACTIVE_ROLLS_PER_SEC = 0.38;
+    const NUMBER2_BG_ROLLS_PER_SEC = 0.11;
+    const NUMBER2_ASCENSION_READY_TOTAL = 1024;
     const NUMBER_2_MILESTONES = [
-        { goal: 100, text: "Stub milestone: produce 100 twos" },
-        { goal: 1000, text: "Stub milestone: produce 1,000 twos" },
-        { goal: 10000, text: "Stub milestone: produce 10,000 twos" }
+        { goalStr: "256", text: "Reach total 256" },
+        { goalStr: "65536", text: "Reach total 65,536" },
+        { goalStr: "16777216", text: "Reach total 16,777,216" }
     ];
+    function number2TotalBig() {
+        try {
+            return BigInt(number2State.totalStr || "2");
+        } catch (_) {
+            return 2n;
+        }
+    }
+    function setNumber2TotalBig(b) {
+        number2State.totalStr = b.toString();
+    }
+    function formatNumber2BigIntDisplay(b) {
+        if (b <= BigInt(Number.MAX_SAFE_INTEGER)) return formatCount(Number(b));
+        const s = b.toString();
+        const exp = s.length - 1;
+        const mant = (Number(s.slice(0, Math.min(4, s.length))) / Math.pow(10, Math.min(3, s.length - 1))).toFixed(2);
+        return mant + "×10^" + exp;
+    }
+    function getNumber2UpgradeLevel(id) {
+        const n = number2State.upgradeLevels[id];
+        return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+    }
+    function getNumber2UpgradeDef(id) {
+        const ups = typeof NUMBER2_UPGRADES !== "undefined" ? NUMBER2_UPGRADES : [];
+        return ups.find(u => u.id === id) || null;
+    }
+    function getNumber2UpgradeCost(u, level) {
+        if (!u || !Array.isArray(u.cost)) return 0;
+        const idx = Math.max(0, Math.min(u.cost.length - 1, level));
+        return u.cost[idx];
+    }
+    function isPrimeInt(n) {
+        const x = Math.floor(Number(n) || 0);
+        if (x < 2) return false;
+        if (x === 2) return true;
+        if (x % 2 === 0) return false;
+        const lim = Math.floor(Math.sqrt(x));
+        for (let d = 3; d <= lim; d += 2) {
+            if (x % d === 0) return false;
+        }
+        return true;
+    }
+    function getPlayingFairTokenMultiplier() {
+        if (!(number2State.playingFairActive && getNumber2UpgradeLevel("playing_fair") > 0)) return 1;
+        const L = getNumber2UpgradeLevel("playing_fair");
+        return L <= 1 ? 2 : L === 2 ? 2.5 : 3;
+    }
+    function addNumber2Tokens(kind, rawAmount, opts) {
+        const amount = Math.max(0, Number(rawAmount) || 0);
+        if (amount <= 0) return 0;
+        const mult = getPlayingFairTokenMultiplier();
+        let banked = amount * mult + (number2State.tokenGainCarry || 0);
+        const whole = Math.floor(banked);
+        number2State.tokenGainCarry = Math.max(0, banked - whole);
+        if (whole <= 0) return 0;
+        if (kind === "boom") number2State.boomTokens = Math.min(Number.MAX_SAFE_INTEGER, (number2State.boomTokens || 0) + whole);
+        else if (kind === "bust") number2State.bustTokens = Math.min(Number.MAX_SAFE_INTEGER, (number2State.bustTokens || 0) + whole);
+        if (!(opts && opts.silent)) {
+            const reason = opts && opts.reason ? " (" + opts.reason + ")" : "";
+            addToLog("Number 2: +" + formatCount(whole) + " " + (kind === "boom" ? "Boom" : "Bust") + " token" + (whole === 1 ? "" : "s") + reason + ".", "milestone");
+        }
+        return whole;
+    }
+    function hasNumber2ChanceModByUpgrade(id) {
+        return id === "hot_streak" || id === "gamblers_paradox" || id === "run_the_table";
+    }
+    function isNumber2UpgradeToggleEnabled(id) {
+        if (id === "hot_streak") return number2State.hotStreakEnabled !== false;
+        if (id === "gamblers_paradox") return number2State.gamblersParadoxEnabled !== false;
+        return true;
+    }
+    function setExclusiveNumber2Toggle(activeId, on) {
+        const enable = !!on;
+        const ids = ["hot_streak", "gamblers_paradox", "playing_fair"];
+        if (!enable) {
+            if (activeId === "hot_streak") number2State.hotStreakEnabled = false;
+            else if (activeId === "gamblers_paradox") number2State.gamblersParadoxEnabled = false;
+            else if (activeId === "playing_fair") number2State.playingFairActive = false;
+            return;
+        }
+        ids.forEach(id => {
+            const isActive = id === activeId;
+            if (id === "hot_streak") number2State.hotStreakEnabled = isActive;
+            else if (id === "gamblers_paradox") number2State.gamblersParadoxEnabled = isActive;
+            else if (id === "playing_fair") number2State.playingFairActive = isActive;
+        });
+    }
+    function areNumber2ChanceModsEnabled() {
+        return !number2State.playingFairActive;
+    }
+    function getNumber2Asc2Totals() {
+        if (typeof ASCENSION2_TREE_EXPORT === "undefined" || !ASCENSION2_TREE_EXPORT.computeAscension2GrantTotals) {
+            return { pDoubleAdd: 0, luckPerDouble: 0, activeRollMult: 0 };
+        }
+        return ASCENSION2_TREE_EXPORT.computeAscension2GrantTotals(number2State.ascensionNodeIds);
+    }
+    function getNumber2EffectivePDouble() {
+        let p = typeof NUMBER2_BASE_P_DOUBLE === "number" ? NUMBER2_BASE_P_DOUBLE : 0.48;
+        const minP = typeof NUMBER2_P_DOUBLE_MIN === "number" ? NUMBER2_P_DOUBLE_MIN : 0.05;
+        const maxP = typeof NUMBER2_P_DOUBLE_MAX === "number" ? NUMBER2_P_DOUBLE_MAX : 0.95;
+        if (areNumber2ChanceModsEnabled()) {
+            const hotL = getNumber2UpgradeLevel("hot_streak");
+            if (hotL > 0 && isNumber2UpgradeToggleEnabled("hot_streak")) p += hotL * 0.015;
+            const paraL = getNumber2UpgradeLevel("gamblers_paradox");
+            if (paraL > 0 && isNumber2UpgradeToggleEnabled("gamblers_paradox")) p -= paraL * 0.018;
+            const runL = getNumber2UpgradeLevel("run_the_table");
+            const now = Date.now();
+            if (runL > 0 && (number2State.runTheTableUntilMs || 0) > now) {
+                const add = runL === 1 ? 0.30 : runL === 2 ? 0.35 : 0.40;
+                p += add;
+            }
+        }
+        p += getNumber2Asc2Totals().pDoubleAdd || 0;
+        return Math.max(minP, Math.min(maxP, p));
+    }
+    function getNumber2LuckPerNothing() {
+        return 1;
+    }
+    function getNumber2ActiveRollsPerSec() {
+        let r = NUMBER2_ACTIVE_ROLLS_PER_SEC;
+        const m = getNumber2Asc2Totals().activeRollMult || 0;
+        r *= 1 + m;
+        return r;
+    }
     function isNumber2Unlocked() {
         return unlockedNumbers.has(2);
     }
@@ -608,6 +798,28 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         return isNumber2Unlocked() && !!number2State.started;
     }
     function resetNumber2Progress() {
+        number2State.totalStr = "2";
+        number2State.luck = 0;
+        number2State.boomTokens = 0;
+        number2State.bustTokens = 0;
+        number2State.tokenGainCarry = 0;
+        number2State.streakDouble = 0;
+        number2State.streakNothing = 0;
+        number2State.lifetimeDoubles = 0;
+        number2State.lifetimeNothings = 0;
+        number2State.upgradeLevels = {};
+        number2State.autoTickCarry = 0;
+        number2State.bgTickCarry = 0;
+        number2State.lastDieA = 1;
+        number2State.lastDieB = 1;
+        number2State.lastOutcome = "";
+        number2State.playingFairActive = false;
+        number2State.runTheTableUntilMs = 0;
+        number2State.runTheTableReadyAtMs = 0;
+        number2State.sandbagReadyAtMs = 0;
+        number2State.forceNextNothing = false;
+        number2State.hotStreakEnabled = true;
+        number2State.gamblersParadoxEnabled = true;
         number2State.totalTwos = 0;
         number2State.tickCarry = 0;
     }
@@ -618,7 +830,6 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             return;
         }
         if (!number2State.started) {
-            // Existing saves from before Number 2 gating should not retain hidden progress.
             resetNumber2Progress();
         }
     }
@@ -637,17 +848,311 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         }
         updatePageButtonUnlocks();
     }
+    function syncPlayStageForNumberMode(mode) {
+        const n1 = document.getElementById("number1-stage-root");
+        const n2 = document.getElementById("number2-stage");
+        if (!n1 || !n2) return;
+        if (mode === 2 && isNumber2Unlocked()) {
+            n1.style.display = "none";
+            n2.style.display = "flex";
+            n2.setAttribute("aria-hidden", "false");
+            updateNumber2StageUI();
+        } else {
+            n1.style.display = "";
+            n2.style.display = "none";
+            n2.setAttribute("aria-hidden", "true");
+        }
+    }
+    function resolveNumber2Roll() {
+        if (number2State.forceNextNothing) {
+            number2State.forceNextNothing = false;
+            let a = 1 + Math.floor(Math.random() * 6);
+            let b = 1 + Math.floor(Math.random() * 6);
+            if (a === b) b = (a % 6) + 1;
+            return { isDouble: false, dieA: a, dieB: b, p: getNumber2EffectivePDouble() };
+        }
+        const p = getNumber2EffectivePDouble();
+        const isDouble = Math.random() < p;
+        let a = 1 + Math.floor(Math.random() * 6);
+        let b = 1 + Math.floor(Math.random() * 6);
+        if (isDouble) {
+            a = 1 + Math.floor(Math.random() * 6);
+            b = a;
+        } else if (a === b) {
+            b = (a % 6) + 1;
+        }
+        return { isDouble, dieA: a, dieB: b, p };
+    }
+    function applyNumber2RollOutcome(res, opts) {
+        const silent = opts && opts.silent;
+        const prevNothingStreak = number2State.streakNothing || 0;
+        number2State.lastDieA = res.dieA;
+        number2State.lastDieB = res.dieB;
+        number2State.lastOutcome = res.isDouble ? "double" : "nothing";
+        if (res.isDouble) {
+            setNumber2TotalBig(number2TotalBig() * 2n);
+            number2State.streakDouble = (number2State.streakDouble || 0) + 1;
+            number2State.streakNothing = 0;
+            number2State.lifetimeDoubles++;
+            number2State.luck += 2;
+            number2State.luck += getNumber2Asc2Totals().luckPerDouble || 0;
+            if (isPrimeInt(number2State.streakDouble || 0)) {
+                addNumber2Tokens("boom", 1, { silent, reason: "prime Double streak " + formatCount(number2State.streakDouble || 0) });
+            }
+            const insuranceL = getNumber2UpgradeLevel("cold_hand_insurance");
+            if (insuranceL > 0 && prevNothingStreak >= 3) {
+                const u = getNumber2UpgradeDef("cold_hand_insurance");
+                const gain = u && Array.isArray(u.boomBonusByLevel) ? (u.boomBonusByLevel[insuranceL - 1] || 0) : insuranceL;
+                addNumber2Tokens("boom", gain, { silent, reason: "Cold Hand Insurance" });
+            }
+            const winL = getNumber2UpgradeLevel("all_i_do_is_win");
+            const winU = getNumber2UpgradeDef("all_i_do_is_win");
+            if (winL > 0 && winU && Array.isArray(winU.bonusDoubleChanceByLevel)) {
+                const procChance = winU.bonusDoubleChanceByLevel[winL - 1] || 0;
+                if (Math.random() < procChance) {
+                    setNumber2TotalBig(number2TotalBig() * 2n);
+                    if (!silent) addToLog("All I Do Is Win triggered: bonus Double!", "milestone");
+                }
+            }
+            if (!silent) addToLog("Number 2: Double! Total is now " + formatNumber2BigIntDisplay(number2TotalBig()) + ".", "milestone");
+        } else {
+            const pennyL = getNumber2UpgradeLevel("in_for_a_penny");
+            const pennyU = getNumber2UpgradeDef("in_for_a_penny");
+            let floorVal = (pennyL > 0 && pennyU && Array.isArray(pennyU.nothingFloorByLevel))
+                ? BigInt(Math.max(0, pennyU.nothingFloorByLevel[pennyL - 1] || 0))
+                : 0n;
+            const poundL = getNumber2UpgradeLevel("in_for_a_pound");
+            if (poundL > 1 && floorVal > 0n) {
+                floorVal = floorVal ** BigInt(poundL);
+            }
+            setNumber2TotalBig(floorVal);
+            number2State.streakNothing = (number2State.streakNothing || 0) + 1;
+            number2State.streakDouble = 0;
+            number2State.lifetimeNothings++;
+            number2State.luck += getNumber2LuckPerNothing();
+            if (isPrimeInt(number2State.streakNothing || 0)) {
+                addNumber2Tokens("bust", 1, { silent, reason: "prime Nothing streak " + formatCount(number2State.streakNothing || 0) });
+            }
+            if (!silent) addToLog("Number 2: Nothing — total reset to " + formatNumber2BigIntDisplay(number2TotalBig()) + ".", "tip");
+        }
+        if (number2State.lifetimeDoubles > 0 && number2State.lifetimeDoubles % 25 === 0 && res.isDouble) {
+            number2State.ascensionEssence = Math.min(Number.MAX_SAFE_INTEGER, (number2State.ascensionEssence || 0) + 1);
+        }
+    }
+    function commitNumber2Roll(opts) {
+        if (!canTickNumber2()) return;
+        const res = resolveNumber2Roll();
+        applyNumber2RollOutcome(res, opts);
+        if (!opts || !opts.skipAutosave) autosaveNow();
+        updateNumber2StageUI();
+        if (!opts || !opts.silent) refreshOverviewAndAscensionPanelsIfOpen();
+    }
+    const NUMBER2_MAX_ROLLS_PER_STEP = 400;
+    function tickNumber2Background(dtSec) {
+        if (!canTickNumber2()) return;
+        if (!(dtSec > 0)) return;
+        if (typeof window.getCurrentNumberMode === "function" && window.getCurrentNumberMode() === 2) return;
+        number2State.bgTickCarry += dtSec * NUMBER2_BG_ROLLS_PER_SEC;
+        let guard = 0;
+        while (number2State.bgTickCarry >= 1 && guard < NUMBER2_MAX_ROLLS_PER_STEP) {
+            number2State.bgTickCarry -= 1;
+            guard++;
+            commitNumber2Roll({ silent: true, skipAutosave: true });
+        }
+        if (guard > 0) refreshOverviewAndAscensionPanelsIfOpen();
+    }
+    function runNumber2GameLoopStep(dtSec) {
+        if (!canTickNumber2()) return;
+        if (!(dtSec > 0)) return;
+        number2State.autoTickCarry += dtSec * getNumber2ActiveRollsPerSec();
+        let guard = 0;
+        while (number2State.autoTickCarry >= 1 && guard < NUMBER2_MAX_ROLLS_PER_STEP) {
+            number2State.autoTickCarry -= 1;
+            guard++;
+            commitNumber2Roll({ silent: true, skipAutosave: true });
+        }
+        if (number2State.autoTickCarry > 0) {
+            const now = Date.now();
+            if (!number2State._lastN2AutosaveMs) number2State._lastN2AutosaveMs = 0;
+            if (now - number2State._lastN2AutosaveMs > 4000) {
+                number2State._lastN2AutosaveMs = now;
+                autosaveNow();
+            }
+        }
+        if (guard > 0) {
+            updateNumber2StageUI();
+            refreshOverviewAndAscensionPanelsIfOpen();
+        }
+    }
+    function tickNumber1BackgroundCps(dtSec) {
+        if (!(dtSec > 0)) return;
+        const cpsPerHand = getRawCpsPerHand();
+        const rawCps = cpsPerHand.reduce((a, b) => a + b, 0);
+        if (rawCps <= 0) return;
+        const comboMult = getComboMultiplier();
+        const gained = Math.round(dtSec * rawCps * comboMult);
+        const totalWeight = cpsPerHand.reduce((a, b) => a + b, 0) || 1;
+        for (let i = 0; i < unlockedHands; i++) {
+            const weight = cpsPerHand[i] || 0;
+            handEarnings[i] = (handEarnings[i] || 0) + Math.round((weight / totalWeight) * gained);
+        }
+        refreshTotalFromHandEarnings();
+        if (incrementalEl) incrementalEl.textContent = formatCount(totalChanges);
+    }
+    function updateNumber2StageUI() {
+        function tokenBadgeHtml(kind, amount) {
+            const n = formatCount(Math.max(0, Math.floor(Number(amount) || 0)));
+            if (kind === "boom") return "<span class=\"n2-token n2-token--boom\" title=\"Boom tokens\">✦ Boom " + n + "</span>";
+            if (kind === "bust") return "<span class=\"n2-token n2-token--bust\" title=\"Bust tokens\">✖ Bust " + n + "</span>";
+            return "<span class=\"n2-token\">" + n + "</span>";
+        }
+        const totalEl = document.getElementById("number2-total-display");
+        const dieA = document.getElementById("number2-die-a");
+        const dieB = document.getElementById("number2-die-b");
+        const resEl = document.getElementById("number2-roll-result");
+        const statsEl = document.getElementById("number2-inline-stats");
+        const hintEl = document.getElementById("number2-bg-hint");
+        const listEl = document.getElementById("number2-upgrade-list");
+        if (totalEl) totalEl.textContent = formatNumber2BigIntDisplay(number2TotalBig());
+        if (dieA) {
+            dieA.textContent = String(number2State.lastDieA || 1);
+            dieA.setAttribute("data-face", String(number2State.lastDieA || 1));
+        }
+        if (dieB) {
+            dieB.textContent = String(number2State.lastDieB || 1);
+            dieB.setAttribute("data-face", String(number2State.lastDieB || 1));
+        }
+        if (resEl) {
+            if (number2State.lastOutcome === "double") resEl.textContent = "Double";
+            else if (number2State.lastOutcome === "nothing") resEl.textContent = "Nothing";
+            else resEl.textContent = "";
+        }
+        if (statsEl) {
+            statsEl.innerHTML = "p(Double) " + (getNumber2EffectivePDouble() * 100).toFixed(1) + "% · Luck " + formatCount(number2State.luck || 0) +
+                " · " + tokenBadgeHtml("bust", number2State.bustTokens || 0) + " / " + tokenBadgeHtml("boom", number2State.boomTokens || 0) +
+                " · Streak D" + (number2State.streakDouble || 0) + " / N" + (number2State.streakNothing || 0) +
+                " · Life ×2 " + formatCount(number2State.lifetimeDoubles || 0) + " / Nothing " + formatCount(number2State.lifetimeNothings || 0);
+        }
+        if (hintEl) {
+            const mode = typeof window.getCurrentNumberMode === "function" ? window.getCurrentNumberMode() : 1;
+            hintEl.textContent = mode === 1 && canTickNumber2()
+                ? "While you play Number 1, Number 2 keeps rolling in the background at a slower rate."
+                : "";
+        }
+        if (listEl) {
+            const ups = typeof NUMBER2_UPGRADES !== "undefined" ? NUMBER2_UPGRADES : [];
+            const now = Date.now();
+            const rendered = ups.map(u => {
+                const L = getNumber2UpgradeLevel(u.id);
+                const maxed = L >= u.maxLevel;
+                const st = {
+                    streakDouble: number2State.streakDouble,
+                    streakNothing: number2State.streakNothing,
+                    lifetimeDoubles: number2State.lifetimeDoubles,
+                    lifetimeNothings: number2State.lifetimeNothings
+                };
+                const unlocked = !u.isUnlocked || u.isUnlocked(st);
+                const cost = getNumber2UpgradeCost(u, L);
+                let canBuy = unlocked && !maxed;
+                let costText = "";
+                if (typeof cost === "number") {
+                    if (u.category === "boom") {
+                        costText = tokenBadgeHtml("boom", cost);
+                        canBuy = canBuy && (number2State.boomTokens || 0) >= cost;
+                    } else if (u.category === "bust") {
+                        costText = tokenBadgeHtml("bust", cost);
+                        canBuy = canBuy && (number2State.bustTokens || 0) >= cost;
+                    } else {
+                        costText = formatCount(cost) + " Luck";
+                        canBuy = canBuy && (number2State.luck || 0) >= cost;
+                    }
+                } else if (cost && typeof cost === "object") {
+                    const boomNeed = Math.max(0, Math.floor(cost.boom || 0));
+                    const bustNeed = Math.max(0, Math.floor(cost.bust || 0));
+                    costText = tokenBadgeHtml("boom", boomNeed) + " · " + tokenBadgeHtml("bust", bustNeed);
+                    canBuy = canBuy && (number2State.boomTokens || 0) >= boomNeed && (number2State.bustTokens || 0) >= bustNeed;
+                } else {
+                    costText = "Free";
+                }
+                const cls = "number2-upgrade-item" + (maxed ? " number2-upgrade-item--owned" : "") + (!unlocked ? " number2-upgrade-item--locked" : "");
+                const hasAction = u.id === "run_the_table" || u.id === "sandbagging" || u.id === "playing_fair" ||
+                    u.id === "hot_streak" || u.id === "gamblers_paradox";
+                let actionHtml = "";
+                if (u.id === "run_the_table") {
+                    const cd = Math.max(0, Math.ceil(((number2State.runTheTableReadyAtMs || 0) - now) / 1000));
+                    const active = Math.max(0, Math.ceil(((number2State.runTheTableUntilMs || 0) - now) / 1000));
+                    const enabled = L > 0 && cd <= 0 && active <= 0;
+                    actionHtml = "<button type=\"button\" class=\"page-btn number2-action-btn\" data-n2-action=\"run_the_table\"" + (enabled ? "" : " disabled") + ">" +
+                        (active > 0 ? "Running (" + active + "s)" : cd > 0 ? "Cooldown (" + cd + "s)" : "Activate") + "</button>";
+                } else if (u.id === "sandbagging") {
+                    const cd = Math.max(0, Math.ceil(((number2State.sandbagReadyAtMs || 0) - now) / 1000));
+                    const enabled = L > 0 && cd <= 0 && !number2State.forceNextNothing;
+                    const label = number2State.forceNextNothing ? "Primed" : cd > 0 ? "Cooldown (" + cd + "s)" : "Force Nothing";
+                    actionHtml = "<button type=\"button\" class=\"page-btn number2-action-btn\" data-n2-action=\"sandbagging\"" + (enabled ? "" : " disabled") + ">" + label + "</button>";
+                } else if (u.id === "playing_fair") {
+                    const enabled = L > 0;
+                    const on = !!number2State.playingFairActive;
+                    const label = "Playing Fair: " + (on ? "ON" : "OFF");
+                    const activeCls = on ? " number2-action-btn--active" : "";
+                    actionHtml = "<button type=\"button\" class=\"page-btn number2-action-btn" + activeCls + "\" data-n2-action=\"playing_fair\"" + (enabled ? "" : " disabled") + ">" + label + "</button>";
+                } else if (u.id === "hot_streak") {
+                    const enabled = L > 0;
+                    const on = isNumber2UpgradeToggleEnabled("hot_streak");
+                    const label = "Hot Streak: " + (on ? "ON" : "OFF");
+                    const activeCls = on ? " number2-action-btn--active" : "";
+                    actionHtml = "<button type=\"button\" class=\"page-btn number2-action-btn" + activeCls + "\" data-n2-action=\"hot_streak_toggle\"" + (enabled ? "" : " disabled") + ">" + label + "</button>";
+                } else if (u.id === "gamblers_paradox") {
+                    const enabled = L > 0;
+                    const on = isNumber2UpgradeToggleEnabled("gamblers_paradox");
+                    const label = "Gambler's Paradox: " + (on ? "ON" : "OFF");
+                    const activeCls = on ? " number2-action-btn--active" : "";
+                    actionHtml = "<button type=\"button\" class=\"page-btn number2-action-btn" + activeCls + "\" data-n2-action=\"gamblers_paradox_toggle\"" + (enabled ? "" : " disabled") + ">" + label + "</button>";
+                }
+                return "<li class=\"" + cls + "\"><div class=\"number2-upgrade-item__head\"><strong>" + u.name + "</strong>" +
+                    (maxed ? " <span class=\"number2-tag\">Max</span>" : "") + "</div>" +
+                    "<p class=\"number2-upgrade-item__desc\">" + u.description + "</p>" +
+                    "<div class=\"number2-upgrade-item__meta\">Level " + L + "/" + u.maxLevel + " · Cost " + costText + (hasAction ? " · Active utility" : "") + "</div>" +
+                    (maxed ? "" : "<button type=\"button\" class=\"page-btn number2-buy-btn\" data-n2-upgrade=\"" + u.id + "\"" + (canBuy ? "" : " disabled") + ">Buy</button>") +
+                    actionHtml +
+                    "</li>";
+            });
+            const bustItems = [];
+            const hybridItems = [];
+            const boomItems = [];
+            ups.forEach((u, idx) => {
+                const itemHtml = rendered[idx];
+                if (u.category === "bust") bustItems.push(itemHtml);
+                else if (u.category === "hybrid") hybridItems.push(itemHtml);
+                else boomItems.push(itemHtml);
+            });
+            function colHtml(title, items, mod) {
+                return "<section class=\"number2-upgrade-col number2-upgrade-col--" + mod + "\">" +
+                    "<h4 class=\"number2-upgrade-col__title\">" + title + "</h4>" +
+                    "<ul class=\"number2-upgrade-col__list\">" + items.join("") + "</ul>" +
+                    "</section>";
+            }
+            listEl.innerHTML =
+                "<div class=\"number2-upgrade-columns\">" +
+                colHtml("Bust", bustItems, "bust") +
+                colHtml("Combined", hybridItems, "hybrid") +
+                colHtml("Boom", boomItems, "boom") +
+                "</div>";
+        }
+    }
     window.onBeforeNumberModeSwitch = function() {
         closeInlineMainStagePanels();
     };
     window.onNumberModeSwitched = function(mode) {
-        if (mode !== 2) return;
-        if (!isNumber2Unlocked()) return;
-        if (!number2State.started) {
+        syncPlayStageForNumberMode(mode);
+        if (mode === 2 && isNumber2Unlocked() && !number2State.started) {
             number2State.started = true;
-            addToLog("Number 2 counting started in background.", "milestone");
+            addToLog("Number 2 — Double or Nothing is live. Rolls run faster here; slower in the background on Number 1.", "milestone");
             refreshOverviewAndAscensionPanelsIfOpen();
             autosaveNow();
+        }
+        if (mode === 1) {
+            scheduleFitTopCountRow();
+            updateRateDisplay();
         }
     };
 
@@ -2128,12 +2633,129 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             "</div></div></div>" + legend + "</section>"
         );
     }
-    function renderAscensionNumber2PlaceholderHtml() {
+    function renderAscensionNumber2ShellHtml() {
+        if (typeof ASCENSION2_TREE_EXPORT === "undefined" || !ASCENSION2_TREE_EXPORT.NODES) {
+            return "<section class=\"asc2-shell\" aria-label=\"Number 2 ascension\"><p class=\"coming-soon-note\">Ascension 2 data not loaded.</p></section>";
+        }
+        const owned = new Set(number2State.ascensionNodeIds || []);
+        const nodes = ASCENSION2_TREE_EXPORT.NODES.map(n => {
+            const has = owned.has(n.id);
+            const parentsOk = !n.parentIds || n.parentIds.length === 0 || n.parentIds.every(pid => owned.has(pid));
+            const canBuy = !has && parentsOk && (number2State.ascensionEssence || 0) >= n.cost;
+            const st = has ? "asc2-node--owned" : canBuy ? "asc2-node--buyable" : "asc2-node--locked";
+            return "<div class=\"asc2-node " + st + "\" data-asc2-node=\"" + n.id + "\">" +
+                "<div class=\"asc2-node__title\">" + n.title + "</div>" +
+                "<div class=\"asc2-node__cost\">Cost " + n.cost + " Luck essence</div>" +
+                "<div class=\"asc2-node__fx\">" + ASCENSION2_TREE_EXPORT.describeGrants(n.grants || {}) + "</div>" +
+                (has ? "<span class=\"asc2-node__badge\">Owned</span>" : "<button type=\"button\" class=\"page-btn asc2-buy\" data-asc2-buy=\"" + n.id + "\"" + (canBuy ? "" : " disabled") + ">Buy</button>") +
+                "</div>";
+        }).join("");
         return (
-            "<section class=\"ascension-placeholder\" aria-label=\"Number 2 ascension\">" +
-            "<p>Number 2 ascension skill tree — <span class=\"coming-soon-inline\">coming soon</span>.</p>" +
-            "<p class=\"coming-soon-note coming-soon-note--compact\">Background progress on Number 2 continues while you play Number 1.</p></section>"
+            "<section class=\"asc2-shell\" aria-label=\"Number 2 ascension — Luck table\">" +
+            "<header class=\"asc2-shell__header\"><h4 class=\"asc2-shell__title\">Luck table</h4>" +
+            "<p class=\"asc2-shell__sub\">Separate from Number 1 — spend <strong>Luck essence</strong> (from milestone doubles) on felt-edge upgrades. Respec for Number 2 only is planned.</p>" +
+                "<p class=\"asc2-shell__stat\">Essence: " + formatCount(number2State.ascensionEssence || 0) +
+            " · Ready for ascend gate: " + (number2TotalBig() >= BigInt(NUMBER2_ASCENSION_READY_TOTAL) ? "yes" : "not yet") + "</p></header>" +
+            "<div class=\"asc2-node-grid\">" + nodes + "</div></section>"
         );
+    }
+    function tryBuyNumber2Upgrade(id) {
+        const u = getNumber2UpgradeDef(id);
+        if (!u) return;
+        const L = getNumber2UpgradeLevel(id);
+        if (L >= u.maxLevel) return;
+        const st = {
+            streakDouble: number2State.streakDouble,
+            streakNothing: number2State.streakNothing,
+            lifetimeDoubles: number2State.lifetimeDoubles,
+            lifetimeNothings: number2State.lifetimeNothings
+        };
+        if (u.isUnlocked && !u.isUnlocked(st)) return;
+        const cost = getNumber2UpgradeCost(u, L);
+        if (typeof cost === "number") {
+            if (u.category === "boom") {
+                if ((number2State.boomTokens || 0) < cost) return;
+                number2State.boomTokens -= cost;
+            } else if (u.category === "bust") {
+                if ((number2State.bustTokens || 0) < cost) return;
+                number2State.bustTokens -= cost;
+            } else {
+                if ((number2State.luck || 0) < cost) return;
+                number2State.luck -= cost;
+            }
+        } else if (cost && typeof cost === "object") {
+            const boomNeed = Math.max(0, Math.floor(cost.boom || 0));
+            const bustNeed = Math.max(0, Math.floor(cost.bust || 0));
+            if ((number2State.boomTokens || 0) < boomNeed) return;
+            if ((number2State.bustTokens || 0) < bustNeed) return;
+            number2State.boomTokens -= boomNeed;
+            number2State.bustTokens -= bustNeed;
+        }
+        number2State.upgradeLevels[id] = L + 1;
+        addToLog("Number 2 upgrade: " + u.name + " → level " + (L + 1) + ".", "milestone");
+        updateNumber2StageUI();
+        autosaveNow();
+        refreshOverviewAndAscensionPanelsIfOpen();
+    }
+    function tryActivateNumber2UpgradeAction(actionId) {
+        const now = Date.now();
+        if (actionId === "run_the_table") {
+            const L = getNumber2UpgradeLevel("run_the_table");
+            if (L <= 0) return;
+            if ((number2State.runTheTableUntilMs || 0) > now) return;
+            if ((number2State.runTheTableReadyAtMs || 0) > now) return;
+            const durationMs = (L === 1 ? 20 : L === 2 ? 24 : 28) * 1000;
+            const cooldownMs = (L === 1 ? 120 : L === 2 ? 110 : 95) * 1000;
+            number2State.runTheTableUntilMs = now + durationMs;
+            number2State.runTheTableReadyAtMs = now + cooldownMs;
+            addToLog("Run the Table activated for " + Math.round(durationMs / 1000) + "s.", "milestone");
+        } else if (actionId === "sandbagging") {
+            const L = getNumber2UpgradeLevel("sandbagging");
+            if (L <= 0) return;
+            if ((number2State.sandbagReadyAtMs || 0) > now) return;
+            if (number2State.forceNextNothing) return;
+            const cooldownMs = (L === 1 ? 90 : L === 2 ? 75 : L === 3 ? 62 : 50) * 1000;
+            number2State.forceNextNothing = true;
+            number2State.sandbagReadyAtMs = now + cooldownMs;
+            addToLog("Sandbagging primed: next roll is forced Nothing.", "tip");
+        } else if (actionId === "playing_fair") {
+            if (getNumber2UpgradeLevel("playing_fair") <= 0) return;
+            setExclusiveNumber2Toggle("playing_fair", !number2State.playingFairActive);
+            addToLog("Playing Fair " + (number2State.playingFairActive ? "enabled" : "disabled") + ".", "milestone");
+        } else if (actionId === "hot_streak_toggle") {
+            if (getNumber2UpgradeLevel("hot_streak") <= 0) return;
+            setExclusiveNumber2Toggle("hot_streak", !isNumber2UpgradeToggleEnabled("hot_streak"));
+            addToLog("Hot Streak " + (number2State.hotStreakEnabled ? "enabled" : "disabled") + ".", "tip");
+        } else if (actionId === "gamblers_paradox_toggle") {
+            if (getNumber2UpgradeLevel("gamblers_paradox") <= 0) return;
+            setExclusiveNumber2Toggle("gamblers_paradox", !isNumber2UpgradeToggleEnabled("gamblers_paradox"));
+            addToLog("Gambler's Paradox " + (number2State.gamblersParadoxEnabled ? "enabled" : "disabled") + ".", "tip");
+        } else {
+            return;
+        }
+        updateNumber2StageUI();
+        autosaveNow();
+    }
+    function tryBuyAscension2Node(nid) {
+        if (!pagePanelBodyEl) return;
+        if (!nid || typeof ASCENSION2_TREE_EXPORT === "undefined" || !ASCENSION2_TREE_EXPORT.NODES) return;
+        const node = ASCENSION2_TREE_EXPORT.NODES.find(n => n.id === nid);
+        if (!node) return;
+        const owned = new Set(number2State.ascensionNodeIds || []);
+        if (owned.has(nid)) return;
+        const parentsOk = !node.parentIds || node.parentIds.length === 0 || node.parentIds.every(pid => owned.has(pid));
+        if (!parentsOk) return;
+        const cost = node.cost;
+        if ((number2State.ascensionEssence || 0) < cost) {
+            addToLog("Number 2 ascension: not enough Luck essence (" + formatCount(cost) + " required).", "warning");
+            return;
+        }
+        number2State.ascensionEssence -= cost;
+        number2State.ascensionNodeIds.push(nid);
+        addToLog("Number 2 ascension: purchased \"" + node.title + "\".", "milestone");
+        pagePanelBodyEl.innerHTML = renderAscensionPageHtml();
+        autosaveNow();
+        refreshGlobalOverviewPanelIfOpen();
     }
     function renderAscensionPageHtml() {
         if (ascensionPageActiveNumber === 2 && !isNumber2Unlocked()) ascensionPageActiveNumber = 1;
@@ -2149,29 +2771,30 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         }
         let body = "";
         if (n === 1) body = renderAscensionUpgradesHtml();
-        else if (n === 2 && tab2) body = renderAscensionNumber2PlaceholderHtml();
+        else if (n === 2 && tab2) body = renderAscensionNumber2ShellHtml();
         else body = renderAscensionUpgradesHtml();
         return "<div class=\"ascension-page\">" + tabsHtml + "<div class=\"ascension-page-body\">" + body + "</div></div>";
     }
     function getNumber2Milestone() {
         if (!isNumber2Unlocked()) return { text: "Number 2 is not available on this save", pct: 0 };
         if (!number2State.started) return { text: "Unlocked — switch to Number 2 to begin counting", pct: 0 };
-        const next = NUMBER_2_MILESTONES.find(m => number2State.totalTwos < m.goal) || NUMBER_2_MILESTONES[NUMBER_2_MILESTONES.length - 1];
+        const tb = number2TotalBig();
+        let next = null;
+        for (let i = 0; i < NUMBER_2_MILESTONES.length; i++) {
+            const g = BigInt(NUMBER_2_MILESTONES[i].goalStr);
+            if (tb < g) {
+                next = NUMBER_2_MILESTONES[i];
+                break;
+            }
+        }
         if (!next) return { text: "Complete", pct: 100 };
         const nextIndex = NUMBER_2_MILESTONES.indexOf(next);
-        const previousGoal = nextIndex > 0 ? NUMBER_2_MILESTONES[nextIndex - 1].goal : 0;
-        const span = Math.max(1, next.goal - previousGoal);
-        const progressed = Math.max(0, Math.min(span, number2State.totalTwos - previousGoal));
-        const pct = Math.max(0, Math.min(100, (progressed / span) * 100));
+        const prevGoal = nextIndex > 0 ? BigInt(NUMBER_2_MILESTONES[nextIndex - 1].goalStr) : 2n;
+        const goal = BigInt(next.goalStr);
+        const span = Number(goal - prevGoal);
+        const progressed = Math.min(span, Math.max(0, Number(tb - prevGoal)));
+        const pct = span > 0 ? Math.max(0, Math.min(100, (progressed / span) * 100)) : 100;
         return { text: next.text, pct };
-    }
-    function tickNumber2Background(dtSec) {
-        if (!canTickNumber2()) return;
-        if (!(dtSec > 0)) return;
-        const rawGain = dtSec * NUMBER_2_BASE_RATE_PER_SEC + number2State.tickCarry;
-        const gain = Math.floor(rawGain);
-        number2State.tickCarry = rawGain - gain;
-        if (gain > 0) number2State.totalTwos += gain;
     }
     const NUMBER_MODULES = {
         1: createNumberModule({
@@ -2206,22 +2829,92 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             getOverviewDetails: () => "Essence: " + formatCount(number1AscensionEssence)
         }),
         2: createNumberModule({
-            getLabel: () => "Number 2 (stub)",
-            getRatePerSec: () => canTickNumber2() ? NUMBER_2_BASE_RATE_PER_SEC : 0,
+            getLabel: () => "Number 2 — Double or Nothing",
+            getRatePerSec: () => (canTickNumber2() ? getNumber2ActiveRollsPerSec() + NUMBER2_BG_ROLLS_PER_SEC * 0.25 : 0),
             getMilestone: () => getNumber2Milestone(),
-            isAscensionReady: () => false,
+            isAscensionReady: () => canTickNumber2() && number2TotalBig() >= BigInt(NUMBER2_ASCENSION_READY_TOTAL),
             tickBackground: (dtSec) => tickNumber2Background(dtSec),
-            getSaveData: () => ({ totalTwos: number2State.totalTwos, tickCarry: number2State.tickCarry, started: !!number2State.started }),
+            getSaveData: () => ({
+                number2SaveVersion: 4,
+                totalStr: number2State.totalStr,
+                luck: number2State.luck,
+                boomTokens: number2State.boomTokens,
+                bustTokens: number2State.bustTokens,
+                tokenGainCarry: number2State.tokenGainCarry,
+                streakDouble: number2State.streakDouble,
+                streakNothing: number2State.streakNothing,
+                lifetimeDoubles: number2State.lifetimeDoubles,
+                lifetimeNothings: number2State.lifetimeNothings,
+                upgradeLevels: { ...number2State.upgradeLevels },
+                started: !!number2State.started,
+                ascensionEssence: number2State.ascensionEssence,
+                ascensionNodeIds: [...(number2State.ascensionNodeIds || [])],
+                autoTickCarry: number2State.autoTickCarry,
+                bgTickCarry: number2State.bgTickCarry,
+                lastDieA: number2State.lastDieA,
+                lastDieB: number2State.lastDieB,
+                lastOutcome: number2State.lastOutcome,
+                playingFairActive: !!number2State.playingFairActive,
+                runTheTableUntilMs: number2State.runTheTableUntilMs || 0,
+                runTheTableReadyAtMs: number2State.runTheTableReadyAtMs || 0,
+                sandbagReadyAtMs: number2State.sandbagReadyAtMs || 0,
+                forceNextNothing: !!number2State.forceNextNothing,
+                hotStreakEnabled: number2State.hotStreakEnabled !== false,
+                gamblersParadoxEnabled: number2State.gamblersParadoxEnabled !== false
+            }),
             applySaveData: (data) => {
                 if (!data || typeof data !== "object") return;
-                if (Number.isFinite(data.totalTwos) && data.totalTwos >= 0) number2State.totalTwos = Math.floor(data.totalTwos);
-                if (Number.isFinite(data.tickCarry) && data.tickCarry >= 0) number2State.tickCarry = data.tickCarry;
+                const ver = Number(data.number2SaveVersion);
+                if (ver >= 2 && typeof data.totalStr === "string" && /^[0-9]+$/.test(data.totalStr)) {
+                    number2State.totalStr = data.totalStr;
+                } else if (Number.isFinite(data.totalTwos) && data.totalTwos >= 0) {
+                    number2State.totalStr = "2";
+                    number2State.totalTwos = Math.floor(data.totalTwos);
+                } else {
+                    number2State.totalStr = "2";
+                }
+                if (Number.isFinite(data.luck) && data.luck >= 0) number2State.luck = Math.floor(data.luck);
+                if (Number.isFinite(data.boomTokens) && data.boomTokens >= 0) number2State.boomTokens = Math.floor(data.boomTokens);
+                if (Number.isFinite(data.bustTokens) && data.bustTokens >= 0) number2State.bustTokens = Math.floor(data.bustTokens);
+                if (Number.isFinite(data.tokenGainCarry) && data.tokenGainCarry >= 0) number2State.tokenGainCarry = data.tokenGainCarry;
+                if (Number.isFinite(data.streakDouble) && data.streakDouble >= 0) number2State.streakDouble = Math.floor(data.streakDouble);
+                if (Number.isFinite(data.streakNothing) && data.streakNothing >= 0) number2State.streakNothing = Math.floor(data.streakNothing);
+                if (Number.isFinite(data.lifetimeDoubles) && data.lifetimeDoubles >= 0) number2State.lifetimeDoubles = Math.floor(data.lifetimeDoubles);
+                if (Number.isFinite(data.lifetimeNothings) && data.lifetimeNothings >= 0) number2State.lifetimeNothings = Math.floor(data.lifetimeNothings);
+                if (data.upgradeLevels && typeof data.upgradeLevels === "object") number2State.upgradeLevels = { ...data.upgradeLevels };
                 number2State.started = !!data.started;
+                if (Number.isFinite(data.ascensionEssence) && data.ascensionEssence >= 0) {
+                    number2State.ascensionEssence = Math.min(Number.MAX_SAFE_INTEGER, Math.floor(data.ascensionEssence));
+                }
+                if (Array.isArray(data.ascensionNodeIds)) {
+                    number2State.ascensionNodeIds = data.ascensionNodeIds.filter(id => typeof id === "string");
+                }
+                if (Number.isFinite(data.autoTickCarry) && data.autoTickCarry >= 0) number2State.autoTickCarry = data.autoTickCarry;
+                if (Number.isFinite(data.bgTickCarry) && data.bgTickCarry >= 0) number2State.bgTickCarry = data.bgTickCarry;
+                if (Number.isFinite(data.lastDieA)) number2State.lastDieA = Math.min(6, Math.max(1, Math.floor(data.lastDieA)));
+                if (Number.isFinite(data.lastDieB)) number2State.lastDieB = Math.min(6, Math.max(1, Math.floor(data.lastDieB)));
+                if (data.lastOutcome === "double" || data.lastOutcome === "nothing") number2State.lastOutcome = data.lastOutcome;
+                if (typeof data.playingFairActive === "boolean") number2State.playingFairActive = data.playingFairActive;
+                if (Number.isFinite(data.runTheTableUntilMs) && data.runTheTableUntilMs >= 0) number2State.runTheTableUntilMs = data.runTheTableUntilMs;
+                if (Number.isFinite(data.runTheTableReadyAtMs) && data.runTheTableReadyAtMs >= 0) number2State.runTheTableReadyAtMs = data.runTheTableReadyAtMs;
+                if (Number.isFinite(data.sandbagReadyAtMs) && data.sandbagReadyAtMs >= 0) number2State.sandbagReadyAtMs = data.sandbagReadyAtMs;
+                if (typeof data.forceNextNothing === "boolean") number2State.forceNextNothing = data.forceNextNothing;
+                if (typeof data.hotStreakEnabled === "boolean") number2State.hotStreakEnabled = data.hotStreakEnabled;
+                if (typeof data.gamblersParadoxEnabled === "boolean") number2State.gamblersParadoxEnabled = data.gamblersParadoxEnabled;
+                number2State.number2SaveVersion = 4;
+                try {
+                    let t = BigInt(number2State.totalStr || "0");
+                    if (t < 0n) t = 0n;
+                    number2State.totalStr = t.toString();
+                } catch (_) {
+                    number2State.totalStr = "0";
+                }
             },
             getOverviewDetails: () => {
                 if (!isNumber2Unlocked()) return "Number 2 is not available.";
-                if (!number2State.started) return "Unlocked but inactive — switch to Number 2 to start its background counting.";
-                return "Background total: " + formatCount(number2State.totalTwos);
+                if (!number2State.started) return "Unlocked but inactive — switch to Number 2 to begin rolling.";
+                return "Total " + formatNumber2BigIntDisplay(number2TotalBig()) + " · Boom " + formatCount(number2State.boomTokens || 0) +
+                    " · Bust " + formatCount(number2State.bustTokens || 0) + " · Luck " + formatCount(number2State.luck || 0);
             }
         })
     };
@@ -2229,8 +2922,13 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         return Array.from(unlockedNumbers).map(n => ({ number: n, module: NUMBER_MODULES[n] })).filter(x => !!x.module);
     }
     function tickBackgroundNumberModules(dtSec) {
+        const mode = typeof window.getCurrentNumberMode === "function" ? window.getCurrentNumberMode() : 1;
         getUnlockedNumberModules().forEach(entry => {
-            if (entry.number === 1) return;
+            if (entry.number === 1) {
+                if (mode !== 1) tickNumber1BackgroundCps(dtSec);
+                return;
+            }
+            if (entry.number === 2 && mode === 2) return;
             entry.module.tickBackground(dtSec);
         });
     }
@@ -2255,6 +2953,17 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             }
             if (entry.number === 1 && number1HasAscended) {
                 ascPart += " <button type=\"button\" class=\"page-btn overview-open-ascension-btn\" data-open-ascension>Skill tree</button>";
+            }
+            if (entry.number === 2) {
+                if (!number2State.started) ascPart = "Ascension: inactive — switch to Number 2 in the sidebar to begin.";
+                ascPart += " · Luck essence: " + formatCount(number2State.ascensionEssence || 0);
+                if (number2State.started) {
+                    if (ascReady) {
+                        ascPart += " <button type=\"button\" class=\"page-btn overview-open-ascension-n2-btn\" data-open-ascension-n2>Luck table</button>";
+                    } else {
+                        ascPart += " · Gate: Number 2 total ≥ " + formatCount(NUMBER2_ASCENSION_READY_TOTAL) + ".";
+                    }
+                }
             }
             const details = m.getOverviewDetails();
             const isLive = entry.number === 1;
@@ -2282,7 +2991,8 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
                 "<div class=\"overview-stat\">" +
                 "<span class=\"overview-stat-label\">Module details</span>" +
                 "<span class=\"overview-stat-value\">" + details + "</span></div>" +
-                (entry.number !== 1 ? "<p class=\"overview-coming-soon-note\">Full playable stage for this number — <span class=\"coming-soon-inline\">coming soon</span>.</p>" : "") +
+                (entry.number === 2 ? "<p class=\"overview-coming-soon-note\">Switch to <strong>Number 2</strong> in the sidebar for Double or Nothing.</p>" :
+                    (entry.number !== 1 ? "<p class=\"overview-coming-soon-note\">Full playable stage for this number — <span class=\"coming-soon-inline\">coming soon</span>.</p>" : "")) +
                 "<div class=\"overview-ascension-cell\">" + ascPart + "</div></div></article>"
             );
         });
@@ -5118,9 +5828,25 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
                 }
                 return;
             }
+            const asc2Buy = e.target.closest("[data-asc2-buy]");
+            if (asc2Buy && pagePanelEl.dataset.openPageId === "ascension" && ascensionPageActiveNumber === 2 && pagePanelBodyEl) {
+                e.preventDefault();
+                const nid = asc2Buy.getAttribute("data-asc2-buy");
+                tryBuyAscension2Node(nid);
+                return;
+            }
             const openAsc = e.target.closest("[data-open-ascension]");
             if (openAsc) {
                 e.preventDefault();
+                const openAscPanel = () => showPagePanel("ascension");
+                if (typeof playCurtainAnimation === "function") playCurtainAnimation(openAscPanel);
+                else openAscPanel();
+                return;
+            }
+            const openAscN2 = e.target.closest("[data-open-ascension-n2]");
+            if (openAscN2) {
+                e.preventDefault();
+                ascensionPageActiveNumber = 2;
                 const openAscPanel = () => showPagePanel("ascension");
                 if (typeof playCurtainAnimation === "function") playCurtainAnimation(openAscPanel);
                 else openAscPanel();
@@ -5625,6 +6351,23 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
                     cell.innerHTML = ascPart;
                 }
             }
+            if (entry.number === 2) {
+                const ascReady = m.isAscensionReady();
+                const cell = card.querySelector(".overview-ascension-cell");
+                if (cell) {
+                    let ascPart = "Ascension: " + (ascReady ? "<span class=\"overview-asc-ready\">Ready</span>" : "Not ready");
+                    if (!number2State.started) ascPart = "Ascension: inactive — switch to Number 2 in the sidebar to begin.";
+                    ascPart += " · Luck essence: " + formatCount(number2State.ascensionEssence || 0);
+                    if (number2State.started) {
+                        if (ascReady) {
+                            ascPart += " <button type=\"button\" class=\"page-btn overview-open-ascension-n2-btn\" data-open-ascension-n2>Luck table</button>";
+                        } else {
+                            ascPart += " · Gate: Number 2 total ≥ " + formatCount(NUMBER2_ASCENSION_READY_TOTAL) + ".";
+                        }
+                    }
+                    cell.innerHTML = ascPart;
+                }
+            }
         });
     }
     function patchAscensionPanelLiveDom() {
@@ -6083,6 +6826,11 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         const dt = GAME_LOOP_MS;
         const dtSec = GAME_LOOP_MS / 1000;
         tickBackgroundNumberModules(dtSec);
+        const mode = typeof window.getCurrentNumberMode === "function" ? window.getCurrentNumberMode() : 1;
+        if (mode === 2 && isNumber2Unlocked() && number2State.started) {
+            runNumber2GameLoopStep(dtSec);
+            return;
+        }
         updateTimeWarpSystem(dtSec);
         const ticksPerHand = Array(unlockedHands).fill(0);
         // Hands with the same speed multiplier share one tick phase and the same 1–10 digit
@@ -6427,19 +7175,32 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             applyOfflineProgress(Date.now() - savedAt, { showSummary: true });
         }
     } catch (_) {}
-    updateObjectives();
-    updateMilestoneUI();
-    updateTurboBoostUI();
-    updateRateDisplay();
-    updateSlowdownUpgradeUI();
-    updateTimeWarpAuraUI();
-    updateEarnedBonusesUI();
-    updatePageButtonUnlocks();
-    updateNumber2SidebarUnlockUI();
-    maybeShowFirstAscensionIntroOnUnlock();
-    setInterval(autosaveNow, AUTOSAVE_INTERVAL_MS);
-    window.addEventListener("beforeunload", autosaveNow);
-
+    syncPlayStageForNumberMode(typeof window.getCurrentNumberMode === "function" ? window.getCurrentNumberMode() : 1);
+    try {
+        (function bindNumber2Ui() {
+            const rollBtn = document.getElementById("number2-roll-btn");
+            if (rollBtn) rollBtn.addEventListener("click", () => { commitNumber2Roll({}); });
+            const stage = document.getElementById("number2-stage");
+            if (stage) {
+                stage.addEventListener("click", e => {
+                    const b = e.target.closest("[data-n2-upgrade]");
+                    if (b && !b.disabled) {
+                        e.preventDefault();
+                        tryBuyNumber2Upgrade(b.getAttribute("data-n2-upgrade"));
+                        return;
+                    }
+                    const actionBtn = e.target.closest("[data-n2-action]");
+                    if (actionBtn && !actionBtn.disabled) {
+                        e.preventDefault();
+                        tryActivateNumber2UpgradeAction(actionBtn.getAttribute("data-n2-action"));
+                    }
+                });
+            }
+            updateNumber2StageUI();
+        })();
+    } catch (err) {
+        if (typeof console !== "undefined" && console.error) console.error("Number 2 UI bind failed:", err);
+    }
     /* ---------------------------------------------------------
        DEV TOOLS (toggle on/off)
     --------------------------------------------------------- */
@@ -6459,20 +7220,33 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     let devSecondsInterval = null;
 
     function updateDevSeconds() {
+        if (!devSecondsElapsed) return;
         devSecondsElapsed.textContent = ((Date.now() - devToolsLoadTime) / 1000).toFixed(1);
     }
 
-    devToolsToggle.addEventListener("click", () => {
-        const show = devToolsPanel.style.display === "none";
-        devToolsPanel.style.display = show ? "block" : "none";
-        if (show) {
-            updateDevSeconds();
-            if (!devSecondsInterval) devSecondsInterval = setInterval(updateDevSeconds, 100);
-        } else {
-            if (devSecondsInterval) clearInterval(devSecondsInterval);
-            devSecondsInterval = null;
+    function isDevToolsPanelHidden() {
+        if (!devToolsPanel) return true;
+        if (devToolsPanel.style.display === "none") return true;
+        try {
+            return window.getComputedStyle(devToolsPanel).display === "none";
+        } catch (_) {
+            return true;
         }
-    });
+    }
+
+    if (devToolsToggle && devToolsPanel) {
+        devToolsToggle.addEventListener("click", () => {
+            const show = isDevToolsPanelHidden();
+            devToolsPanel.style.display = show ? "block" : "none";
+            if (show) {
+                updateDevSeconds();
+                if (!devSecondsInterval) devSecondsInterval = setInterval(updateDevSeconds, 100);
+            } else {
+                if (devSecondsInterval) clearInterval(devSecondsInterval);
+                devSecondsInterval = null;
+            }
+        });
+    }
 
     if (devAllAutobuyCheckbox) {
         devAllAutobuyCheckbox.addEventListener("change", () => {
@@ -6531,18 +7305,20 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         });
     }
 
-    devAddCountBtn.addEventListener("click", () => {
-        const val = parseInt(devAddCountInput.value, 10) || 0;
-        if (val <= 0) return;
-        handEarnings[0] = (handEarnings[0] || 0) + val;
-        refreshTotalFromHandEarnings();
-        incrementalEl.textContent = formatCount(totalChanges);
-        updateObjectives();
-        updateSpeedUpgradeUI();
-        updateCheapenUpgradeUI();
-        updateSlowdownUpgradeUI();
-        updateRateDisplay();
-    });
+    if (devAddCountBtn && devAddCountInput) {
+        devAddCountBtn.addEventListener("click", () => {
+            const val = parseInt(devAddCountInput.value, 10) || 0;
+            if (val <= 0) return;
+            handEarnings[0] = (handEarnings[0] || 0) + val;
+            refreshTotalFromHandEarnings();
+            if (incrementalEl) incrementalEl.textContent = formatCount(totalChanges);
+            updateObjectives();
+            updateSpeedUpgradeUI();
+            updateCheapenUpgradeUI();
+            updateSlowdownUpgradeUI();
+            updateRateDisplay();
+        });
+    }
     if (devAddAscensionEssenceBtn && devAddAscensionEssenceInput) {
         devAddAscensionEssenceBtn.addEventListener("click", () => {
             const val = parseInt(devAddAscensionEssenceInput.value, 10) || 0;
@@ -6556,6 +7332,19 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             autosaveNow();
         });
     }
+
+    updateObjectives();
+    updateMilestoneUI();
+    updateTurboBoostUI();
+    updateRateDisplay();
+    updateSlowdownUpgradeUI();
+    updateTimeWarpAuraUI();
+    updateEarnedBonusesUI();
+    updatePageButtonUnlocks();
+    updateNumber2SidebarUnlockUI();
+    maybeShowFirstAscensionIntroOnUnlock();
+    setInterval(autosaveNow, AUTOSAVE_INTERVAL_MS);
+    window.addEventListener("beforeunload", autosaveNow);
 
     /* ---------------------------------------------------------
        Hand milestones: checkUnlockHands() via syncUnlocksWithTotalCount → refreshTotalFromHandEarnings()
