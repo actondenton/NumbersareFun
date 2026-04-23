@@ -5,7 +5,6 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:gh": "vite build --base /NumbersareFun/",
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run"

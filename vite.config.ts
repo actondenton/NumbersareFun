@@ -1,12 +1,15 @@
 import { defineConfig } from "vite";
 
 /**
- * GitHub Pages project site: set env when building, e.g.
- * `VITE_BASE_PATH=/NumbersareFun/ npm run build`
- * User/organization root site can use default `/`.
+ * Use a **relative** base so the same build works on:
+ * - GitHub Pages project sites (`…github.io/REPO/`)
+ * - root domains and `npm run preview`
+ *
+ * A root-only base (`/`) breaks on project Pages because `/assets/…` resolves to the
+ * site root, not under `/REPO/`, so the game JS/CSS never load (blank page, no styles).
  */
 export default defineConfig({
-  base: process.env.VITE_BASE_PATH ?? "/",
+  base: process.env.VITE_BASE_PATH ?? "./",
   build: {
     rollupOptions: {
       output: {
