@@ -461,6 +461,48 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     let number1HasAscended = false;
     /** Purchased skill-tree node ids (Tempo / Overdrive chains — see PRD MVP). */
     let number1AscensionNodeIds = [];
+    /** Legacy save field; mapped into black-hole phase state on load. */
+    let number1AscensionBlackHoleLevel = 0;
+    /** Phase-driven black-hole progression state (BLACK_HOLE_PLAN.md). */
+    let number1BlackHoleState = {
+        phase: 0,
+        phase1EssenceSpent: 0,
+        phase2Mass: 0,
+        phase2ParallelBonusPool: 0,
+        phase3HawkingStrength: 0,
+        phase3HawkingRate: 0,
+        phase3HawkingDuration: 0,
+        phase3HawkingActiveUntilMs: 0,
+        phase3NextHawkingAtMs: 0,
+        phase4WaveLevel: 0,
+        phase4WaveActiveUntilMs: 0,
+        phase4NextWaveAtMs: 0,
+        phase4ManualReadyAtMs: 0,
+        phase5DigestedHands: 0,
+        phase5DigestHandNumber: 0,
+        phase5DigestEndsAtMs: 0,
+        phase5FurnaceLevel: 0,
+        phase5NextSacrificeHand: 10,
+        phase6JetCharge: 0,
+        phase6JetActive: false,
+        phase6JetBoostLevel: 0,
+        phase6JetEfficiencyLevel: 0,
+        phase6JetBankLevel: 0,
+        phase6JetFuelBurnPerSec: 0,
+        phase6JetBestAscensionEssence: 0,
+        phase7EpilogueCounter: 0,
+        phase7EnteredAtMs: 0,
+        evaporationComplete: false
+    };
+    /** Non-persistent one-shot UX notices for BH state changes. */
+    let number1BlackHoleUxFlags = {
+        waveReadyAnnounced: false,
+        digestReadyAnnounced: false,
+        jetReadyAnnounced: false,
+        jetDryAnnounced: false
+    };
+    /** Hard cap to enforce irreversible furnace sacrifices. */
+    let unlockedHandsCap = maxHands;
     /** If false, first ascend shows the teaching overlay (PRD: first completion only). */
     let ascensionNumber1IntroSeen = false;
     /** Selected number tab on the Ascension page (1 = skill map). Preserved for the session. */
@@ -474,7 +516,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     function refreshTotalFromHandEarnings() {
         let s = 0;
         for (let i = 0; i < unlockedHands; i++) s += handEarnings[i] || 0;
-        totalChanges = s;
+        totalChanges = Math.min(BLACK_HOLE_EVAPORATION_CAP, s);
         updateCpsDisplayEmaFromTotal(Date.now(), totalChanges, getInstantTotalCps());
         syncUnlocksWithTotalCount();
     }
@@ -506,6 +548,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     const milestoneEssenceLineEl = document.getElementById("milestone-essence-line");
     const milestoneProgressFillEl = document.getElementById("milestone-progress-fill");
     const playStageEl = document.getElementById("play-stage");
+    const number1StageRootEl = document.getElementById("number1-stage-root");
     const ascensionReadyBannerEl = document.getElementById("ascension-ready-banner");
     const ascensionReadyBannerEssenceSuffixEl = document.getElementById("ascension-ready-banner-essence-suffix");
     const ascensionReadyCtaEl = document.getElementById("ascension-ready-cta");
@@ -990,7 +1033,9 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         const rawCps = cpsPerHand.reduce((a, b) => a + b, 0);
         if (rawCps <= 0) return;
         const comboMult = getComboMultiplier();
-        const gained = Math.round(dtSec * rawCps * comboMult);
+        const turboMult = getTurboCountMultiplier();
+        const bhMult = getNumber1BlackHoleProductionMult();
+        const gained = Math.round(dtSec * rawCps * comboMult * turboMult * bhMult);
         const totalWeight = cpsPerHand.reduce((a, b) => a + b, 0) || 1;
         for (let i = 0; i < unlockedHands; i++) {
             const weight = cpsPerHand[i] || 0;
@@ -1287,6 +1332,15 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         const name = NAMES[tier] || "e" + (tier * 3);
         return mantissa + " " + name;
     }
+    function formatSeconds(sec) {
+        const s = Math.max(0, Math.floor(Number(sec) || 0));
+        const h = Math.floor(s / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        const r = s % 60;
+        if (h > 0) return h + "h " + m + "m " + r + "s";
+        if (m > 0) return m + "m " + r + "s";
+        return r + "s";
+    }
     /** Turbo-scension level lines: whole numbers only (internal bank/cost may be fractional). */
     function formatTurboScensionLevelDisplay(n) {
         const r = Math.round(Number(n) || 0);
@@ -1527,7 +1581,9 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     function computeNumber1AscensionGainBreakdown(fromTotal) {
         const baseGain = computeNumber1AscensionBaseGain(fromTotal);
         const pendingBonus = getNumber1AscensionPendingBonusEssence();
-        const beforeMult = baseGain + pendingBonus;
+        const phaseMult = getBlackHolePhase1AscensionEssenceMult() + (number1BlackHoleState.phase2ParallelBonusPool || 0);
+        const beforeMultRaw = (baseGain + pendingBonus) * Math.max(1, phaseMult);
+        const beforeMult = Math.max(baseGain + pendingBonus, Math.floor(beforeMultRaw));
         const clapMult = getNumber1AscensionClapEssenceMultiplier();
         const finalGain = Math.max(beforeMult, Math.floor(beforeMult * clapMult));
         return {
@@ -1548,9 +1604,11 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     const ASCENSION_TREE_EXPORT = window.ASCENSION_TREE_EXPORT;
     const ASCENSION_TREE_VERSION = ASCENSION_TREE_EXPORT.VERSION;
     const ASCENSION_MAP_NODES = ASCENSION_TREE_EXPORT.NODES;
-    const ASCENSION_FINGER_KEYS = ["index", "middle", "ring", "pinky", "thumb"];
+    const ASCENSION_FINGER_KEYS = ["pinky", "ring", "middle", "index", "thumb"];
     const ASCENSION_MAP_NODE_BY_ID = {};
     ASCENSION_MAP_NODES.forEach(n => { ASCENSION_MAP_NODE_BY_ID[n.id] = n; });
+    /** SVG viewBox height for ascension map (width stays 100); updated in computeAscensionHandLayout. */
+    let ascensionMapViewBoxHeight = 100;
     function isTurboScensionUnlocked() {
         return number1AscensionNodeIds.some(function (id) {
             const def = ASCENSION_MAP_NODE_BY_ID[id];
@@ -1567,6 +1625,462 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     const ASCENSION_LEGACY_NODE_ID_RE = /^(?:tempo_cheapen_|boost_turbo_|boost_warp_|asc_(?:chp|cmb|spd|tur|wrp|syn)_)/;
     function ascensionPurchasedSet() {
         return new Set(number1AscensionNodeIds);
+    }
+    /** Legacy phase-2 style mass constants. */
+    const BLACK_HOLE_MULT_PER_LEVEL = 1.035;
+    const BLACK_HOLE_COST_BASE = 400;
+    const BLACK_HOLE_COST_GROWTH = 1.38;
+    const BLACK_HOLE_MAX_LEVEL = 400;
+    const BLACK_HOLE_PHASE1_ESSENCE_TARGET = 350;
+    const BLACK_HOLE_PHASE4_WAVE_BASE_SEC = 60;
+    const BLACK_HOLE_PHASE4_WAVE_MIN_SEC = 15;
+    const BLACK_HOLE_PHASE4_WAVE_BOOST_MULT = 100;
+    const BLACK_HOLE_PHASE4_WAVE_BOOST_DURATION_SEC = 5;
+    const BLACK_HOLE_EVAPORATION_CAP = 1e308;
+    const BLACK_HOLE_DIGEST_BASE_MS = 24 * 3600 * 1000;
+    function isNumber1AscensionTreeFullyPurchased() {
+        if (!number1HasAscended || !ASCENSION_MAP_NODES || ASCENSION_MAP_NODES.length === 0) return false;
+        const s = ascensionPurchasedSet();
+        // Gate should only care whether every current map node is owned.
+        // Ignore duplicate/stale entries that may remain in old saves.
+        for (let i = 0; i < ASCENSION_MAP_NODES.length; i++) {
+            if (!s.has(ASCENSION_MAP_NODES[i].id)) return false;
+        }
+        return true;
+    }
+    function getBlackHolePhase() {
+        return Math.max(0, Math.min(7, Math.floor(Number(number1BlackHoleState.phase) || 0)));
+    }
+    function isBlackHoleArcUnlocked() {
+        return number1HasAscended && isNumber1AscensionTreeFullyPurchased();
+    }
+    function ensureBlackHoleArcStarted() {
+        if (!isBlackHoleArcUnlocked()) return;
+        if (getBlackHolePhase() > 0) return;
+        number1BlackHoleState.phase = 1;
+        addToLog("Phase 1 begins. The Mass Accumulator is online.", "milestone");
+    }
+    function tryStartNumber1BlackHoleArc() {
+        if (!number1HasAscended) return;
+        if (!isBlackHoleArcUnlocked()) {
+            addToLog("Black Hole is locked. Buy every ascension map node first.", "warning");
+            return;
+        }
+        ensureBlackHoleArcStarted();
+        queueBlackHoleUiRefresh();
+        autosaveNow();
+    }
+    function hasBlackHoleProgressLockingRespec() {
+        const phase = getBlackHolePhase();
+        if (phase > 1) return true;
+        if (Math.floor(Number(number1BlackHoleState.phase1EssenceSpent) || 0) > 0) return true;
+        if (Math.floor(Number(number1BlackHoleState.phase2Mass) || 0) > 0) return true;
+        if (Math.floor(Number(number1BlackHoleState.phase3HawkingStrength) || 0) > 0) return true;
+        if (Math.floor(Number(number1BlackHoleState.phase4WaveLevel) || 0) > 0) return true;
+        if (Math.floor(Number(number1BlackHoleState.phase5FurnaceLevel) || 0) > 0) return true;
+        if (Math.floor(Number(number1BlackHoleState.phase6JetBoostLevel) || 0) > 0) return true;
+        if ((number1BlackHoleState.phase5ConsumedHands || []).length > 0) return true;
+        return false;
+    }
+    function getBlackHolePhase2MassMult() {
+        const L = Math.max(0, Math.min(BLACK_HOLE_MAX_LEVEL, Math.floor(Number(number1BlackHoleState.phase2Mass) || 0)));
+        if (L <= 0) return 1;
+        return Math.pow(BLACK_HOLE_MULT_PER_LEVEL, L);
+    }
+    function getBlackHolePhase2NextCostEssence() {
+        const L = Math.max(0, Math.min(BLACK_HOLE_MAX_LEVEL, Math.floor(Number(number1BlackHoleState.phase2Mass) || 0)));
+        if (L >= BLACK_HOLE_MAX_LEVEL) return 0;
+        const raw = BLACK_HOLE_COST_BASE * Math.pow(BLACK_HOLE_COST_GROWTH, L);
+        if (!Number.isFinite(raw) || raw <= 0) return Number.MAX_SAFE_INTEGER;
+        return Math.min(Number.MAX_SAFE_INTEGER, Math.floor(raw));
+    }
+    function getBlackHolePhase1FillRatio() {
+        const s = Math.max(0, Math.floor(Number(number1BlackHoleState.phase1EssenceSpent) || 0));
+        return Math.max(0, Math.min(1, s / BLACK_HOLE_PHASE1_ESSENCE_TARGET));
+    }
+    function getBlackHolePhase1RunCpsMult() {
+        return 1 + 1.25 * getBlackHolePhase1FillRatio();
+    }
+    function getBlackHolePhase1AscensionEssenceMult() {
+        return 1 + 0.6 * getBlackHolePhase1FillRatio();
+    }
+    function getBlackHolePhase1SlowdownCapBonus() {
+        return Math.floor(6 * getBlackHolePhase1FillRatio());
+    }
+    function getMaxSlowdownLevelCap() {
+        return MAX_SLOWDOWN_LEVEL + getBlackHolePhase1SlowdownCapBonus();
+    }
+    function getBlackHoleWaveIntervalSec() {
+        const m = Math.max(0, Math.floor(Number(number1BlackHoleState.phase2Mass) || 0));
+        const t = Math.max(0, Math.min(1, m / 250));
+        return BLACK_HOLE_PHASE4_WAVE_BASE_SEC - (BLACK_HOLE_PHASE4_WAVE_BASE_SEC - BLACK_HOLE_PHASE4_WAVE_MIN_SEC) * t;
+    }
+    function getBlackHoleHawkingMult() {
+        const p = getBlackHolePhase();
+        if (p < 3 || p >= 6) return 1;
+        const now = Date.now();
+        if (now > (number1BlackHoleState.phase3HawkingActiveUntilMs || 0)) return 1;
+        const amp = 0.25 + 0.1 * (number1BlackHoleState.phase3HawkingStrength || 0);
+        return 1 + amp;
+    }
+    function getBlackHoleWaveMult() {
+        const p = getBlackHolePhase();
+        if (p < 4 || p >= 6) return 1;
+        return Date.now() <= (number1BlackHoleState.phase4WaveActiveUntilMs || 0) ? BLACK_HOLE_PHASE4_WAVE_BOOST_MULT : 1;
+    }
+    function getBlackHoleFurnaceMult() {
+        if (getBlackHolePhase() < 5) return 1;
+        return 1 + 0.5 * (number1BlackHoleState.phase5FurnaceLevel || 0);
+    }
+    function getBlackHoleJetMult() {
+        if (getBlackHolePhase() < 6 || !number1BlackHoleState.phase6JetActive) return 1;
+        return 1 + 3 * (1 + 0.15 * (number1BlackHoleState.phase6JetBoostLevel || 0));
+    }
+    function getBlackHoleTotalMult() {
+        if (!isBlackHoleArcUnlocked()) return 1;
+        return getBlackHolePhase2MassMult() * getBlackHolePhase1RunCpsMult() * getBlackHoleHawkingMult() * getBlackHoleWaveMult() * getBlackHoleFurnaceMult() * getBlackHoleJetMult();
+    }
+    function getNumber1BlackHoleProductionMult() {
+        return getBlackHoleTotalMult();
+    }
+    let blackHoleUiRefreshQueued = false;
+    let blackHolePhase1VfxActive = false;
+    let blackHolePhase1CollapsePulseQueued = false;
+    function queueBlackHoleUiRefresh() {
+        if (blackHoleUiRefreshQueued) return;
+        blackHoleUiRefreshQueued = true;
+        requestAnimationFrame(function () {
+            blackHoleUiRefreshQueued = false;
+            refreshGlobalOverviewPanelIfOpen();
+            refreshBlackHolePanelLiveDomIfOpen();
+        });
+    }
+    function syncBlackHolePhase1Vfx() {
+        if (!number1StageRootEl) return;
+        const shouldEnable = isBlackHoleArcUnlocked() && getBlackHolePhase() === 1;
+        if (shouldEnable === blackHolePhase1VfxActive) return;
+        blackHolePhase1VfxActive = shouldEnable;
+        number1StageRootEl.classList.toggle("bh-phase1-vfx", shouldEnable);
+    }
+    function triggerBlackHolePhase1CollapseVfx() {
+        if (!number1StageRootEl || blackHolePhase1CollapsePulseQueued) return;
+        blackHolePhase1CollapsePulseQueued = true;
+        number1StageRootEl.classList.remove("bh-phase1-collapse-pulse");
+        requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+                number1StageRootEl.classList.add("bh-phase1-collapse-pulse");
+                blackHolePhase1CollapsePulseQueued = false;
+            });
+        });
+    }
+    function refreshBlackHolePanelLiveDomIfOpen() {
+        if (!pagePanelEl || pagePanelEl.style.display === "none" || !pagePanelBodyEl) return;
+        if (pagePanelEl.dataset.openPageId !== "ascension" || ascensionPageActiveNumber !== 1) return;
+        const bhEl = pagePanelBodyEl.querySelector(".asc-black-hole");
+        if (bhEl) {
+            bhEl.outerHTML = renderNumber1BlackHolePanelHtml();
+        } else {
+            refreshAscensionPanelIfOpen();
+        }
+        const statsEl = document.getElementById("ascension-hub-stats");
+        if (statsEl) statsEl.innerHTML = renderAscensionHubStatsPillsHtml();
+    }
+    function completeBlackHolePhaseTransition(nextPhase, message) {
+        const from = getBlackHolePhase();
+        if (nextPhase <= from) return;
+        number1BlackHoleState.phase = nextPhase;
+        syncBlackHolePhase1Vfx();
+        if (message) addToLog(message, "milestone");
+        if (nextPhase === 2) {
+            triggerBlackHolePhase1CollapseVfx();
+            showStoryBanner({
+                id: "black-hole-phase-1-collapse",
+                order: 1001,
+                title: "Mass Accumulator Collapse",
+                body: "Critical mass reached. The accumulator collapses inward. A black hole is born."
+            });
+        }
+        if (nextPhase === 2) addToLog("Tip: feed Essence into mass. More mass raises production and future ascension yield.", "tip");
+        if (nextPhase === 3) addToLog("Tip: Hawking bursts are brief. Time your pushes around burst windows.", "tip");
+        if (nextPhase === 4) addToLog("Tip: Gravitational Wave can be fired manually at half-interval timing.", "tip");
+        if (nextPhase === 5) addToLog("Tip: sacrifices are permanent. Feed hands in order 10 -> 1. Use Essence to accelerate digestion.", "tip");
+        if (nextPhase === 6) addToLog("Tip: Hawking and lensing are now silent. Jets are your primary burst window.", "tip");
+        if (nextPhase === 7) addToLog("The upgrades fall silent. Count on.", "milestone");
+        if (nextPhase === 3 && !(number1BlackHoleState.phase3NextHawkingAtMs > 0)) {
+            number1BlackHoleState.phase3NextHawkingAtMs = Date.now() + 12000;
+        }
+        if (nextPhase === 4) {
+            const ivMs = Math.round(getBlackHoleWaveIntervalSec() * 1000);
+            number1BlackHoleState.phase4NextWaveAtMs = Date.now() + ivMs;
+            number1BlackHoleState.phase4ManualReadyAtMs = Date.now() + Math.round(ivMs * 0.5);
+            number1BlackHoleUxFlags.waveReadyAnnounced = false;
+        }
+        if (nextPhase === 5 && !(number1BlackHoleState.phase5NextSacrificeHand > 0)) {
+            number1BlackHoleState.phase5NextSacrificeHand = 10;
+            number1BlackHoleUxFlags.digestReadyAnnounced = true;
+        }
+        if (nextPhase === 6) {
+            number1BlackHoleState.phase3HawkingActiveUntilMs = 0;
+            number1BlackHoleState.phase4WaveActiveUntilMs = 0;
+            number1BlackHoleUxFlags.jetReadyAnnounced = false;
+            number1BlackHoleUxFlags.jetDryAnnounced = false;
+        }
+        autosaveNow();
+        queueBlackHoleUiRefresh();
+    }
+    function tryBuyNumber1BlackHole() {
+        if (!number1HasAscended) return;
+        if (!isBlackHoleArcUnlocked()) {
+            addToLog("Black Hole is locked. Buy every ascension map node first.", "warning");
+            return;
+        }
+        ensureBlackHoleArcStarted();
+        const phase = getBlackHolePhase();
+        if (phase === 1) {
+            const remaining = Math.max(0, BLACK_HOLE_PHASE1_ESSENCE_TARGET - (number1BlackHoleState.phase1EssenceSpent || 0));
+            if (remaining <= 0) return;
+            const spend = Math.min(remaining, Math.max(1, Math.ceil(BLACK_HOLE_PHASE1_ESSENCE_TARGET * 0.05)));
+            if (number1AscensionEssence < spend) {
+                addToLog("Phase 1 requires " + formatCount(spend) + " Essence.", "warning");
+                return;
+            }
+            number1AscensionEssence -= spend;
+            number1BlackHoleState.phase1EssenceSpent = Math.min(BLACK_HOLE_PHASE1_ESSENCE_TARGET, (number1BlackHoleState.phase1EssenceSpent || 0) + spend);
+            if (number1BlackHoleState.phase1EssenceSpent >= BLACK_HOLE_PHASE1_ESSENCE_TARGET) {
+                completeBlackHolePhaseTransition(2, "Phase 1 complete: accumulator collapse. Phase 2 unlocked.");
+            }
+        } else if (phase === 2) {
+            const L = Math.max(0, Math.min(BLACK_HOLE_MAX_LEVEL, Math.floor(Number(number1BlackHoleState.phase2Mass) || 0)));
+            if (L >= BLACK_HOLE_MAX_LEVEL) return;
+            const cost = getBlackHolePhase2NextCostEssence();
+            if (!(cost > 0) || number1AscensionEssence < cost) {
+                addToLog("Phase 2 requires " + formatCount(cost) + " Essence for the next mass step.", "warning");
+                return;
+            }
+            number1AscensionEssence -= cost;
+            number1BlackHoleState.phase2Mass = L + 1;
+            number1AscensionBlackHoleLevel = number1BlackHoleState.phase2Mass;
+            if ((number1BlackHoleState.phase2Mass || 0) >= 60) {
+                completeBlackHolePhaseTransition(3, "Phase 2 complete: accretion disk ignites. Phase 3 unlocked.");
+            }
+        } else if (phase === 3) {
+            const cost = 75 + 25 * Math.floor(number1BlackHoleState.phase3HawkingStrength || 0);
+            if (number1AscensionEssence < cost) return addToLog("Phase 3 requires " + formatCount(cost) + " Essence.", "warning");
+            number1AscensionEssence -= cost;
+            number1BlackHoleState.phase3HawkingStrength = (number1BlackHoleState.phase3HawkingStrength || 0) + 1;
+            number1BlackHoleState.phase3HawkingRate = (number1BlackHoleState.phase3HawkingRate || 0) + 1;
+            number1BlackHoleState.phase3HawkingDuration = (number1BlackHoleState.phase3HawkingDuration || 0) + 1;
+            if ((number1BlackHoleState.phase3HawkingStrength || 0) >= 6) {
+                completeBlackHolePhaseTransition(4, "Phase 3 complete: lensing active. Phase 4 unlocked.");
+            }
+        } else if (phase === 4) {
+            const cost = 200 + 80 * Math.floor(number1BlackHoleState.phase4WaveLevel || 0);
+            if (number1AscensionEssence < cost) return addToLog("Phase 4 requires " + formatCount(cost) + " Essence.", "warning");
+            number1AscensionEssence -= cost;
+            number1BlackHoleState.phase4WaveLevel = (number1BlackHoleState.phase4WaveLevel || 0) + 1;
+            if ((number1BlackHoleState.phase4WaveLevel || 0) >= 6) {
+                completeBlackHolePhaseTransition(5, "Phase 4 complete: furnace unlocked. Phase 5 unlocked.");
+            }
+        } else if (phase === 5) {
+            const digestEnd = number1BlackHoleState.phase5DigestEndsAtMs || 0;
+            if (!(digestEnd > Date.now())) {
+                addToLog("Phase 5 has no active digest to accelerate.", "warning");
+                return;
+            }
+            const spend = Math.max(25, Math.floor(50 + 20 * (number1BlackHoleState.phase5FurnaceLevel || 0)));
+            if (number1AscensionEssence < spend) return addToLog("Phase 5 requires " + formatCount(spend) + " Essence.", "warning");
+            number1AscensionEssence -= spend;
+            const now = Date.now();
+            const remaining = Math.max(0, digestEnd - now);
+            const floor = Math.floor(getBlackHoleNextDigestDurationMs() * 0.01);
+            const reduction = Math.max(1, Math.floor(remaining * 0.06));
+            const nextRemaining = Math.max(floor, remaining - reduction);
+            number1BlackHoleState.phase5DigestEndsAtMs = now + nextRemaining;
+            addToLog("Furnace stoked. Digestion accelerated.", "milestone");
+        } else if (phase === 6) {
+            const cost = 300 + 120 * Math.floor(number1BlackHoleState.phase6JetBoostLevel || 0);
+            if (number1AscensionEssence < cost) return addToLog("Phase 6 requires " + formatCount(cost) + " Essence.", "warning");
+            number1AscensionEssence -= cost;
+            number1BlackHoleState.phase6JetBoostLevel = (number1BlackHoleState.phase6JetBoostLevel || 0) + 1;
+            number1BlackHoleState.phase6JetEfficiencyLevel = (number1BlackHoleState.phase6JetEfficiencyLevel || 0) + 1;
+            number1BlackHoleState.phase6JetBankLevel = (number1BlackHoleState.phase6JetBankLevel || 0) + 1;
+        }
+        updateRateDisplay();
+        queueBlackHoleUiRefresh();
+    }
+    function triggerBlackHoleWaveManual() {
+        if (getBlackHolePhase() < 4 || getBlackHolePhase() >= 6) return;
+        const now = Date.now();
+        if (now < (number1BlackHoleState.phase4ManualReadyAtMs || 0)) {
+            const waitSec = Math.max(0, Math.ceil(((number1BlackHoleState.phase4ManualReadyAtMs || 0) - now) / 1000));
+            addToLog("Gravitational Wave is not ready (" + formatSeconds(waitSec) + " remaining).", "warning");
+            return;
+        }
+        number1BlackHoleState.phase4WaveActiveUntilMs = now + BLACK_HOLE_PHASE4_WAVE_BOOST_DURATION_SEC * 1000;
+        const ivMs = Math.round(getBlackHoleWaveIntervalSec() * 1000);
+        number1BlackHoleState.phase4NextWaveAtMs = now + ivMs;
+        number1BlackHoleState.phase4ManualReadyAtMs = now + Math.round(ivMs * 0.5);
+        number1BlackHoleUxFlags.waveReadyAnnounced = false;
+        addToLog("Manual Gravitational Wave fired (100x for 5s).", "milestone");
+    }
+    function getBlackHoleNextDigestDurationMs() {
+        const digested = Math.max(0, Math.floor(number1BlackHoleState.phase5DigestedHands || 0));
+        const d = Math.floor(BLACK_HOLE_DIGEST_BASE_MS / Math.pow(2, digested));
+        return Math.max(5 * 60 * 1000, d);
+    }
+    function applyHandSacrifice(handNum) {
+        const target = Math.max(1, Math.min(maxHands, handNum | 0));
+        if (unlockedHands < target) return false;
+        unlockedHandsCap = Math.max(1, Math.min(unlockedHandsCap, target - 1));
+        unlockedHands = Math.min(unlockedHands, unlockedHandsCap);
+        while (hands.length > unlockedHands) {
+            const h = hands.pop();
+            if (h && h.el && h.el.parentNode) h.el.parentNode.removeChild(h.el);
+        }
+        for (let i = unlockedHands; i < maxHands; i++) {
+            handEarnings[i] = 0;
+            autoBuyEnabledByHand[i] = false;
+            autoBuyCountdownSecondsByHand[i] = 0;
+            timeWarpAuraActiveByHand[i] = false;
+            timeWarpAuraAppearedAtMsByHand[i] = 0;
+        }
+        shrinkSpeedRowsTo(unlockedHands);
+        ensureSpeedRows();
+        updateSpeedUpgradeUI();
+        updateCheapenUpgradeUI();
+        updateSlowdownUpgradeUI();
+        updateComboUI();
+        updateTurboBoostUI();
+        return true;
+    }
+    function sacrificeNextHandToFurnace() {
+        if (getBlackHolePhase() !== 5) return;
+        if ((number1BlackHoleState.phase5DigestEndsAtMs || 0) > Date.now()) {
+            const remainSec = Math.max(0, Math.ceil(((number1BlackHoleState.phase5DigestEndsAtMs || 0) - Date.now()) / 1000));
+            addToLog("Digestion is already in progress (" + formatSeconds(remainSec) + " remaining).", "warning");
+            return;
+        }
+        const handNum = Math.max(1, Math.floor(number1BlackHoleState.phase5NextSacrificeHand || 1));
+        if (handNum <= 1 || unlockedHands <= 1) {
+            completeBlackHolePhaseTransition(6, "Only one hand remains. Phase 6 jets unlocked.");
+            return;
+        }
+        if (!applyHandSacrifice(handNum)) return;
+        const now = Date.now();
+        number1BlackHoleState.phase5DigestHandNumber = handNum;
+        number1BlackHoleState.phase5DigestEndsAtMs = now + getBlackHoleNextDigestDurationMs();
+        number1BlackHoleState.phase5NextSacrificeHand = handNum - 1;
+        number1BlackHoleUxFlags.digestReadyAnnounced = false;
+        addToLog("Hand " + handNum + " is fed to the furnace. Digestion begins.", "milestone");
+    }
+    function tryToggleJet(active) {
+        if (getBlackHolePhase() < 6 || getBlackHolePhase() >= 7) return;
+        if (active && (number1BlackHoleState.phase6JetCharge || 0) <= 0) {
+            addToLog("Jet cannot ignite: no charge. Let the battery refill.", "warning");
+            return;
+        }
+        number1BlackHoleState.phase6JetActive = !!active;
+        addToLog(number1BlackHoleState.phase6JetActive ? "Jet ignition: ON." : "Jet ignition: OFF.", "milestone");
+    }
+    function updateBlackHolePhaseStep(dtSec) {
+        if (!(dtSec > 0)) return;
+        if (!isBlackHoleArcUnlocked()) return;
+        ensureBlackHoleArcStarted();
+        const now = Date.now();
+        const phase = getBlackHolePhase();
+        if (phase >= 2) {
+            const pb = number1BlackHoleState.phase2ParallelBonusPool || 0;
+            number1BlackHoleState.phase2ParallelBonusPool = Math.min(1.5, pb + dtSec * 0.0002);
+        }
+        if (phase >= 3 && phase < 6) {
+            const baseCd = Math.max(4, 18 - (number1BlackHoleState.phase3HawkingRate || 0));
+            if (!(number1BlackHoleState.phase3NextHawkingAtMs > 0)) number1BlackHoleState.phase3NextHawkingAtMs = now + baseCd * 1000;
+            if (now >= number1BlackHoleState.phase3NextHawkingAtMs) {
+                const durSec = 5 + (number1BlackHoleState.phase3HawkingDuration || 0);
+                number1BlackHoleState.phase3HawkingActiveUntilMs = now + durSec * 1000;
+                number1BlackHoleState.phase3NextHawkingAtMs = now + baseCd * 1000;
+            }
+        }
+        if (phase >= 4 && phase < 6) {
+            const ivMs = Math.round(getBlackHoleWaveIntervalSec() * 1000);
+            if (!(number1BlackHoleState.phase4NextWaveAtMs > 0)) number1BlackHoleState.phase4NextWaveAtMs = now + ivMs;
+            if (now >= number1BlackHoleState.phase4NextWaveAtMs) {
+                number1BlackHoleState.phase4WaveActiveUntilMs = now + BLACK_HOLE_PHASE4_WAVE_BOOST_DURATION_SEC * 1000;
+                number1BlackHoleState.phase4NextWaveAtMs = now + ivMs;
+                if (now >= (number1BlackHoleState.phase4ManualReadyAtMs || 0)) {
+                    number1BlackHoleState.phase4ManualReadyAtMs = now + Math.round(ivMs * 0.5);
+                }
+                number1BlackHoleUxFlags.waveReadyAnnounced = false;
+            }
+            if (!number1BlackHoleUxFlags.waveReadyAnnounced && now >= (number1BlackHoleState.phase4ManualReadyAtMs || 0)) {
+                addToLog("Gravitational Wave manual trigger is ready.", "tip");
+                number1BlackHoleUxFlags.waveReadyAnnounced = true;
+            }
+        }
+        if (phase === 5) {
+            const digestEnd = number1BlackHoleState.phase5DigestEndsAtMs || 0;
+            if (digestEnd > 0 && now >= digestEnd) {
+                number1BlackHoleState.phase5DigestEndsAtMs = 0;
+                number1BlackHoleState.phase5DigestedHands = (number1BlackHoleState.phase5DigestedHands || 0) + 1;
+                number1BlackHoleState.phase5FurnaceLevel = (number1BlackHoleState.phase5FurnaceLevel || 0) + 1;
+                addToLog("Digestion complete. Furnace level " + number1BlackHoleState.phase5FurnaceLevel + ".", "milestone");
+                number1BlackHoleUxFlags.digestReadyAnnounced = true;
+                if ((number1BlackHoleState.phase5NextSacrificeHand || 1) <= 1) {
+                    completeBlackHolePhaseTransition(6, "Phase 5 complete: jets awakened.");
+                }
+            }
+            const passiveMeterPerSec = Math.max(0, 0.5 * (number1BlackHoleState.phase5FurnaceLevel || 0));
+            if (passiveMeterPerSec > 0) {
+                turboBoostMeter = Math.min(getTurboMeterMax(), turboBoostMeter + passiveMeterPerSec * dtSec);
+            }
+        }
+        if (phase >= 6 && phase < 7) {
+            const best = Math.max(0, Number(number1BlackHoleState.phase6JetBestAscensionEssence) || 0);
+            const chargeCap = Math.max(500, best * (0.5 + 0.2 * (number1BlackHoleState.phase6JetBankLevel || 0)));
+            const batteryPerSec = Math.max(1, best * 0.01);
+            number1BlackHoleState.phase6JetCharge = Math.min(chargeCap, (number1BlackHoleState.phase6JetCharge || 0) + batteryPerSec * dtSec);
+            if (number1BlackHoleState.phase6JetActive) {
+                const eff = 1 + 0.15 * (number1BlackHoleState.phase6JetEfficiencyLevel || 0);
+                const burn = (20 + (number1BlackHoleState.phase6JetFuelBurnPerSec || 0)) / eff;
+                number1BlackHoleState.phase6JetCharge = Math.max(0, number1BlackHoleState.phase6JetCharge - burn * dtSec);
+                if (number1BlackHoleState.phase6JetCharge <= 0) {
+                    number1BlackHoleState.phase6JetActive = false;
+                    if (!number1BlackHoleUxFlags.jetDryAnnounced) {
+                        addToLog("Jet fuel depleted. Battery recharging.", "warning");
+                        number1BlackHoleUxFlags.jetDryAnnounced = true;
+                    }
+                }
+            } else {
+                const charge = number1BlackHoleState.phase6JetCharge || 0;
+                const best = Math.max(0, Number(number1BlackHoleState.phase6JetBestAscensionEssence) || 0);
+                const readyFloor = Math.max(100, best * 0.08);
+                if (!number1BlackHoleUxFlags.jetReadyAnnounced && charge >= readyFloor) {
+                    addToLog("Jet charge is ready. Ignite when you want a burst window.", "tip");
+                    number1BlackHoleUxFlags.jetReadyAnnounced = true;
+                    number1BlackHoleUxFlags.jetDryAnnounced = false;
+                }
+            }
+        }
+        if (phase >= 6 && totalChanges >= BLACK_HOLE_EVAPORATION_CAP) {
+            number1BlackHoleState.phase = 7;
+            number1BlackHoleState.phase7EnteredAtMs = now;
+            number1BlackHoleState.phase7EpilogueCounter = 0;
+            number1BlackHoleState.evaporationComplete = true;
+            totalChanges = 0;
+            handEarnings = Array(maxHands).fill(0);
+            handEarnings[0] = 0;
+            unlockedHands = 1;
+            unlockedHandsCap = 1;
+            shrinkSpeedRowsTo(1);
+            while (hands.length > 1) {
+                const h = hands.pop();
+                if (h && h.el && h.el.parentNode) h.el.parentNode.removeChild(h.el);
+            }
+            addToLog("Phase 7 reached. Evaporation begins. The epilogue counter is active.", "milestone");
+        }
+        if (phase === 7) {
+            number1BlackHoleState.phase7EpilogueCounter += dtSec;
+        }
     }
     const ASCENSION_NODE_AUTOBUY_DEFAULT_ON_ID = "asc_ix_00";
     const ASCENSION_NODE_AUTOBUY_CHEAPEN_ID = "asc_ix_05";
@@ -1992,12 +2506,17 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     }
     function respecNumber1AscensionSkillTrees() {
         if (!number1HasAscended || number1AscensionNodeIds.length === 0) return;
+        if (hasBlackHoleProgressLockingRespec()) {
+            addToLog("Ascension respec is blocked while Black Hole progression is active.", "warning");
+            return;
+        }
         let refund = 0;
         number1AscensionNodeIds.forEach(nodeId => {
             const c = getAscensionNodePurchaseCost(nodeId);
             if (Number.isFinite(c) && c > 0 && c < Number.MAX_SAFE_INTEGER / 4) refund += c;
         });
         number1AscensionNodeIds = [];
+        if (!isBlackHoleArcUnlocked()) number1BlackHoleState.phase = 0;
         number1AscensionEssence += refund;
         turboLevelerBank = 0;
         turboLevelerPurchases = 0;
@@ -2024,6 +2543,10 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     }
     function respecNumber1AscensionFinger(finger) {
         if (!number1HasAscended) return;
+        if (hasBlackHoleProgressLockingRespec()) {
+            addToLog("Ascension respec is blocked while Black Hole progression is active.", "warning");
+            return;
+        }
         if (ASCENSION_FINGER_KEYS.indexOf(finger) < 0) return;
         const kept = [];
         let refund = 0;
@@ -2039,6 +2562,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         if (refund <= 0) return;
         number1AscensionNodeIds = kept;
         normalizeAscensionNodeIds();
+        if (!isBlackHoleArcUnlocked()) number1BlackHoleState.phase = 0;
         number1AscensionEssence += refund;
         addToLog((ASCENSION_FINGER_RESPEC_LABELS[finger] || finger) + " reset — " + formatCount(refund) + " Essence refunded.", "milestone");
         updateCheapenUpgradeUI();
@@ -2050,44 +2574,123 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     function escapeAscensionHtml(t) {
         return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     }
+    /**
+     * Five equal columns (viewBox 0–100 wide): pinky → ring → middle → index → thumb (left to right).
+     * Within each column, nodes sort by ascending branchIndex (tie: cost, id); lower index sits low,
+     * then zigzag upward with a slight drift toward the top-right of the column. Short relaxation keeps
+     * centers at least MIN_DIST apart; x stays inside the column band. Hand art stays decorative only.
+     */
     function computeAscensionHandLayout() {
-        return ASCENSION_TREE_EXPORT.computeAscensionHandLayout(ASCENSION_MAP_NODES);
-    }
-    function ascensionSankeyEdgePath(x1, y1, x2, y2, fingerKey) {
-        const H = (ASCENSION_TREE_EXPORT && ASCENSION_TREE_EXPORT.HUB_CENTER) || { x: 50, y: 51 };
-        const mx = (x1 + x2) / 2;
-        const my = (y1 + y2) / 2;
-        const vx = x2 - x1;
-        const vy = y2 - y1;
-        const len = Math.hypot(vx, vy) || 1;
-        const midOff = Math.max(4.2, Math.min(14.5, len * 0.28)) + 1.8;
-        const nx = (-vy / len) * midOff;
-        const ny = (vx / len) * midOff;
-        const hx = mx - H.x;
-        const hy = my - H.y;
-        const hlen = Math.hypot(hx, hy) || 1;
-        const flow = 1.35;
-        const bx = nx + (hx / hlen) * flow;
-        const by = ny + (hy / hlen) * flow;
-        const tips = (ASCENSION_TREE_EXPORT && ASCENSION_TREE_EXPORT.FINGERTIP_TARGETS) || {};
-        const tip = fingerKey && tips[fingerKey] ? tips[fingerKey] : null;
-        let sx = 0;
-        let sy = 0;
-        if (tip) {
-            const rtx = tip.x - H.x;
-            const rty = tip.y - H.y;
-            const rlen = Math.hypot(rtx, rty) || 1;
-            const hand = (vx * rty - vy * rtx) >= 0 ? 1 : -1;
-            sx = (-rty / rlen) * 2.1 * hand;
-            sy = (rtx / rlen) * 2.1 * hand;
+        const COL_FINGERS = ["pinky", "ring", "middle", "index", "thumb"];
+        const vbH = 100;
+        ascensionMapViewBoxHeight = vbH;
+        const marginX = 2.4;
+        const marginY = 5.5;
+        const MIN_DIST = 4.62;
+        const numCols = COL_FINGERS.length;
+        const colWidth = (100 - 2 * marginX) / numCols;
+
+        function nodeCost(n) {
+            const c = n.cost;
+            if (typeof c === "number" && isFinite(c)) return c;
+            const parsed = Number(c);
+            return isFinite(parsed) ? parsed : 0;
         }
-        const t = 0.42;
-        const c1x = x1 + t * (x2 - x1) + bx * 0.58 + sx;
-        const c1y = y1 + t * (y2 - y1) + by * 0.58 + sy;
-        const c2x = x2 - t * (x2 - x1) + bx * 0.58 + sx;
-        const c2y = y2 - t * (y2 - y1) + by * 0.58 + sy;
+
+        const byFinger = {};
+        COL_FINGERS.forEach(function (fk) { byFinger[fk] = []; });
+        ASCENSION_MAP_NODES.forEach(function (node) {
+            let fk = node.finger || "middle";
+            if (COL_FINGERS.indexOf(fk) < 0) fk = "middle";
+            byFinger[fk].push(node);
+        });
+
+        const pts = [];
+        COL_FINGERS.forEach(function (fk, c) {
+            const list = (byFinger[fk] || []).slice().sort(function (a, b) {
+                const ia = a.branchIndex != null ? a.branchIndex : 0;
+                const ib = b.branchIndex != null ? b.branchIndex : 0;
+                if (ia !== ib) return ia - ib;
+                const ca = nodeCost(a);
+                const cb = nodeCost(b);
+                if (ca !== cb) return ca - cb;
+                return String(a.id).localeCompare(String(b.id));
+            });
+            const n = list.length;
+            if (!n) return;
+            const xMin = marginX + c * colWidth + 0.45;
+            const xMax = marginX + (c + 1) * colWidth - 0.45;
+            const xc = (xMin + xMax) / 2;
+            const xAmp = Math.min(2.95, (xMax - xMin) * 0.22);
+            const usableY = vbH - 2 * marginY;
+            const dy = n <= 1 ? 0 : usableY / (n - 1);
+            const diagSpan = (xMax - xMin) * 0.42;
+            let i;
+            for (i = 0; i < n; i++) {
+                const frac = n <= 1 ? 0.5 : i / (n - 1);
+                const zig = (i % 2 === 0 ? -1 : 1) * xAmp;
+                const diag = -diagSpan * 0.5 + frac * diagSpan;
+                const x0 = xc + zig + diag * 0.55;
+                const y0 = vbH - marginY - frac * usableY;
+                pts.push({
+                    id: list[i].id,
+                    finger: fk,
+                    x: x0,
+                    y: y0,
+                    xMin: xMin,
+                    xMax: xMax
+                });
+            }
+        });
+
+        let iter;
+        for (iter = 0; iter < 88; iter++) {
+            const relax = iter < 40 ? 0.32 : 0.18;
+            let i;
+            for (i = 0; i < pts.length; i++) {
+                let j;
+                for (j = i + 1; j < pts.length; j++) {
+                    const a = pts[i];
+                    const b = pts[j];
+                    const dx = b.x - a.x;
+                    const dy = b.y - a.y;
+                    const d = Math.hypot(dx, dy) || 1e-6;
+                    if (d >= MIN_DIST) continue;
+                    const push = ((MIN_DIST - d) / MIN_DIST) * relax;
+                    const ux = dx / d;
+                    const uy = dy / d;
+                    a.x -= ux * push;
+                    a.y -= uy * push;
+                    b.x += ux * push;
+                    b.y += uy * push;
+                }
+            }
+            for (i = 0; i < pts.length; i++) {
+                const p = pts[i];
+                p.x = Math.min(p.xMax, Math.max(p.xMin, p.x));
+                p.y = Math.min(vbH - marginY * 0.45, Math.max(marginY * 0.45, p.y));
+            }
+        }
+
+        const out = {};
+        let wi;
+        for (wi = 0; wi < pts.length; wi++) {
+            out[pts[wi].id] = { x: pts[wi].x, y: pts[wi].y };
+        }
+        return out;
+    }
+    /** Soft quadratic link between two nodes (no palm-relative routing). */
+    function ascensionColumnEdgePath(x1, y1, x2, y2) {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const len = Math.hypot(dx, dy) || 1;
+        const bend = Math.min(2.8, Math.max(0.65, len * 0.12));
+        const nx = (-dy / len) * bend;
+        const ny = (dx / len) * bend;
+        const mx = (x1 + x2) / 2 + nx;
+        const my = (y1 + y2) / 2 + ny;
         return "M " + x1.toFixed(3) + " " + y1.toFixed(3) +
-            " C " + c1x.toFixed(3) + " " + c1y.toFixed(3) + " " + c2x.toFixed(3) + " " + c2y.toFixed(3) + " " + x2.toFixed(3) + " " + y2.toFixed(3);
+            " Q " + mx.toFixed(3) + " " + my.toFixed(3) + " " + x2.toFixed(3) + " " + y2.toFixed(3);
     }
     function ascensionEdgePathActive(parentId, childId, purchased) {
         const childDef = ASCENSION_MAP_NODE_BY_ID[childId];
@@ -2099,7 +2702,6 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         return purchased.has(parentId);
     }
     function ascensionMergePointForChild(node, L, np) {
-        const H = (ASCENSION_TREE_EXPORT && ASCENSION_TREE_EXPORT.HUB_CENTER) || { x: 50, y: 51 };
         const parents = node.parents;
         if (!parents.length) return null;
         let ax = 0;
@@ -2116,13 +2718,25 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         if (!n) return null;
         ax /= n;
         ay /= n;
-        const vx = np.x - H.x;
-        const vy = np.y - H.y;
+        const vx = np.x - ax;
+        const vy = np.y - ay;
         const vlen = Math.hypot(vx, vy) || 1;
         const px = -vy / vlen;
         const py = vx / vlen;
-        const spread = parents.length > 1 ? 2.4 + Math.min(4, parents.length * 0.35) : 0;
-        return { x: (ax + np.x) / 2 + px * spread * 0.35, y: (ay + np.y) / 2 + py * spread * 0.35 };
+        const spread = parents.length > 1 ? 1.5 + Math.min(2.6, parents.length * 0.28) : 0;
+        return { x: (ax + np.x) / 2 + px * spread * 0.38, y: (ay + np.y) / 2 + py * spread * 0.38 };
+    }
+    function renderAscensionMapColumnGuidesSvg(vbH) {
+        const lineH = typeof vbH === "number" && isFinite(vbH) ? vbH : ascensionMapViewBoxHeight;
+        const marginX = 2.4;
+        const colWidth = (100 - 2 * marginX) / 5;
+        const parts = [];
+        let c;
+        for (c = 1; c < 5; c++) {
+            const gx = marginX + c * colWidth;
+            parts.push("<line class=\"asc-map-col-rule\" x1=\"" + gx.toFixed(3) + "\" y1=\"0\" x2=\"" + gx.toFixed(3) + "\" y2=\"" + lineH + "\"/>");
+        }
+        return "<g class=\"asc-map-col-guides\" aria-hidden=\"true\">" + parts.join("") + "</g>";
     }
     function renderAscensionMapEdgesSvg(layout) {
         const L = layout || computeAscensionHandLayout();
@@ -2132,7 +2746,6 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             const r = node.route || "combo";
             const np = L[node.id];
             if (!np) return;
-            const fk = node.finger || "";
             const merge = node.parents.length > 1 ? ascensionMergePointForChild(node, L, np) : null;
             node.parents.forEach(pid => {
                 const pp = L[pid];
@@ -2141,10 +2754,10 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
                 const stateClass = active ? " asc-map-edge--active" : " asc-map-edge--muted";
                 let d;
                 if (merge) {
-                    d = ascensionSankeyEdgePath(pp.x, pp.y, merge.x, merge.y, fk) + " " +
-                        ascensionSankeyEdgePath(merge.x, merge.y, np.x, np.y, fk);
+                    d = ascensionColumnEdgePath(pp.x, pp.y, merge.x, merge.y) + " " +
+                        ascensionColumnEdgePath(merge.x, merge.y, np.x, np.y);
                 } else {
-                    d = ascensionSankeyEdgePath(pp.x, pp.y, np.x, np.y, fk);
+                    d = ascensionColumnEdgePath(pp.x, pp.y, np.x, np.y);
                 }
                 parts.push(
                     "<path class=\"asc-map-edge asc-map-edge--" + r + stateClass + "\" d=\"" + d + "\" />"
@@ -2173,16 +2786,33 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         const W = svg.clientWidth;
         const H = svg.clientHeight;
         if (!Number.isFinite(W) || !Number.isFinite(H) || W < 2 || H < 2) return;
-        const unit = Math.min(W, H) / 100;
-        const padX = (W - 100 * unit) / 2;
-        const padY = (H - 100 * unit) / 2;
+        const rect = viewport.getBoundingClientRect();
+        const ctm = svg.getScreenCTM();
+        if (!ctm || typeof svg.createSVGPoint !== "function") return;
+        function toViewportPoint(vbX, vbY) {
+            const pt = svg.createSVGPoint();
+            pt.x = vbX;
+            pt.y = vbY;
+            const sp = pt.matrixTransform(ctm);
+            return { x: sp.x - rect.left, y: sp.y - rect.top };
+        }
         world.querySelectorAll(".asc-map-node[data-asc-vbx]").forEach(function (el) {
             const nx = parseFloat(el.getAttribute("data-asc-vbx"), 10);
             const ny = parseFloat(el.getAttribute("data-asc-vby"), 10);
             if (!Number.isFinite(nx) || !Number.isFinite(ny)) return;
-            el.style.left = padX + nx * unit + "px";
-            el.style.top = padY + ny * unit + "px";
+            const p = toViewportPoint(nx, ny);
+            el.style.left = p.x + "px";
+            el.style.top = p.y + "px";
         });
+        const handEl = world.querySelector(".ascension-hand-backdrop");
+        if (handEl) {
+            const hub = (typeof ASCENSION_TREE_EXPORT !== "undefined" && ASCENSION_TREE_EXPORT && ASCENSION_TREE_EXPORT.HUB_CENTER)
+                ? ASCENSION_TREE_EXPORT.HUB_CENTER
+                : { x: 50, y: 51 };
+            const hp = toViewportPoint(Number(hub.x) || 50, Number(hub.y) || 51);
+            handEl.style.left = hp.x + "px";
+            handEl.style.top = hp.y + "px";
+        }
         if (typeof updateAscensionMapDetailPanel === "function") updateAscensionMapDetailPanel();
     }
     const ASCENSION_MAP_PICK_RADIUS_VB = 0.78;
@@ -2253,7 +2883,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         if (kickerEl) kickerEl.textContent = "";
         if (!id || !ASCENSION_MAP_NODE_BY_ID[id]) {
             titleEl.textContent = "Ascension node";
-            effectEl.textContent = "Hover or click a skill gem on the map. Details stay here while you pan and zoom; the panel is translucent so you can see the map underneath.";
+            effectEl.textContent = "Hover or click a skill gem on the map to inspect it. Click also attempts purchase when affordable.";
             metaEl.textContent = "";
             return;
         }
@@ -2329,129 +2959,10 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             nodesLayer.addEventListener("pointerover", onAscensionNodesPointerOver);
             nodesLayer.addEventListener("pointerout", onAscensionNodesPointerOut);
         }
-        let scale = Math.max(0.45, Math.min(2.6, ascensionMapPanZoomState.scale || 1));
-        let tx = ascensionMapPanZoomState.tx || 0;
-        let ty = ascensionMapPanZoomState.ty || 0;
-        let dragging = false;
-        let startX = 0;
-        let startY = 0;
-        let startTx = 0;
-        let startTy = 0;
-        let ptrId = null;
-        function clampPan() {
-            const maxT = 220 * scale;
-            tx = Math.max(-maxT, Math.min(maxT, tx));
-            ty = Math.max(-maxT, Math.min(maxT, ty));
-        }
-        function apply() {
-            clampPan();
-            ascensionMapPanZoomState.scale = scale;
-            ascensionMapPanZoomState.tx = tx;
-            ascensionMapPanZoomState.ty = ty;
-            layer.style.transform = "translate(" + tx.toFixed(2) + "px," + ty.toFixed(2) + "px) scale(" + scale.toFixed(3) + ")";
-        }
-        apply();
-        const svg = viewport.querySelector(".ascension-map-svg");
-        function zoomBy(factor, clientX, clientY) {
-            if (!svg) {
-                scale = Math.max(0.45, Math.min(2.6, scale * factor));
-                apply();
-                syncAscensionMapNodeDomPositions();
-                return;
-            }
-            const vb = ascensionClientToViewBox(svg, clientX, clientY);
-            if (!vb) {
-                scale = Math.max(0.45, Math.min(2.6, scale * factor));
-                apply();
-                syncAscensionMapNodeDomPositions();
-                return;
-            }
-            const prev = scale;
-            scale = Math.max(0.45, Math.min(2.6, scale * factor));
-            if (scale === prev) return;
-            apply();
-            syncAscensionMapNodeDomPositions();
-            const pt = svg.createSVGPoint();
-            pt.x = vb.x;
-            pt.y = vb.y;
-            const ctm = svg.getScreenCTM();
-            if (!ctm) return;
-            const screenPt = pt.matrixTransform(ctm);
-            tx += clientX - screenPt.x;
-            ty += clientY - screenPt.y;
-            clampPan();
-            apply();
-            syncAscensionMapNodeDomPositions();
-        }
-        function onWheel(e) {
-            const overMap = e.target && typeof e.target.closest === "function" && e.target.closest("#ascension-map-viewport");
-            if (!overMap && !e.ctrlKey && !e.metaKey) return;
-            e.preventDefault();
-            const factor = e.deltaY > 0 ? 0.9 : 1.11;
-            zoomBy(factor, e.clientX, e.clientY);
-        }
-        function onPointerDown(e) {
-            if (e.button !== 0) return;
-            const t = e.target;
-            // Don't capture the pointer for map pan when starting on a skill node — otherwise the click
-            // never reaches #page-panel delegation for select + purchase.
-            if (t && typeof t.closest === "function" && t.closest(".asc-map-node")) {
-                return;
-            }
-            dragging = true;
-            ptrId = e.pointerId;
-            startX = e.clientX;
-            startY = e.clientY;
-            startTx = tx;
-            startTy = ty;
-            viewport.setPointerCapture(ptrId);
-        }
-        function onPointerMove(e) {
-            if (!dragging || e.pointerId !== ptrId) return;
-            tx = startTx + (e.clientX - startX);
-            ty = startTy + (e.clientY - startY);
-            apply();
-        }
-        function onPointerUp(e) {
-            if (e.pointerId !== ptrId) return;
-            dragging = false;
-            ptrId = null;
-            try { viewport.releasePointerCapture(e.pointerId); } catch (_) {}
-        }
-        function onResetClick(e) {
-            e.preventDefault();
-            scale = 1;
-            tx = 0;
-            ty = 0;
-            ascensionMapPanZoomState.scale = 1;
-            ascensionMapPanZoomState.tx = 0;
-            ascensionMapPanZoomState.ty = 0;
-            apply();
-            syncAscensionMapNodeDomPositions();
-        }
-        viewport.addEventListener("wheel", onWheel, { passive: false });
-        viewport.addEventListener("pointerdown", onPointerDown);
-        viewport.addEventListener("pointermove", onPointerMove);
-        viewport.addEventListener("pointerup", onPointerUp);
-        viewport.addEventListener("pointercancel", onPointerUp);
-        const resetBtn = document.getElementById("ascension-map-reset-view");
-        if (resetBtn) resetBtn.addEventListener("click", onResetClick);
-        const zoomInBtn = document.getElementById("ascension-map-zoom-in");
-        const zoomOutBtn = document.getElementById("ascension-map-zoom-out");
-        function zoomFromButton(factor) {
-            const r = viewport.getBoundingClientRect();
-            zoomBy(factor, r.left + r.width / 2, r.top + r.height / 2);
-        }
-        function onZoomInClick(e) {
-            e.preventDefault();
-            zoomFromButton(1.15);
-        }
-        function onZoomOutClick(e) {
-            e.preventDefault();
-            zoomFromButton(1 / 1.15);
-        }
-        if (zoomInBtn) zoomInBtn.addEventListener("click", onZoomInClick);
-        if (zoomOutBtn) zoomOutBtn.addEventListener("click", onZoomOutClick);
+        ascensionMapPanZoomState.scale = 1;
+        ascensionMapPanZoomState.tx = 0;
+        ascensionMapPanZoomState.ty = 0;
+        layer.style.transform = "none";
         function scheduleAscensionNodeLayoutSync() {
             syncAscensionMapNodeDomPositions();
             requestAnimationFrame(syncAscensionMapNodeDomPositions);
@@ -2484,14 +2995,6 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
                 nodesLayer.removeEventListener("pointerover", onAscensionNodesPointerOver);
                 nodesLayer.removeEventListener("pointerout", onAscensionNodesPointerOut);
             }
-            viewport.removeEventListener("wheel", onWheel);
-            viewport.removeEventListener("pointerdown", onPointerDown);
-            viewport.removeEventListener("pointermove", onPointerMove);
-            viewport.removeEventListener("pointerup", onPointerUp);
-            viewport.removeEventListener("pointercancel", onPointerUp);
-            if (resetBtn) resetBtn.removeEventListener("click", onResetClick);
-            if (zoomInBtn) zoomInBtn.removeEventListener("click", onZoomInClick);
-            if (zoomOutBtn) zoomOutBtn.removeEventListener("click", onZoomOutClick);
         };
     }
     /** Stat pills only — used for live ticks without rebuilding the ascension map DOM. */
@@ -2528,11 +3031,18 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         const pendingBonusPill = pendingBonusEss > 0
             ? "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Next bonus</span> <span class=\"asc-stat-pill-v\">+" + formatCount(pendingBonusEss) + " Essence</span></span>"
             : "";
+        const bhMultStat = getNumber1BlackHoleProductionMult();
+        const bhPhase = getBlackHolePhase();
+        const bhMass = Math.floor(Number(number1BlackHoleState.phase2Mass) || 0);
+        const blackHolePill = (isBlackHoleArcUnlocked() || bhPhase > 0)
+            ? "<span class=\"asc-stat-pill asc-stat-pill--wide\"><span class=\"asc-stat-pill-k\">Black hole</span> <span class=\"asc-stat-pill-v\">P" + bhPhase + " · ×" + (bhMultStat >= 10 ? bhMultStat.toFixed(2) : bhMultStat.toFixed(3)) + " · mass " + bhMass + "</span></span>"
+            : "";
         return (
             "<span class=\"asc-stat-pill asc-stat-pill--wide\"><span class=\"asc-stat-pill-k\">Nodes</span> <span class=\"asc-stat-pill-v\">" + ownedCount + " / " + totalNodes + "</span></span>" +
             "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">In nodes</span> <span class=\"asc-stat-pill-v\">" + formatCount(invested) + " Essence</span></span>" +
             "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Pool</span> <span class=\"asc-stat-pill-v\">" + formatCount(number1AscensionEssence) + "</span></span>" +
             pendingBonusPill +
+            blackHolePill +
             "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Cheapen cap</span> <span class=\"asc-stat-pill-v\">" + getMaxCheapenLevel() + "</span></span>" +
             "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Speed</span> <span class=\"asc-stat-pill-v\">−" + speedDiscountPct.toFixed(1) + "% cost</span></span>" +
             "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Combo upgrades</span> <span class=\"asc-stat-pill-v\">×" + comboUpgradesMult.toFixed(2) + "</span></span>" +
@@ -2551,10 +3061,11 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         if (!ascensionMapDebugEnabled()) return "";
         const H = (ASCENSION_TREE_EXPORT && ASCENSION_TREE_EXPORT.HUB_CENTER) || { x: 50, y: 51 };
         const tips = (ASCENSION_TREE_EXPORT && ASCENSION_TREE_EXPORT.FINGERTIP_TARGETS) || {};
+        const vbH = ascensionMapViewBoxHeight;
         const lines = [];
         let g;
         for (g = 0; g <= 100; g += 10) {
-            lines.push("<line class=\"asc-map-debug-line\" x1=\"" + g + "\" y1=\"0\" x2=\"" + g + "\" y2=\"100\" />");
+            lines.push("<line class=\"asc-map-debug-line\" x1=\"" + g + "\" y1=\"0\" x2=\"" + g + "\" y2=\"" + vbH + "\" />");
             lines.push("<line class=\"asc-map-debug-line\" x1=\"0\" y1=\"" + g + "\" x2=\"100\" y2=\"" + g + "\" />");
         }
         let dots = "<circle class=\"asc-map-debug-hub\" cx=\"" + H.x + "\" cy=\"" + H.y + "\" r=\"0.85\" />";
@@ -2564,7 +3075,91 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
                 dots += "<circle class=\"asc-map-debug-tip\" cx=\"" + t.x + "\" cy=\"" + t.y + "\" r=\"0.6\" />";
             }
         });
-        return "<svg class=\"ascension-map-debug-svg\" viewBox=\"0 0 100 100\" preserveAspectRatio=\"xMidYMid meet\" aria-hidden=\"true\">" + lines.join("") + dots + "</svg>";
+        return "<svg class=\"ascension-map-debug-svg\" viewBox=\"0 0 100 " + vbH + "\" preserveAspectRatio=\"xMidYMid meet\" aria-hidden=\"true\">" + lines.join("") + dots + "</svg>";
+    }
+    function renderNumber1BlackHolePanelHtml() {
+        const esc = escapeAscensionHtml;
+        const unlocked = isBlackHoleArcUnlocked();
+        if (unlocked && getBlackHolePhase() === 0) ensureBlackHoleArcStarted();
+        const phase = getBlackHolePhase();
+        const mult = getNumber1BlackHoleProductionMult();
+        const multStr = mult >= 10 ? mult.toFixed(2) : mult.toFixed(3);
+        const ascOwnedSet = ascensionPurchasedSet();
+        const ownedCount = ASCENSION_MAP_NODES.reduce((n, node) => n + (ascOwnedSet.has(node.id) ? 1 : 0), 0);
+        const totalCount = ASCENSION_MAP_NODES.length;
+        let body = "";
+        let note = "";
+        let actions = "";
+        if (!unlocked) {
+            note = "<p class=\"asc-black-hole__note\">When every ascension node is mapped, the singularity opens.</p>" +
+                "<p class=\"asc-black-hole__stats\">Tree progress: <strong>" + ownedCount + " / " + totalCount + "</strong></p>";
+        } else if (phase === 0 || phase === 1) {
+            const spent = Math.floor(number1BlackHoleState.phase1EssenceSpent || 0);
+            const rem = Math.max(0, BLACK_HOLE_PHASE1_ESSENCE_TARGET - spent);
+            const feed = Math.min(rem, Math.max(1, Math.ceil(BLACK_HOLE_PHASE1_ESSENCE_TARGET * 0.05)));
+            const can = rem > 0 && number1AscensionEssence >= feed;
+            const fillPct = Math.round(getBlackHolePhase1FillRatio() * 100);
+            const slowdownCap = getMaxSlowdownLevelCap();
+            body = "<p class=\"asc-black-hole__body\">Phase 1 — Mass Accumulation: feed Essence into the accumulator until gravity takes hold.</p>";
+            note = "<p class=\"asc-black-hole__stats\">Phase: <strong>1</strong> · Spent: <strong>" + spent + " / " + BLACK_HOLE_PHASE1_ESSENCE_TARGET + "</strong> (" + fillPct + "%)</p>" +
+                "<p class=\"asc-black-hole__stats\">Mass effects: <strong>CPS ×" + getBlackHolePhase1RunCpsMult().toFixed(2) + "</strong> · <strong>Ascension Essence ×" + getBlackHolePhase1AscensionEssenceMult().toFixed(2) + "</strong> · <strong>Slowdown cap " + slowdownCap + "</strong></p>";
+            if (!can && rem > 0) {
+                note += "<p class=\"asc-black-hole__note\">Need more Ascension Essence to feed the accumulator. Ascend to earn Essence, then return here.</p>";
+            }
+            actions = "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-buy=\"1\"" + (can ? "" : " disabled") + ">Feed " + esc(formatCount(feed)) + " Essence</button></p>";
+        } else if (phase === 2) {
+            const L = Math.floor(number1BlackHoleState.phase2Mass || 0);
+            const nextCost = getBlackHolePhase2NextCostEssence();
+            const can = nextCost > 0 && number1AscensionEssence >= nextCost;
+            body = "<p class=\"asc-black-hole__body\">Phase 2 — Collapse: deepen the singularity with mass and grow your parallel bonus pool.</p>";
+            note = "<p class=\"asc-black-hole__stats\">Phase: <strong>2</strong> · Mass: <strong>" + L + "</strong> · Total gain: <strong>×" + esc(multStr) + "</strong></p>";
+            actions = "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-buy=\"1\"" + (can ? "" : " disabled") + ">Feed " + esc(formatCount(nextCost)) + " Essence</button></p>";
+        } else if (phase === 3) {
+            const cost = 75 + 25 * Math.floor(number1BlackHoleState.phase3HawkingStrength || 0);
+            body = "<p class=\"asc-black-hole__body\">Phase 3 — Accretion Disk: the disk ignites, and Hawking bursts open short power windows.</p>";
+            note = "<p class=\"asc-black-hole__stats\">Phase: <strong>3</strong> · Hawking strength: <strong>" + Math.floor(number1BlackHoleState.phase3HawkingStrength || 0) + "</strong></p>";
+            actions = "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-buy=\"1\"" + (number1AscensionEssence >= cost ? "" : " disabled") + ">Upgrade disk (" + esc(formatCount(cost)) + " Essence)</button></p>";
+        } else if (phase === 4) {
+            const cost = 200 + 80 * Math.floor(number1BlackHoleState.phase4WaveLevel || 0);
+            const manualReady = Date.now() >= (number1BlackHoleState.phase4ManualReadyAtMs || 0);
+            const manualInSec = manualReady ? 0 : Math.max(0, Math.ceil(((number1BlackHoleState.phase4ManualReadyAtMs || 0) - Date.now()) / 1000));
+            body = "<p class=\"asc-black-hole__body\">Phase 4 — Gravitational Lensing: spacetime ripples pulse on cadence, and you can force a manual wave.</p>";
+            note = "<p class=\"asc-black-hole__stats\">Phase: <strong>4</strong> · Wave lvl: <strong>" + Math.floor(number1BlackHoleState.phase4WaveLevel || 0) + "</strong> · Interval: <strong>" + getBlackHoleWaveIntervalSec().toFixed(1) + "s</strong> · Manual: <strong>" + (manualReady ? "ready" : ("in " + formatSeconds(manualInSec))) + "</strong></p>";
+            actions =
+                "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-buy=\"1\"" + (number1AscensionEssence >= cost ? "" : " disabled") + ">Upgrade wave (" + esc(formatCount(cost)) + " Essence)</button></p>" +
+                "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-wave=\"1\"" + (manualReady ? "" : " disabled") + ">Manual Gravitational Wave</button></p>";
+        } else if (phase === 5) {
+            const digestEnd = number1BlackHoleState.phase5DigestEndsAtMs || 0;
+            const digestText = digestEnd > Date.now() ? ("Digest: " + formatSeconds(Math.ceil((digestEnd - Date.now()) / 1000))) : "Digest: ready";
+            const canSpeedDigest = digestEnd > Date.now();
+            const speedDigestCost = Math.max(25, Math.floor(50 + 20 * (number1BlackHoleState.phase5FurnaceLevel || 0)));
+            body = "<p class=\"asc-black-hole__body\">Phase 5 — Gravitational Furnace: feed hands in order (10→1). Every sacrifice is immediate and permanent.</p>";
+            note = "<p class=\"asc-black-hole__stats\">Phase: <strong>5</strong> · Furnace: <strong>" + Math.floor(number1BlackHoleState.phase5FurnaceLevel || 0) + "</strong> · " + digestText + " · Next hand: <strong>" + Math.max(1, Math.floor(number1BlackHoleState.phase5NextSacrificeHand || 1)) + "</strong></p>";
+            actions =
+                "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-buy=\"1\"" + (canSpeedDigest && number1AscensionEssence >= speedDigestCost ? "" : " disabled") + ">Accelerate digest (" + esc(formatCount(speedDigestCost)) + " Essence)</button></p>" +
+                "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-sacrifice=\"1\"" + (digestEnd > Date.now() ? " disabled" : "") + ">Feed next hand</button></p>";
+        } else if (phase === 6) {
+            const charge = Math.floor(number1BlackHoleState.phase6JetCharge || 0);
+            const best = Math.max(0, Number(number1BlackHoleState.phase6JetBestAscensionEssence) || 0);
+            const chargeCap = Math.max(500, best * (0.5 + 0.2 * (number1BlackHoleState.phase6JetBankLevel || 0)));
+            body = "<p class=\"asc-black-hole__body\">Phase 6 — Astrophysical Jets: charge the battery, ignite the beam, and burn fuel for decisive thrust.</p>";
+            note = "<p class=\"asc-black-hole__stats\">Phase: <strong>6</strong> · Jet charge: <strong>" + esc(formatCount(charge)) + " / " + esc(formatCount(Math.floor(chargeCap))) + "</strong> · Jet: <strong>" + (number1BlackHoleState.phase6JetActive ? "ON" : "OFF") + "</strong></p>";
+            actions =
+                "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-buy=\"1\">Upgrade jet</button></p>" +
+                "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-jet=\"" + (number1BlackHoleState.phase6JetActive ? "off" : "on") + "\">Turn jet " + (number1BlackHoleState.phase6JetActive ? "off" : "on") + "</button></p>";
+        } else {
+            body = "<p class=\"asc-black-hole__body\">Phase 7 — Evaporation: one hand, one counter, one beat. Upgrades are silent. Counting continues for closure.</p>";
+            note = "<p class=\"asc-black-hole__stats\">Phase: <strong>7</strong> · Epilogue counter: <strong>" + esc(formatCount(Math.floor(number1BlackHoleState.phase7EpilogueCounter || 0))) + "</strong></p>";
+        }
+        return (
+            "<section class=\"asc-black-hole\" aria-label=\"Black hole — post-map progression\">" +
+            "<h4 class=\"asc-black-hole__title\">Black hole</h4>" +
+            body +
+            "<p class=\"asc-black-hole__stats\">Current total BH mult: <strong>×" + esc(multStr) + "</strong></p>" +
+            note +
+            actions +
+            "</section>"
+        );
     }
     function renderAscensionUpgradesHtml() {
         if (!number1HasAscended) return "";
@@ -2576,6 +3171,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             return "<button type=\"button\" class=\"page-btn asc-tree-respec-btn\" data-asc-respec-finger=\"" + esc(fk) + "\"" + (has ? "" : " disabled") + " title=\"" + esc(ASCENSION_FINGER_RESPEC_LABELS[fk] || fk) + "\">" + esc(fk.charAt(0).toUpperCase() + fk.slice(1)) + "</button>";
         }).join("");
         const layout = computeAscensionHandLayout();
+        const ascMapVbH = ascensionMapViewBoxHeight;
         const handArt = (ASCENSION_TREE_EXPORT && ASCENSION_TREE_EXPORT.HUB_HAND_ART)
             ? String(ASCENSION_TREE_EXPORT.HUB_HAND_ART)
             : (typeof hands1 !== "undefined" && hands1[4] ? String(hands1[4]) : "");
@@ -2594,25 +3190,20 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             );
         }).join("");
         const legend =
-            "<ul class=\"asc-map-legend\" aria-label=\"Path colors\">" +
-            "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--velocity\"></span> Index · velocity</li>" +
-            "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--combo\"></span> Middle · combo</li>" +
-            "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--turbo\"></span> Ring · turbo</li>" +
+            "<ul class=\"asc-map-legend\" aria-label=\"Path colors (left to right on map)\">" +
             "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--warp\"></span> Pinky · warp</li>" +
+            "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--turbo\"></span> Ring · turbo</li>" +
+            "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--combo\"></span> Middle · combo</li>" +
+            "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--velocity\"></span> Index · velocity</li>" +
             "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--clap\"></span> Thumb · clap</li>" +
             "</ul>";
         return (
             "<section class=\"ascension-hub\" aria-label=\"Number 1 ascension skill map\">" +
             "<header class=\"ascension-hub-header\">" +
             "<h4 class=\"ascension-hub-title\"><span class=\"ascension-hub-glyph\" aria-hidden=\"true\">◇</span> Ascension map</h4>" +
-            "<p class=\"ascension-hub-sub\">Branches run from the open ASCII hand hub along each fingertip. Links curve with a hub bias (Sankey-style flow). Combo pulse production is split across <strong>hands that satisfy that pattern</strong>. <strong>Respec is free</strong>. <strong>Scroll wheel</strong> zooms (Ctrl/⌘+scroll also works); drag empty map to pan. <strong>Hover or click a gem</strong> for details in the top-left panel; <strong>click</strong> also attempts purchase (no button on the panel).</p>" +
+            "<p class=\"ascension-hub-sub\">Five columns — pinky through thumb — lower branch tier at the bottom of each column, rising toward the top. Combo pulse production is split across <strong>hands that satisfy that pattern</strong>. <strong>Respec is free</strong>. <strong>Hover or click a gem</strong> for details; <strong>click</strong> also attempts purchase.</p>" +
             "<div class=\"ascension-hub-stats\" id=\"ascension-hub-stats\">" + renderAscensionHubStatsPillsHtml() + "</div>" +
-            "<div class=\"ascension-map-toolbar\">" +
-            "<button type=\"button\" class=\"page-btn ascension-map-zoom-btn\" id=\"ascension-map-zoom-out\" title=\"Zoom out\" aria-label=\"Zoom out\">−</button>" +
-            "<button type=\"button\" class=\"page-btn ascension-map-zoom-btn\" id=\"ascension-map-zoom-in\" title=\"Zoom in\" aria-label=\"Zoom in\">+</button>" +
-            "<button type=\"button\" class=\"page-btn ascension-map-reset-btn\" id=\"ascension-map-reset-view\">Reset view</button>" +
-            "</div>" +
-            "<div class=\"ascension-respec-row\">" + respecBtn + "<div class=\"ascension-branch-respecs\">" + fingerRespecs + "</div></div>" +
+            "<div class=\"ascension-respec-row\"><div class=\"ascension-branch-respecs\">" + fingerRespecs + "</div>" + respecBtn + "</div>" +
             "</header>" +
             "<div class=\"ascension-map-viewport\" id=\"ascension-map-viewport\">" +
             "<div class=\"ascension-map-detail-panel\" id=\"ascension-map-detail-panel\" aria-live=\"polite\">" +
@@ -2625,12 +3216,13 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             "<div class=\"ascension-map-pan-zoom\" id=\"ascension-map-pan-zoom\">" +
             "<div class=\"ascension-map-world\">" +
             "<pre class=\"ascension-hand-backdrop\" aria-hidden=\"true\">" + esc(handArt) + "</pre>" +
-            "<svg class=\"ascension-map-svg\" viewBox=\"0 0 100 100\" preserveAspectRatio=\"xMidYMid meet\" aria-hidden=\"true\">" +
+            "<svg class=\"ascension-map-svg\" viewBox=\"0 0 100 " + ascMapVbH + "\" preserveAspectRatio=\"xMidYMid meet\" aria-hidden=\"true\">" +
+            renderAscensionMapColumnGuidesSvg(ascMapVbH) +
             renderAscensionMapEdgesSvg(layout) +
             "</svg>" +
             renderAscensionMapDebugOverlaySvg() +
             "<div class=\"ascension-map-nodes-layer\">" + nodeDots + "</div>" +
-            "</div></div></div>" + legend + "</section>"
+            "</div></div></div>" + legend + renderNumber1BlackHolePanelHtml() + "</section>"
         );
     }
     function renderAscensionNumber2ShellHtml() {
@@ -2802,7 +3394,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             getRatePerSec: () => {
                 const cpsPerHand = getRawCpsPerHand();
                 const rawCps = cpsPerHand.reduce((a, b) => a + b, 0);
-                return rawCps * getComboMultiplier() * getTurboCountMultiplier();
+                return rawCps * getComboMultiplier() * getTurboCountMultiplier() * getNumber1BlackHoleProductionMult();
             },
             getMilestone: () => {
                 const next = longTermObjectives.find(o => !o.achieved) || longTermObjectives[longTermObjectives.length - 1];
@@ -2826,7 +3418,14 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
                     ascensionNumber1IntroSeen = data.ascensionIntroSeen;
                 }
             },
-            getOverviewDetails: () => "Essence: " + formatCount(number1AscensionEssence)
+            getOverviewDetails: () => {
+                let s = "Essence: " + formatCount(number1AscensionEssence);
+                if (getBlackHolePhase() > 0) {
+                    const m = getNumber1BlackHoleProductionMult();
+                    s += " · Black hole P" + getBlackHolePhase() + " ×" + (m >= 10 ? m.toFixed(2) : m.toFixed(3)) + " (mass " + Math.floor(number1BlackHoleState.phase2Mass || 0) + ")";
+                }
+                return s;
+            }
         }),
         2: createNumberModule({
             getLabel: () => "Number 2 — Double or Nothing",
@@ -3462,7 +4061,8 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         if (handIndex < 0 || handIndex >= unlockedHands || !isSlowdownUnlocked()) return false;
         const bal = handEarnings[handIndex] || 0;
         const sl = slowdownLevel[handIndex] ?? 0;
-        if (sl >= MAX_SLOWDOWN_LEVEL) return false;
+        const cap = getMaxSlowdownLevelCap();
+        if (sl >= cap) return false;
         const c = getSlowdownUpgradeCost(sl + 1);
         return c !== null && bal >= c;
     }
@@ -3675,6 +4275,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     }
 
     function buySpeedUpgradeForHand(handIndex, opts) {
+        if (getBlackHolePhase() === 7) return;
         if (handIndex < 0 || handIndex >= unlockedHands) return;
         const nextLevel = speedLevel[handIndex] + 1;
         const cost = getUpgradeCost(handIndex, nextLevel);
@@ -3804,6 +4405,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     }
 
     function buyCheapenUpgradeForHand(handIndex, confettiOriginEl, opts) {
+        if (getBlackHolePhase() === 7) return;
         if (handIndex < 0 || handIndex >= unlockedHands) return;
         const level = cheapenLevel[handIndex] ?? 0;
         if (level >= getMaxCheapenLevel()) return;
@@ -3873,7 +4475,8 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
                 if (!autoBuyEnabledByHand[i]) continue;
             }
             const level = slowdownLevel[i] ?? 0;
-            if (level >= MAX_SLOWDOWN_LEVEL) continue;
+            const cap = getMaxSlowdownLevelCap();
+            if (level >= cap) continue;
             const nextLevel = level + 1;
             const cost = getSlowdownUpgradeCost(nextLevel);
             const canAfford = cost !== null && (handEarnings[i] || 0) >= cost;
@@ -3884,7 +4487,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
                     if (canAfford) {
                         buySlowdownUpgradeForHand(i, null, { fromAutobuy: true });
                         const lv = slowdownLevel[i] ?? 0;
-                        const nextCost = lv >= MAX_SLOWDOWN_LEVEL ? null : getSlowdownUpgradeCost(lv + 1);
+                        const nextCost = lv >= cap ? null : getSlowdownUpgradeCost(lv + 1);
                         const stillCanAfford = nextCost !== null && (handEarnings[i] || 0) >= nextCost;
                         slowdownAutoBuyCountdownByHand[i] = stillCanAfford ? tickDelay : 0;
                     } else {
@@ -3918,8 +4521,10 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         return lv <= 0 ? 1 : Math.pow(10, lv);
     }
     function getSlowdownUpgradeCost(nextLevel) {
-        if (nextLevel <= 0 || nextLevel > MAX_SLOWDOWN_LEVEL) return null;
-        var raw = SLOWDOWN_COSTS[nextLevel - 1];
+        const cap = getMaxSlowdownLevelCap();
+        if (nextLevel <= 0 || nextLevel > cap) return null;
+        const idx = Math.min(SLOWDOWN_COSTS.length - 1, nextLevel - 1);
+        var raw = SLOWDOWN_COSTS[idx] * Math.pow(10, Math.max(0, nextLevel - SLOWDOWN_COSTS.length));
         var m = computeAscensionGrantTotals().slowdownCostMult || 1;
         return Math.max(1, Math.floor(raw * m));
     }
@@ -3953,13 +4558,14 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             const bonusLevel = slowdownBonusLevel[i] ?? 0;
             const effectiveLevel = getEffectiveSlowdownLevel(i);
             const nextLevel = level + 1;
-            const cost = level >= MAX_SLOWDOWN_LEVEL ? null : getSlowdownUpgradeCost(nextLevel);
+            const cap = getMaxSlowdownLevelCap();
+            const cost = level >= cap ? null : getSlowdownUpgradeCost(nextLevel);
             const balance = handEarnings[i] || 0;
             const canAfford = cost !== null && balance >= cost;
-            if (level >= MAX_SLOWDOWN_LEVEL) {
+            if (level >= cap) {
                 if (ref.slowdownLevelEl) {
                     ref.slowdownLevelEl.innerHTML = level > 0 || bonusLevel > 0
-                        ? (level + "/" + MAX_SLOWDOWN_LEVEL + (bonusLevel > 0 ? " <span class=\"speed-level-bonus\" title=\"Clap bonus\">+" + bonusLevel + "</span>" : ""))
+                        ? (level + "/" + cap + (bonusLevel > 0 ? " <span class=\"speed-level-bonus\" title=\"Clap bonus\">+" + bonusLevel + "</span>" : ""))
                         : "";
                     ref.slowdownLevelEl.classList.toggle("upgrade-btn-level--hidden", level <= 0 && bonusLevel <= 0);
                 }
@@ -3968,13 +4574,13 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
                 setUpgradeButtonProgress(ref.slowdownBtn, 1);
                 ref.slowdownBtn.classList.add("upgrade-btn-maxed");
                 ref.slowdownBtn.classList.remove("upgrade-btn--afford-pulse");
-                setUpgradeTooltipText(ref.slowdownBtn, "Base level: " + level + "/" + MAX_SLOWDOWN_LEVEL + "\nBonus (clap): " + bonusLevel + "\nEffective: " + effectiveLevel + "\nBalance/Cost: MAX\nEffect: " + getSlowdownEffectText(effectiveLevel));
+                setUpgradeTooltipText(ref.slowdownBtn, "Base level: " + level + "/" + cap + "\nBonus (clap): " + bonusLevel + "\nEffective: " + effectiveLevel + "\nBalance/Cost: MAX\nEffect: " + getSlowdownEffectText(effectiveLevel));
                 const slowLbl = ref.slowdownBtn && ref.slowdownBtn.querySelector(".upgrade-btn-label");
                 if (slowLbl) slowLbl.textContent = level > 0 ? "" : "Slowdown";
             } else {
                 if (ref.slowdownLevelEl) {
                     ref.slowdownLevelEl.innerHTML = level > 0 || bonusLevel > 0
-                        ? (level + "/" + MAX_SLOWDOWN_LEVEL + (bonusLevel > 0 ? " <span class=\"speed-level-bonus\" title=\"Clap bonus\">+" + bonusLevel + "</span>" : ""))
+                        ? (level + "/" + cap + (bonusLevel > 0 ? " <span class=\"speed-level-bonus\" title=\"Clap bonus\">+" + bonusLevel + "</span>" : ""))
                         : "";
                     ref.slowdownLevelEl.classList.toggle("upgrade-btn-level--hidden", level <= 0 && bonusLevel <= 0);
                 }
@@ -3986,16 +4592,18 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
                 setUpgradeButtonProgress(ref.slowdownBtn, progress);
                 ref.slowdownBtn.classList.remove("upgrade-btn-maxed");
                 ref.slowdownBtn.classList.toggle("upgrade-btn--afford-pulse", canAfford);
-                setUpgradeTooltipText(ref.slowdownBtn, "Base level: " + level + "/" + MAX_SLOWDOWN_LEVEL + "\nBonus (clap): " + bonusLevel + "\nEffective: " + effectiveLevel + "\nBalance/Cost: " + formatCount(balance) + " / " + formatCount(cost) + "\nEffect next base: " + getSlowdownEffectText(nextLevel));
+                setUpgradeTooltipText(ref.slowdownBtn, "Base level: " + level + "/" + cap + "\nBonus (clap): " + bonusLevel + "\nEffective: " + effectiveLevel + "\nBalance/Cost: " + formatCount(balance) + " / " + formatCount(cost) + "\nEffect next base: " + getSlowdownEffectText(nextLevel));
             }
         }
         updateHandUpgradeScrollHint();
     }
     function buySlowdownUpgradeForHand(handIndex, originEl, opts) {
+        if (getBlackHolePhase() === 7) return;
         if (handIndex < 0 || handIndex >= unlockedHands) return;
         if (!isSlowdownUnlocked()) return;
         const level = slowdownLevel[handIndex] ?? 0;
-        if (level >= MAX_SLOWDOWN_LEVEL) return;
+        const cap = getMaxSlowdownLevelCap();
+        if (level >= cap) return;
         const nextLevel = level + 1;
         const cost = getSlowdownUpgradeCost(nextLevel);
         if (cost === null) return;
@@ -4125,7 +4733,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         return turboBoostUnlocked ? getTurboCountMultiplier() : 1;
     }
     function getHandEffectiveCps(handIndex) {
-        return clampFiniteNonNegative(getHandPerHandRawCps(handIndex) * getComboMultiplier() * getTurboCountMultiplier());
+        return clampFiniteNonNegative(getHandPerHandRawCps(handIndex) * getComboMultiplier() * getTurboCountMultiplier() * getNumber1BlackHoleProductionMult());
     }
     /** Sum of per-hand raw tick CPS (before combo × turbo). */
     function getTotalRawCpsSum() {
@@ -4136,7 +4744,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     /** Instantaneous total CPS from current sim state (same formula as the old rate line). */
     function getInstantTotalCps() {
         const raw = getTotalRawCpsSum();
-        return clampFiniteNonNegative(raw * getComboMultiplier() * getTurboCountMultiplier());
+        return clampFiniteNonNegative(raw * getComboMultiplier() * getTurboCountMultiplier() * getNumber1BlackHoleProductionMult());
     }
     /** EMA of measured Δtotal/Δwall-clock to align displayed CPS with real growth (Option B). */
     const CPS_DISPLAY_EMA_TAU_SEC = 0.15;
@@ -4271,7 +4879,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             }
             if (isSlowdownUnlocked()) {
                 const sd = slowdownLevel[handIndex] ?? 0;
-                if (sd < MAX_SLOWDOWN_LEVEL) {
+                if (sd < getMaxSlowdownLevelCap()) {
                     const nextSd = sd + 1;
                     const dCost = getSlowdownUpgradeCost(nextSd);
                     if (dCost != null && (handEarnings[handIndex] || 0) >= dCost) {
@@ -4453,7 +5061,8 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         const comboMult = getComboMultiplier();
         const turboMult = getTurboCountMultiplier ? getTurboCountMultiplier() : 1;
         const turboDisplayMult = getTurboCountMultiplierFromMeter ? getTurboCountMultiplierFromMeter() : 1;
-        const cpsInstant = clampFiniteNonNegative(cpsTotalRaw * comboMult * turboMult);
+        const bhMult = getNumber1BlackHoleProductionMult();
+        const cpsInstant = clampFiniteNonNegative(cpsTotalRaw * comboMult * turboMult * bhMult);
         const cpsTotal = getDisplayTotalCpsSmoothed();
         const bonusUnlocked = unlockedHands >= 2;
         const turboUnlocked = turboBoostUnlocked;
@@ -4487,6 +5096,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             if (bonusUnlocked) calcParts.push(bonusDisplayMult.toFixed(2));
             // bonusDisplayMult matches the right-column “Total bonus”; cpsRateDisplayBase is scaled so base × bonus × turbo === cpsTotal.
             if (turboUnlocked) calcParts.push(turboMult.toFixed(2));
+            if (bhMult > 1.0005) calcParts.push(bhMult >= 10 ? bhMult.toFixed(2) : bhMult.toFixed(3));
             const calcStr = calcParts.length > 1 ? " (" + calcParts.join(" × ") + ")" : "";
             const totalStr = "Total: " + totalFormatted + "/s" + calcStr;
             const handParts = cpsPerHand.slice(0, unlockedHands).map((cps, i) => {
@@ -5187,6 +5797,9 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             number1AscensionClapEssenceProcCount,
             number1HasAscended,
             number1AscensionNodeIds,
+            number1AscensionBlackHoleLevel,
+            number1BlackHoleState,
+            unlockedHandsCap,
             ascensionNumber1IntroSeen,
             ascensionTreeVersion: ASCENSION_TREE_VERSION,
             clapCooldownUntilMsByHand
@@ -5265,7 +5878,8 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         }
         timeWarpNextSpawnInSec = Number.isFinite(data.timeWarpNextSpawnInSec) && data.timeWarpNextSpawnInSec >= 0 ? data.timeWarpNextSpawnInSec : 0;
         timeWarpUnlockLogged = !!data.timeWarpUnlockLogged;
-        unlockedHands = Math.max(1, Math.min(maxHands, Number(data.unlockedHands) || 1));
+        unlockedHandsCap = Math.max(1, Math.min(maxHands, Number(data.unlockedHandsCap) || maxHands));
+        unlockedHands = Math.max(1, Math.min(unlockedHandsCap, Number(data.unlockedHands) || 1));
         for (let i = unlockedHands; i < maxHands; i++) handEarnings[i] = 0;
         while (timeWarpAuraAppearedAtMsByHand.length < maxHands) timeWarpAuraAppearedAtMsByHand.push(0);
         for (let i = 0; i < unlockedHands; i++) {
@@ -5367,6 +5981,20 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         if (typeof data.ascensionNumber1IntroSeen === "boolean") {
             ascensionNumber1IntroSeen = data.ascensionNumber1IntroSeen;
         }
+        {
+            const bh = Number(data.number1AscensionBlackHoleLevel);
+            number1AscensionBlackHoleLevel = Number.isFinite(bh) && bh >= 0 ? Math.min(BLACK_HOLE_MAX_LEVEL, Math.floor(bh)) : 0;
+        }
+        if (data.number1BlackHoleState && typeof data.number1BlackHoleState === "object") {
+            number1BlackHoleState = Object.assign({}, number1BlackHoleState, data.number1BlackHoleState);
+            number1BlackHoleState.phase = Math.max(0, Math.min(7, Math.floor(Number(number1BlackHoleState.phase) || 0)));
+        } else if (number1AscensionBlackHoleLevel > 0) {
+            number1BlackHoleState.phase = 2;
+            number1BlackHoleState.phase2Mass = Math.max(number1BlackHoleState.phase2Mass || 0, number1AscensionBlackHoleLevel);
+        }
+        if (number1HasAscended && isNumber1AscensionTreeFullyPurchased() && getBlackHolePhase() === 0) {
+            number1BlackHoleState.phase = 1;
+        }
         if (turboBoostUnlocked) turboBoostMeter = Math.min(turboBoostMeter, getTurboMeterMax());
         resetCpsDisplayEma();
         refreshTotalFromHandEarnings();
@@ -5379,11 +6007,19 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         if (effectiveMs <= 0) return;
         resetCpsDisplayEma();
         tickBackgroundNumberModules(effectiveMs / 1000);
+        updateBlackHolePhaseStep(effectiveMs / 1000);
+        if (getBlackHolePhase() === 7) {
+            totalChanges = Math.floor(number1BlackHoleState.phase7EpilogueCounter || 0);
+            handEarnings[0] = totalChanges;
+            return;
+        }
         const cpsPerHand = getRawCpsPerHand();
         const rawCps = cpsPerHand.reduce((a, b) => a + b, 0);
         if (rawCps <= 0) return;
         const comboMult = getComboMultiplier();
-        const gained = Math.round((effectiveMs / 1000) * rawCps * comboMult);
+        const turboMult = getTurboCountMultiplier();
+        const bhMult = getNumber1BlackHoleProductionMult();
+        const gained = Math.round((effectiveMs / 1000) * rawCps * comboMult * turboMult * bhMult);
         const totalWeight = cpsPerHand.reduce((a, b) => a + b, 0) || 1;
         for (let i = 0; i < unlockedHands; i++) {
             const weight = cpsPerHand[i] || 0;
@@ -5536,7 +6172,8 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     }
 
     function checkUnlockHands() {
-        while (unlockedHands <= maxHands && unlockedHands - 1 < UNLOCK_THRESHOLDS.length && totalChanges >= UNLOCK_THRESHOLDS[unlockedHands - 1]) {
+        const cap = Math.max(1, Math.min(maxHands, unlockedHandsCap | 0));
+        while (unlockedHands < cap && unlockedHands - 1 < UNLOCK_THRESHOLDS.length && totalChanges >= UNLOCK_THRESHOLDS[unlockedHands - 1]) {
             unlockHand();
         }
     }
@@ -5833,6 +6470,39 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
                 e.preventDefault();
                 const nid = asc2Buy.getAttribute("data-asc2-buy");
                 tryBuyAscension2Node(nid);
+                return;
+            }
+            const ascBhBuy = e.target.closest("[data-asc-black-hole-buy]");
+            if (ascBhBuy && pagePanelEl.dataset.openPageId === "ascension" && ascensionPageActiveNumber === 1 && pagePanelBodyEl) {
+                e.preventDefault();
+                tryBuyNumber1BlackHole();
+                return;
+            }
+            const ascBhStart = e.target.closest("[data-asc-black-hole-start]");
+            if (ascBhStart && pagePanelEl.dataset.openPageId === "ascension" && ascensionPageActiveNumber === 1 && pagePanelBodyEl) {
+                e.preventDefault();
+                tryStartNumber1BlackHoleArc();
+                return;
+            }
+            const ascBhWave = e.target.closest("[data-asc-black-hole-wave]");
+            if (ascBhWave && pagePanelEl.dataset.openPageId === "ascension" && ascensionPageActiveNumber === 1 && pagePanelBodyEl) {
+                e.preventDefault();
+                triggerBlackHoleWaveManual();
+                queueBlackHoleUiRefresh();
+                return;
+            }
+            const ascBhSacrifice = e.target.closest("[data-asc-black-hole-sacrifice]");
+            if (ascBhSacrifice && pagePanelEl.dataset.openPageId === "ascension" && ascensionPageActiveNumber === 1 && pagePanelBodyEl) {
+                e.preventDefault();
+                sacrificeNextHandToFurnace();
+                queueBlackHoleUiRefresh();
+                return;
+            }
+            const ascBhJet = e.target.closest("[data-asc-black-hole-jet]");
+            if (ascBhJet && pagePanelEl.dataset.openPageId === "ascension" && ascensionPageActiveNumber === 1 && pagePanelBodyEl) {
+                e.preventDefault();
+                tryToggleJet(ascBhJet.getAttribute("data-asc-black-hole-jet") === "on");
+                queueBlackHoleUiRefresh();
                 return;
             }
             const openAsc = e.target.closest("[data-open-ascension]");
@@ -6387,6 +7057,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         const multBonusGain = gainInfo.multiplierBonus;
         const gain = gainInfo.finalGain;
         number1AscensionEssence += gain;
+        number1BlackHoleState.phase6JetBestAscensionEssence = Math.max(number1BlackHoleState.phase6JetBestAscensionEssence || 0, gain);
         number1AscensionPendingBonusEssence = 0;
         number1AscensionClapEssenceMultiplier = 1;
         number1AscensionClapEssenceProcCount = 0;
@@ -6531,7 +7202,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         const cpsPerHand = getRawCpsPerHand();
         const rawCps = cpsPerHand.reduce((a, b) => a + b, 0);
         if (rawCps <= 0) return;
-        const totalCps = rawCps * getComboMultiplier() * getTurboCountMultiplier();
+        const totalCps = rawCps * getComboMultiplier() * getTurboCountMultiplier() * getNumber1BlackHoleProductionMult();
         const v = getHandValues();
         let any = false;
         newlyPulsing.forEach(combo => {
@@ -6826,9 +7497,19 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         const dt = GAME_LOOP_MS;
         const dtSec = GAME_LOOP_MS / 1000;
         tickBackgroundNumberModules(dtSec);
+        updateBlackHolePhaseStep(dtSec);
+        syncBlackHolePhase1Vfx();
         const mode = typeof window.getCurrentNumberMode === "function" ? window.getCurrentNumberMode() : 1;
         if (mode === 2 && isNumber2Unlocked() && number2State.started) {
             runNumber2GameLoopStep(dtSec);
+            return;
+        }
+        if (getBlackHolePhase() === 7) {
+            totalChanges = Math.floor(number1BlackHoleState.phase7EpilogueCounter || 0);
+            handEarnings[0] = totalChanges;
+            if (incrementalEl) incrementalEl.textContent = formatCount(totalChanges);
+            updateRateDisplay();
+            updateMilestoneUI();
             return;
         }
         updateTimeWarpSystem(dtSec);
@@ -6900,7 +7581,9 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             const effectiveTicksPerHand = ticksPerHand.map((t, i) => t * getSlowdownMultiplier(i));
             const totalEffectiveTicks = effectiveTicksPerHand.reduce((a, b) => a + b, 0);
             if (totalEffectiveTicks > 0) {
-                const bonusTicks = Math.round(totalEffectiveTicks * comboMult * turboMult);
+                const bhMult = getNumber1BlackHoleProductionMult();
+                const rawBonusTicks = totalEffectiveTicks * comboMult * turboMult * bhMult;
+                const bonusTicks = Number.isFinite(rawBonusTicks) ? Math.max(0, Math.min(BLACK_HOLE_EVAPORATION_CAP, Math.round(rawBonusTicks))) : BLACK_HOLE_EVAPORATION_CAP;
                 for (let i = 0; i < unlockedHands; i++) {
                     handEarnings[i] += Math.round((effectiveTicksPerHand[i] / totalEffectiveTicks) * bonusTicks);
                 }
@@ -7290,7 +7973,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
                 while (slowdownAutoBuyCountdownByHand.length < unlockedHands) slowdownAutoBuyCountdownByHand.push(0);
                 for (let i = 0; i < unlockedHands; i++) {
                     const level = slowdownLevel[i] ?? 0;
-                    if (level >= MAX_SLOWDOWN_LEVEL) continue;
+                    if (level >= getMaxSlowdownLevelCap()) continue;
                     const cost = getSlowdownUpgradeCost(level + 1);
                     if (cost !== null && (handEarnings[i] || 0) >= cost) slowdownAutoBuyCountdownByHand[i] = DEV_SLOWDOWN_AUTOBUY_DELAY;
                 }

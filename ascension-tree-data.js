@@ -446,12 +446,12 @@
 
     /** ViewBox Y delta for non-thumb fingers (negative = move up on screen). */
     var LAYOUT_NON_THUMB_Y_SHIFT = -5;
-    /** Minimum Euclidean distance between any two nodes on the same finger (viewBox units). */
-    var LAYOUT_MIN_NODE_GAP = 1.5;
-    var LAYOUT_SEPARATION_ITERS = 16;
+    /** Minimum Euclidean distance between any two nodes on the same finger (viewBox units). ~5+ reads as non-overlapping 32px pins at typical map scale. */
+    var LAYOUT_MIN_NODE_GAP = 4.85;
+    var LAYOUT_SEPARATION_ITERS = 28;
     /** Min Euclidean distance between nodes on different fingers (viewBox); avoids palm-cluster overlap. */
-    var LAYOUT_CROSS_FINGER_MIN_GAP = 2.05;
-    var LAYOUT_CROSS_FINGER_ITERS = 10;
+    var LAYOUT_CROSS_FINGER_MIN_GAP = 3.75;
+    var LAYOUT_CROSS_FINGER_ITERS = 16;
 
     /**
      * Post-finalize: shift non-thumb routes up; then nudge same-finger pairs apart if closer than LAYOUT_MIN_NODE_GAP

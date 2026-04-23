@@ -3777,56 +3777,94 @@ html[data-theme="light"] .asc-stat-pill {
     font-size: 0.82rem;
     flex-shrink: 0;
 }
-.ascension-map-toolbar {
-    margin-top: 0.35rem;
+.ascension-respec-row .page-btn {
+    width: auto;
+    min-width: 0;
+    padding: 0.24rem 0.58rem;
+}
+.ascension-respec-row {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.35rem;
+    justify-content: flex-end;
+    gap: 0.35rem 0.45rem;
+    margin-top: 0;
 }
-.ascension-map-zoom-btn {
+.ascension-respec-btn {
+    order: 2;
+}
+.asc-black-hole {
+    margin-top: 1rem;
+    padding: 0.85rem 1rem 1rem;
+    border-radius: 12px;
+    border: 1px solid rgba(80, 70, 120, 0.45);
+    background: radial-gradient(120% 80% at 50% 0%, rgba(40, 24, 64, 0.55) 0%, rgba(12, 14, 22, 0.92) 55%);
+    max-width: 52rem;
+}
+html[data-theme="light"] .asc-black-hole {
+    border-color: rgba(140, 130, 190, 0.4);
+    background: radial-gradient(120% 80% at 50% 0%, rgba(230, 220, 255, 0.9) 0%, rgba(255, 255, 255, 0.96) 55%);
+}
+.asc-black-hole__title {
+    margin: 0 0 0.4rem;
     font-size: 1rem;
-    line-height: 1;
-    padding: 0.18rem 0.45rem;
-    min-width: 2rem;
+    letter-spacing: 0.02em;
 }
-.ascension-map-reset-btn {
+.asc-black-hole__body,
+.asc-black-hole__stats,
+.asc-black-hole__note,
+.asc-black-hole__buy {
+    margin: 0.35rem 0 0;
+    font-size: 0.84rem;
+    line-height: 1.45;
+    opacity: 0.95;
+}
+.asc-black-hole__stats {
+    font-size: 0.88rem;
+    opacity: 1;
+}
+.asc-black-hole__per {
     font-size: 0.78rem;
-    padding: 0.22rem 0.5rem;
+    opacity: 0.72;
+    font-weight: 400;
+}
+.asc-black-hole__note {
+    opacity: 0.88;
+}
+.asc-black-hole__buy .page-btn {
+    margin-top: 0.15rem;
 }
 /* Ascension map chrome — tokens documented in ascension-tree.design.json */
 .ascension-map-viewport {
     position: relative;
-    min-height: min(52vh, 420px);
+    height: clamp(300px, 48vh, 400px);
     border-radius: 12px;
     overflow: hidden;
-    touch-action: none;
-    cursor: grab;
     background: #2b2d39;
     border: 1px solid rgba(100, 110, 160, 0.28);
     margin-top: 0.35rem;
 }
-.ascension-map-viewport:active {
-    cursor: grabbing;
-}
 /* Fixed px typography — does not scale with map zoom (panel sits outside pan-zoom layer). */
 .ascension-map-detail-panel {
     position: absolute;
-    left: 10px;
-    top: 10px;
+    top: 8px;
+    right: 8px;
+    left: auto;
+    bottom: auto;
     z-index: 8;
-    width: 272px;
-    max-width: calc(100% - 20px);
+    width: min(280px, calc(100% - 16px));
+    min-height: 104px;
+    max-height: min(46%, calc(100% - 16px));
     pointer-events: none;
 }
 .ascension-map-detail-panel-inner {
-    padding: 12px 14px;
+    padding: 10px 12px;
     border-radius: 10px;
     border: 1px solid rgba(100, 110, 160, 0.38);
-    background: rgba(16, 20, 34, 0.68);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    box-shadow: 0 6px 26px rgba(0, 0, 0, 0.28);
+    background: rgba(16, 20, 34, 0.84);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    height: 100%;
+    overflow: auto;
 }
 html[data-theme="light"] .ascension-map-detail-panel-inner {
     background: rgba(255, 255, 255, 0.7);
@@ -3865,7 +3903,6 @@ html[data-theme="light"] .ascension-map-viewport {
 .ascension-map-pan-zoom {
     width: 100%;
     height: 100%;
-    min-height: min(52vh, 400px);
     transform-origin: 50% 50%;
     will-change: transform;
 }
@@ -3873,8 +3910,7 @@ html[data-theme="light"] .ascension-map-viewport {
     position: relative;
     width: 100%;
     height: 100%;
-    min-height: min(52vh, 400px);
-    aspect-ratio: 1;
+    aspect-ratio: auto;
 }
 /* Center matches ascension-tree-data HUB_CENTER (50, 51) so palm aligns with SVG/node viewBox space */
 .ascension-hand-backdrop {
@@ -3903,13 +3939,21 @@ html[data-theme="light"] .ascension-hand-backdrop {
     inset: 0;
     width: 100%;
     height: 100%;
-    min-height: min(52vh, 400px);
     pointer-events: none;
     display: block;
+}
+.ascension-map-svg .asc-map-col-rule {
+    stroke: rgba(120, 130, 180, 0.22);
+    stroke-width: 0.09;
+    vector-effect: non-scaling-stroke;
+}
+html[data-theme="light"] .ascension-map-svg .asc-map-col-rule {
+    stroke: rgba(70, 80, 120, 0.2);
 }
 .ascension-map-svg .asc-map-edge {
     fill: none;
     stroke-linecap: round;
+    stroke-linejoin: round;
     stroke-width: 0.62;
     vector-effect: non-scaling-stroke;
     opacity: 0.75;
@@ -3931,7 +3975,6 @@ html[data-theme="light"] .ascension-map-svg .asc-map-edge--muted {
     inset: 0;
     width: 100%;
     height: 100%;
-    min-height: min(52vh, 400px);
     pointer-events: none;
     display: block;
     z-index: 2;
@@ -4476,6 +4519,54 @@ html[data-theme="light"] .asc-node--locked {
 .number1-stage-root {
     display: block;
     width: 100%;
+    position: relative;
+    isolation: isolate;
+}
+.number1-stage-root::before,
+.number1-stage-root::after {
+    content: "";
+    position: absolute;
+    inset: -6% -2%;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 0;
+    transition: opacity 260ms ease;
+}
+.number1-stage-root.bh-phase1-vfx::before {
+    opacity: 1;
+    background:
+        radial-gradient(38% 32% at 50% 46%, rgba(255, 226, 170, 0.16) 0%, rgba(164, 110, 255, 0.08) 44%, rgba(0, 0, 0, 0) 78%),
+        radial-gradient(82% 58% at 50% 50%, rgba(19, 10, 30, 0.22) 0%, rgba(6, 10, 20, 0) 72%);
+    animation: bh-phase1-mass-breath 3.8s ease-in-out infinite;
+}
+.number1-stage-root.bh-phase1-vfx::after {
+    opacity: 1;
+    background: radial-gradient(62% 50% at 50% 52%, rgba(255, 246, 196, 0.07) 0%, rgba(196, 128, 255, 0.05) 35%, rgba(0, 0, 0, 0) 72%);
+    mix-blend-mode: screen;
+    animation: bh-phase1-gravity-sheen 5.4s linear infinite;
+}
+.number1-stage-root.bh-phase1-collapse-pulse::before {
+    animation: bh-phase1-collapse-pulse 0.95s cubic-bezier(0.18, 0.9, 0.24, 1) 1;
+}
+@keyframes bh-phase1-mass-breath {
+    0%, 100% { transform: scale(1); filter: saturate(1); }
+    50% { transform: scale(1.02); filter: saturate(1.08); }
+}
+@keyframes bh-phase1-gravity-sheen {
+    0% { transform: rotate(0deg) scale(1); }
+    100% { transform: rotate(360deg) scale(1); }
+}
+@keyframes bh-phase1-collapse-pulse {
+    0% { opacity: 0.95; transform: scale(1.08); filter: brightness(1.35); }
+    70% { opacity: 0.38; transform: scale(0.96); filter: brightness(1.05); }
+    100% { opacity: 0; transform: scale(0.92); filter: brightness(0.9); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .number1-stage-root.bh-phase1-vfx::before,
+    .number1-stage-root.bh-phase1-vfx::after,
+    .number1-stage-root.bh-phase1-collapse-pulse::before {
+        animation: none !important;
+    }
 }
 .number2-stage {
     display: none;
