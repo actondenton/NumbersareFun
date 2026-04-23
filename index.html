@@ -74,6 +74,7 @@
                 <div class="top-count-row__center-fit-wrap">
                     <div id="incremental-rate-label" class="incremental-rate-label">Count per second</div>
                     <div id="incremental-rate" class="incremental-rate-value">0.00</div>
+                    <div id="n1-gravity-cps-strip" class="n1-gravity-cps-strip" hidden></div>
                 </div>
             </div>
             <div class="top-count-row__segment top-count-row__segment--right">
@@ -492,7 +493,9 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         phase6JetBestAscensionEssence: 0,
         phase7EpilogueCounter: 0,
         phase7EnteredAtMs: 0,
-        evaporationComplete: false
+        evaporationComplete: false,
+        /** One-shot “Mass Accumulator unlocked” spectacle (persisted so it plays once per save). */
+        phase1VisualUnlockDone: false
     };
     /** Non-persistent one-shot UX notices for BH state changes. */
     let number1BlackHoleUxFlags = {
@@ -523,6 +526,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
 
     const incrementalEl = document.getElementById("incremental-count");
     const incrementalRateEl = document.getElementById("incremental-rate");
+    const n1GravityCpsStripEl = document.getElementById("n1-gravity-cps-strip");
     const bonusMultiplierEl = document.getElementById("bonus-multiplier-display");
     const turboMultiplierDisplayEl = document.getElementById("turbo-multiplier-display");
     const turboRightClusterEl = document.getElementById("turbo-right-cluster");
@@ -904,6 +908,8 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             n1.style.display = "";
             n2.style.display = "none";
             n2.setAttribute("aria-hidden", "true");
+            syncBlackHolePhase1Vfx();
+            updateN1GravityCpsStrip();
         }
     }
     function resolveNumber2Roll() {
@@ -1658,7 +1664,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         if (!isBlackHoleArcUnlocked()) return;
         if (getBlackHolePhase() > 0) return;
         number1BlackHoleState.phase = 1;
-        addToLog("Phase 1 begins. The Mass Accumulator is online.", "milestone");
+        addToLog("Numerical Mass Accumulator online — pour Ascension Essence until critical mass (350).", "milestone");
     }
     function tryStartNumber1BlackHoleArc() {
         if (!number1HasAscended) return;
@@ -1746,6 +1752,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     let blackHoleUiRefreshQueued = false;
     let blackHolePhase1VfxActive = false;
     let blackHolePhase1CollapsePulseQueued = false;
+    let blackHolePhase1SurgeTimerId = 0;
     function queueBlackHoleUiRefresh() {
         if (blackHoleUiRefreshQueued) return;
         blackHoleUiRefreshQueued = true;
@@ -1757,10 +1764,36 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
     }
     function syncBlackHolePhase1Vfx() {
         if (!number1StageRootEl) return;
-        const shouldEnable = isBlackHoleArcUnlocked() && getBlackHolePhase() === 1;
-        if (shouldEnable === blackHolePhase1VfxActive) return;
-        blackHolePhase1VfxActive = shouldEnable;
-        number1StageRootEl.classList.toggle("bh-phase1-vfx", shouldEnable);
+        const arc = isBlackHoleArcUnlocked();
+        const p = getBlackHolePhase();
+        const massMood = arc && p === 1;
+        const singularityMood = arc && p >= 2 && p <= 6;
+        blackHolePhase1VfxActive = massMood;
+        if (!massMood) {
+            if (blackHolePhase1SurgeTimerId) {
+                clearTimeout(blackHolePhase1SurgeTimerId);
+                blackHolePhase1SurgeTimerId = 0;
+            }
+            number1StageRootEl.classList.remove("bh-phase1-unlock-surge");
+        }
+        number1StageRootEl.classList.toggle("bh-phase1-vfx", massMood);
+        number1StageRootEl.classList.toggle("bh-singularity-vfx", singularityMood);
+        if (massMood && !number1BlackHoleState.phase1VisualUnlockDone) {
+            number1BlackHoleState.phase1VisualUnlockDone = true;
+            let allowSurge = true;
+            try {
+                if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) allowSurge = false;
+            } catch (_) {}
+            if (allowSurge) {
+                number1StageRootEl.classList.add("bh-phase1-unlock-surge");
+                if (blackHolePhase1SurgeTimerId) clearTimeout(blackHolePhase1SurgeTimerId);
+                blackHolePhase1SurgeTimerId = setTimeout(function () {
+                    blackHolePhase1SurgeTimerId = 0;
+                    if (number1StageRootEl) number1StageRootEl.classList.remove("bh-phase1-unlock-surge");
+                }, 5200);
+            }
+            autosaveNow();
+        }
     }
     function triggerBlackHolePhase1CollapseVfx() {
         if (!number1StageRootEl || blackHolePhase1CollapsePulseQueued) return;
@@ -1790,6 +1823,8 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         if (nextPhase <= from) return;
         number1BlackHoleState.phase = nextPhase;
         syncBlackHolePhase1Vfx();
+        updateN1GravityCpsStrip();
+        updateRateDisplay();
         if (message) addToLog(message, "milestone");
         if (nextPhase === 2) {
             triggerBlackHolePhase1CollapseVfx();
@@ -1839,13 +1874,15 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         if (phase === 1) {
             const remaining = Math.max(0, BLACK_HOLE_PHASE1_ESSENCE_TARGET - (number1BlackHoleState.phase1EssenceSpent || 0));
             if (remaining <= 0) return;
-            const spend = Math.min(remaining, Math.max(1, Math.ceil(BLACK_HOLE_PHASE1_ESSENCE_TARGET * 0.05)));
-            if (number1AscensionEssence < spend) {
-                addToLog("Phase 1 requires " + formatCount(spend) + " Essence.", "warning");
+            const have = Math.max(0, Math.floor(Number(number1AscensionEssence) || 0));
+            const spend = Math.min(remaining, have);
+            if (spend < 1) {
+                addToLog("Need Ascension Essence to charge the Mass Accumulator. Ascend, then pour it all in here.", "warning");
                 return;
             }
             number1AscensionEssence -= spend;
             number1BlackHoleState.phase1EssenceSpent = Math.min(BLACK_HOLE_PHASE1_ESSENCE_TARGET, (number1BlackHoleState.phase1EssenceSpent || 0) + spend);
+            addToLog("Mass Accumulator absorbed " + formatCount(spend) + " Essence.", "tip");
             if (number1BlackHoleState.phase1EssenceSpent >= BLACK_HOLE_PHASE1_ESSENCE_TARGET) {
                 completeBlackHolePhaseTransition(2, "Phase 1 complete: accumulator collapse. Phase 2 unlocked.");
             }
@@ -2502,6 +2539,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             const bought = ASCENSION_MAP_NODE_BY_ID[nid];
             return bought && bought.grants && bought.grants.turboLeveler === true;
         })) tryTurboLevelerPurchases();
+        checkStoryBanners();
         autosaveNow();
     }
     function respecNumber1AscensionSkillTrees() {
@@ -3034,8 +3072,13 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         const bhMultStat = getNumber1BlackHoleProductionMult();
         const bhPhase = getBlackHolePhase();
         const bhMass = Math.floor(Number(number1BlackHoleState.phase2Mass) || 0);
+        const p1Spent = Math.floor(Number(number1BlackHoleState.phase1EssenceSpent) || 0);
         const blackHolePill = (isBlackHoleArcUnlocked() || bhPhase > 0)
-            ? "<span class=\"asc-stat-pill asc-stat-pill--wide\"><span class=\"asc-stat-pill-k\">Black hole</span> <span class=\"asc-stat-pill-v\">P" + bhPhase + " · ×" + (bhMultStat >= 10 ? bhMultStat.toFixed(2) : bhMultStat.toFixed(3)) + " · mass " + bhMass + "</span></span>"
+            ? (bhPhase === 1
+                ? "<span class=\"asc-stat-pill asc-stat-pill--wide asc-stat-pill--mass\"><span class=\"asc-stat-pill-k\">Mass accumulator</span> <span class=\"asc-stat-pill-v\">charge " + p1Spent + " / " + BLACK_HOLE_PHASE1_ESSENCE_TARGET + " · inertial ×" + getBlackHolePhase1RunCpsMult().toFixed(2) + "</span></span>"
+                : bhPhase === 7
+                    ? "<span class=\"asc-stat-pill asc-stat-pill--wide asc-stat-pill--epilogue\"><span class=\"asc-stat-pill-k\">Evaporation</span> <span class=\"asc-stat-pill-v\">P7 · epilogue</span></span>"
+                    : "<span class=\"asc-stat-pill asc-stat-pill--wide asc-stat-pill--void\"><span class=\"asc-stat-pill-k\">Black hole</span> <span class=\"asc-stat-pill-v\">P" + bhPhase + " · ×" + (bhMultStat >= 10 ? bhMultStat.toFixed(2) : bhMultStat.toFixed(3)) + " · mass " + bhMass + "</span></span>")
             : "";
         return (
             "<span class=\"asc-stat-pill asc-stat-pill--wide\"><span class=\"asc-stat-pill-k\">Nodes</span> <span class=\"asc-stat-pill-v\">" + ownedCount + " / " + totalNodes + "</span></span>" +
@@ -3090,23 +3133,42 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         let body = "";
         let note = "";
         let actions = "";
+        let panelTitle = "Black hole";
+        let panelAria = "Black hole — post-map progression";
+        let panelExtraClass = "";
         if (!unlocked) {
             note = "<p class=\"asc-black-hole__note\">When every ascension node is mapped, the singularity opens.</p>" +
                 "<p class=\"asc-black-hole__stats\">Tree progress: <strong>" + ownedCount + " / " + totalCount + "</strong></p>";
         } else if (phase === 0 || phase === 1) {
+            panelTitle = "Numerical Mass Accumulator";
+            panelAria = "Numerical Mass Accumulator — Phase 1 mass charge";
+            panelExtraClass = " asc-black-hole--phase1";
             const spent = Math.floor(number1BlackHoleState.phase1EssenceSpent || 0);
             const rem = Math.max(0, BLACK_HOLE_PHASE1_ESSENCE_TARGET - spent);
-            const feed = Math.min(rem, Math.max(1, Math.ceil(BLACK_HOLE_PHASE1_ESSENCE_TARGET * 0.05)));
-            const can = rem > 0 && number1AscensionEssence >= feed;
+            const have = Math.max(0, Math.floor(Number(number1AscensionEssence) || 0));
+            const pour = Math.min(rem, have);
+            const can = rem > 0 && have > 0;
             const fillPct = Math.round(getBlackHolePhase1FillRatio() * 100);
             const slowdownCap = getMaxSlowdownLevelCap();
-            body = "<p class=\"asc-black-hole__body\">Phase 1 — Mass Accumulation: feed Essence into the accumulator until gravity takes hold.</p>";
-            note = "<p class=\"asc-black-hole__stats\">Phase: <strong>1</strong> · Spent: <strong>" + spent + " / " + BLACK_HOLE_PHASE1_ESSENCE_TARGET + "</strong> (" + fillPct + "%)</p>" +
-                "<p class=\"asc-black-hole__stats\">Mass effects: <strong>CPS ×" + getBlackHolePhase1RunCpsMult().toFixed(2) + "</strong> · <strong>Ascension Essence ×" + getBlackHolePhase1AscensionEssenceMult().toFixed(2) + "</strong> · <strong>Slowdown cap " + slowdownCap + "</strong></p>";
+            const cpsM = getBlackHolePhase1RunCpsMult().toFixed(2);
+            const ascM = getBlackHolePhase1AscensionEssenceMult().toFixed(2);
+            body =
+                "<p class=\"asc-black-hole__kicker\">Phase 1 · toward critical mass</p>" +
+                "<p class=\"asc-black-hole__body\">You've mapped every branch — now your totals gain <strong>weight</strong>. This sink is the only use for Ascension Essence here: one button pours <strong>everything</strong> you hold into mass. Heavier numbers count faster, ascend richer, and pull harder on your slowdown ceiling.</p>" +
+                "<div class=\"asc-black-hole__mass-meter-wrap\" role=\"group\" aria-label=\"Numerical mass charge\">" +
+                "<div class=\"asc-black-hole__mass-meter-label\"><span>Mass charge</span><span class=\"asc-black-hole__mass-meter-nums\"><strong>" + spent + "</strong> / " + BLACK_HOLE_PHASE1_ESSENCE_TARGET + " Essence · " + fillPct + "%</span></div>" +
+                "<div class=\"asc-black-hole__mass-meter-track\" role=\"progressbar\" aria-valuenow=\"" + spent + "\" aria-valuemin=\"0\" aria-valuemax=\"" + BLACK_HOLE_PHASE1_ESSENCE_TARGET + "\" aria-label=\"Essence poured into numerical mass\"><div class=\"asc-black-hole__mass-meter-fill\" style=\"width:" + fillPct + "%\"></div></div>" +
+                "</div>" +
+                "<ul class=\"asc-black-hole__effect-list\" aria-label=\"Mass effects on this run\">" +
+                "<li><span class=\"asc-black-hole__effect-name\">Inertial counting</span><span class=\"asc-black-hole__effect-val\">run CPS ×" + esc(cpsM) + "</span><span class=\"asc-black-hole__effect-hint\">ticks feel heavier as the bar fills</span></li>" +
+                "<li><span class=\"asc-black-hole__effect-name\">Essence coupling</span><span class=\"asc-black-hole__effect-val\">Ascend payout ×" + esc(ascM) + "</span><span class=\"asc-black-hole__effect-hint\">next Number 1 ascend earns more Essence</span></li>" +
+                "<li><span class=\"asc-black-hole__effect-name\">Drag ceiling</span><span class=\"asc-black-hole__effect-val\">slowdown cap " + slowdownCap + "</span><span class=\"asc-black-hole__effect-hint\">room to lean on slowdown upgrades</span></li>" +
+                "</ul>";
+            note = "<p class=\"asc-black-hole__stats asc-black-hole__purse\">You hold <strong>" + esc(formatCount(have)) + "</strong> Ascension Essence · next pour: <strong>" + esc(formatCount(pour)) + "</strong> into mass</p>";
             if (!can && rem > 0) {
-                note += "<p class=\"asc-black-hole__note\">Need more Ascension Essence to feed the accumulator. Ascend to earn Essence, then return here.</p>";
+                note += "<p class=\"asc-black-hole__note\">Ascend on Number 1 to earn Essence, then come back — one tap dumps your whole purse into the accumulator.</p>";
             }
-            actions = "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-buy=\"1\"" + (can ? "" : " disabled") + ">Feed " + esc(formatCount(feed)) + " Essence</button></p>";
+            actions = "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn page-btn--mass-pour\" data-asc-black-hole-buy=\"1\"" + (can ? "" : " disabled") + ">Pour in all Essence (" + esc(formatCount(pour)) + ")</button></p>";
         } else if (phase === 2) {
             const L = Math.floor(number1BlackHoleState.phase2Mass || 0);
             const nextCost = getBlackHolePhase2NextCostEssence();
@@ -3152,8 +3214,8 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             note = "<p class=\"asc-black-hole__stats\">Phase: <strong>7</strong> · Epilogue counter: <strong>" + esc(formatCount(Math.floor(number1BlackHoleState.phase7EpilogueCounter || 0))) + "</strong></p>";
         }
         return (
-            "<section class=\"asc-black-hole\" aria-label=\"Black hole — post-map progression\">" +
-            "<h4 class=\"asc-black-hole__title\">Black hole</h4>" +
+            "<section class=\"asc-black-hole" + panelExtraClass + "\" aria-label=\"" + esc(panelAria) + "\">" +
+            "<h4 class=\"asc-black-hole__title\">" + esc(panelTitle) + "</h4>" +
             body +
             "<p class=\"asc-black-hole__stats\">Current total BH mult: <strong>×" + esc(multStr) + "</strong></p>" +
             note +
@@ -3165,64 +3227,86 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         if (!number1HasAscended) return "";
         const esc = escapeAscensionHtml;
         const s = ascensionPurchasedSet();
-        const respecBtn = "<button type=\"button\" class=\"page-btn ascension-respec-btn\" data-asc-respec=\"1\"" + (number1AscensionNodeIds.length === 0 ? " disabled" : "") + ">Respec all</button>";
-        const fingerRespecs = ASCENSION_FINGER_KEYS.map(fk => {
-            const has = ascensionFingerHasPurchasedNodes(fk);
-            return "<button type=\"button\" class=\"page-btn asc-tree-respec-btn\" data-asc-respec-finger=\"" + esc(fk) + "\"" + (has ? "" : " disabled") + " title=\"" + esc(ASCENSION_FINGER_RESPEC_LABELS[fk] || fk) + "\">" + esc(fk.charAt(0).toUpperCase() + fk.slice(1)) + "</button>";
-        }).join("");
-        const layout = computeAscensionHandLayout();
-        const ascMapVbH = ascensionMapViewBoxHeight;
-        const handArt = (ASCENSION_TREE_EXPORT && ASCENSION_TREE_EXPORT.HUB_HAND_ART)
-            ? String(ASCENSION_TREE_EXPORT.HUB_HAND_ART)
-            : (typeof hands1 !== "undefined" && hands1[4] ? String(hands1[4]) : "");
-        const nodeDots = ASCENSION_MAP_NODES.map(node => {
-            const pt = layout[node.id] || { x: 50, y: 50 };
-            const lx = pt.x.toFixed(3);
-            const ly = pt.y.toFixed(3);
-            const owned = s.has(node.id);
-            const prereqOk = ascensionNodePrereqsMet(node.id);
-            let stateClass = "asc-map-node--locked";
-            if (owned) stateClass = "asc-map-node--owned";
-            else if (prereqOk) stateClass = "asc-map-node--available";
-            return (
-                "<div class=\"asc-map-node asc-map-node--route-" + esc(node.route) + " " + stateClass + "\" data-asc-vbx=\"" + lx + "\" data-asc-vby=\"" + ly + "\" data-asc-node-id=\"" + esc(node.id) + "\" role=\"button\" aria-label=\"" + esc(node.title) + " — hover for details, click to select and attempt purchase\" tabindex=\"-1\">" +
-                "<div class=\"asc-map-node-pin\" aria-hidden=\"true\"></div></div>"
-            );
-        }).join("");
-        const legend =
-            "<ul class=\"asc-map-legend\" aria-label=\"Path colors (left to right on map)\">" +
-            "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--warp\"></span> Pinky · warp</li>" +
-            "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--turbo\"></span> Ring · turbo</li>" +
-            "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--combo\"></span> Middle · combo</li>" +
-            "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--velocity\"></span> Index · velocity</li>" +
-            "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--clap\"></span> Thumb · clap</li>" +
-            "</ul>";
+        const hideAscensionSkillMap = isBlackHoleArcUnlocked() && getBlackHolePhase() >= 1;
+        let respecRow = "";
+        if (!hideAscensionSkillMap) {
+            const respecBtn = "<button type=\"button\" class=\"page-btn ascension-respec-btn\" data-asc-respec=\"1\"" + (number1AscensionNodeIds.length === 0 ? " disabled" : "") + ">Respec all</button>";
+            const fingerRespecs = ASCENSION_FINGER_KEYS.map(fk => {
+                const has = ascensionFingerHasPurchasedNodes(fk);
+                return "<button type=\"button\" class=\"page-btn asc-tree-respec-btn\" data-asc-respec-finger=\"" + esc(fk) + "\"" + (has ? "" : " disabled") + " title=\"" + esc(ASCENSION_FINGER_RESPEC_LABELS[fk] || fk) + "\">" + esc(fk.charAt(0).toUpperCase() + fk.slice(1)) + "</button>";
+            }).join("");
+            respecRow = "<div class=\"ascension-respec-row\"><div class=\"ascension-branch-respecs\">" + fingerRespecs + "</div>" + respecBtn + "</div>";
+        }
+        let mapAndLegend = "";
+        if (!hideAscensionSkillMap) {
+            const layout = computeAscensionHandLayout();
+            const ascMapVbH = ascensionMapViewBoxHeight;
+            const handArt = (ASCENSION_TREE_EXPORT && ASCENSION_TREE_EXPORT.HUB_HAND_ART)
+                ? String(ASCENSION_TREE_EXPORT.HUB_HAND_ART)
+                : (typeof hands1 !== "undefined" && hands1[4] ? String(hands1[4]) : "");
+            const nodeDots = ASCENSION_MAP_NODES.map(node => {
+                const pt = layout[node.id] || { x: 50, y: 50 };
+                const lx = pt.x.toFixed(3);
+                const ly = pt.y.toFixed(3);
+                const owned = s.has(node.id);
+                const prereqOk = ascensionNodePrereqsMet(node.id);
+                let stateClass = "asc-map-node--locked";
+                if (owned) stateClass = "asc-map-node--owned";
+                else if (prereqOk) stateClass = "asc-map-node--available";
+                return (
+                    "<div class=\"asc-map-node asc-map-node--route-" + esc(node.route) + " " + stateClass + "\" data-asc-vbx=\"" + lx + "\" data-asc-vby=\"" + ly + "\" data-asc-node-id=\"" + esc(node.id) + "\" role=\"button\" aria-label=\"" + esc(node.title) + " — hover for details, click to select and attempt purchase\" tabindex=\"-1\">" +
+                    "<div class=\"asc-map-node-pin\" aria-hidden=\"true\"></div></div>"
+                );
+            }).join("");
+            const legend =
+                "<ul class=\"asc-map-legend\" aria-label=\"Path colors (left to right on map)\">" +
+                "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--warp\"></span> Pinky · warp</li>" +
+                "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--turbo\"></span> Ring · turbo</li>" +
+                "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--combo\"></span> Middle · combo</li>" +
+                "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--velocity\"></span> Index · velocity</li>" +
+                "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--clap\"></span> Thumb · clap</li>" +
+                "</ul>";
+            mapAndLegend =
+                "<div class=\"ascension-map-viewport\" id=\"ascension-map-viewport\">" +
+                "<div class=\"ascension-map-detail-panel\" id=\"ascension-map-detail-panel\" aria-live=\"polite\">" +
+                "<div class=\"ascension-map-detail-panel-inner\">" +
+                "<div class=\"ascension-map-detail-kicker\" id=\"ascension-map-detail-kicker\"></div>" +
+                "<div class=\"ascension-map-detail-title\" id=\"ascension-map-detail-title\"></div>" +
+                "<div class=\"ascension-map-detail-effect\" id=\"ascension-map-detail-effect\"></div>" +
+                "<div class=\"ascension-map-detail-meta\" id=\"ascension-map-detail-meta\"></div>" +
+                "</div></div>" +
+                "<div class=\"ascension-map-pan-zoom\" id=\"ascension-map-pan-zoom\">" +
+                "<div class=\"ascension-map-world\">" +
+                "<pre class=\"ascension-hand-backdrop\" aria-hidden=\"true\">" + esc(handArt) + "</pre>" +
+                "<svg class=\"ascension-map-svg\" viewBox=\"0 0 100 " + ascMapVbH + "\" preserveAspectRatio=\"xMidYMid meet\" aria-hidden=\"true\">" +
+                renderAscensionMapColumnGuidesSvg(ascMapVbH) +
+                renderAscensionMapEdgesSvg(layout) +
+                "</svg>" +
+                renderAscensionMapDebugOverlaySvg() +
+                "<div class=\"ascension-map-nodes-layer\">" + nodeDots + "</div>" +
+                "</div></div></div>" + legend;
+        }
+        const hubClass = hideAscensionSkillMap ? "ascension-hub ascension-hub--mass-arc-active" : "ascension-hub";
+        const hubAria = hideAscensionSkillMap
+            ? "Number 1 ascension — skill map complete; mass accumulator and black hole"
+            : "Number 1 ascension skill map";
+        const hubTitle = hideAscensionSkillMap
+            ? "<h4 class=\"ascension-hub-title\"><span class=\"ascension-hub-glyph\" aria-hidden=\"true\">◇</span> Ascension — map complete</h4>"
+            : "<h4 class=\"ascension-hub-title\"><span class=\"ascension-hub-glyph\" aria-hidden=\"true\">◇</span> Ascension map</h4>";
+        const hubSub = hideAscensionSkillMap
+            ? "<p class=\"ascension-hub-sub\">Every skill gem is owned. Spend Essence in the <strong>Numerical Mass Accumulator</strong> and later black-hole phases below — the gem map is done.</p>"
+            : "<p class=\"ascension-hub-sub\">Five columns — pinky through thumb — lower branch tier at the bottom of each column, rising toward the top. Combo pulse production is split across <strong>hands that satisfy that pattern</strong>. <strong>Respec is free</strong>. <strong>Hover or click a gem</strong> for details; <strong>click</strong> also attempts purchase.</p>";
         return (
-            "<section class=\"ascension-hub\" aria-label=\"Number 1 ascension skill map\">" +
+            "<section class=\"" + hubClass + "\" aria-label=\"" + esc(hubAria) + "\">" +
             "<header class=\"ascension-hub-header\">" +
-            "<h4 class=\"ascension-hub-title\"><span class=\"ascension-hub-glyph\" aria-hidden=\"true\">◇</span> Ascension map</h4>" +
-            "<p class=\"ascension-hub-sub\">Five columns — pinky through thumb — lower branch tier at the bottom of each column, rising toward the top. Combo pulse production is split across <strong>hands that satisfy that pattern</strong>. <strong>Respec is free</strong>. <strong>Hover or click a gem</strong> for details; <strong>click</strong> also attempts purchase.</p>" +
+            hubTitle +
+            hubSub +
             "<div class=\"ascension-hub-stats\" id=\"ascension-hub-stats\">" + renderAscensionHubStatsPillsHtml() + "</div>" +
-            "<div class=\"ascension-respec-row\"><div class=\"ascension-branch-respecs\">" + fingerRespecs + "</div>" + respecBtn + "</div>" +
+            respecRow +
             "</header>" +
-            "<div class=\"ascension-map-viewport\" id=\"ascension-map-viewport\">" +
-            "<div class=\"ascension-map-detail-panel\" id=\"ascension-map-detail-panel\" aria-live=\"polite\">" +
-            "<div class=\"ascension-map-detail-panel-inner\">" +
-            "<div class=\"ascension-map-detail-kicker\" id=\"ascension-map-detail-kicker\"></div>" +
-            "<div class=\"ascension-map-detail-title\" id=\"ascension-map-detail-title\"></div>" +
-            "<div class=\"ascension-map-detail-effect\" id=\"ascension-map-detail-effect\"></div>" +
-            "<div class=\"ascension-map-detail-meta\" id=\"ascension-map-detail-meta\"></div>" +
-            "</div></div>" +
-            "<div class=\"ascension-map-pan-zoom\" id=\"ascension-map-pan-zoom\">" +
-            "<div class=\"ascension-map-world\">" +
-            "<pre class=\"ascension-hand-backdrop\" aria-hidden=\"true\">" + esc(handArt) + "</pre>" +
-            "<svg class=\"ascension-map-svg\" viewBox=\"0 0 100 " + ascMapVbH + "\" preserveAspectRatio=\"xMidYMid meet\" aria-hidden=\"true\">" +
-            renderAscensionMapColumnGuidesSvg(ascMapVbH) +
-            renderAscensionMapEdgesSvg(layout) +
-            "</svg>" +
-            renderAscensionMapDebugOverlaySvg() +
-            "<div class=\"ascension-map-nodes-layer\">" + nodeDots + "</div>" +
-            "</div></div></div>" + legend + renderNumber1BlackHolePanelHtml() + "</section>"
+            mapAndLegend +
+            renderNumber1BlackHolePanelHtml() +
+            "</section>"
         );
     }
     function renderAscensionNumber2ShellHtml() {
@@ -5045,6 +5129,46 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         if (!Number.isFinite(mult) || mult <= 0) return 0;
         return baseSpeed / mult;
     }
+    /** Count/s row: shows Numerical mass (Phase 1) vs Black hole (Phases 2–6) only after post-map arc unlock. Hidden in Phase 7 (stillness). */
+    function updateN1GravityCpsStrip() {
+        if (!n1GravityCpsStripEl) return;
+        const p = getBlackHolePhase();
+        if (!isBlackHoleArcUnlocked() || p < 1 || p === 7) {
+            n1GravityCpsStripEl.hidden = true;
+            n1GravityCpsStripEl.textContent = "";
+            n1GravityCpsStripEl.className = "n1-gravity-cps-strip";
+            return;
+        }
+        n1GravityCpsStripEl.hidden = false;
+        if (p === 1) {
+            const spent = Math.floor(number1BlackHoleState.phase1EssenceSpent || 0);
+            const m = getBlackHolePhase1RunCpsMult();
+            const ms = m.toFixed(2);
+            n1GravityCpsStripEl.className = "n1-gravity-cps-strip n1-gravity-cps-strip--mass";
+            n1GravityCpsStripEl.innerHTML =
+                "<div class=\"n1-gravity-cps-strip__inner\" role=\"status\">" +
+                "<span class=\"n1-gravity-cps-strip__glyph\" aria-hidden=\"true\">⊕</span>" +
+                "<div class=\"n1-gravity-cps-strip__text\">" +
+                "<span class=\"n1-gravity-cps-strip__line\"><span class=\"n1-gravity-cps-strip__name\">Numerical mass</span>" +
+                "<span class=\"n1-gravity-cps-strip__mult\">CPS ×" + ms + "</span></span>" +
+                "<span class=\"n1-gravity-cps-strip__sub\">Warm weight on the run — no singularity yet · charge " + spent + " / " + BLACK_HOLE_PHASE1_ESSENCE_TARGET + "</span>" +
+                "</div></div>";
+            return;
+        }
+        if (p >= 2) {
+            const t = getBlackHoleTotalMult();
+            const ts = t >= 10 ? t.toFixed(2) : t.toFixed(3);
+            n1GravityCpsStripEl.className = "n1-gravity-cps-strip n1-gravity-cps-strip--void";
+            n1GravityCpsStripEl.innerHTML =
+                "<div class=\"n1-gravity-cps-strip__inner\" role=\"status\">" +
+                "<span class=\"n1-gravity-cps-strip__glyph n1-gravity-cps-strip__glyph--void\" aria-hidden=\"true\">●</span>" +
+                "<div class=\"n1-gravity-cps-strip__text\">" +
+                "<span class=\"n1-gravity-cps-strip__line\"><span class=\"n1-gravity-cps-strip__name\">Black hole</span>" +
+                "<span class=\"n1-gravity-cps-strip__mult\">Counting ×" + ts + "</span></span>" +
+                "<span class=\"n1-gravity-cps-strip__sub\">Cold singularity — disk, waves, furnace, and jet all pull through this total</span>" +
+                "</div></div>";
+        }
+    }
     // Updates the "Count per second" UI:
     // - Total line uses an EMA of real Δtotal/Δwall-clock (see updateCpsDisplayEmaFromTotal) so it tracks actual growth, not instantaneous spike CPS.
     // - "base × bonus × turbo" is scaled so the product matches that smoothed total (instant factors, scaled base).
@@ -5096,7 +5220,17 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             if (bonusUnlocked) calcParts.push(bonusDisplayMult.toFixed(2));
             // bonusDisplayMult matches the right-column “Total bonus”; cpsRateDisplayBase is scaled so base × bonus × turbo === cpsTotal.
             if (turboUnlocked) calcParts.push(turboMult.toFixed(2));
-            if (bhMult > 1.0005) calcParts.push(bhMult >= 10 ? bhMult.toFixed(2) : bhMult.toFixed(3));
+            if (bhMult > 1.0005) {
+                const bhs = bhMult >= 10 ? bhMult.toFixed(2) : bhMult.toFixed(3);
+                let bhPart = bhs;
+                if (isBlackHoleArcUnlocked()) {
+                    const ph = getBlackHolePhase();
+                    if (ph === 1) bhPart = "mass×" + bhs;
+                    else if (ph >= 2 && ph <= 6) bhPart = "black\u00a0hole×" + bhs;
+                    else if (ph === 7) bhPart = "epilogue×" + bhs;
+                }
+                calcParts.push(bhPart);
+            }
             const calcStr = calcParts.length > 1 ? " (" + calcParts.join(" × ") + ")" : "";
             const totalStr = "Total: " + totalFormatted + "/s" + calcStr;
             const handParts = cpsPerHand.slice(0, unlockedHands).map((cps, i) => {
@@ -5107,6 +5241,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         } else {
             incrementalRateEl.textContent = formatCount(cpsTotal < 1e6 ? Math.round(cpsTotal * 100) / 100 : cpsTotal);
         }
+        updateN1GravityCpsStrip();
         updateHandStatusBlocks();
         refreshCombinationsHandStatusIfOpen();
         scheduleFitTopCountRow();
@@ -5998,6 +6133,9 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         if (turboBoostUnlocked) turboBoostMeter = Math.min(turboBoostMeter, getTurboMeterMax());
         resetCpsDisplayEma();
         refreshTotalFromHandEarnings();
+        syncBlackHolePhase1Vfx();
+        updateN1GravityCpsStrip();
+        checkStoryBanners();
     }
     function applyOfflineProgress(offlineMs, opts) {
         const options = opts || {};
@@ -6261,6 +6399,13 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             trigger: () => unlockedHands >= 10,
             title: "This is the sound of 10 hands counting!",
             body: storyTotalCountLead(UNLOCK_THRESHOLDS[8]) + "you unlocked a tenth hand. It is quieter than I thought it would be. You can earn bonuses by having interesting hand combinations like all of the hands are on the same number at the end of the tick. It shouldn't be too hard to collect them all."
+        },
+        {
+            id: "black-hole-mass-accumulator-intro",
+            order: 50,
+            trigger: () => number1HasAscended && isBlackHoleArcUnlocked() && getBlackHolePhase() === 1,
+            title: "Gravity takes hold",
+            body: "You have mapped every path. Your numbers are no longer weightless — feed Essence to the Numerical Mass Accumulator on Ascension and feel gravity take hold. Under Count per second, warm numerical mass shows your inertial boost while you charge; after collapse, that readout turns into the cold singularity stack for the black hole itself."
         }
     ];
     const shownBannerIds = new Set();
