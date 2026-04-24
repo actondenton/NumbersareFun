@@ -100,6 +100,63 @@ flowchart LR
 
 ---
 
+### Phase 2 — Gap analysis (design / art vs current implementation)
+
+*Audience: engineering + art. Source of truth for “v1 locked” is the sections above + the Implementation decisions table; current behavior is primarily `legacy-boot.js` (black hole state, `tryBuyNumber1BlackHole`, ascend gain breakdown, `updateBlackHolePhaseStep`, ascension panel HTML).*
+
+#### A. Gameplay & systems
+
+| Gap | Plan / intent | Current implementation | Severity |
+|-----|----------------|-------------------------|----------|
+| **A1 — No three upgrade tracks** | v1 locked set: **(1)** Essence→mass **efficiency**, **(2)** Photon shell (Hawking **primer**), **(3)** Ergosphere coupling (**passive Turbo / sec**). | Phase 2 is a **single sink**: pour Essence → `phase2Mass` + `phase2EssenceBank` → `getBlackHolePhase2MassMult()` only. No separate purchases, levels, or tooltips for the three named upgrades. | **High** — core Phase 2 identity missing. |
+| **A2 — Photon shell absent** | Small bridge into Phase 3: **+Hawking proc frequency** (or equivalent “disk primer”) *during* Phase 2. | Hawking cadence / amplitude logic is **Phase 3+** only (`getBlackHoleHawkingMult`, `updateBlackHolePhaseStep`). Nothing in Phase 2 modifies future Hawking or a visible “primer” meter. | **High** |
+| **A3 — Ergosphere coupling absent** | Early **passive Turbo meter / sec** from a **Phase-2-purchased** track (plan; aligns with later “Gravitational drive” philosophy). | No Phase-2-only passive meter/sec tied to BH purchases. Turbo fill remains combo/ascension-ring/etc. as elsewhere. | **High** |
+| **A4 — Essence→mass ratio not a separate knob** | Primary **efficiency** knob: improve mass per Essence *or* reduce effective cost per step (player-facing choice / upgrades). | Efficiency is **only** the global cost curve (`BLACK_HOLE_COST_BASE` / `BLACK_HOLE_COST_GROWTH`) + fractional step via bank; no player-controlled ratio upgrade. | **Medium–High** |
+| **A5 — Parallel bonus pool semantics** | Pool is the **Phase 2 Essence pacing buff** for **next ascend** (or stackable bucket), **not** “only silently rewriting” base formula — player should **feel** Essence→parallel linkage. | `phase2ParallelBonusPool` **creeps up over real time** (`+ dt * 0.0002`, cap `1.5`) **independent of feeding Essence into mass**, then adds to ascend `phaseMult`. No spend interaction, no bucket UI breakdown on ascend preview. | **Medium** — mechanic exists but **does not match** the “feed the hole → parallel payoff” fantasy. |
+| **A6 — Phase exit condition vs mass ceiling** | “Push mass further” with upgrades; pacing doc speaks to **Essence throughput toward Phase 3** (~5 ascensions / ~1000 Essence class targets — tune as needed). | Hard gate **`BLACK_HOLE_PHASE2_MASS_CAP` = 60** mass steps then auto **Phase 3**; legacy `BLACK_HOLE_MAX_LEVEL` (400) still exists elsewhere and can confuse tuning/docs. | **Medium** — may be fine numerically, but **needs explicit design sign-off** and doc alignment. |
+| **A7 — ~1e100 run goal** | Phase 2 should help the player **regularly reach ~1e100** total count. | Power is almost entirely **`getBlackHolePhase2MassMult`** (+ Phase 1 carryover) + rest of run; **no dedicated tuning pass** documented here against the 1e100 bar for this phase alone. | **Medium** (validation / QA) |
+
+#### B. UX, clarity & ascension UI
+
+| Gap | Plan / intent | Current implementation | Severity |
+|-----|----------------|-------------------------|----------|
+| **B1 — Parallel pool UI (locked decision)** | Show BH parallel bonuses in ascension area with **distinct color/style** from tree bonuses. | Ascend math uses pool in `computeNumber1AscensionGainBreakdown`, but **no dedicated BH-origin pill** / line item in ascend confirm or hub stats (void pill shows BH mult + mass, not “Parallel pool +X.XX”). | **Medium** |
+| **B2 — Upgrade legibility** | Each Phase-2 upgrade line should be **legible** on the panel with clear **cause → effect** (per plan voice: “read on the meter”). | One paragraph + purse line + single button; no per-track meters, costs, or “next bonus at tier N”. | **Medium** |
+| **B3 — Phase transition UX (global)** | Phase transitions: **pause**, story modal, **confirm** to resume (table row). | Mix of **story banners**, logs, and VFX; not the full gated modal pattern described for all transitions. (Phase 1→2 has collapse banner + pulse; verify Phase 2→3 matches spec.) | **Low–Medium** (cross-phase) |
+
+#### C. Art direction & spectacle
+
+| Gap | Plan / intent | Current implementation | Severity |
+|-----|----------------|-------------------------|----------|
+| **C1 — Hand absorption / map hand replacement** | When BH replaces ascension hand: **short hand-absorption VFX** so transition is “legible and dramatic.” | Phase 1 has **mass / singularity** CSS classes on `#number1-stage-root`; **no bespoke** “hand absorbed into void” beat tied to map completion → Phase 2 entry beyond existing mood classes. | **Medium** (art) |
+| **C2 — Phase 2 visual identity** | “Black hole collapse”: player **feels** collapse, singularity depth, **deliberate feed** (plan voice). | Mostly **copy + stat line** + same ascension page chrome as other phases; no unique **key art**, shader, or **feed pulse** on successful pour (beyond general BH strip if present). | **Medium** (art) |
+| **C3 — Juice on feed** | Every feed should feel like **investment**, not silent spreadsheet growth. | Functional logs + panel refresh; **no** screen-space **consequence** (shake, ring, particle burst scaled by Essence spent, SFX tier by mass level, etc.). | **Low–Medium** (art + audio) |
+
+#### D. Narrative & copy
+
+| Gap | Plan / intent | Current implementation | Severity |
+|-----|----------------|-------------------------|----------|
+| **D1 — Story beat for “still have numerical mass benefit”** | Explicit story: player **notices** they still get counting-speed benefit from raw numerical mass, **then** pushes mass further. | Phase 1 already encodes inertial mult; Phase 2 copy mentions collapse + parallel pool but **does not strongly restate** the “mass benefit persists + deepens” beat in one tight line tied to **visible meters**. | **Low** |
+| **D2 — Naming the three upgrades** | Locked names: **Essence→mass ratio**, **Photon shell**, **Ergosphere coupling**. | Names **only appear in this doc**, not in-game. | **Low** until A1 is built |
+
+#### E. Engineering consistency & tech debt
+
+| Gap | Notes | Severity |
+|-----|--------|----------|
+| **E1** | **`BLACK_HOLE_MAX_LEVEL` (400) vs `BLACK_HOLE_PHASE2_MASS_CAP` (60)`** — clarify which is authoritative for saves, UI, and `number1AscensionBlackHoleLevel` migration. | **Low** |
+| **E2** | **Save / migrate** when adding real upgrade levels (new fields, respec rules, `hasBlackHoleProgressLockingRespec`). | **Low** (ahead of work) |
+| **E3** | **Offline / tab background**: parallel pool still ticks (`updateBlackHolePhaseStep`); mass bank does not. Decide if passive pool should tick offline or bank EV lump (per plan’s general offline philosophy for other systems). | **Low** |
+
+#### Suggested work order (starter backlog)
+
+1. **Ship A1–A4 in one vertical slice**: three visible upgrade rows + Essence costs + effects wired (mass efficiency, Hawking primer, passive Turbo/sec) — even at tier 1 each — before heavy art.  
+2. **Rework A5** so parallel pool **ties to player action** (e.g. % of Essence spent into mass, or per completed mass tier) and **surface it** (B1) in ascend preview + hub.  
+3. **Close A2/A3** with minimal Phase-3-safe implementation (primer can pre-seed timers or soft-cap CD hidden until P3 if needed).  
+4. **Art pass C1–C3** once the panel has real buttons to hang VFX/SFX on.  
+5. **Tuning pass A6/A7** with target curves and a single source of truth for mass cap vs legacy constants.
+
+---
+
 ### Phase 3 — Accretion disk
 
 **Fantasy:** continued Essence investment makes an **accretion disk** form around the hole. **Visual reference:** *Interstellar*-style disk (readable, iconic).

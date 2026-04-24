@@ -179,13 +179,23 @@
         phase: 0,
         phase1EssenceSpent: 0,
         phase2Mass: 0,
+        /** Essence banked toward the next Phase 2 mass step (partial feeds). */
+        phase2EssenceBank: 0,
+        /** Phase 2 “collapse” upgrades (0–3 each). All three must reach 3 before mass pour unlocks. */
+        phase2CollapseMassTier: 0,
+        phase2CollapsePhotonTier: 0,
+        phase2CollapseErgosphereTier: 0,
         phase2ParallelBonusPool: 0,
         phase3HawkingStrength: 0,
+        /** Essence banked toward the next Phase 3 disk upgrade (partial feeds). */
+        phase3EssenceBank: 0,
         phase3HawkingRate: 0,
         phase3HawkingDuration: 0,
         phase3HawkingActiveUntilMs: 0,
         phase3NextHawkingAtMs: 0,
         phase4WaveLevel: 0,
+        /** Essence banked toward the next Phase 4 wave upgrade (partial feeds). */
+        phase4EssenceBank: 0,
         phase4WaveActiveUntilMs: 0,
         phase4NextWaveAtMs: 0,
         phase4ManualReadyAtMs: 0,
@@ -199,13 +209,17 @@
         phase6JetBoostLevel: 0,
         phase6JetEfficiencyLevel: 0,
         phase6JetBankLevel: 0,
+        /** Essence banked toward the next Phase 6 jet upgrade bundle (partial feeds). */
+        phase6EssenceBank: 0,
         phase6JetFuelBurnPerSec: 0,
         phase6JetBestAscensionEssence: 0,
         phase7EpilogueCounter: 0,
         phase7EnteredAtMs: 0,
         evaporationComplete: false,
         /** One-shot “Mass Accumulator unlocked” spectacle (persisted so it plays once per save). */
-        phase1VisualUnlockDone: false
+        phase1VisualUnlockDone: false,
+        /** One-shot ascension-map collapse transition after final node purchase. */
+        phase1MapCollapseSeen: false
     };
     /** Non-persistent one-shot UX notices for BH state changes. */
     let number1BlackHoleUxFlags = {
@@ -214,6 +228,10 @@
         jetReadyAnnounced: false,
         jetDryAnnounced: false
     };
+    const ASCENSION_MAP_COLLAPSE_DURATION_MS = 3100;
+    let ascensionMapCollapseActiveUntilMs = 0;
+    let ascensionMapCollapseTimerId = 0;
+    let ascensionMapCollapsePending = false;
     /** Hard cap to enforce irreversible furnace sacrifices. */
     let unlockedHandsCap = maxHands;
     /** If false, first ascend shows the teaching overlay (PRD: first completion only). */
@@ -230,7 +248,6 @@
         let s = 0;
         for (let i = 0; i < unlockedHands; i++) s += handEarnings[i] || 0;
         totalChanges = Math.min(BLACK_HOLE_EVAPORATION_CAP, s);
-        updateCpsDisplayEmaFromTotal(Date.now(), totalChanges, getInstantTotalCps());
         syncUnlocksWithTotalCount();
     }
 
@@ -349,6 +366,9 @@
     const ACTION_LOG_EXPANDED = 15;
     const actionLogEntries = [];
     let actionLogExpanded = false;
+    let messageLogLastRenderedVisibleCount = -1;
+    let messageLogLastRenderedHeadSig = "";
+    let messageLogLastRenderedTailSig = "";
     const RECENT_RANDOM_LOG_COUNT = 3;
     const recentRandomLogMessages = [];
     /** Typed message log: category drives GLaDOS-style color coding; humor filtered by settings. */
@@ -1012,6 +1032,13 @@
         refreshMessageLogPanelIfOpen();
     }
     function renderActionLog() {
+        if (!actionLogEl) return;
+        const prevTop = actionLogEl.scrollTop;
+        const prevLeft = actionLogEl.scrollLeft;
+        const prevHeight = actionLogEl.scrollHeight;
+        const prevWidth = actionLogEl.scrollWidth;
+        const wasPinnedToBottom = (prevTop + actionLogEl.clientHeight) >= (prevHeight - 2);
+        const wasPinnedToRight = (prevLeft + actionLogEl.clientWidth) >= (prevWidth - 2);
         const n = actionLogExpanded ? ACTION_LOG_EXPANDED : ACTION_LOG_VISIBLE;
         const visible = actionLogEntries.filter(entry => isLogCategoryVisible(entry.category));
         const toShow = visible.slice(-n);
@@ -1023,6 +1050,16 @@
             line.textContent = entry.text;
             actionLogEl.appendChild(line);
         });
+        if (wasPinnedToBottom) {
+            actionLogEl.scrollTop = actionLogEl.scrollHeight;
+        } else {
+            actionLogEl.scrollTop = prevTop;
+        }
+        if (wasPinnedToRight) {
+            actionLogEl.scrollLeft = actionLogEl.scrollWidth;
+        } else {
+            actionLogEl.scrollLeft = prevLeft;
+        }
     }
     if (actionLogToggle) {
         actionLogToggle.addEventListener("click", () => {
@@ -1056,6 +1093,16 @@
         if (h > 0) return h + "h " + m + "m " + r + "s";
         if (m > 0) return m + "m " + r + "s";
         return r + "s";
+    }
+    /** Compact multiplier text to keep top-center CPS line readable. */
+    function formatCompactMultiplier(v) {
+        const n = Number(v) || 0;
+        if (!(n > 0)) return "0";
+        if (n >= 1e9) return n.toExponential(2);
+        if (n >= 1e6) return n.toExponential(2);
+        if (n >= 1e3) return n.toFixed(1);
+        if (n >= 10) return n.toFixed(2);
+        return n.toFixed(3);
     }
     /** Turbo-scension level lines: whole numbers only (internal bank/cost may be fractional). */
     function formatTurboScensionLevelDisplay(n) {
@@ -1354,6 +1401,12 @@
     const BLACK_HOLE_PHASE4_WAVE_BOOST_DURATION_SEC = 5;
     const BLACK_HOLE_EVAPORATION_CAP = 1e308;
     const BLACK_HOLE_DIGEST_BASE_MS = 24 * 3600 * 1000;
+    /** Mass steps in Phase 2 before transition to accretion (Phase 3); must match tryBuy transition. */
+    const BLACK_HOLE_PHASE2_MASS_CAP = 60;
+    /** Purchases per collapse track before Essence can pour into mass (Phase 2). */
+    const BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER = 3;
+    /** Essence cost multiplier for all Phase 2 costs (upgrades + mass steps). */
+    const BLACK_HOLE_PHASE2_COST_MULT = 10;
     function isNumber1AscensionTreeFullyPurchased() {
         if (!number1HasAscended || !ASCENSION_MAP_NODES || ASCENSION_MAP_NODES.length === 0) return false;
         const s = ascensionPurchasedSet();
@@ -1391,24 +1444,125 @@
         if (phase > 1) return true;
         if (Math.floor(Number(number1BlackHoleState.phase1EssenceSpent) || 0) > 0) return true;
         if (Math.floor(Number(number1BlackHoleState.phase2Mass) || 0) > 0) return true;
+        if (Math.floor(Number(number1BlackHoleState.phase2EssenceBank) || 0) > 0) return true;
+        if (getBlackHolePhase2CollapseMassTier() > 0) return true;
+        if (getBlackHolePhase2CollapsePhotonTier() > 0) return true;
+        if (getBlackHolePhase2CollapseErgosphereTier() > 0) return true;
         if (Math.floor(Number(number1BlackHoleState.phase3HawkingStrength) || 0) > 0) return true;
+        if (Math.floor(Number(number1BlackHoleState.phase3EssenceBank) || 0) > 0) return true;
         if (Math.floor(Number(number1BlackHoleState.phase4WaveLevel) || 0) > 0) return true;
+        if (Math.floor(Number(number1BlackHoleState.phase4EssenceBank) || 0) > 0) return true;
         if (Math.floor(Number(number1BlackHoleState.phase5FurnaceLevel) || 0) > 0) return true;
         if (Math.floor(Number(number1BlackHoleState.phase6JetBoostLevel) || 0) > 0) return true;
+        if (Math.floor(Number(number1BlackHoleState.phase6EssenceBank) || 0) > 0) return true;
         if ((number1BlackHoleState.phase5ConsumedHands || []).length > 0) return true;
         return false;
     }
+    function clampBlackHolePhase2CollapseTier(n) {
+        return Math.max(0, Math.min(BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER, Math.floor(Number(n) || 0)));
+    }
+    function getBlackHolePhase2CollapseMassTier() {
+        return clampBlackHolePhase2CollapseTier(number1BlackHoleState.phase2CollapseMassTier);
+    }
+    function getBlackHolePhase2CollapsePhotonTier() {
+        return clampBlackHolePhase2CollapseTier(number1BlackHoleState.phase2CollapsePhotonTier);
+    }
+    function getBlackHolePhase2CollapseErgosphereTier() {
+        return clampBlackHolePhase2CollapseTier(number1BlackHoleState.phase2CollapseErgosphereTier);
+    }
+    /** True when each collapse track has reached max tier — mass pour is allowed. */
+    function isBlackHolePhase2MassPourUnlocked() {
+        return (
+            getBlackHolePhase2CollapseMassTier() >= BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER &&
+            getBlackHolePhase2CollapsePhotonTier() >= BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER &&
+            getBlackHolePhase2CollapseErgosphereTier() >= BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER
+        );
+    }
+    /** Essence→mass coupling: lowers effective Essence cost per mass step (Phase 2 only). */
+    function getBlackHolePhase2MassCouplingCostMult() {
+        const t = getBlackHolePhase2CollapseMassTier();
+        if (t <= 0 || getBlackHolePhase() !== 2) return 1;
+        return 1 / (1 + 0.09 * t);
+    }
+    /** Photon shell: small persistent counting mult + Hawking cadence trim (tier stored across phases). */
+    function getBlackHolePhase2PhotonShellMult() {
+        const t = getBlackHolePhase2CollapsePhotonTier();
+        if (t <= 0) return 1;
+        return 1 + 0.045 * t;
+    }
+    function getBlackHolePhase2PhotonHawkingCdTrimSec() {
+        const t = getBlackHolePhase2CollapsePhotonTier();
+        if (t <= 0) return 0;
+        return Math.min(6, 0.75 * t);
+    }
+    /** Next Essence cost for one purchase on a collapse track (`mass` | `photon` | `ergosphere`). */
+    function getBlackHolePhase2CollapseUpgradeCost(track) {
+        let tier = 0;
+        let base = 32;
+        if (track === "mass") {
+            tier = getBlackHolePhase2CollapseMassTier();
+            base = 30;
+        } else if (track === "photon") {
+            tier = getBlackHolePhase2CollapsePhotonTier();
+            base = 34;
+        } else if (track === "ergosphere") {
+            tier = getBlackHolePhase2CollapseErgosphereTier();
+            base = 38;
+        } else {
+            return Number.MAX_SAFE_INTEGER;
+        }
+        if (tier >= BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER) return 0;
+        const raw = base * Math.pow(2.08, tier);
+        if (!Number.isFinite(raw) || raw <= 0) return Number.MAX_SAFE_INTEGER;
+        return Math.min(Number.MAX_SAFE_INTEGER, Math.floor(raw * BLACK_HOLE_PHASE2_COST_MULT));
+    }
+    /** Essence cost for one mass step from current integer mass level L → L+1 (Phase 2 only). */
+    function getBlackHolePhase2CostAtLevel(L) {
+        const lv = Math.max(0, Math.min(BLACK_HOLE_PHASE2_MASS_CAP - 1, Math.floor(L)));
+        const raw = BLACK_HOLE_COST_BASE * Math.pow(BLACK_HOLE_COST_GROWTH, lv);
+        if (!Number.isFinite(raw) || raw <= 0) return Number.MAX_SAFE_INTEGER;
+        const scaled = Math.floor(raw * getBlackHolePhase2MassCouplingCostMult());
+        return Math.min(Number.MAX_SAFE_INTEGER, Math.max(1, Math.floor(scaled * BLACK_HOLE_PHASE2_COST_MULT)));
+    }
     function getBlackHolePhase2MassMult() {
-        const L = Math.max(0, Math.min(BLACK_HOLE_MAX_LEVEL, Math.floor(Number(number1BlackHoleState.phase2Mass) || 0)));
-        if (L <= 0) return 1;
-        return Math.pow(BLACK_HOLE_MULT_PER_LEVEL, L);
+        const L = Math.max(0, Math.min(BLACK_HOLE_PHASE2_MASS_CAP, Math.floor(Number(number1BlackHoleState.phase2Mass) || 0)));
+        if (getBlackHolePhase() > 2) {
+            if (L <= 0) return 1;
+            return Math.pow(BLACK_HOLE_MULT_PER_LEVEL, L);
+        }
+        const bank = Math.max(0, Math.floor(Number(number1BlackHoleState.phase2EssenceBank) || 0));
+        if (L >= BLACK_HOLE_PHASE2_MASS_CAP) return Math.pow(BLACK_HOLE_MULT_PER_LEVEL, BLACK_HOLE_PHASE2_MASS_CAP);
+        if (L <= 0 && bank <= 0) return 1;
+        const cost = getBlackHolePhase2CostAtLevel(L);
+        const frac = cost > 0 ? Math.min(1, bank / cost) : 0;
+        return Math.pow(BLACK_HOLE_MULT_PER_LEVEL, L + frac);
     }
     function getBlackHolePhase2NextCostEssence() {
-        const L = Math.max(0, Math.min(BLACK_HOLE_MAX_LEVEL, Math.floor(Number(number1BlackHoleState.phase2Mass) || 0)));
-        if (L >= BLACK_HOLE_MAX_LEVEL) return 0;
-        const raw = BLACK_HOLE_COST_BASE * Math.pow(BLACK_HOLE_COST_GROWTH, L);
-        if (!Number.isFinite(raw) || raw <= 0) return Number.MAX_SAFE_INTEGER;
-        return Math.min(Number.MAX_SAFE_INTEGER, Math.floor(raw));
+        const L = Math.max(0, Math.min(BLACK_HOLE_PHASE2_MASS_CAP, Math.floor(Number(number1BlackHoleState.phase2Mass) || 0)));
+        if (L >= BLACK_HOLE_PHASE2_MASS_CAP) return 0;
+        return getBlackHolePhase2CostAtLevel(L);
+    }
+    /** [0,1] progress from banked Essence toward the next Phase 3 disk upgrade (while still in Phase 3). */
+    function getBlackHolePhase3UpgradeFrac() {
+        if (getBlackHolePhase() !== 3) return 0;
+        const S = Math.floor(Number(number1BlackHoleState.phase3HawkingStrength) || 0);
+        if (S >= 6) return 0;
+        const bank = Math.max(0, Math.floor(Number(number1BlackHoleState.phase3EssenceBank) || 0));
+        const cost = 75 + 25 * S;
+        if (!(cost > 0)) return 0;
+        return Math.min(1, bank / cost);
+    }
+    function getBlackHolePhase4NextCostEssenceForWave(w) {
+        const W = Math.max(0, Math.floor(Number(w) || 0));
+        if (W >= 6) return 0;
+        return 200 + 80 * W;
+    }
+    function getBlackHolePhase4NextCostEssence() {
+        return getBlackHolePhase4NextCostEssenceForWave(number1BlackHoleState.phase4WaveLevel || 0);
+    }
+    function getBlackHolePhase6NextJetUpgradeCostEssence() {
+        const B = Math.floor(Number(number1BlackHoleState.phase6JetBoostLevel) || 0);
+        return 300 + 120 * B;
     }
     function getBlackHolePhase1FillRatio() {
         const s = Math.max(0, Math.floor(Number(number1BlackHoleState.phase1EssenceSpent) || 0));
@@ -1436,7 +1590,9 @@
         if (p < 3 || p >= 6) return 1;
         const now = Date.now();
         if (now > (number1BlackHoleState.phase3HawkingActiveUntilMs || 0)) return 1;
-        const amp = 0.25 + 0.1 * (number1BlackHoleState.phase3HawkingStrength || 0);
+        const baseS = Math.floor(Number(number1BlackHoleState.phase3HawkingStrength) || 0);
+        const sEff = p === 3 ? baseS + getBlackHolePhase3UpgradeFrac() : baseS;
+        const amp = 0.25 + 0.1 * sEff;
         return 1 + amp;
     }
     function getBlackHoleWaveMult() {
@@ -1450,11 +1606,27 @@
     }
     function getBlackHoleJetMult() {
         if (getBlackHolePhase() < 6 || !number1BlackHoleState.phase6JetActive) return 1;
-        return 1 + 3 * (1 + 0.15 * (number1BlackHoleState.phase6JetBoostLevel || 0));
+        const B = Math.floor(Number(number1BlackHoleState.phase6JetBoostLevel) || 0);
+        let frac = 0;
+        if (getBlackHolePhase() === 6) {
+            const bank = Math.max(0, Math.floor(Number(number1BlackHoleState.phase6EssenceBank) || 0));
+            const c = getBlackHolePhase6NextJetUpgradeCostEssence();
+            if (c > 0) frac = Math.min(1, bank / c);
+        }
+        const bEff = B + frac;
+        return 1 + 3 * (1 + 0.15 * bEff);
     }
     function getBlackHoleTotalMult() {
         if (!isBlackHoleArcUnlocked()) return 1;
-        return getBlackHolePhase2MassMult() * getBlackHolePhase1RunCpsMult() * getBlackHoleHawkingMult() * getBlackHoleWaveMult() * getBlackHoleFurnaceMult() * getBlackHoleJetMult();
+        return (
+            getBlackHolePhase2MassMult() *
+            getBlackHolePhase1RunCpsMult() *
+            getBlackHolePhase2PhotonShellMult() *
+            getBlackHoleHawkingMult() *
+            getBlackHoleWaveMult() *
+            getBlackHoleFurnaceMult() *
+            getBlackHoleJetMult()
+        );
     }
     function getNumber1BlackHoleProductionMult() {
         return getBlackHoleTotalMult();
@@ -1488,6 +1660,7 @@
         }
         number1StageRootEl.classList.toggle("bh-phase1-vfx", massMood);
         number1StageRootEl.classList.toggle("bh-singularity-vfx", singularityMood);
+        number1StageRootEl.classList.toggle("bh-singularity-deep", singularityMood);
         if (massMood && !number1BlackHoleState.phase1VisualUnlockDone) {
             number1BlackHoleState.phase1VisualUnlockDone = true;
             let allowSurge = true;
@@ -1532,6 +1705,10 @@
         const from = getBlackHolePhase();
         if (nextPhase <= from) return;
         number1BlackHoleState.phase = nextPhase;
+        if (nextPhase >= 3) number1BlackHoleState.phase2EssenceBank = 0;
+        if (nextPhase >= 4) number1BlackHoleState.phase3EssenceBank = 0;
+        if (nextPhase >= 5) number1BlackHoleState.phase4EssenceBank = 0;
+        if (nextPhase >= 7) number1BlackHoleState.phase6EssenceBank = 0;
         syncBlackHolePhase1Vfx();
         updateN1GravityCpsStrip();
         updateRateDisplay();
@@ -1545,7 +1722,7 @@
                 body: "Critical mass reached. The accumulator collapses inward. A black hole is born."
             });
         }
-        if (nextPhase === 2) addToLog("Tip: feed Essence into mass. More mass raises production and future ascension yield.", "tip");
+        if (nextPhase === 2) addToLog("Tip: buy three collapse upgrades to tier 3 each, then pour Essence into mass.", "tip");
         if (nextPhase === 3) addToLog("Tip: Hawking bursts are brief. Time your pushes around burst windows.", "tip");
         if (nextPhase === 4) addToLog("Tip: Gravitational Wave can be fired manually at half-interval timing.", "tip");
         if (nextPhase === 5) addToLog("Tip: sacrifices are permanent. Feed hands in order 10 -> 1. Use Essence to accelerate digestion.", "tip");
@@ -1573,6 +1750,50 @@
         autosaveNow();
         queueBlackHoleUiRefresh();
     }
+    function tryBuyBlackHolePhase2CollapseUpgrade(track) {
+        if (!number1HasAscended) return;
+        if (!isBlackHoleArcUnlocked()) {
+            addToLog("Black Hole is locked. Buy every ascension map node first.", "warning");
+            return;
+        }
+        if (getBlackHolePhase() !== 2) return;
+        if (track !== "mass" && track !== "photon" && track !== "ergosphere") return;
+        const cost = getBlackHolePhase2CollapseUpgradeCost(track);
+        if (!(cost > 0)) return;
+        const have = Math.max(0, Math.floor(Number(number1AscensionEssence) || 0));
+        if (have < cost) {
+            addToLog("Need " + formatCount(cost) + " Ascension Essence for this upgrade.", "warning");
+            return;
+        }
+        let cur = 0;
+        let name = "";
+        if (track === "mass") {
+            cur = getBlackHolePhase2CollapseMassTier();
+            name = "Essence–mass coupling";
+            if (cur >= BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER) return;
+            number1BlackHoleState.phase2CollapseMassTier = cur + 1;
+        } else if (track === "photon") {
+            cur = getBlackHolePhase2CollapsePhotonTier();
+            name = "Photon shell";
+            if (cur >= BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER) return;
+            number1BlackHoleState.phase2CollapsePhotonTier = cur + 1;
+        } else if (track === "ergosphere") {
+            cur = getBlackHolePhase2CollapseErgosphereTier();
+            name = "Ergosphere coupling";
+            if (cur >= BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER) return;
+            number1BlackHoleState.phase2CollapseErgosphereTier = cur + 1;
+        } else {
+            return;
+        }
+        number1AscensionEssence -= cost;
+        addToLog(name + " → tier " + (cur + 1) + "/" + BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER + ".", "tip");
+        if (isBlackHolePhase2MassPourUnlocked()) {
+            addToLog("Singularity accepts direct mass feeds. Pour Essence when you are ready.", "milestone");
+        }
+        autosaveNow();
+        queueBlackHoleUiRefresh();
+        updateRateDisplay();
+    }
     function tryBuyNumber1BlackHole() {
         if (!number1HasAscended) return;
         if (!isBlackHoleArcUnlocked()) {
@@ -1597,35 +1818,85 @@
                 completeBlackHolePhaseTransition(2, "Phase 1 complete: accumulator collapse. Phase 2 unlocked.");
             }
         } else if (phase === 2) {
-            const L = Math.max(0, Math.min(BLACK_HOLE_MAX_LEVEL, Math.floor(Number(number1BlackHoleState.phase2Mass) || 0)));
-            if (L >= BLACK_HOLE_MAX_LEVEL) return;
-            const cost = getBlackHolePhase2NextCostEssence();
-            if (!(cost > 0) || number1AscensionEssence < cost) {
-                addToLog("Phase 2 requires " + formatCount(cost) + " Essence for the next mass step.", "warning");
+            if (!isBlackHolePhase2MassPourUnlocked()) {
+                addToLog("Stabilize all three collapse upgrades to tier 3 before pouring Essence into mass.", "warning");
                 return;
             }
-            number1AscensionEssence -= cost;
-            number1BlackHoleState.phase2Mass = L + 1;
-            number1AscensionBlackHoleLevel = number1BlackHoleState.phase2Mass;
-            if ((number1BlackHoleState.phase2Mass || 0) >= 60) {
+            let L = Math.max(0, Math.min(BLACK_HOLE_PHASE2_MASS_CAP, Math.floor(Number(number1BlackHoleState.phase2Mass) || 0)));
+            if (L >= BLACK_HOLE_PHASE2_MASS_CAP) return;
+            const have = Math.max(0, Math.floor(Number(number1AscensionEssence) || 0));
+            if (have < 1) {
+                addToLog("Need Ascension Essence to feed mass into the singularity.", "warning");
+                return;
+            }
+            number1AscensionEssence -= have;
+            let bank = Math.max(0, Math.floor(Number(number1BlackHoleState.phase2EssenceBank) || 0)) + have;
+            while (L < BLACK_HOLE_PHASE2_MASS_CAP) {
+                const c = getBlackHolePhase2CostAtLevel(L);
+                if (!(c > 0) || bank < c) break;
+                bank -= c;
+                L++;
+            }
+            number1BlackHoleState.phase2Mass = L;
+            number1BlackHoleState.phase2EssenceBank = bank;
+            number1AscensionBlackHoleLevel = L;
+            const nextC = L < BLACK_HOLE_PHASE2_MASS_CAP ? getBlackHolePhase2CostAtLevel(L) : 0;
+            const bankNote = bank > 0 && nextC > 0 ? (" · " + formatCount(bank) + " / " + formatCount(nextC) + " Essence banked toward the next mass step") : "";
+            addToLog("Fed " + formatCount(have) + " Essence into black hole mass" + bankNote + ".", "tip");
+            if (L >= BLACK_HOLE_PHASE2_MASS_CAP) {
+                number1BlackHoleState.phase2EssenceBank = 0;
                 completeBlackHolePhaseTransition(3, "Phase 2 complete: accretion disk ignites. Phase 3 unlocked.");
             }
         } else if (phase === 3) {
-            const cost = 75 + 25 * Math.floor(number1BlackHoleState.phase3HawkingStrength || 0);
-            if (number1AscensionEssence < cost) return addToLog("Phase 3 requires " + formatCount(cost) + " Essence.", "warning");
-            number1AscensionEssence -= cost;
-            number1BlackHoleState.phase3HawkingStrength = (number1BlackHoleState.phase3HawkingStrength || 0) + 1;
-            number1BlackHoleState.phase3HawkingRate = (number1BlackHoleState.phase3HawkingRate || 0) + 1;
-            number1BlackHoleState.phase3HawkingDuration = (number1BlackHoleState.phase3HawkingDuration || 0) + 1;
-            if ((number1BlackHoleState.phase3HawkingStrength || 0) >= 6) {
+            let S = Math.floor(Number(number1BlackHoleState.phase3HawkingStrength) || 0);
+            if (S >= 6) return;
+            const have = Math.max(0, Math.floor(Number(number1AscensionEssence) || 0));
+            if (have < 1) {
+                addToLog("Need Ascension Essence for disk upgrades.", "warning");
+                return;
+            }
+            number1AscensionEssence -= have;
+            let bank = Math.max(0, Math.floor(Number(number1BlackHoleState.phase3EssenceBank) || 0)) + have;
+            while (S < 6) {
+                const c = 75 + 25 * S;
+                if (bank < c) break;
+                bank -= c;
+                S++;
+            }
+            number1BlackHoleState.phase3HawkingStrength = S;
+            number1BlackHoleState.phase3HawkingRate = S;
+            number1BlackHoleState.phase3HawkingDuration = S;
+            number1BlackHoleState.phase3EssenceBank = bank;
+            const nextC = S < 6 ? 75 + 25 * S : 0;
+            const bankNote = bank > 0 && nextC > 0 ? (" · " + formatCount(bank) + " / " + formatCount(nextC) + " toward next disk tier") : "";
+            addToLog("Fed " + formatCount(have) + " Essence into the accretion disk" + bankNote + ".", "tip");
+            if (S >= 6) {
+                number1BlackHoleState.phase3EssenceBank = 0;
                 completeBlackHolePhaseTransition(4, "Phase 3 complete: lensing active. Phase 4 unlocked.");
             }
         } else if (phase === 4) {
-            const cost = 200 + 80 * Math.floor(number1BlackHoleState.phase4WaveLevel || 0);
-            if (number1AscensionEssence < cost) return addToLog("Phase 4 requires " + formatCount(cost) + " Essence.", "warning");
-            number1AscensionEssence -= cost;
-            number1BlackHoleState.phase4WaveLevel = (number1BlackHoleState.phase4WaveLevel || 0) + 1;
-            if ((number1BlackHoleState.phase4WaveLevel || 0) >= 6) {
+            let W = Math.floor(Number(number1BlackHoleState.phase4WaveLevel) || 0);
+            if (W >= 6) return;
+            const have = Math.max(0, Math.floor(Number(number1AscensionEssence) || 0));
+            if (have < 1) {
+                addToLog("Need Ascension Essence for wave upgrades.", "warning");
+                return;
+            }
+            number1AscensionEssence -= have;
+            let bank = Math.max(0, Math.floor(Number(number1BlackHoleState.phase4EssenceBank) || 0)) + have;
+            while (W < 6) {
+                const c = getBlackHolePhase4NextCostEssenceForWave(W);
+                if (bank < c) break;
+                bank -= c;
+                W++;
+            }
+            number1BlackHoleState.phase4WaveLevel = W;
+            number1BlackHoleState.phase4EssenceBank = bank;
+            const nextC = W < 6 ? getBlackHolePhase4NextCostEssenceForWave(W) : 0;
+            const bankNote = bank > 0 && nextC > 0 ? (" · " + formatCount(bank) + " / " + formatCount(nextC) + " toward next wave tier") : "";
+            addToLog("Fed " + formatCount(have) + " Essence into gravitational lensing" + bankNote + ".", "tip");
+            if (W >= 6) {
+                number1BlackHoleState.phase4EssenceBank = 0;
                 completeBlackHolePhaseTransition(5, "Phase 4 complete: furnace unlocked. Phase 5 unlocked.");
             }
         } else if (phase === 5) {
@@ -1634,23 +1905,54 @@
                 addToLog("Phase 5 has no active digest to accelerate.", "warning");
                 return;
             }
-            const spend = Math.max(25, Math.floor(50 + 20 * (number1BlackHoleState.phase5FurnaceLevel || 0)));
-            if (number1AscensionEssence < spend) return addToLog("Phase 5 requires " + formatCount(spend) + " Essence.", "warning");
-            number1AscensionEssence -= spend;
+            const have = Math.max(0, Math.floor(Number(number1AscensionEssence) || 0));
+            if (have < 1) {
+                addToLog("Need Ascension Essence to stoke the furnace.", "warning");
+                return;
+            }
+            number1AscensionEssence -= have;
             const now = Date.now();
-            const remaining = Math.max(0, digestEnd - now);
-            const floor = Math.floor(getBlackHoleNextDigestDurationMs() * 0.01);
-            const reduction = Math.max(1, Math.floor(remaining * 0.06));
-            const nextRemaining = Math.max(floor, remaining - reduction);
-            number1BlackHoleState.phase5DigestEndsAtMs = now + nextRemaining;
-            addToLog("Furnace stoked. Digestion accelerated.", "milestone");
+            const cost = Math.max(25, Math.floor(50 + 20 * (number1BlackHoleState.phase5FurnaceLevel || 0)));
+            const floorMs = Math.floor(getBlackHoleNextDigestDurationMs() * 0.01);
+            let pool = have;
+            let digestEndMs = digestEnd;
+            while (pool >= cost && digestEndMs > now) {
+                const remaining = digestEndMs - now;
+                const fullRed = Math.max(1, Math.floor(remaining * 0.06));
+                digestEndMs = now + Math.max(floorMs, remaining - fullRed);
+                pool -= cost;
+            }
+            if (pool > 0 && digestEndMs > now && cost > 0) {
+                const remaining = digestEndMs - now;
+                const fullRed = Math.max(1, Math.floor(remaining * 0.06));
+                const reduction = Math.max(1, Math.floor(fullRed * Math.min(1, pool / cost)));
+                digestEndMs = now + Math.max(floorMs, remaining - reduction);
+            }
+            number1BlackHoleState.phase5DigestEndsAtMs = digestEndMs;
+            const leftSec = Math.max(0, Math.ceil((digestEndMs - now) / 1000));
+            addToLog("Furnace: poured " + formatCount(have) + " Essence into digestion (~" + formatSeconds(leftSec) + " remaining).", "tip");
         } else if (phase === 6) {
-            const cost = 300 + 120 * Math.floor(number1BlackHoleState.phase6JetBoostLevel || 0);
-            if (number1AscensionEssence < cost) return addToLog("Phase 6 requires " + formatCount(cost) + " Essence.", "warning");
-            number1AscensionEssence -= cost;
-            number1BlackHoleState.phase6JetBoostLevel = (number1BlackHoleState.phase6JetBoostLevel || 0) + 1;
-            number1BlackHoleState.phase6JetEfficiencyLevel = (number1BlackHoleState.phase6JetEfficiencyLevel || 0) + 1;
-            number1BlackHoleState.phase6JetBankLevel = (number1BlackHoleState.phase6JetBankLevel || 0) + 1;
+            const have = Math.max(0, Math.floor(Number(number1AscensionEssence) || 0));
+            if (have < 1) {
+                addToLog("Need Ascension Essence for jet upgrades.", "warning");
+                return;
+            }
+            number1AscensionEssence -= have;
+            let bank = Math.max(0, Math.floor(Number(number1BlackHoleState.phase6EssenceBank) || 0)) + have;
+            let B = Math.floor(Number(number1BlackHoleState.phase6JetBoostLevel) || 0);
+            while (true) {
+                const c = 300 + 120 * B;
+                if (!(c > 0) || bank < c) break;
+                bank -= c;
+                B++;
+                number1BlackHoleState.phase6JetBoostLevel = B;
+                number1BlackHoleState.phase6JetEfficiencyLevel = B;
+                number1BlackHoleState.phase6JetBankLevel = B;
+            }
+            number1BlackHoleState.phase6EssenceBank = bank;
+            const nextC = getBlackHolePhase6NextJetUpgradeCostEssence();
+            const bankNote = bank > 0 && nextC > 0 ? (" · " + formatCount(bank) + " / " + formatCount(nextC) + " toward next jet upgrade") : "";
+            addToLog("Fed " + formatCount(have) + " Essence into jet systems" + bankNote + ".", "tip");
         }
         updateRateDisplay();
         queueBlackHoleUiRefresh();
@@ -1739,11 +2041,19 @@
             const pb = number1BlackHoleState.phase2ParallelBonusPool || 0;
             number1BlackHoleState.phase2ParallelBonusPool = Math.min(1.5, pb + dtSec * 0.0002);
         }
+        if (phase === 2) {
+            const erg = getBlackHolePhase2CollapseErgosphereTier();
+            if (erg > 0 && turboBoostUnlocked) {
+                const ergoRate = 0.45 * erg;
+                turboBoostMeter = Math.min(getTurboMeterMax(), turboBoostMeter + ergoRate * dtSec);
+            }
+        }
         if (phase >= 3 && phase < 6) {
-            const baseCd = Math.max(4, 18 - (number1BlackHoleState.phase3HawkingRate || 0));
+            const f = phase === 3 ? getBlackHolePhase3UpgradeFrac() : 0;
+            const baseCd = Math.max(4, 18 - ((number1BlackHoleState.phase3HawkingRate || 0) + f) - getBlackHolePhase2PhotonHawkingCdTrimSec());
             if (!(number1BlackHoleState.phase3NextHawkingAtMs > 0)) number1BlackHoleState.phase3NextHawkingAtMs = now + baseCd * 1000;
             if (now >= number1BlackHoleState.phase3NextHawkingAtMs) {
-                const durSec = 5 + (number1BlackHoleState.phase3HawkingDuration || 0);
+                const durSec = 5 + (number1BlackHoleState.phase3HawkingDuration || 0) + f;
                 number1BlackHoleState.phase3HawkingActiveUntilMs = now + durSec * 1000;
                 number1BlackHoleState.phase3NextHawkingAtMs = now + baseCd * 1000;
             }
@@ -2254,6 +2564,9 @@
         updateTurboBoostUI();
         updateRateDisplay();
         updateTimeWarpAuraUI();
+        if (!number1BlackHoleState.phase1MapCollapseSeen && isNumber1AscensionTreeFullyPurchased()) {
+            queueAscensionMapCollapseTransition();
+        }
         refreshOverviewAndAscensionPanelsIfOpen();
         if (chain.missingOrdered.some(function (nid) {
             const bought = ASCENSION_MAP_NODE_BY_ID[nid];
@@ -2261,6 +2574,42 @@
         })) tryTurboLevelerPurchases();
         checkStoryBanners();
         autosaveNow();
+    }
+    function isAscensionMapCollapseTransitionActive() {
+        return ascensionMapCollapseActiveUntilMs > Date.now();
+    }
+    function queueAscensionMapCollapseTransition() {
+        if (number1BlackHoleState.phase1MapCollapseSeen || ascensionMapCollapsePending) return;
+        ascensionMapCollapsePending = true;
+        addToLog("Final ascension node owned. Confirm the story modal to collapse the map.", "milestone");
+        if (!storyBannerOverlayEl || storyBannerOverlayEl.style.display !== "flex") {
+            showStoryBanner({
+                id: "ascension-map-collapse-ready",
+                order: 1002,
+                title: "Constellation complete",
+                body: "Every ascension branch is mapped. Continue to trigger the collapse into the singularity."
+            });
+        }
+    }
+    function startAscensionMapCollapseTransition() {
+        if (number1BlackHoleState.phase1MapCollapseSeen) return;
+        ascensionMapCollapsePending = false;
+        number1BlackHoleState.phase1MapCollapseSeen = true;
+        let durationMs = ASCENSION_MAP_COLLAPSE_DURATION_MS;
+        try {
+            if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+                durationMs = 260;
+            }
+        } catch (_) {}
+        ascensionMapCollapseActiveUntilMs = Date.now() + durationMs;
+        addToLog("Final ascension node owned. The map collapses into the singularity.", "milestone");
+        if (ascensionMapCollapseTimerId) clearTimeout(ascensionMapCollapseTimerId);
+        ascensionMapCollapseTimerId = setTimeout(function () {
+            ascensionMapCollapseTimerId = 0;
+            ascensionMapCollapseActiveUntilMs = 0;
+            refreshAscensionPanelIfOpen();
+        }, durationMs + 30);
+        refreshAscensionPanelIfOpen();
     }
     function respecNumber1AscensionSkillTrees() {
         if (!number1HasAscended || number1AscensionNodeIds.length === 0) return;
@@ -2890,44 +3239,128 @@
             }
             actions = "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn page-btn--mass-pour\" data-asc-black-hole-buy=\"1\"" + (can ? "" : " disabled") + ">Pour in all Essence (" + esc(formatCount(pour)) + ")</button></p>";
         } else if (phase === 2) {
+            panelExtraClass = " asc-black-hole--phase2";
             const L = Math.floor(number1BlackHoleState.phase2Mass || 0);
             const nextCost = getBlackHolePhase2NextCostEssence();
-            const can = nextCost > 0 && number1AscensionEssence >= nextCost;
-            body = "<p class=\"asc-black-hole__body\">Phase 2 — Collapse: deepen the singularity with mass and grow your parallel bonus pool.</p>";
-            note = "<p class=\"asc-black-hole__stats\">Phase: <strong>2</strong> · Mass: <strong>" + L + "</strong> · Total gain: <strong>×" + esc(multStr) + "</strong></p>";
-            actions = "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-buy=\"1\"" + (can ? "" : " disabled") + ">Feed " + esc(formatCount(nextCost)) + " Essence</button></p>";
+            const bank = Math.floor(number1BlackHoleState.phase2EssenceBank || 0);
+            const have = Math.max(0, Math.floor(Number(number1AscensionEssence) || 0));
+            const tm = getBlackHolePhase2CollapseMassTier();
+            const tp = getBlackHolePhase2CollapsePhotonTier();
+            const te = getBlackHolePhase2CollapseErgosphereTier();
+            const massPourUnlock = isBlackHolePhase2MassPourUnlocked();
+            const cMass = getBlackHolePhase2CollapseUpgradeCost("mass");
+            const cPhoton = getBlackHolePhase2CollapseUpgradeCost("photon");
+            const cErgo = getBlackHolePhase2CollapseUpgradeCost("ergosphere");
+            const canMassUp = tm < BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER && have >= cMass && cMass > 0;
+            const canPhotonUp = tp < BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER && have >= cPhoton && cPhoton > 0;
+            const canErgoUp = te < BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER && have >= cErgo && cErgo > 0;
+            const canPourMass = massPourUnlock && have >= 1 && L < BLACK_HOLE_PHASE2_MASS_CAP;
+            const coupPct = (getBlackHolePhase2MassCouplingCostMult() * 100).toFixed(1);
+            const photonMultStr = getBlackHolePhase2PhotonShellMult().toFixed(3);
+            const cdTrimStr = getBlackHolePhase2PhotonHawkingCdTrimSec().toFixed(2);
+            const massEffectHtml =
+                tm > 0
+                    ? ("Lowers Essence cost per mass step while in this phase. Now: <strong>" + esc(coupPct) + "%</strong> of base cost.")
+                    : "Each tier tightens Essence→mass conversion (lower % of base cost per step).";
+            const photonEffectHtml =
+                tp > 0
+                    ? ("Disk primer: counting mult <strong>×" + esc(photonMultStr) + "</strong> · trims Hawking cooldown by <strong>" + esc(cdTrimStr) + "s</strong> (Phase 3+).")
+                    : "Each tier adds counting mult and trims Hawking burst cooldown once the accretion disk exists.";
+            const ergoEffectHtml =
+                te > 0
+                    ? ("Passively charges the Turbo meter on Number 1 during Phase 2 (strength scales with tier).")
+                    : "Each tier increases passive Turbo meter fill per second while Turbo is unlocked (Phase 2 only).";
+            const bankLine = nextCost > 0 && bank > 0
+                ? (" · Banked toward next step: <strong>" + esc(formatCount(bank)) + "</strong> / " + esc(formatCount(nextCost)))
+                : (nextCost > 0 ? (" · Next step: <strong>" + esc(formatCount(nextCost)) + "</strong> Essence") : "");
+            const p2Row = function (track, title, tier, effectHtml, cost, canBuy) {
+                const maxed = tier >= BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER;
+                const tierLabel = maxed ? "max" : (tier + "/" + BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER);
+                const btnLabel = maxed ? "Maxed" : ("Buy (" + esc(formatCount(cost)) + ")");
+                return (
+                    "<div class=\"asc-black-hole__p2-row\" data-asc-black-hole-p2-row=\"" + esc(track) + "\">" +
+                    "<div class=\"asc-black-hole__p2-row-head\"><span class=\"asc-black-hole__p2-name\">" + esc(title) + "</span>" +
+                    "<span class=\"asc-black-hole__p2-tier\">Tier <strong>" + esc(tierLabel) + "</strong></span></div>" +
+                    "<p class=\"asc-black-hole__p2-effect\">" + effectHtml + "</p>" +
+                    "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn page-btn--p2-collapse\" data-asc-black-hole-p2=\"" + esc(track) + "\"" +
+                    (canBuy ? "" : " disabled") + ">" + btnLabel + "</button></p>" +
+                    "</div>"
+                );
+            };
+            body =
+                "<p class=\"asc-black-hole__kicker\">Phase 2 · collapse upgrades</p>" +
+                "<p class=\"asc-black-hole__body\">Before the singularity accepts raw mass, stabilize three channels with Ascension Essence. Each track has <strong>" + BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER + "</strong> tiers. When all are maxed, you may <strong>pour Essence directly into mass</strong> (partial feeds still bank toward the next step).</p>" +
+                "<div class=\"asc-black-hole__p2-list\" role=\"group\" aria-label=\"Collapse upgrades\">" +
+                p2Row("mass", "Essence–mass coupling", tm, massEffectHtml, cMass, canMassUp) +
+                p2Row("photon", "Photon shell", tp, photonEffectHtml, cPhoton, canPhotonUp) +
+                p2Row("ergosphere", "Ergosphere coupling", te, ergoEffectHtml, cErgo, canErgoUp) +
+                "</div>";
+            note =
+                "<p class=\"asc-black-hole__stats\">Phase: <strong>2</strong> · Mass pour: <strong>" + (massPourUnlock ? "unlocked" : "locked") + "</strong> · Mass: <strong>" + L + "</strong> · Total gain: <strong>×" + esc(multStr) + "</strong>" + bankLine + "</p>" +
+                "<p class=\"asc-black-hole__stats asc-black-hole__purse\">You hold <strong>" + esc(formatCount(have)) + "</strong> Ascension Essence.</p>" +
+                (massPourUnlock
+                    ? ""
+                    : "<p class=\"asc-black-hole__note\">Bring every collapse track to tier " + BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER + " to unlock mass investment.</p>");
+            actions = "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-buy=\"1\"" + (canPourMass ? "" : " disabled") + ">Pour all Essence into mass (" + esc(formatCount(have)) + ")</button></p>";
         } else if (phase === 3) {
-            const cost = 75 + 25 * Math.floor(number1BlackHoleState.phase3HawkingStrength || 0);
-            body = "<p class=\"asc-black-hole__body\">Phase 3 — Accretion Disk: the disk ignites, and Hawking bursts open short power windows.</p>";
-            note = "<p class=\"asc-black-hole__stats\">Phase: <strong>3</strong> · Hawking strength: <strong>" + Math.floor(number1BlackHoleState.phase3HawkingStrength || 0) + "</strong></p>";
-            actions = "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-buy=\"1\"" + (number1AscensionEssence >= cost ? "" : " disabled") + ">Upgrade disk (" + esc(formatCount(cost)) + " Essence)</button></p>";
+            const S = Math.floor(number1BlackHoleState.phase3HawkingStrength || 0);
+            const cost = S >= 6 ? 0 : 75 + 25 * S;
+            const bank = Math.floor(number1BlackHoleState.phase3EssenceBank || 0);
+            const have = Math.max(0, Math.floor(Number(number1AscensionEssence) || 0));
+            const can = have >= 1 && S < 6;
+            const bankLine = cost > 0 && bank > 0
+                ? (" · Banked: <strong>" + esc(formatCount(bank)) + "</strong> / " + esc(formatCount(cost)))
+                : (cost > 0 ? (" · Next tier: <strong>" + esc(formatCount(cost)) + "</strong> Essence") : "");
+            body = "<p class=\"asc-black-hole__body\">Phase 3 — Accretion Disk: the disk ignites, and Hawking bursts open short power windows. Partial Essence improves bursts immediately and banks toward the next disk tier.</p>";
+            note = "<p class=\"asc-black-hole__stats\">Phase: <strong>3</strong> · Hawking strength: <strong>" + S + "</strong>" + bankLine + "</p>" +
+                "<p class=\"asc-black-hole__stats asc-black-hole__purse\">You hold <strong>" + esc(formatCount(have)) + "</strong> Ascension Essence.</p>";
+            actions = "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-buy=\"1\"" + (can ? "" : " disabled") + ">Pour all Essence into disk (" + esc(formatCount(have)) + ")</button></p>";
         } else if (phase === 4) {
-            const cost = 200 + 80 * Math.floor(number1BlackHoleState.phase4WaveLevel || 0);
+            const W = Math.floor(number1BlackHoleState.phase4WaveLevel || 0);
+            const cost = getBlackHolePhase4NextCostEssence();
+            const bank = Math.floor(number1BlackHoleState.phase4EssenceBank || 0);
+            const have = Math.max(0, Math.floor(Number(number1AscensionEssence) || 0));
+            const can = have >= 1 && W < 6;
+            const bankLine = cost > 0 && bank > 0
+                ? (" · Banked: <strong>" + esc(formatCount(bank)) + "</strong> / " + esc(formatCount(cost)))
+                : (cost > 0 ? (" · Next tier: <strong>" + esc(formatCount(cost)) + "</strong> Essence") : "");
             const manualReady = Date.now() >= (number1BlackHoleState.phase4ManualReadyAtMs || 0);
             const manualInSec = manualReady ? 0 : Math.max(0, Math.ceil(((number1BlackHoleState.phase4ManualReadyAtMs || 0) - Date.now()) / 1000));
-            body = "<p class=\"asc-black-hole__body\">Phase 4 — Gravitational Lensing: spacetime ripples pulse on cadence, and you can force a manual wave.</p>";
-            note = "<p class=\"asc-black-hole__stats\">Phase: <strong>4</strong> · Wave lvl: <strong>" + Math.floor(number1BlackHoleState.phase4WaveLevel || 0) + "</strong> · Interval: <strong>" + getBlackHoleWaveIntervalSec().toFixed(1) + "s</strong> · Manual: <strong>" + (manualReady ? "ready" : ("in " + formatSeconds(manualInSec))) + "</strong></p>";
+            body = "<p class=\"asc-black-hole__body\">Phase 4 — Gravitational Lensing: spacetime ripples pulse on cadence, and you can force a manual wave. Partial Essence banks toward the next wave upgrade.</p>";
+            note = "<p class=\"asc-black-hole__stats\">Phase: <strong>4</strong> · Wave lvl: <strong>" + W + "</strong> · Interval: <strong>" + getBlackHoleWaveIntervalSec().toFixed(1) + "s</strong> · Manual: <strong>" + (manualReady ? "ready" : ("in " + formatSeconds(manualInSec))) + "</strong>" + bankLine + "</p>" +
+                "<p class=\"asc-black-hole__stats asc-black-hole__purse\">You hold <strong>" + esc(formatCount(have)) + "</strong> Ascension Essence.</p>";
             actions =
-                "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-buy=\"1\"" + (number1AscensionEssence >= cost ? "" : " disabled") + ">Upgrade wave (" + esc(formatCount(cost)) + " Essence)</button></p>" +
+                "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-buy=\"1\"" + (can ? "" : " disabled") + ">Pour all Essence into wave (" + esc(formatCount(have)) + ")</button></p>" +
                 "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-wave=\"1\"" + (manualReady ? "" : " disabled") + ">Manual Gravitational Wave</button></p>";
         } else if (phase === 5) {
             const digestEnd = number1BlackHoleState.phase5DigestEndsAtMs || 0;
             const digestText = digestEnd > Date.now() ? ("Digest: " + formatSeconds(Math.ceil((digestEnd - Date.now()) / 1000))) : "Digest: ready";
             const canSpeedDigest = digestEnd > Date.now();
             const speedDigestCost = Math.max(25, Math.floor(50 + 20 * (number1BlackHoleState.phase5FurnaceLevel || 0)));
-            body = "<p class=\"asc-black-hole__body\">Phase 5 — Gravitational Furnace: feed hands in order (10→1). Every sacrifice is immediate and permanent.</p>";
-            note = "<p class=\"asc-black-hole__stats\">Phase: <strong>5</strong> · Furnace: <strong>" + Math.floor(number1BlackHoleState.phase5FurnaceLevel || 0) + "</strong> · " + digestText + " · Next hand: <strong>" + Math.max(1, Math.floor(number1BlackHoleState.phase5NextSacrificeHand || 1)) + "</strong></p>";
+            const have = Math.max(0, Math.floor(Number(number1AscensionEssence) || 0));
+            const canStoke = canSpeedDigest && have >= 1;
+            body = "<p class=\"asc-black-hole__body\">Phase 5 — Gravitational Furnace: feed hands in order (10→1). Every sacrifice is immediate and permanent. While digesting, pour Essence for proportional acceleration; full <strong>" + esc(formatCount(speedDigestCost)) + "</strong> Essence matches a full stoke.</p>";
+            note = "<p class=\"asc-black-hole__stats\">Phase: <strong>5</strong> · Furnace: <strong>" + Math.floor(number1BlackHoleState.phase5FurnaceLevel || 0) + "</strong> · " + digestText + " · Next hand: <strong>" + Math.max(1, Math.floor(number1BlackHoleState.phase5NextSacrificeHand || 1)) + "</strong></p>" +
+                "<p class=\"asc-black-hole__stats asc-black-hole__purse\">You hold <strong>" + esc(formatCount(have)) + "</strong> Ascension Essence.</p>";
             actions =
-                "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-buy=\"1\"" + (canSpeedDigest && number1AscensionEssence >= speedDigestCost ? "" : " disabled") + ">Accelerate digest (" + esc(formatCount(speedDigestCost)) + " Essence)</button></p>" +
+                "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-buy=\"1\"" + (canStoke ? "" : " disabled") + ">Pour Essence into digest (" + esc(formatCount(have)) + ")</button></p>" +
                 "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-sacrifice=\"1\"" + (digestEnd > Date.now() ? " disabled" : "") + ">Feed next hand</button></p>";
         } else if (phase === 6) {
             const charge = Math.floor(number1BlackHoleState.phase6JetCharge || 0);
             const best = Math.max(0, Number(number1BlackHoleState.phase6JetBestAscensionEssence) || 0);
             const chargeCap = Math.max(500, best * (0.5 + 0.2 * (number1BlackHoleState.phase6JetBankLevel || 0)));
-            body = "<p class=\"asc-black-hole__body\">Phase 6 — Astrophysical Jets: charge the battery, ignite the beam, and burn fuel for decisive thrust.</p>";
-            note = "<p class=\"asc-black-hole__stats\">Phase: <strong>6</strong> · Jet charge: <strong>" + esc(formatCount(charge)) + " / " + esc(formatCount(Math.floor(chargeCap))) + "</strong> · Jet: <strong>" + (number1BlackHoleState.phase6JetActive ? "ON" : "OFF") + "</strong></p>";
+            const nextJet = getBlackHolePhase6NextJetUpgradeCostEssence();
+            const bank = Math.floor(number1BlackHoleState.phase6EssenceBank || 0);
+            const have = Math.max(0, Math.floor(Number(number1AscensionEssence) || 0));
+            const can = have >= 1;
+            const bankLine = nextJet > 0 && bank > 0
+                ? (" · Banked: <strong>" + esc(formatCount(bank)) + "</strong> / " + esc(formatCount(nextJet)))
+                : (nextJet > 0 ? (" · Next upgrade: <strong>" + esc(formatCount(nextJet)) + "</strong> Essence") : "");
+            body = "<p class=\"asc-black-hole__body\">Phase 6 — Astrophysical Jets: charge the battery, ignite the beam, and burn fuel for decisive thrust. Partial Essence scales jet thrust while banking toward the next upgrade bundle.</p>";
+            note = "<p class=\"asc-black-hole__stats\">Phase: <strong>6</strong> · Jet charge: <strong>" + esc(formatCount(charge)) + " / " + esc(formatCount(Math.floor(chargeCap))) + "</strong> · Jet: <strong>" + (number1BlackHoleState.phase6JetActive ? "ON" : "OFF") + "</strong>" + bankLine + "</p>" +
+                "<p class=\"asc-black-hole__stats asc-black-hole__purse\">You hold <strong>" + esc(formatCount(have)) + "</strong> Ascension Essence.</p>";
             actions =
-                "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-buy=\"1\">Upgrade jet</button></p>" +
+                "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-buy=\"1\"" + (can ? "" : " disabled") + ">Pour all Essence into jet (" + esc(formatCount(have)) + ")</button></p>" +
                 "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-jet=\"" + (number1BlackHoleState.phase6JetActive ? "off" : "on") + "\">Turn jet " + (number1BlackHoleState.phase6JetActive ? "off" : "on") + "</button></p>";
         } else {
             body = "<p class=\"asc-black-hole__body\">Phase 7 — Evaporation: one hand, one counter, one beat. Upgrades are silent. Counting continues for closure.</p>";
@@ -2947,9 +3380,10 @@
         if (!number1HasAscended) return "";
         const esc = escapeAscensionHtml;
         const s = ascensionPurchasedSet();
-        const hideAscensionSkillMap = isBlackHoleArcUnlocked() && getBlackHolePhase() >= 1;
+        const collapseActive = isAscensionMapCollapseTransitionActive();
+        const hideAscensionSkillMap = isBlackHoleArcUnlocked() && getBlackHolePhase() >= 1 && !collapseActive;
         let respecRow = "";
-        if (!hideAscensionSkillMap) {
+        if (!hideAscensionSkillMap && !collapseActive) {
             const respecBtn = "<button type=\"button\" class=\"page-btn ascension-respec-btn\" data-asc-respec=\"1\"" + (number1AscensionNodeIds.length === 0 ? " disabled" : "") + ">Respec all</button>";
             const fingerRespecs = ASCENSION_FINGER_KEYS.map(fk => {
                 const has = ascensionFingerHasPurchasedNodes(fk);
@@ -2958,7 +3392,7 @@
             respecRow = "<div class=\"ascension-respec-row\"><div class=\"ascension-branch-respecs\">" + fingerRespecs + "</div>" + respecBtn + "</div>";
         }
         let mapAndLegend = "";
-        if (!hideAscensionSkillMap) {
+        if (!hideAscensionSkillMap || collapseActive) {
             const layout = computeAscensionHandLayout();
             const ascMapVbH = ascensionMapViewBoxHeight;
             const handArt = (ASCENSION_TREE_EXPORT && ASCENSION_TREE_EXPORT.HUB_HAND_ART)
@@ -2987,7 +3421,7 @@
                 "<li><span class=\"asc-map-legend-swatch asc-map-legend-swatch--clap\"></span> Thumb · clap</li>" +
                 "</ul>";
             mapAndLegend =
-                "<div class=\"ascension-map-viewport\" id=\"ascension-map-viewport\">" +
+                "<div class=\"ascension-map-viewport" + (collapseActive ? " ascension-map-viewport--collapse" : "") + "\" id=\"ascension-map-viewport\">" +
                 "<div class=\"ascension-map-detail-panel\" id=\"ascension-map-detail-panel\" aria-live=\"polite\">" +
                 "<div class=\"ascension-map-detail-panel-inner\">" +
                 "<div class=\"ascension-map-detail-kicker\" id=\"ascension-map-detail-kicker\"></div>" +
@@ -2996,7 +3430,7 @@
                 "<div class=\"ascension-map-detail-meta\" id=\"ascension-map-detail-meta\"></div>" +
                 "</div></div>" +
                 "<div class=\"ascension-map-pan-zoom\" id=\"ascension-map-pan-zoom\">" +
-                "<div class=\"ascension-map-world\">" +
+                "<div class=\"ascension-map-world" + (collapseActive ? " ascension-map-world--collapse" : "") + "\">" +
                 "<pre class=\"ascension-hand-backdrop\" aria-hidden=\"true\">" + esc(handArt) + "</pre>" +
                 "<svg class=\"ascension-map-svg\" viewBox=\"0 0 100 " + ascMapVbH + "\" preserveAspectRatio=\"xMidYMid meet\" aria-hidden=\"true\">" +
                 renderAscensionMapColumnGuidesSvg(ascMapVbH) +
@@ -3006,7 +3440,9 @@
                 "<div class=\"ascension-map-nodes-layer\">" + nodeDots + "</div>" +
                 "</div></div></div>" + legend;
         }
-        const hubClass = hideAscensionSkillMap ? "ascension-hub ascension-hub--mass-arc-active" : "ascension-hub";
+        const hubClass = hideAscensionSkillMap
+            ? "ascension-hub ascension-hub--mass-arc-active"
+            : ("ascension-hub" + (collapseActive ? " ascension-hub--collapse-active" : ""));
         const hubAria = hideAscensionSkillMap
             ? "Number 1 ascension — skill map complete; mass accumulator and black hole"
             : "Number 1 ascension skill map";
@@ -3015,7 +3451,9 @@
             : "<h4 class=\"ascension-hub-title\"><span class=\"ascension-hub-glyph\" aria-hidden=\"true\">◇</span> Ascension map</h4>";
         const hubSub = hideAscensionSkillMap
             ? "<p class=\"ascension-hub-sub\">Every skill gem is owned. Spend Essence in the <strong>Numerical Mass Accumulator</strong> and later black-hole phases below — the gem map is done.</p>"
-            : "<p class=\"ascension-hub-sub\">Five columns — pinky through thumb — lower branch tier at the bottom of each column, rising toward the top. Combo pulse production is split across <strong>hands that satisfy that pattern</strong>. <strong>Respec is free</strong>. <strong>Hover or click a gem</strong> for details; <strong>click</strong> also attempts purchase.</p>";
+            : (collapseActive
+                ? "<p class=\"ascension-hub-sub\">Every branch is complete. Watch the constellation collapse into the singularity.</p>"
+                : "<p class=\"ascension-hub-sub\">Five columns — pinky through thumb — lower branch tier at the bottom of each column, rising toward the top. Combo pulse production is split across <strong>hands that satisfy that pattern</strong>. <strong>Respec is free</strong>. <strong>Hover or click a gem</strong> for details; <strong>click</strong> also attempts purchase.</p>");
         return (
             "<section class=\"" + hubClass + "\" aria-label=\"" + esc(hubAria) + "\">" +
             "<header class=\"ascension-hub-header\">" +
@@ -3411,24 +3849,26 @@
         if (c === "humor") return "JOKE";
         return "LOG";
     }
+    function renderMessageLogLineHtml(entry) {
+        return "<div class=\"message-log-line message-log-cat-" + entry.category + "\" data-log-category=\"" + entry.category + "\">" +
+            "<span class=\"message-log-tag\">[" + logCategoryTag(entry.category) + "]</span>" +
+            "<span class=\"message-log-text\">" + escapeHtml(entry.text) + "</span></div>";
+    }
     function renderMessageLogPageHtml() {
         const visible = actionLogEntries.filter(entry => isLogCategoryVisible(entry.category));
-        const esc = (t) => {
-            const d = document.createElement("div");
-            d.textContent = t;
-            return d.innerHTML;
-        };
         if (visible.length === 0) {
+            messageLogLastRenderedVisibleCount = 0;
+            messageLogLastRenderedHeadSig = "";
+            messageLogLastRenderedTailSig = "";
             return "<p class=\"message-log-empty\">No messages yet. Tips, facts, and milestones will appear here as you play. Humor lines respect Settings → Humor messages.</p>" +
                 "<p class=\"coming-soon-note coming-soon-note--compact\">Filters, search, and save export for this log — <span class=\"coming-soon-inline\">coming soon</span>.</p>";
         }
-        const lines = visible.map(entry =>
-            "<div class=\"message-log-line message-log-cat-" + entry.category + "\" data-log-category=\"" + entry.category + "\">" +
-            "<span class=\"message-log-tag\">[" + logCategoryTag(entry.category) + "]</span>" +
-            "<span class=\"message-log-text\">" + esc(entry.text) + "</span></div>"
-        ).join("");
+        messageLogLastRenderedVisibleCount = visible.length;
+        messageLogLastRenderedHeadSig = visible[0].category + "\n" + visible[0].text;
+        messageLogLastRenderedTailSig = visible[visible.length - 1].category + "\n" + visible[visible.length - 1].text;
+        const lines = visible.map(renderMessageLogLineHtml).join("");
         return "<div class=\"message-log-terminal\" role=\"log\" aria-relevant=\"additions\">" +
-            "<div class=\"message-log-terminal-header\">message_feed // " + visible.length + " line(s) visible</div>" +
+            "<div class=\"message-log-terminal-header\" id=\"message-log-terminal-header\">message_feed // " + visible.length + " line(s) visible</div>" +
             "<div class=\"message-log-terminal-body\" id=\"message-log-terminal-body\">" + lines + "</div></div>" +
             "<p class=\"message-log-footnote\">Bottom ticker shows the latest lines; this panel is the full scrollback (oldest → newest).</p>";
     }
@@ -3454,8 +3894,91 @@
     function refreshMessageLogPanelIfOpen() {
         if (!pagePanelEl || pagePanelEl.style.display === "none" || !pagePanelBodyEl || !pagePanelTitleEl) return;
         if (pagePanelTitleEl.textContent !== "Message Log") return;
+        const visible = actionLogEntries.filter(entry => isLogCategoryVisible(entry.category));
+        const prevBody = document.getElementById("message-log-terminal-body");
+        const prevHeader = document.getElementById("message-log-terminal-header");
+        const headSig = visible.length > 0 ? (visible[0].category + "\n" + visible[0].text) : "";
+        const tailSig = visible.length > 0 ? (visible[visible.length - 1].category + "\n" + visible[visible.length - 1].text) : "";
+        if (
+            prevBody &&
+            prevHeader &&
+            messageLogLastRenderedVisibleCount >= 0 &&
+            visible.length === messageLogLastRenderedVisibleCount + 1
+        ) {
+            const prevTop = prevBody.scrollTop;
+            const prevLeft = prevBody.scrollLeft;
+            const prevHeight = prevBody.scrollHeight;
+            const prevWidth = prevBody.scrollWidth;
+            const wasPinnedToBottom = (prevTop + prevBody.clientHeight) >= (prevHeight - 2);
+            const wasPinnedToRight = (prevLeft + prevBody.clientWidth) >= (prevWidth - 2);
+            prevBody.insertAdjacentHTML("beforeend", renderMessageLogLineHtml(visible[visible.length - 1]));
+            prevHeader.textContent = "message_feed // " + visible.length + " line(s) visible";
+            messageLogLastRenderedVisibleCount = visible.length;
+            messageLogLastRenderedHeadSig = headSig;
+            messageLogLastRenderedTailSig = tailSig;
+            if (wasPinnedToBottom) prevBody.scrollTop = prevBody.scrollHeight;
+            else prevBody.scrollTop = prevTop;
+            if (wasPinnedToRight) prevBody.scrollLeft = prevBody.scrollWidth;
+            else prevBody.scrollLeft = prevLeft;
+            return;
+        }
+        if (
+            prevBody &&
+            prevHeader &&
+            messageLogLastRenderedVisibleCount > 0 &&
+            visible.length === messageLogLastRenderedVisibleCount &&
+            visible.length >= ACTION_LOG_MAX &&
+            headSig !== messageLogLastRenderedHeadSig &&
+            tailSig !== messageLogLastRenderedTailSig
+        ) {
+            const prevTop = prevBody.scrollTop;
+            const prevLeft = prevBody.scrollLeft;
+            const prevHeight = prevBody.scrollHeight;
+            const prevWidth = prevBody.scrollWidth;
+            const wasPinnedToBottom = (prevTop + prevBody.clientHeight) >= (prevHeight - 2);
+            const wasPinnedToRight = (prevLeft + prevBody.clientWidth) >= (prevWidth - 2);
+            if (prevBody.firstElementChild) prevBody.removeChild(prevBody.firstElementChild);
+            prevBody.insertAdjacentHTML("beforeend", renderMessageLogLineHtml(visible[visible.length - 1]));
+            prevHeader.textContent = "message_feed // " + visible.length + " line(s) visible";
+            messageLogLastRenderedVisibleCount = visible.length;
+            messageLogLastRenderedHeadSig = headSig;
+            messageLogLastRenderedTailSig = tailSig;
+            if (wasPinnedToBottom) prevBody.scrollTop = prevBody.scrollHeight;
+            else prevBody.scrollTop = prevTop;
+            if (wasPinnedToRight) prevBody.scrollLeft = prevBody.scrollWidth;
+            else prevBody.scrollLeft = prevLeft;
+            return;
+        }
+        let prevTop = 0;
+        let prevLeft = 0;
+        let prevHeight = 0;
+        let prevWidth = 0;
+        let wasPinnedToBottom = true;
+        let wasPinnedToRight = false;
+        if (prevBody) {
+            prevTop = prevBody.scrollTop;
+            prevLeft = prevBody.scrollLeft;
+            prevHeight = prevBody.scrollHeight;
+            prevWidth = prevBody.scrollWidth;
+            wasPinnedToBottom = (prevTop + prevBody.clientHeight) >= (prevHeight - 2);
+            wasPinnedToRight = (prevLeft + prevBody.clientWidth) >= (prevWidth - 2);
+        }
         pagePanelBodyEl.innerHTML = renderMessageLogPageHtml();
-        scrollMessageLogPanelToBottom();
+        const nextBody = document.getElementById("message-log-terminal-body");
+        if (!nextBody) return;
+        if (wasPinnedToBottom) {
+            nextBody.scrollTop = nextBody.scrollHeight;
+        } else {
+            nextBody.scrollTop = prevTop;
+        }
+        if (wasPinnedToRight) {
+            nextBody.scrollLeft = nextBody.scrollWidth;
+        } else {
+            nextBody.scrollLeft = prevLeft;
+        }
+        messageLogLastRenderedVisibleCount = visible.length;
+        messageLogLastRenderedHeadSig = headSig;
+        messageLogLastRenderedTailSig = tailSig;
     }
     function renderCombinationsPageHtml() {
         if (unlockedHands < 2) return "<p class=\"message-log-empty\">Unlock Hand 2 to view combinations.</p>";
@@ -3520,6 +4043,10 @@
         pagePanelBodyEl.innerHTML = renderCombinationsPageHtml();
         updateEarnedBonusesUI();
     }
+    function syncMessageLogScrollContainerMode(pageId) {
+        if (!pageModalEl) return;
+        pageModalEl.classList.toggle("page-modal--messages", pageId === "messages");
+    }
     function showPagePanel(pageId) {
         if (!pagePanelEl || !pagePanelTitleEl || !pagePanelBodyEl) return;
         teardownAscensionMapPanZoom();
@@ -3559,6 +4086,7 @@
         pagePanelTitleEl.textContent = title;
         pagePanelBodyEl.innerHTML = bodyHtml;
         if (pageModalEl) pageModalEl.classList.toggle("page-modal--wide", pageId === "overview" || pageId === "combinations" || pageId === "ascension");
+        syncMessageLogScrollContainerMode(pageId);
         pagePanelEl.dataset.openPageId = pageId;
         pagePanelEl.style.display = "block";
         syncInlinePanelsVsGameplay();
@@ -4112,10 +4640,14 @@
             const origin = opts?.confettiOrigin || speedRowRefs[handIndex]?.btn?.closest(".speed-upgrade-row");
             if (origin) sprayConfettiFrom(origin);
         }
-        updateSpeedUpgradeUI();
-        updateCheapenUpgradeUI();
-        updateSlowdownUpgradeUI();
-        updateRateDisplay();
+        if (opts?.skipUpgradeDom) {
+            batchedUpgradeUiFlush = true;
+        } else {
+            updateSpeedUpgradeUI();
+            updateCheapenUpgradeUI();
+            updateSlowdownUpgradeUI();
+            updateRateDisplay();
+        }
     }
 
     /* ---------------------------------------------------------
@@ -4235,9 +4767,14 @@
         incrementalEl.textContent = formatCount(totalChanges);
         const origin = confettiOriginEl || speedRowRefs[handIndex]?.cheapenBtn?.closest(".speed-upgrade-row");
         if (origin && !opts?.fromAutobuy) sprayConfettiFrom(origin);
-        updateSpeedUpgradeUI();
-        updateCheapenUpgradeUI();
-        updateSlowdownUpgradeUI();
+        if (opts?.skipUpgradeDom) {
+            batchedUpgradeUiFlush = true;
+        } else {
+            updateSpeedUpgradeUI();
+            updateCheapenUpgradeUI();
+            updateSlowdownUpgradeUI();
+            updateRateDisplay();
+        }
     }
 
     function maybeAutoBuyCheapen() {
@@ -4262,7 +4799,7 @@
                 cheapenAutoBuyCountdownByHand[i] = countdown - dtSec;
                 if (cheapenAutoBuyCountdownByHand[i] <= 0) {
                     if (canAfford) {
-                        buyCheapenUpgradeForHand(i, null, { fromAutobuy: true });
+                        buyCheapenUpgradeForHand(i, null, { fromAutobuy: true, silentLog: true, skipUpgradeDom: true });
                         const stillCanAfford = (handEarnings[i] || 0) >= getCheapenUpgradeCost(i, cheapenLevel[i] + 1);
                         cheapenAutoBuyCountdownByHand[i] = stillCanAfford && cheapenLevel[i] < getMaxCheapenLevel() ? tickDelay : 0;
                     } else {
@@ -4298,7 +4835,7 @@
                 slowdownAutoBuyCountdownByHand[i] = countdown - dtSec;
                 if (slowdownAutoBuyCountdownByHand[i] <= 0) {
                     if (canAfford) {
-                        buySlowdownUpgradeForHand(i, null, { fromAutobuy: true });
+                        buySlowdownUpgradeForHand(i, null, { fromAutobuy: true, silentLog: true, skipUpgradeDom: true });
                         const lv = slowdownLevel[i] ?? 0;
                         const nextCost = lv >= cap ? null : getSlowdownUpgradeCost(lv + 1);
                         const stillCanAfford = nextCost !== null && (handEarnings[i] || 0) >= nextCost;
@@ -4436,10 +4973,14 @@
         if (targetHand) targetHand.tickAccBig = 0n;
         const origin = originEl || speedRowRefs[handIndex]?.slowdownBtn?.closest(".speed-upgrade-row");
         if (origin && !opts?.fromAutobuy) sprayConfettiFrom(origin);
-        updateSpeedUpgradeUI();
-        updateCheapenUpgradeUI();
-        updateSlowdownUpgradeUI();
-        updateRateDisplay();
+        if (opts?.skipUpgradeDom) {
+            batchedUpgradeUiFlush = true;
+        } else {
+            updateSpeedUpgradeUI();
+            updateCheapenUpgradeUI();
+            updateSlowdownUpgradeUI();
+            updateRateDisplay();
+        }
     }
 
     /* ---------------------------------------------------------
@@ -4554,55 +5095,14 @@
         for (let i = 0; i < unlockedHands; i++) sum += getHandPerHandRawCps(i);
         return sum;
     }
-    /** Instantaneous total CPS from current sim state (same formula as the old rate line). */
+    /** Instantaneous total CPS from current sim state (hands, upgrades, combo, turbo, black hole). */
     function getInstantTotalCps() {
         const raw = getTotalRawCpsSum();
         return clampFiniteNonNegative(raw * getComboMultiplier() * getTurboCountMultiplier() * getNumber1BlackHoleProductionMult());
     }
-    /** EMA of measured Δtotal/Δwall-clock to align displayed CPS with real growth (Option B). */
-    const CPS_DISPLAY_EMA_TAU_SEC = 0.15;
-    const CPS_DISPLAY_EMA_GAP_RESET_SEC = 2.5;
-    let cpsDisplayEma = { value: null, lastTotal: null, lastMs: null };
-    function resetCpsDisplayEma() {
-        cpsDisplayEma = { value: null, lastTotal: null, lastMs: null };
-    }
-    function updateCpsDisplayEmaFromTotal(nowMs, totalNow, instantCpsFallback) {
-        const inst = Number.isFinite(instantCpsFallback) && instantCpsFallback >= 0 ? instantCpsFallback : 0;
-        if (cpsDisplayEma.lastTotal != null && totalNow < cpsDisplayEma.lastTotal) {
-            cpsDisplayEma.lastTotal = totalNow;
-            cpsDisplayEma.lastMs = nowMs;
-            cpsDisplayEma.value = inst;
-            return;
-        }
-        if (cpsDisplayEma.lastTotal == null || cpsDisplayEma.lastMs == null) {
-            cpsDisplayEma.lastTotal = totalNow;
-            cpsDisplayEma.lastMs = nowMs;
-            cpsDisplayEma.value = inst;
-            return;
-        }
-        let dt = (nowMs - cpsDisplayEma.lastMs) / 1000;
-        if (dt <= 0) return;
-        if (dt > CPS_DISPLAY_EMA_GAP_RESET_SEC) {
-            cpsDisplayEma.lastTotal = totalNow;
-            cpsDisplayEma.lastMs = nowMs;
-            cpsDisplayEma.value = inst;
-            return;
-        }
-        const measured = (totalNow - cpsDisplayEma.lastTotal) / dt;
-        cpsDisplayEma.lastTotal = totalNow;
-        cpsDisplayEma.lastMs = nowMs;
-        const m = Number.isFinite(measured) && measured >= 0 ? measured : 0;
-        const alpha = 1 - Math.exp(-dt / CPS_DISPLAY_EMA_TAU_SEC);
-        const prev = cpsDisplayEma.value != null && Number.isFinite(cpsDisplayEma.value) ? cpsDisplayEma.value : inst;
-        cpsDisplayEma.value = alpha * m + (1 - alpha) * prev;
-        if (!Number.isFinite(cpsDisplayEma.value) || cpsDisplayEma.value < 0) cpsDisplayEma.value = 0;
-    }
-    function getDisplayTotalCpsSmoothed() {
-        if (cpsDisplayEma.value != null && Number.isFinite(cpsDisplayEma.value) && cpsDisplayEma.value >= 0) {
-            return cpsDisplayEma.value;
-        }
-        return getInstantTotalCps();
-    }
+    /** Throttle painting the center Count/s line during batched game-loop UI so it does not flicker every tick. */
+    let cpsHeadlineLastPaintMs = 0;
+    const CPS_HEADLINE_THROTTLE_MS = 1000;
     function getTimeWarpProductionSecondsBonus() {
         const s = computeAscensionGrantTotals().warpManualGrantSeconds;
         return Number.isFinite(s) && s >= 60 ? s : TIME_WARP_SECONDS_BONUS;
@@ -4612,7 +5112,8 @@
         const secBonus = getTimeWarpProductionSecondsBonus();
         return Math.max(1, Math.round(effectiveCps * secBonus * (scale || 1)));
     }
-    function applyTimeWarpGrant(handIndex, scale, reasonLabel) {
+    function applyTimeWarpGrant(handIndex, scale, reasonLabel, opts) {
+        opts = opts || {};
         if (handIndex < 0 || handIndex >= unlockedHands) return;
         const gain = getTimeWarpGrantForHand(handIndex, scale);
         handEarnings[handIndex] = (handEarnings[handIndex] || 0) + gain;
@@ -4624,10 +5125,13 @@
         updateSlowdownUpgradeUI();
         updateRateDisplay();
         updateTimeWarpAuraUI();
-        addToLog("Time Warp " + (reasonLabel || "activated") + " on Hand " + (handIndex + 1) + " for +" + formatCount(gain) + ".", "milestone");
+        if (!opts.silentLog) {
+            addToLog("Time Warp " + (reasonLabel || "activated") + " on Hand " + (handIndex + 1) + " for +" + formatCount(gain) + ".", "milestone");
+        }
     }
     /** Pinky grants: chance to bank +1 bonus Essence for next ascend (manual click / overflow trigger). */
-    function tryGrantAscensionBonusEssenceFromWarp(sourceLabel) {
+    function tryGrantAscensionBonusEssenceFromWarp(sourceLabel, opts) {
+        opts = opts || {};
         if (!number1HasAscended) return false;
         const t = computeAscensionGrantTotals();
         const chance = sourceLabel === "overflow"
@@ -4638,11 +5142,14 @@
         updateMilestoneUI();
         refreshOverviewAndAscensionPanelsIfOpen();
         autosaveNow();
-        addToLog("Warp essence bonus: banked +1 Ascension Essence for your next ascend (" + sourceLabel + " trigger).", "milestone");
+        if (!opts.silentLog) {
+            addToLog("Warp essence bonus: banked +1 Ascension Essence for your next ascend (" + sourceLabel + " trigger).", "milestone");
+        }
         return true;
     }
-    /** Warp Factor 36: one overflow tick at reduced ratio, applied to every hand (single UI refresh + log). */
-    function applyTimeWarpOverflowToAllHands(ratio) {
+    /** Warp Factor 36: one overflow tick at reduced ratio, applied to every hand (single UI refresh + optional log). */
+    function applyTimeWarpOverflowToAllHands(ratio, opts) {
+        opts = opts || {};
         if (unlockedHands <= 0) return;
         const pct = (ratio * 100).toFixed(0);
         const bits = [];
@@ -4659,13 +5166,15 @@
         updateSlowdownUpgradeUI();
         updateRateDisplay();
         updateTimeWarpAuraUI();
-        addToLog("Time Warp overflow (all hands, " + pct + "% of each hand's rate — Warp Factor 36): " + bits.join(" · ") + ".", "milestone");
+        if (!opts.silentLog) {
+            addToLog("Time Warp overflow (all hands, " + pct + "% of each hand's rate — Warp Factor 36): " + bits.join(" · ") + ".", "milestone");
+        }
     }
     /** Pinky ascension: after a manual aura click grant, spend that hand’s balance on every affordable Speed/Cheapen/Slowdown upgrade (cheapens first for better prices). */
     function applyTimeWarpManualAutoBuyAssistForHand(handIndex) {
         if (handIndex < 0 || handIndex >= unlockedHands) return;
         if (!computeAscensionGrantTotals().warpAutoBuyAssist) return;
-        const buyOpts = { fromAutobuy: true, silentLog: true };
+        const buyOpts = { fromAutobuy: true, silentLog: true, skipUpgradeDom: true };
         const sl0 = speedLevel[handIndex] ?? 0;
         const ch0 = cheapenLevel[handIndex] ?? 0;
         const sd0 = slowdownLevel[handIndex] ?? 0;
@@ -4705,6 +5214,7 @@
         }
         const any = (speedLevel[handIndex] ?? 0) !== sl0 || (cheapenLevel[handIndex] ?? 0) !== ch0 || (slowdownLevel[handIndex] ?? 0) !== sd0;
         if (any) {
+            batchedUpgradeUiFlush = false;
             updateSpeedUpgradeUI();
             updateCheapenUpgradeUI();
             updateSlowdownUpgradeUI();
@@ -4822,12 +5332,12 @@
         } else if (unlockedHands > 0) {
             const twTotals = computeAscensionGrantTotals();
             const ratio = getTimeWarpOverflowRatioFromTotals(twTotals);
-            if (twTotals.warpFactor36AllHandsOverflow) applyTimeWarpOverflowToAllHands(ratio);
+            if (twTotals.warpFactor36AllHandsOverflow) applyTimeWarpOverflowToAllHands(ratio, { silentLog: true });
             else {
                 const idx = Math.floor(Math.random() * unlockedHands);
-                applyTimeWarpGrant(idx, ratio, "overflow");
+                applyTimeWarpGrant(idx, ratio, "overflow", { silentLog: true });
             }
-            tryGrantAscensionBonusEssenceFromWarp("overflow");
+            tryGrantAscensionBonusEssenceFromWarp("overflow", { silentLog: true });
         }
         scheduleNextTimeWarpSpawn();
         updateTimeWarpAuraUI();
@@ -4880,7 +5390,7 @@
                 "<div class=\"n1-gravity-cps-strip__text\">" +
                 "<span class=\"n1-gravity-cps-strip__line\"><span class=\"n1-gravity-cps-strip__name\">Numerical mass</span>" +
                 "<span class=\"n1-gravity-cps-strip__mult\">CPS ×" + ms + "</span></span>" +
-                "<span class=\"n1-gravity-cps-strip__sub\">Warm weight on the run — no singularity yet · charge " + spent + " / " + BLACK_HOLE_PHASE1_ESSENCE_TARGET + "</span>" +
+                "<span class=\"n1-gravity-cps-strip__sub\">Mass charge " + spent + " / " + BLACK_HOLE_PHASE1_ESSENCE_TARGET + "</span>" +
                 "</div></div>";
             return;
         }
@@ -4890,20 +5400,24 @@
             n1GravityCpsStripEl.className = "n1-gravity-cps-strip n1-gravity-cps-strip--void";
             n1GravityCpsStripEl.innerHTML =
                 "<div class=\"n1-gravity-cps-strip__inner\" role=\"status\">" +
-                "<span class=\"n1-gravity-cps-strip__glyph n1-gravity-cps-strip__glyph--void\" aria-hidden=\"true\">●</span>" +
+                "<span class=\"n1-gravity-cps-strip__glyph n1-gravity-cps-strip__glyph--void\" aria-hidden=\"true\">" +
+                "<span class=\"n1-bh-visual\"><span class=\"n1-bh-visual__ring\"></span><span class=\"n1-bh-visual__core\"></span></span></span>" +
                 "<div class=\"n1-gravity-cps-strip__text\">" +
                 "<span class=\"n1-gravity-cps-strip__line\"><span class=\"n1-gravity-cps-strip__name\">Black hole</span>" +
                 "<span class=\"n1-gravity-cps-strip__mult\">Counting ×" + ts + "</span></span>" +
-                "<span class=\"n1-gravity-cps-strip__sub\">Cold singularity — disk, waves, furnace, and jet all pull through this total</span>" +
+                "<span class=\"n1-gravity-cps-strip__sub\">All phase effects apply here</span>" +
                 "</div></div>";
         }
     }
     // Updates the "Count per second" UI:
-    // - Total line uses an EMA of real Δtotal/Δwall-clock (see updateCpsDisplayEmaFromTotal) so it tracks actual growth, not instantaneous spike CPS.
-    // - "base × bonus × turbo" is scaled so the product matches that smoothed total (instant factors, scaled base).
+    // - Total line is rule-based (hands × upgrades × combo × turbo × black hole) via getInstantTotalCps — not wall-clock measured.
+    // - "base × bonus × turbo" breakdown uses the same factors; base is tick-rate sum adjusted only for how total bonus is displayed.
     // - Per-hand Hn lines are raw tick-rate CPS only (do not sum them and expect Total).
     // - Bonus/Turbo lines are hidden until those features are unlocked.
-    function updateRateDisplay() {
+    // - opts.throttleCpsHeadline: when true (batched game-loop UI), repaint the center rate text at most once per second.
+    function updateRateDisplay(opts) {
+        opts = opts || {};
+        const throttleCpsHeadline = opts.throttleCpsHeadline === true;
         const cpsPerHand = [];
         let cpsTotalRaw = 0;
         for (let i = 0; i < unlockedHands; i++) {
@@ -4915,15 +5429,15 @@
         const turboMult = getTurboCountMultiplier ? getTurboCountMultiplier() : 1;
         const turboDisplayMult = getTurboCountMultiplierFromMeter ? getTurboCountMultiplierFromMeter() : 1;
         const bhMult = getNumber1BlackHoleProductionMult();
-        const cpsInstant = clampFiniteNonNegative(cpsTotalRaw * comboMult * turboMult * bhMult);
-        const cpsTotal = getDisplayTotalCpsSmoothed();
+        const blackHoleSectionActive = isBlackHoleArcUnlocked() && getBlackHolePhase() >= 1;
+        const cpsTotal = getInstantTotalCps();
         const bonusUnlocked = unlockedHands >= 2;
         const turboUnlocked = turboBoostUnlocked;
         if (bonusMultiplierEl) {
             const bonusDisplayMult = getDisplayedTotalComboBonus();
             bonusMultiplierEl.textContent = "Total bonus: " + bonusDisplayMult.toFixed(2) + "×";
             bonusMultiplierEl.style.display = bonusUnlocked ? "" : "none";
-            bonusMultiplierEl.title = "Full bonus from every pattern you have earned, all combo upgrades, and a full rhythm bar. Count/s total is smoothed from real gains; the shown base is scaled so base × bonus × turbo matches that smoothed total.";
+            bonusMultiplierEl.title = "Full bonus from every pattern you have earned, all combo upgrades, and a full rhythm bar. Count/s total follows your current hands and upgrades (same factors as the breakdown).";
         }
         if (turboMultiplierDisplayEl) {
             turboMultiplierDisplayEl.textContent = "Turbo: " + turboDisplayMult.toFixed(2) + "×";
@@ -4931,44 +5445,49 @@
         }
         if (incrementalRateEl) {
             incrementalRateEl.classList.toggle("rate-turbo-active", turboBoostEnabled && turboMult > 1);
-            incrementalRateEl.title = "Total rate is smoothed (exponential moving average of your real total count gain) with time constant ≈" + CPS_DISPLAY_EMA_TAU_SEC + "s — closer to short-term average growth than the old instantaneous formula.";
+            incrementalRateEl.classList.toggle("incremental-rate-value--pre-bh-wrap", !blackHoleSectionActive && unlockedHands >= 2);
+            incrementalRateEl.title = "Total count per second from your current hands, speed/slowdown levels, combo bonus, turbo, and black hole — same basis as hand tooltips. During play the center line repaints at most once per second so it stays easy to read; it also updates right away after purchases, turbo, and similar changes.";
         }
-        if (unlockedHands >= 2) {
-            const totalFormatted = formatCount(cpsTotal < 1e6 ? Math.round(cpsTotal * 100) / 100 : cpsTotal);
-            const bonusDisplayMult = getDisplayedTotalComboBonus();
-            const appliedComboMult = comboMult;
-            let cpsRateDisplayBase = cpsTotalRaw;
-            if (bonusUnlocked && Number.isFinite(bonusDisplayMult) && bonusDisplayMult > 0) {
-                cpsRateDisplayBase = (cpsTotalRaw * appliedComboMult) / bonusDisplayMult;
-            }
-            if (cpsInstant > 1e-15) {
-                cpsRateDisplayBase = (cpsRateDisplayBase * cpsTotal) / cpsInstant;
-            }
-            const baseFormatted = formatCount(cpsRateDisplayBase < 1e6 ? Math.round(cpsRateDisplayBase * 100) / 100 : cpsRateDisplayBase);
-            const calcParts = [baseFormatted];
-            if (bonusUnlocked) calcParts.push(bonusDisplayMult.toFixed(2));
-            // bonusDisplayMult matches the right-column “Total bonus”; cpsRateDisplayBase is scaled so base × bonus × turbo === cpsTotal.
-            if (turboUnlocked) calcParts.push(turboMult.toFixed(2));
-            if (bhMult > 1.0005) {
-                const bhs = bhMult >= 10 ? bhMult.toFixed(2) : bhMult.toFixed(3);
-                let bhPart = bhs;
-                if (isBlackHoleArcUnlocked()) {
-                    const ph = getBlackHolePhase();
-                    if (ph === 1) bhPart = "mass×" + bhs;
-                    else if (ph >= 2 && ph <= 6) bhPart = "black\u00a0hole×" + bhs;
-                    else if (ph === 7) bhPart = "epilogue×" + bhs;
+        const nowPaint = Date.now();
+        const mayPaintHeadline = !throttleCpsHeadline || (nowPaint - cpsHeadlineLastPaintMs >= CPS_HEADLINE_THROTTLE_MS);
+        if (incrementalRateEl && mayPaintHeadline) {
+            cpsHeadlineLastPaintMs = nowPaint;
+            if (unlockedHands >= 2) {
+                const totalFormatted = formatCount(cpsTotal < 1e6 ? Math.round(cpsTotal * 100) / 100 : cpsTotal);
+                const bonusDisplayMult = getDisplayedTotalComboBonus();
+                const appliedComboMult = comboMult;
+                let cpsRateDisplayBase = cpsTotalRaw;
+                if (bonusUnlocked && Number.isFinite(bonusDisplayMult) && bonusDisplayMult > 0) {
+                    cpsRateDisplayBase = (cpsTotalRaw * appliedComboMult) / bonusDisplayMult;
                 }
-                calcParts.push(bhPart);
+                const baseFormatted = formatCount(cpsRateDisplayBase < 1e6 ? Math.round(cpsRateDisplayBase * 100) / 100 : cpsRateDisplayBase);
+                const calcParts = ["base " + baseFormatted];
+                if (bonusUnlocked) calcParts.push("bonus×" + formatCompactMultiplier(bonusDisplayMult));
+                if (turboUnlocked) calcParts.push("turbo×" + formatCompactMultiplier(turboMult));
+                if (bhMult > 1.0005) {
+                    const bhs = formatCompactMultiplier(bhMult);
+                    let bhPart = "bh×" + bhs;
+                    if (isBlackHoleArcUnlocked()) {
+                        const ph = getBlackHolePhase();
+                        if (ph === 1) bhPart = "mass×" + bhs;
+                        else if (ph >= 2 && ph <= 6) bhPart = "black\u00a0hole×" + bhs;
+                        else if (ph === 7) bhPart = "epilogue×" + bhs;
+                    }
+                    calcParts.push(bhPart);
+                }
+                const totalStr = "Total " + totalFormatted + "/s · " + calcParts.join(" · ");
+                if (blackHoleSectionActive) {
+                    incrementalRateEl.innerHTML = "<strong>" + totalStr + "</strong> · all hands";
+                } else {
+                    const handParts = cpsPerHand.slice(0, unlockedHands).map((cps, i) => {
+                        const rawCps = cps;
+                        return "H" + (i + 1) + ": " + formatCount(rawCps < 1e6 ? Math.round(rawCps * 100) / 100 : rawCps) + "/s";
+                    });
+                    incrementalRateEl.innerHTML = "<strong>" + totalStr + "</strong> · " + handParts.join(" · ");
+                }
+            } else {
+                incrementalRateEl.textContent = formatCount(cpsTotal < 1e6 ? Math.round(cpsTotal * 100) / 100 : cpsTotal);
             }
-            const calcStr = calcParts.length > 1 ? " (" + calcParts.join(" × ") + ")" : "";
-            const totalStr = "Total: " + totalFormatted + "/s" + calcStr;
-            const handParts = cpsPerHand.slice(0, unlockedHands).map((cps, i) => {
-                const rawCps = cps;
-                return "H" + (i + 1) + ": " + formatCount(rawCps < 1e6 ? Math.round(rawCps * 100) / 100 : rawCps) + "/s";
-            });
-            incrementalRateEl.innerHTML = "<strong>" + totalStr + "</strong> · " + handParts.join(" · ");
-        } else {
-            incrementalRateEl.textContent = formatCount(cpsTotal < 1e6 ? Math.round(cpsTotal * 100) / 100 : cpsTotal);
         }
         updateN1GravityCpsStrip();
         updateHandStatusBlocks();
@@ -5593,7 +6112,7 @@
                 autoBuyCountdownSecondsByHand[i] = countdown - dtSec;
                 if (autoBuyCountdownSecondsByHand[i] <= 0) {
                     if (canAfford) {
-                        buySpeedUpgradeForHand(i, { fromAutobuy: true });
+                        buySpeedUpgradeForHand(i, { fromAutobuy: true, silentLog: true, skipUpgradeDom: true });
                         const stillCanAfford = (handEarnings[i] || 0) >= getUpgradeCost(i, speedLevel[i] + 1);
                         autoBuyCountdownSecondsByHand[i] = stillCanAfford ? getAutoBuyDelaySeconds() : 0;
                     } else {
@@ -5852,15 +6371,33 @@
         if (data.number1BlackHoleState && typeof data.number1BlackHoleState === "object") {
             number1BlackHoleState = Object.assign({}, number1BlackHoleState, data.number1BlackHoleState);
             number1BlackHoleState.phase = Math.max(0, Math.min(7, Math.floor(Number(number1BlackHoleState.phase) || 0)));
+            number1BlackHoleState.phase2CollapseMassTier = clampBlackHolePhase2CollapseTier(number1BlackHoleState.phase2CollapseMassTier);
+            number1BlackHoleState.phase2CollapsePhotonTier = clampBlackHolePhase2CollapseTier(number1BlackHoleState.phase2CollapsePhotonTier);
+            number1BlackHoleState.phase2CollapseErgosphereTier = clampBlackHolePhase2CollapseTier(number1BlackHoleState.phase2CollapseErgosphereTier);
+            {
+                const pm = Math.floor(Number(number1BlackHoleState.phase2Mass) || 0);
+                const bk = Math.floor(Number(number1BlackHoleState.phase2EssenceBank) || 0);
+                const sumTiers =
+                    number1BlackHoleState.phase2CollapseMassTier +
+                    number1BlackHoleState.phase2CollapsePhotonTier +
+                    number1BlackHoleState.phase2CollapseErgosphereTier;
+                if (getBlackHolePhase() === 2 && (pm > 0 || bk > 0) && sumTiers < BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER * 3) {
+                    number1BlackHoleState.phase2CollapseMassTier = BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER;
+                    number1BlackHoleState.phase2CollapsePhotonTier = BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER;
+                    number1BlackHoleState.phase2CollapseErgosphereTier = BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER;
+                }
+            }
         } else if (number1AscensionBlackHoleLevel > 0) {
             number1BlackHoleState.phase = 2;
             number1BlackHoleState.phase2Mass = Math.max(number1BlackHoleState.phase2Mass || 0, number1AscensionBlackHoleLevel);
+            number1BlackHoleState.phase2CollapseMassTier = BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER;
+            number1BlackHoleState.phase2CollapsePhotonTier = BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER;
+            number1BlackHoleState.phase2CollapseErgosphereTier = BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER;
         }
         if (number1HasAscended && isNumber1AscensionTreeFullyPurchased() && getBlackHolePhase() === 0) {
             number1BlackHoleState.phase = 1;
         }
         if (turboBoostUnlocked) turboBoostMeter = Math.min(turboBoostMeter, getTurboMeterMax());
-        resetCpsDisplayEma();
         refreshTotalFromHandEarnings();
         syncBlackHolePhase1Vfx();
         updateN1GravityCpsStrip();
@@ -5872,7 +6409,6 @@
         const capMs = Math.max(0, settings.offlineCapHours * 3600 * 1000);
         const effectiveMs = Math.min(Math.max(0, offlineMs), capMs);
         if (effectiveMs <= 0) return;
-        resetCpsDisplayEma();
         tickBackgroundNumberModules(effectiveMs / 1000);
         updateBlackHolePhaseStep(effectiveMs / 1000);
         if (getBlackHolePhase() === 7) {
@@ -6183,6 +6719,9 @@
             currentStoryBanner = null;
         }
         storyBannerOverlayEl.style.display = "none";
+        if (ascensionMapCollapsePending && !number1BlackHoleState.phase1MapCollapseSeen) {
+            startAscensionMapCollapseTransition();
+        }
         gamePaused = false;
         renderStoryReviewList();
         checkStoryBanners();
@@ -6283,6 +6822,7 @@
             const wasAscension = pagePanelEl.dataset.openPageId === "ascension";
             pagePanelEl.style.display = "none";
             delete pagePanelEl.dataset.openPageId;
+            syncMessageLogScrollContainerMode("");
             if (wasAscension) teardownAscensionMapPanZoom();
         }
         syncInlinePanelsVsGameplay();
@@ -6352,6 +6892,12 @@
             if (ascBhBuy && pagePanelEl.dataset.openPageId === "ascension" && ascensionPageActiveNumber === 1 && pagePanelBodyEl) {
                 e.preventDefault();
                 tryBuyNumber1BlackHole();
+                return;
+            }
+            const ascBhP2 = e.target.closest("[data-asc-black-hole-p2]");
+            if (ascBhP2 && pagePanelEl.dataset.openPageId === "ascension" && ascensionPageActiveNumber === 1 && pagePanelBodyEl) {
+                e.preventDefault();
+                tryBuyBlackHolePhase2CollapseUpgrade(ascBhP2.getAttribute("data-asc-black-hole-p2") || "");
                 return;
             }
             const ascBhStart = e.target.closest("[data-asc-black-hole-start]");
@@ -7012,7 +7558,6 @@
             h0.render();
         }
 
-        resetCpsDisplayEma();
         refreshTotalFromHandEarnings();
         if (upgradeContainer && totalChanges < 10) upgradeContainer.classList.remove("show-upgrade-content");
 
@@ -7474,13 +8019,14 @@
             maybeAutoBuyCheapen();
             maybeAutoBuySlowdown();
             const now = Date.now();
-            if (now - lastUIUpdateMs >= UI_UPDATE_THROTTLE_MS) {
-                lastUIUpdateMs = now;
+            if (now - lastUIUpdateMs >= UI_UPDATE_THROTTLE_MS || batchedUpgradeUiFlush) {
+                if (now - lastUIUpdateMs >= UI_UPDATE_THROTTLE_MS) lastUIUpdateMs = now;
+                if (batchedUpgradeUiFlush) batchedUpgradeUiFlush = false;
                 updateSpeedUpgradeUI();
                 updateCheapenUpgradeUI();
                 updateSlowdownUpgradeUI();
                 updateTimeWarpAuraUI();
-                updateRateDisplay();
+                updateRateDisplay({ throttleCpsHeadline: true });
             }
         }
     }
@@ -7514,6 +8060,8 @@
     let lastUIUpdateMs = 0;
     let lastOverviewUpdateMs = 0;
     const UI_UPDATE_THROTTLE_MS = 150;
+    /** When autobuy / warp-assist skips per-purchase upgrade DOM, flush once this step (or with the normal throttle). */
+    let batchedUpgradeUiFlush = false;
     if (!gameLoopTimer) gameLoopTimer = setInterval(gameLoopTick, GAME_LOOP_MS);
     document.addEventListener("visibilitychange", () => {
         if (document.hidden) beginHiddenOfflineTracking();
