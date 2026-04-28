@@ -1,3 +1,13 @@
+import {
+    NUMBER2_BG_ROLLS_PER_SEC,
+    NUMBER2_ASCENSION_READY_TOTAL,
+    NUMBER_2_MILESTONES,
+    computeNumber2ActiveRollsPerSec,
+    computeNumber2EffectivePDouble as computeNumber2EffectivePDoubleRule,
+    formatNumber2BigIntDisplay as formatNumber2BigIntDisplayRule,
+    isPrimeInt
+} from "./number2-rules.js";
+
     /* ---------------------------------------------------------
        ASCII HANDS (1–10)
     --------------------------------------------------------- */
@@ -187,6 +197,9 @@
         phase2CollapseErgosphereTier: 0,
         phase2ParallelBonusPool: 0,
         phase3HawkingStrength: 0,
+        phase3LuminosityLevel: 0,
+        phase3ViscousLevel: 0,
+        phase3CoronalLevel: 0,
         /** Essence banked toward the next Phase 3 disk upgrade (partial feeds). */
         phase3EssenceBank: 0,
         phase3HawkingRate: 0,
@@ -196,22 +209,32 @@
         phase4WaveLevel: 0,
         /** Essence banked toward the next Phase 4 wave upgrade (partial feeds). */
         phase4EssenceBank: 0,
+        phase4WaveTriggered: false,
         phase4WaveActiveUntilMs: 0,
         phase4NextWaveAtMs: 0,
         phase4ManualReadyAtMs: 0,
         phase5DigestedHands: 0,
         phase5DigestHandNumber: 0,
+        phase5DigestStartedAtMs: 0,
+        phase5DigestDurationMs: 0,
         phase5DigestEndsAtMs: 0,
         phase5FurnaceLevel: 0,
         phase5NextSacrificeHand: 10,
+        phase5MutationHotterCore: 0,
+        phase5MutationEssenceRefinery: 0,
+        phase5MutationShorterOrbit: 0,
+        phase5PendingMutationHand: 0,
+        phase5PendingMutationLevel: 0,
+        phase5LastDigestedHand: 0,
+        phase5LastDigestCompletedAtMs: 0,
         phase6JetCharge: 0,
         phase6JetActive: false,
         phase6JetBoostLevel: 0,
         phase6JetEfficiencyLevel: 0,
         phase6JetBankLevel: 0,
-        /** Essence banked toward the next Phase 6 jet upgrade bundle (partial feeds). */
+        /** Essence banked toward the next Phase 6 jet upgrade (legacy bundle fallback). */
         phase6EssenceBank: 0,
-        phase6JetFuelBurnPerSec: 0,
+        phase6JetIgnited: false,
         phase6JetBestAscensionEssence: 0,
         phase7EpilogueCounter: 0,
         phase7EnteredAtMs: 0,
@@ -226,7 +249,8 @@
         waveReadyAnnounced: false,
         digestReadyAnnounced: false,
         jetReadyAnnounced: false,
-        jetDryAnnounced: false
+        jetDryAnnounced: false,
+        lastPhase2MassFeedAtMs: 0
     };
     const ASCENSION_MAP_COLLAPSE_DURATION_MS = 3100;
     let ascensionMapCollapseActiveUntilMs = 0;
@@ -252,6 +276,7 @@
     }
 
     const incrementalEl = document.getElementById("incremental-count");
+    const incrementalCountLabelEl = document.getElementById("incremental-count-label");
     const incrementalRateEl = document.getElementById("incremental-rate");
     const n1GravityCpsStripEl = document.getElementById("n1-gravity-cps-strip");
     const bonusMultiplierEl = document.getElementById("bonus-multiplier-display");
@@ -303,6 +328,7 @@
     const pageModalEl = document.getElementById("page-modal");
     const pageButtons = Array.from(document.querySelectorAll(".page-btn"));
     const combinationsPageBtn = document.querySelector(".page-btn[data-page=\"combinations\"]");
+    const ambientMessageTickerEl = document.getElementById("ambient-message-ticker");
     const actionLogEl = document.getElementById("action-log-lines");
     const actionLogToggle = document.getElementById("action-log-toggle");
     const actionLogContainer = document.getElementById("action-log");
@@ -437,14 +463,6 @@
         totalTwos: 0,
         tickCarry: 0
     };
-    const NUMBER2_ACTIVE_ROLLS_PER_SEC = 0.38;
-    const NUMBER2_BG_ROLLS_PER_SEC = 0.11;
-    const NUMBER2_ASCENSION_READY_TOTAL = 1024;
-    const NUMBER_2_MILESTONES = [
-        { goalStr: "256", text: "Reach total 256" },
-        { goalStr: "65536", text: "Reach total 65,536" },
-        { goalStr: "16777216", text: "Reach total 16,777,216" }
-    ];
     function number2TotalBig() {
         try {
             return BigInt(number2State.totalStr || "2");
@@ -456,11 +474,7 @@
         number2State.totalStr = b.toString();
     }
     function formatNumber2BigIntDisplay(b) {
-        if (b <= BigInt(Number.MAX_SAFE_INTEGER)) return formatCount(Number(b));
-        const s = b.toString();
-        const exp = s.length - 1;
-        const mant = (Number(s.slice(0, Math.min(4, s.length))) / Math.pow(10, Math.min(3, s.length - 1))).toFixed(2);
-        return mant + "×10^" + exp;
+        return formatNumber2BigIntDisplayRule(b, formatCount);
     }
     function getNumber2UpgradeLevel(id) {
         const n = number2State.upgradeLevels[id];
@@ -474,17 +488,6 @@
         if (!u || !Array.isArray(u.cost)) return 0;
         const idx = Math.max(0, Math.min(u.cost.length - 1, level));
         return u.cost[idx];
-    }
-    function isPrimeInt(n) {
-        const x = Math.floor(Number(n) || 0);
-        if (x < 2) return false;
-        if (x === 2) return true;
-        if (x % 2 === 0) return false;
-        const lim = Math.floor(Math.sqrt(x));
-        for (let d = 3; d <= lim; d += 2) {
-            if (x % d === 0) return false;
-        }
-        return true;
     }
     function getPlayingFairTokenMultiplier() {
         if (!(number2State.playingFairActive && getNumber2UpgradeLevel("playing_fair") > 0)) return 1;
@@ -541,32 +544,26 @@
         return ASCENSION2_TREE_EXPORT.computeAscension2GrantTotals(number2State.ascensionNodeIds);
     }
     function getNumber2EffectivePDouble() {
-        let p = typeof NUMBER2_BASE_P_DOUBLE === "number" ? NUMBER2_BASE_P_DOUBLE : 0.48;
-        const minP = typeof NUMBER2_P_DOUBLE_MIN === "number" ? NUMBER2_P_DOUBLE_MIN : 0.05;
-        const maxP = typeof NUMBER2_P_DOUBLE_MAX === "number" ? NUMBER2_P_DOUBLE_MAX : 0.95;
-        if (areNumber2ChanceModsEnabled()) {
-            const hotL = getNumber2UpgradeLevel("hot_streak");
-            if (hotL > 0 && isNumber2UpgradeToggleEnabled("hot_streak")) p += hotL * 0.015;
-            const paraL = getNumber2UpgradeLevel("gamblers_paradox");
-            if (paraL > 0 && isNumber2UpgradeToggleEnabled("gamblers_paradox")) p -= paraL * 0.018;
-            const runL = getNumber2UpgradeLevel("run_the_table");
-            const now = Date.now();
-            if (runL > 0 && (number2State.runTheTableUntilMs || 0) > now) {
-                const add = runL === 1 ? 0.30 : runL === 2 ? 0.35 : 0.40;
-                p += add;
-            }
-        }
-        p += getNumber2Asc2Totals().pDoubleAdd || 0;
-        return Math.max(minP, Math.min(maxP, p));
+        const runL = getNumber2UpgradeLevel("run_the_table");
+        return computeNumber2EffectivePDoubleRule({
+            basePDouble: typeof NUMBER2_BASE_P_DOUBLE === "number" ? NUMBER2_BASE_P_DOUBLE : 0.48,
+            minPDouble: typeof NUMBER2_P_DOUBLE_MIN === "number" ? NUMBER2_P_DOUBLE_MIN : 0.05,
+            maxPDouble: typeof NUMBER2_P_DOUBLE_MAX === "number" ? NUMBER2_P_DOUBLE_MAX : 0.95,
+            chanceModsEnabled: areNumber2ChanceModsEnabled(),
+            hotStreakLevel: getNumber2UpgradeLevel("hot_streak"),
+            hotStreakEnabled: isNumber2UpgradeToggleEnabled("hot_streak"),
+            gamblersParadoxLevel: getNumber2UpgradeLevel("gamblers_paradox"),
+            gamblersParadoxEnabled: isNumber2UpgradeToggleEnabled("gamblers_paradox"),
+            runTheTableLevel: runL,
+            runTheTableActive: runL > 0 && (number2State.runTheTableUntilMs || 0) > Date.now(),
+            ascensionPDoubleAdd: getNumber2Asc2Totals().pDoubleAdd || 0
+        });
     }
     function getNumber2LuckPerNothing() {
         return 1;
     }
     function getNumber2ActiveRollsPerSec() {
-        let r = NUMBER2_ACTIVE_ROLLS_PER_SEC;
-        const m = getNumber2Asc2Totals().activeRollMult || 0;
-        r *= 1 + m;
-        return r;
+        return computeNumber2ActiveRollsPerSec(getNumber2Asc2Totals().activeRollMult || 0);
     }
     function isNumber2Unlocked() {
         return unlockedNumbers.has(2);
@@ -1023,6 +1020,17 @@
         if (cat === "humor" && !settings.humorEnabled) return false;
         return true;
     }
+    function setAmbientMessage(entry) {
+        if (!ambientMessageTickerEl || !entry) return;
+        const cat = normalizeLogCategory(entry.category);
+        if (!isLogCategoryVisible(cat)) {
+            ambientMessageTickerEl.textContent = "";
+            ambientMessageTickerEl.className = "ambient-message-ticker";
+            return;
+        }
+        ambientMessageTickerEl.textContent = entry.text;
+        ambientMessageTickerEl.className = "ambient-message-ticker ambient-message-ticker--" + cat;
+    }
     function addToLog(msg, category) {
         const cat = normalizeLogCategory(category);
         if (!isLogCategoryVisible(cat)) return;
@@ -1140,13 +1148,86 @@
         { goal: 1e24, text: "Unlock a seventh hand", achieved: false },
         { goal: 1e27, text: "Unlock a eighth hand", achieved: false },
         { goal: 1e30, text: "Unlock a ninth hand", achieved: false },
-        { goal: 1e33, text: "Unlock a tenth hand", achieved: false }
+        { goal: 1e33, text: "Unlock a tenth hand", achieved: false },
+        { id: "ascension-ready", goal: 1e35, text: "Prepare to Ascend", achieved: false },
+        { id: "first-ascension", text: "Ascend Number 1 for the first time", achieved: false, isComplete: () => number1HasAscended },
+        { id: "first-ascension-node", text: "Buy your first Ascension node", achieved: false, isComplete: () => number1AscensionNodeIds.length >= 1, getProgress: () => {
+            return { current: Math.min(number1AscensionNodeIds.length, 1), target: 1, pct: Math.min(100, (number1AscensionNodeIds.length / 1) * 100), label: number1AscensionNodeIds.length + " / 1 node" };
+        } },
+        { id: "ascension-tree-complete", text: "Complete the Ascension tree", achieved: false, isComplete: () => isNumber1AscensionTreeFullyPurchased(), getProgress: () => {
+            const total = Math.max(1, Array.isArray(ASCENSION_MAP_NODES) ? ASCENSION_MAP_NODES.length : 1);
+            const owned = Math.min(total, ascensionPurchasedSet().size);
+            return { current: owned, target: total, pct: Math.max(0, Math.min(100, (owned / total) * 100)), label: owned + " / " + total + " nodes" };
+        } },
+        { id: "bh-mass-pour", text: "Pour Essence into the Mass Accumulator", achieved: false, isComplete: () => getBlackHolePhase() >= 2 || Math.floor(Number(number1BlackHoleState.phase1EssenceSpent) || 0) > 0, getProgress: () => {
+            const spent = Math.max(0, Math.floor(Number(number1BlackHoleState.phase1EssenceSpent) || 0));
+            return { current: spent, target: BLACK_HOLE_PHASE1_ESSENCE_TARGET, pct: getBlackHolePhase() >= 2 ? 100 : Math.max(0, Math.min(100, (spent / BLACK_HOLE_PHASE1_ESSENCE_TARGET) * 100)), label: formatCount(spent) + " / " + formatCount(BLACK_HOLE_PHASE1_ESSENCE_TARGET) + " Essence" };
+        } },
+        { id: "bh-phase2", text: "Collapse the Mass Accumulator", achieved: false, isComplete: () => getBlackHolePhase() >= 2, getProgress: () => ({ pct: getBlackHolePhase() >= 2 ? 100 : getBlackHolePhase1FillRatio() * 100, label: Math.floor(getBlackHolePhase1FillRatio() * 100) + "% charged" }) },
+        { id: "bh-phase2-tracks", text: "Stabilize all collapse tracks", achieved: false, isComplete: () => getBlackHolePhase() >= 3 || isBlackHolePhase2MassPourUnlocked(), getProgress: () => {
+            const total = BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER * 3;
+            const tiers = getBlackHolePhase2CollapseMassTier() + getBlackHolePhase2CollapsePhotonTier() + getBlackHolePhase2CollapseErgosphereTier();
+            return { current: tiers, target: total, pct: getBlackHolePhase() >= 3 ? 100 : Math.max(0, Math.min(100, (tiers / total) * 100)), label: tiers + " / " + total + " tiers" };
+        } },
+        { id: "bh-phase3", text: "Fill the singularity with mass", achieved: false, isComplete: () => getBlackHolePhase() >= 3, getProgress: () => {
+            const mass = Math.max(0, Math.floor(Number(number1BlackHoleState.phase2Mass) || 0));
+            return { current: mass, target: BLACK_HOLE_PHASE2_MASS_CAP, pct: getBlackHolePhase() >= 3 ? 100 : Math.max(0, Math.min(100, (mass / BLACK_HOLE_PHASE2_MASS_CAP) * 100)), label: mass + " / " + BLACK_HOLE_PHASE2_MASS_CAP + " mass" };
+        } },
+        { id: "bh-phase4", text: "Tune all accretion disk systems", achieved: false, isComplete: () => getBlackHolePhase() >= 4, getProgress: () => {
+            const tiers = getBlackHolePhase3TrackLevel("luminosity") + getBlackHolePhase3TrackLevel("viscous") + getBlackHolePhase3TrackLevel("coronal");
+            return { current: tiers, target: 18, pct: getBlackHolePhase() >= 4 ? 100 : Math.max(0, Math.min(100, (tiers / 18) * 100)), label: tiers + " / 18 disk tiers" };
+        } },
+        { id: "bh-wave", text: "Fire a Gravitational Wave", achieved: false, isComplete: () => getBlackHolePhase() >= 5 || !!number1BlackHoleState.phase4WaveTriggered || Date.now() <= (number1BlackHoleState.phase4WaveActiveUntilMs || 0), getProgress: () => ({ pct: getBlackHolePhase() >= 4 ? 50 : 0, label: getBlackHolePhase() >= 4 ? "Wave system online" : "Locked" }) },
+        { id: "bh-phase5", text: "Unlock the Gravitational Furnace", achieved: false, isComplete: () => getBlackHolePhase() >= 5, getProgress: () => ({ pct: getBlackHolePhase() >= 5 ? 100 : Math.max(0, Math.min(100, ((number1BlackHoleState.phase4WaveLevel || 0) / 6) * 100)), label: Math.floor(Number(number1BlackHoleState.phase4WaveLevel) || 0) + " / 6 wave levels" }) },
+        { id: "bh-first-sacrifice", text: "Feed your first hand to the furnace", achieved: false, isComplete: () => getBlackHolePhase() >= 6 || (number1BlackHoleState.phase5DigestHandNumber || 0) > 0 || (number1BlackHoleState.phase5DigestedHands || 0) > 0 },
+        { id: "bh-first-digest", text: "Complete your first digestion", achieved: false, isComplete: () => getBlackHolePhase() >= 6 || (number1BlackHoleState.phase5DigestedHands || 0) >= 1 || (number1BlackHoleState.phase5FurnaceLevel || 0) >= 1, getProgress: () => ({ pct: ((number1BlackHoleState.phase5DigestedHands || 0) >= 1 || getBlackHolePhase() >= 6) ? 100 : getBlackHolePhase5DigestProgress() * 100, label: Math.floor(getBlackHolePhase5DigestProgress() * 100) + "% digested" }) },
+        { id: "bh-phase6", text: "Digest down to one hand", achieved: false, isComplete: () => getBlackHolePhase() >= 6, getProgress: () => {
+            const done = getBlackHolePhase() >= 6 ? 9 : Math.max(0, Math.floor(Number(number1BlackHoleState.phase5DigestedHands) || 0));
+            return { current: done, target: 9, pct: Math.max(0, Math.min(100, (done / 9) * 100)), label: done + " / 9 hands digested" };
+        } },
+        { id: "bh-jet-ignite", text: "Ignite the Astrophysical Jet", achieved: false, isComplete: () => getBlackHolePhase() >= 7 || !!number1BlackHoleState.phase6JetIgnited || !!number1BlackHoleState.phase6JetActive, getProgress: () => ({ pct: getBlackHolePhase() >= 6 ? 50 : 0, label: getBlackHolePhase() >= 6 ? "Jet system online" : "Locked" }) },
+        { id: "bh-phase7", text: "Reach the evaporation limit", achieved: false, isComplete: () => getBlackHolePhase() >= 7 || totalChanges >= BLACK_HOLE_EVAPORATION_CAP, getProgress: () => ({ pct: getBlackHolePhase() >= 7 ? 100 : Math.max(0, Math.min(100, Math.log10(Math.max(1, totalChanges)) / 308 * 100)), label: formatCount(totalChanges) + " / " + formatCount(BLACK_HOLE_EVAPORATION_CAP) }) },
+        { id: "bh-epilogue", text: "Count in the Epilogue", achieved: false, isComplete: () => getBlackHolePhase() >= 7 && (number1BlackHoleState.phase7EpilogueCounter || 0) >= 60, getProgress: () => ({ pct: getBlackHolePhase() >= 7 ? Math.max(0, Math.min(100, ((number1BlackHoleState.phase7EpilogueCounter || 0) / 60) * 100)) : 0, label: Math.floor(number1BlackHoleState.phase7EpilogueCounter || 0) + " / 60 epilogue ticks" }) }
     ];
 
+    function getObjectiveProgress(obj) {
+        if (!obj) return { pct: 100, label: "Complete" };
+        if (typeof obj.getProgress === "function") {
+            try {
+                const p = obj.getProgress() || {};
+                return {
+                    pct: Math.max(0, Math.min(100, Number(p.pct) || 0)),
+                    label: p.label || ""
+                };
+            } catch (_) {
+                return { pct: 0, label: "" };
+            }
+        }
+        if (Number.isFinite(obj.goal)) {
+            return {
+                pct: Math.max(0, Math.min(100, (totalChanges / obj.goal) * 100)),
+                label: formatCount(totalChanges) + " / " + formatCount(obj.goal)
+            };
+        }
+        return { pct: 0, label: "" };
+    }
+    function isObjectiveComplete(obj) {
+        if (!obj) return false;
+        if (typeof obj.isComplete === "function") {
+            try {
+                return !!obj.isComplete();
+            } catch (_) {
+                return false;
+            }
+        }
+        return Number.isFinite(obj.goal) && totalChanges >= obj.goal;
+    }
     function renderObjective(obj, totalChanges) {
         const li = document.createElement("li");
-        li.textContent = `Reach ${formatCount(obj.goal)} — ${obj.text}`;
-        if (totalChanges >= obj.goal) obj.achieved = true;
+        const progress = getObjectiveProgress(obj);
+        const prefix = Number.isFinite(obj.goal) ? ("Reach " + formatCount(obj.goal) + " — ") : "";
+        li.textContent = prefix + obj.text + (progress.label ? " (" + progress.label + ")" : "");
+        if (isObjectiveComplete(obj)) obj.achieved = true;
         if (obj.achieved) {
             li.style.textDecoration = "line-through";
             li.style.color = "#4CAF50";
@@ -1202,7 +1283,7 @@
         shortTermToShow.forEach(obj => {
             objectiveList.appendChild(renderObjective(obj, totalChanges));
         });
-        longTermObjectives.forEach(obj => { if (totalChanges >= obj.goal) obj.achieved = true; });
+        longTermObjectives.forEach(obj => { if (isObjectiveComplete(obj)) obj.achieved = true; });
         const longLastCompleted = longTermObjectives.filter(o => o.achieved).pop();
         const longNextUncompleted = longTermObjectives.find(o => !o.achieved);
         const longTermToShow = [longLastCompleted, longNextUncompleted].filter(Boolean);
@@ -1216,19 +1297,17 @@
         if (!milestoneTextEl || !milestoneProgressFillEl) return;
         const next = longTermObjectives.find(o => !o.achieved) || longTermObjectives[longTermObjectives.length - 1];
         if (!next) return;
-        const idx = longTermObjectives.indexOf(next);
-        const previousGoal = idx > 0 ? longTermObjectives[idx - 1].goal : 1;
-        const span = Math.max(1, next.goal - previousGoal);
-        const progressed = Math.max(0, Math.min(span, totalChanges - previousGoal));
-        const pct = Math.max(0, Math.min(100, (progressed / span) * 100));
+        const progress = getObjectiveProgress(next);
+        const pct = next.achieved ? 100 : progress.pct;
         if (milestoneTitleEl) milestoneTitleEl.textContent = "Next milestone";
-        milestoneTextEl.textContent = next.text + " — " + formatCount(totalChanges) + " / " + formatCount(next.goal) + " (" + pct.toFixed(2) + "%)";
+        milestoneTextEl.textContent = next.text + (progress.label ? " — " + progress.label : "") + " (" + pct.toFixed(2) + "%)";
         milestoneProgressFillEl.style.width = pct + "%";
         if (milestoneEssenceLineEl) {
             if (number1AscensionEssence > 0 || isNumber1AscensionReady()) {
                 milestoneEssenceLineEl.style.display = "";
                 const ascPct = Math.max(0, Math.min(100, (totalChanges / ASCENSION_1_REQUIRED_TOTAL) * 100));
-                const handReqText = unlockedHands >= ASCENSION_1_MIN_HANDS ? "hands ready" : ("hands: " + unlockedHands + "/" + ASCENSION_1_MIN_HANDS);
+                const requiredHands = getNumber1AscensionRequiredHands();
+                const handReqText = unlockedHands >= requiredHands ? "hands ready" : ("hands: " + unlockedHands + "/" + requiredHands);
                 const readinessText = isNumber1AscensionReady()
                     ? " — Ascension ready! Use the banner on the main screen or open Ascension."
                     : (" — Ascension: " + formatCount(totalChanges) + " / " + formatCount(ASCENSION_1_REQUIRED_TOTAL) + " (" + ascPct.toFixed(2) + "%), " + handReqText);
@@ -1248,6 +1327,9 @@
             const gainInfo = computeNumber1AscensionGainBreakdown(totalChanges);
             const parts = ["base " + formatCount(gainInfo.baseGain)];
             if (gainInfo.pendingBonus > 0) parts.push("warp bonus " + formatCount(gainInfo.pendingBonus));
+            if (gainInfo.blackHoleMultiplierBonus > 0) {
+                parts.push("BH bonus +" + formatCount(gainInfo.blackHoleMultiplierBonus) + " (" + gainInfo.blackHolePhaseMult.toFixed(3) + "x)");
+            }
             if (gainInfo.multiplierBonus > 0) {
                 parts.push("clap mult +" + formatCount(gainInfo.multiplierBonus) + " (" + gainInfo.clapMult.toFixed(3) + "x)");
             }
@@ -1344,7 +1426,10 @@
     function computeNumber1AscensionGainBreakdown(fromTotal) {
         const baseGain = computeNumber1AscensionBaseGain(fromTotal);
         const pendingBonus = getNumber1AscensionPendingBonusEssence();
-        const phaseMult = getBlackHolePhase1AscensionEssenceMult() + (number1BlackHoleState.phase2ParallelBonusPool || 0);
+        const blackHolePhase1Mult = getBlackHolePhase1AscensionEssenceMult();
+        const blackHoleParallelBonus = number1BlackHoleState.phase2ParallelBonusPool || 0;
+        const blackHoleFurnaceBonus = getBlackHoleFurnaceEssenceBonus();
+        const phaseMult = blackHolePhase1Mult + blackHoleParallelBonus + blackHoleFurnaceBonus;
         const beforeMultRaw = (baseGain + pendingBonus) * Math.max(1, phaseMult);
         const beforeMult = Math.max(baseGain + pendingBonus, Math.floor(beforeMultRaw));
         const clapMult = getNumber1AscensionClapEssenceMultiplier();
@@ -1352,6 +1437,11 @@
         return {
             baseGain,
             pendingBonus,
+            blackHolePhase1Mult,
+            blackHoleParallelBonus,
+            blackHoleFurnaceBonus,
+            blackHolePhaseMult: phaseMult,
+            blackHoleMultiplierBonus: Math.max(0, beforeMult - (baseGain + pendingBonus)),
             beforeMult,
             clapMult,
             multiplierBonus: Math.max(0, finalGain - beforeMult),
@@ -1361,8 +1451,13 @@
     function computeNumber1AscensionGain(fromTotal) {
         return computeNumber1AscensionGainBreakdown(fromTotal).finalGain;
     }
+    function getNumber1AscensionRequiredHands() {
+        const phase = getBlackHolePhase();
+        return phase >= 5 && phase < 7 ? 1 : ASCENSION_1_MIN_HANDS;
+    }
     function isNumber1AscensionReady() {
-        return unlockedHands >= ASCENSION_1_MIN_HANDS && totalChanges >= ASCENSION_1_REQUIRED_TOTAL;
+        if (getBlackHolePhase() === 7) return false;
+        return unlockedHands >= getNumber1AscensionRequiredHands() && totalChanges >= ASCENSION_1_REQUIRED_TOTAL;
     }
     const ASCENSION_TREE_EXPORT = window.ASCENSION_TREE_EXPORT;
     const ASCENSION_TREE_VERSION = ASCENSION_TREE_EXPORT.VERSION;
@@ -1399,6 +1494,11 @@
     const BLACK_HOLE_PHASE4_WAVE_MIN_SEC = 15;
     const BLACK_HOLE_PHASE4_WAVE_BOOST_MULT = 100;
     const BLACK_HOLE_PHASE4_WAVE_BOOST_DURATION_SEC = 5;
+    const BLACK_HOLE_FURNACE_MULT_PER_POWER = 2.5;
+    const BLACK_HOLE_FURNACE_HOTTER_CORE_BONUS = 0.18;
+    const BLACK_HOLE_FURNACE_ESSENCE_REFINERY_BONUS = 0.18;
+    const BLACK_HOLE_FURNACE_SHORTER_ORBIT_TRIM = 0.08;
+    const BLACK_HOLE_FURNACE_COMPLETION_RITUAL_MS = 12000;
     const BLACK_HOLE_EVAPORATION_CAP = 1e308;
     const BLACK_HOLE_DIGEST_BASE_MS = 24 * 3600 * 1000;
     /** Mass steps in Phase 2 before transition to accretion (Phase 3); must match tryBuy transition. */
@@ -1455,7 +1555,6 @@
         if (Math.floor(Number(number1BlackHoleState.phase5FurnaceLevel) || 0) > 0) return true;
         if (Math.floor(Number(number1BlackHoleState.phase6JetBoostLevel) || 0) > 0) return true;
         if (Math.floor(Number(number1BlackHoleState.phase6EssenceBank) || 0) > 0) return true;
-        if ((number1BlackHoleState.phase5ConsumedHands || []).length > 0) return true;
         return false;
     }
     function clampBlackHolePhase2CollapseTier(n) {
@@ -1542,10 +1641,23 @@
         if (L >= BLACK_HOLE_PHASE2_MASS_CAP) return 0;
         return getBlackHolePhase2CostAtLevel(L);
     }
+    function addBlackHolePhase2ParallelBonusFromEssence(spentEssence) {
+        if (getBlackHolePhase() !== 2) return 0;
+        const spend = Math.max(0, Math.floor(Number(spentEssence) || 0));
+        if (spend <= 0) return 0;
+        const before = Math.max(0, Number(number1BlackHoleState.phase2ParallelBonusPool) || 0);
+        const after = Math.min(1.5, before + spend * 0.0001);
+        number1BlackHoleState.phase2ParallelBonusPool = after;
+        return Math.max(0, after - before);
+    }
     /** [0,1] progress from banked Essence toward the next Phase 3 disk upgrade (while still in Phase 3). */
     function getBlackHolePhase3UpgradeFrac() {
         if (getBlackHolePhase() !== 3) return 0;
-        const S = Math.floor(Number(number1BlackHoleState.phase3HawkingStrength) || 0);
+        const S = Math.min(
+            getBlackHolePhase3TrackLevel("luminosity"),
+            getBlackHolePhase3TrackLevel("viscous"),
+            getBlackHolePhase3TrackLevel("coronal")
+        );
         if (S >= 6) return 0;
         const bank = Math.max(0, Math.floor(Number(number1BlackHoleState.phase3EssenceBank) || 0));
         const cost = 75 + 25 * S;
@@ -1563,6 +1675,46 @@
     function getBlackHolePhase6NextJetUpgradeCostEssence() {
         const B = Math.floor(Number(number1BlackHoleState.phase6JetBoostLevel) || 0);
         return 300 + 120 * B;
+    }
+    function getBlackHolePhase3TrackLevel(track) {
+        let v = 0;
+        if (track === "luminosity") v = number1BlackHoleState.phase3LuminosityLevel;
+        else if (track === "viscous") v = number1BlackHoleState.phase3ViscousLevel;
+        else if (track === "coronal") v = number1BlackHoleState.phase3CoronalLevel;
+        else v = number1BlackHoleState.phase3HawkingStrength;
+        return Math.max(0, Math.min(6, Math.floor(Number(v) || 0)));
+    }
+    function getBlackHolePhase3TrackCost(track) {
+        const L = getBlackHolePhase3TrackLevel(track);
+        if (L >= 6) return 0;
+        const base = track === "luminosity" ? 75 : track === "viscous" ? 85 : 95;
+        return base + 25 * L;
+    }
+    function syncBlackHolePhase3LegacyLevel() {
+        const lum = getBlackHolePhase3TrackLevel("luminosity");
+        const vis = getBlackHolePhase3TrackLevel("viscous");
+        const cor = getBlackHolePhase3TrackLevel("coronal");
+        const min = Math.min(lum, vis, cor);
+        number1BlackHoleState.phase3HawkingStrength = Math.max(number1BlackHoleState.phase3HawkingStrength || 0, min);
+        number1BlackHoleState.phase3HawkingRate = vis;
+        number1BlackHoleState.phase3HawkingDuration = cor;
+    }
+    function isBlackHolePhase3Complete() {
+        return getBlackHolePhase3TrackLevel("luminosity") >= 6 &&
+            getBlackHolePhase3TrackLevel("viscous") >= 6 &&
+            getBlackHolePhase3TrackLevel("coronal") >= 6;
+    }
+    function getBlackHolePhase6TrackLevel(track) {
+        let v = 0;
+        if (track === "drain") v = number1BlackHoleState.phase6JetEfficiencyLevel;
+        else if (track === "boost") v = number1BlackHoleState.phase6JetBoostLevel;
+        else if (track === "bank") v = number1BlackHoleState.phase6JetBankLevel;
+        return Math.max(0, Math.floor(Number(v) || 0));
+    }
+    function getBlackHolePhase6TrackCost(track) {
+        const L = getBlackHolePhase6TrackLevel(track);
+        const base = track === "drain" ? 300 : track === "boost" ? 340 : 320;
+        return base + 120 * L;
     }
     function getBlackHolePhase1FillRatio() {
         const s = Math.max(0, Math.floor(Number(number1BlackHoleState.phase1EssenceSpent) || 0));
@@ -1590,7 +1742,7 @@
         if (p < 3 || p >= 6) return 1;
         const now = Date.now();
         if (now > (number1BlackHoleState.phase3HawkingActiveUntilMs || 0)) return 1;
-        const baseS = Math.floor(Number(number1BlackHoleState.phase3HawkingStrength) || 0);
+        const baseS = getBlackHolePhase3TrackLevel("luminosity");
         const sEff = p === 3 ? baseS + getBlackHolePhase3UpgradeFrac() : baseS;
         const amp = 0.25 + 0.1 * sEff;
         return 1 + amp;
@@ -1600,13 +1752,66 @@
         if (p < 4 || p >= 6) return 1;
         return Date.now() <= (number1BlackHoleState.phase4WaveActiveUntilMs || 0) ? BLACK_HOLE_PHASE4_WAVE_BOOST_MULT : 1;
     }
+    function getBlackHolePhase5DigestDurationMsSafe() {
+        const raw = Number(number1BlackHoleState.phase5DigestDurationMs);
+        return Number.isFinite(raw) && raw > 0 ? raw : getBlackHoleNextDigestDurationMs();
+    }
+    function getBlackHolePhase5MutationLevel(kind) {
+        let raw = 0;
+        if (kind === "hotter-core") raw = number1BlackHoleState.phase5MutationHotterCore;
+        else if (kind === "essence-refinery") raw = number1BlackHoleState.phase5MutationEssenceRefinery;
+        else if (kind === "shorter-orbit") raw = number1BlackHoleState.phase5MutationShorterOrbit;
+        return Math.max(0, Math.floor(Number(raw) || 0));
+    }
+    function getBlackHolePhase5MutationTotal() {
+        return getBlackHolePhase5MutationLevel("hotter-core") +
+            getBlackHolePhase5MutationLevel("essence-refinery") +
+            getBlackHolePhase5MutationLevel("shorter-orbit");
+    }
+    function getBlackHolePhase5HotterCoreMult() {
+        return 1 + BLACK_HOLE_FURNACE_HOTTER_CORE_BONUS * getBlackHolePhase5MutationLevel("hotter-core");
+    }
+    function getBlackHolePhase5EssenceRefineryBonus() {
+        return BLACK_HOLE_FURNACE_ESSENCE_REFINERY_BONUS * getBlackHolePhase5MutationLevel("essence-refinery");
+    }
+    function getBlackHolePhase5ShorterOrbitMult() {
+        const stacks = getBlackHolePhase5MutationLevel("shorter-orbit");
+        return Math.max(0.35, Math.pow(1 - BLACK_HOLE_FURNACE_SHORTER_ORBIT_TRIM, stacks));
+    }
+    function getBlackHolePhase5DigestProgressAt(nowMs) {
+        const end = Number(number1BlackHoleState.phase5DigestEndsAtMs) || 0;
+        if (!(end > nowMs)) return 0;
+        const duration = getBlackHolePhase5DigestDurationMsSafe();
+        let start = Number(number1BlackHoleState.phase5DigestStartedAtMs) || 0;
+        if (!(start > 0)) start = end - duration;
+        if (!(duration > 0) || nowMs <= start) return 0;
+        return Math.max(0, Math.min(1, (nowMs - start) / duration));
+    }
+    function getBlackHolePhase5DigestProgress() {
+        return getBlackHolePhase5DigestProgressAt(Date.now());
+    }
+    function getBlackHolePhase5DigestCurve(progress) {
+        const p = Math.max(0, Math.min(1, Number(progress) || 0));
+        // Late-weighted, but close to linear so players feel the hand coming online throughout digestion.
+        return Math.max(0, Math.min(1, Math.pow(p, 1.225)));
+    }
+    function getBlackHolePhase5EffectiveFurnacePower() {
+        const completed = Math.max(0, Math.floor(Number(number1BlackHoleState.phase5FurnaceLevel) || 0));
+        if (getBlackHolePhase() !== 5) return completed;
+        return completed + getBlackHolePhase5DigestCurve(getBlackHolePhase5DigestProgress());
+    }
+    function getBlackHoleFurnaceEssenceBonus() {
+        if (getBlackHolePhase() < 5) return 0;
+        return (0.35 + getBlackHolePhase5EssenceRefineryBonus()) * getBlackHolePhase5EffectiveFurnacePower();
+    }
     function getBlackHoleFurnaceMult() {
         if (getBlackHolePhase() < 5) return 1;
-        return 1 + 0.5 * (number1BlackHoleState.phase5FurnaceLevel || 0);
+        const basePerPower = BLACK_HOLE_FURNACE_MULT_PER_POWER * getBlackHolePhase5HotterCoreMult();
+        return Math.pow(basePerPower, getBlackHolePhase5EffectiveFurnacePower());
     }
     function getBlackHoleJetMult() {
         if (getBlackHolePhase() < 6 || !number1BlackHoleState.phase6JetActive) return 1;
-        const B = Math.floor(Number(number1BlackHoleState.phase6JetBoostLevel) || 0);
+        const B = getBlackHolePhase6TrackLevel("boost");
         let frac = 0;
         if (getBlackHolePhase() === 6) {
             const bank = Math.max(0, Math.floor(Number(number1BlackHoleState.phase6EssenceBank) || 0));
@@ -1628,6 +1833,40 @@
             getBlackHoleJetMult()
         );
     }
+    function getBlackHolePersistentMultForOffline() {
+        if (!isBlackHoleArcUnlocked()) return 1;
+        const jetMult = getBlackHolePhase() >= 6 && number1BlackHoleState.phase6JetActive ? getBlackHoleJetMult() : 1;
+        return (
+            getBlackHolePhase2MassMult() *
+            getBlackHolePhase1RunCpsMult() *
+            getBlackHolePhase2PhotonShellMult() *
+            getBlackHoleFurnaceMult() *
+            jetMult
+        );
+    }
+    function getBlackHoleOfflineTimedBuffAverageMult(dtSec) {
+        const p = getBlackHolePhase();
+        if (!(dtSec > 0) || p < 3 || p >= 6) return 1;
+        let hawkingAvg = 1;
+        if (p >= 3) {
+            const f = p === 3 ? getBlackHolePhase3UpgradeFrac() : 0;
+            const cd = Math.max(4, 18 - (getBlackHolePhase3TrackLevel("viscous") + f) - getBlackHolePhase2PhotonHawkingCdTrimSec());
+            const dur = 5 + getBlackHolePhase3TrackLevel("coronal") + f;
+            const amp = 0.25 + 0.1 * (getBlackHolePhase3TrackLevel("luminosity") + f);
+            const uptime = Math.max(0, Math.min(1, dur / cd));
+            hawkingAvg = 1 + amp * uptime;
+        }
+        let waveAvg = 1;
+        if (p >= 4) {
+            const iv = Math.max(1, getBlackHoleWaveIntervalSec());
+            const uptime = Math.max(0, Math.min(1, BLACK_HOLE_PHASE4_WAVE_BOOST_DURATION_SEC / iv));
+            waveAvg = 1 + (BLACK_HOLE_PHASE4_WAVE_BOOST_MULT - 1) * uptime;
+        }
+        return hawkingAvg * waveAvg;
+    }
+    function getBlackHoleOfflineProductionMult(dtSec) {
+        return getBlackHolePersistentMultForOffline() * getBlackHoleOfflineTimedBuffAverageMult(dtSec);
+    }
     function getNumber1BlackHoleProductionMult() {
         return getBlackHoleTotalMult();
     }
@@ -1635,6 +1874,7 @@
     let blackHolePhase1VfxActive = false;
     let blackHolePhase1CollapsePulseQueued = false;
     let blackHolePhase1SurgeTimerId = 0;
+    const BLACK_HOLE_SCREEN_FX_MS = 1800;
     function queueBlackHoleUiRefresh() {
         if (blackHoleUiRefreshQueued) return;
         blackHoleUiRefreshQueued = true;
@@ -1648,8 +1888,14 @@
         if (!number1StageRootEl) return;
         const arc = isBlackHoleArcUnlocked();
         const p = getBlackHolePhase();
+        const now = Date.now();
         const massMood = arc && p === 1;
         const singularityMood = arc && p >= 2 && p <= 6;
+        const hawkingActive = arc && p >= 3 && p < 6 && now <= (number1BlackHoleState.phase3HawkingActiveUntilMs || 0);
+        const waveActive = arc && p >= 4 && p < 6 && now <= (number1BlackHoleState.phase4WaveActiveUntilMs || 0);
+        if (incrementalCountLabelEl) {
+            incrementalCountLabelEl.textContent = p === 7 ? "Epilogue Count" : "Total Count";
+        }
         blackHolePhase1VfxActive = massMood;
         if (!massMood) {
             if (blackHolePhase1SurgeTimerId) {
@@ -1661,6 +1907,11 @@
         number1StageRootEl.classList.toggle("bh-phase1-vfx", massMood);
         number1StageRootEl.classList.toggle("bh-singularity-vfx", singularityMood);
         number1StageRootEl.classList.toggle("bh-singularity-deep", singularityMood);
+        number1StageRootEl.classList.toggle("bh-phase3-hawking-active", hawkingActive);
+        number1StageRootEl.classList.toggle("bh-phase4-wave-active", waveActive);
+        number1StageRootEl.classList.toggle("bh-phase6-jet-beam", arc && p === 6);
+        number1StageRootEl.classList.toggle("bh-phase6-jet-active", arc && p === 6 && !!number1BlackHoleState.phase6JetActive);
+        number1StageRootEl.classList.toggle("bh-phase7-stillness", arc && p === 7);
         if (massMood && !number1BlackHoleState.phase1VisualUnlockDone) {
             number1BlackHoleState.phase1VisualUnlockDone = true;
             let allowSurge = true;
@@ -1715,12 +1966,24 @@
         if (message) addToLog(message, "milestone");
         if (nextPhase === 2) {
             triggerBlackHolePhase1CollapseVfx();
-            showStoryBanner({
-                id: "black-hole-phase-1-collapse",
-                order: 1001,
-                title: "Mass Accumulator Collapse",
-                body: "Critical mass reached. The accumulator collapses inward. A black hole is born."
-            });
+            showStoryBannerById("black-hole-phase-1-collapse");
+        }
+        if (nextPhase === 3) {
+            showStoryBannerById("black-hole-phase-2-disk");
+        }
+        if (nextPhase === 4) {
+            showStoryBannerById("black-hole-phase-3-wave");
+        }
+        if (nextPhase === 5) {
+            showStoryBannerById("black-hole-phase-4-furnace");
+        }
+        if (nextPhase === 6) {
+            playBlackHoleScreenEffect("sacrifice");
+            showStoryBannerById("black-hole-phase-5-jets");
+        }
+        if (nextPhase === 7) {
+            playBlackHoleScreenEffect("evaporation");
+            showStoryBannerById("black-hole-phase-6-evaporation");
         }
         if (nextPhase === 2) addToLog("Tip: buy three collapse upgrades to tier 3 each, then pour Essence into mass.", "tip");
         if (nextPhase === 3) addToLog("Tip: Hawking bursts are brief. Time your pushes around burst windows.", "tip");
@@ -1786,10 +2049,70 @@
             return;
         }
         number1AscensionEssence -= cost;
-        addToLog(name + " → tier " + (cur + 1) + "/" + BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER + ".", "tip");
+        const parallelAdded = addBlackHolePhase2ParallelBonusFromEssence(cost);
+        const parallelNote = parallelAdded > 0 ? (" · parallel pool +" + (parallelAdded * 100).toFixed(2) + "%") : "";
+        addToLog(name + " → tier " + (cur + 1) + "/" + BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER + parallelNote + ".", "tip");
         if (isBlackHolePhase2MassPourUnlocked()) {
             addToLog("Singularity accepts direct mass feeds. Pour Essence when you are ready.", "milestone");
         }
+        autosaveNow();
+        queueBlackHoleUiRefresh();
+        updateRateDisplay();
+    }
+    function tryBuyBlackHolePhase3DiskUpgrade(track) {
+        if (!number1HasAscended || getBlackHolePhase() !== 3) return;
+        if (track !== "luminosity" && track !== "viscous" && track !== "coronal") return;
+        const cost = getBlackHolePhase3TrackCost(track);
+        if (!(cost > 0)) return;
+        const have = Math.max(0, Math.floor(Number(number1AscensionEssence) || 0));
+        if (have < cost) {
+            addToLog("Need " + formatCount(cost) + " Ascension Essence for this disk upgrade.", "warning");
+            return;
+        }
+        number1AscensionEssence -= cost;
+        let name = "";
+        if (track === "luminosity") {
+            number1BlackHoleState.phase3LuminosityLevel = getBlackHolePhase3TrackLevel(track) + 1;
+            name = "Disk luminosity";
+        } else if (track === "viscous") {
+            number1BlackHoleState.phase3ViscousLevel = getBlackHolePhase3TrackLevel(track) + 1;
+            name = "Viscous accretion";
+        } else {
+            number1BlackHoleState.phase3CoronalLevel = getBlackHolePhase3TrackLevel(track) + 1;
+            name = "Coronal loop";
+        }
+        syncBlackHolePhase3LegacyLevel();
+        addToLog(name + " → tier " + getBlackHolePhase3TrackLevel(track) + "/6.", "tip");
+        if (isBlackHolePhase3Complete()) {
+            number1BlackHoleState.phase3EssenceBank = 0;
+            completeBlackHolePhaseTransition(4, "Phase 3 complete: lensing active. Phase 4 unlocked.");
+        }
+        autosaveNow();
+        queueBlackHoleUiRefresh();
+        updateRateDisplay();
+    }
+    function tryBuyBlackHolePhase6JetUpgrade(track) {
+        if (!number1HasAscended || getBlackHolePhase() !== 6) return;
+        if (track !== "drain" && track !== "boost" && track !== "bank") return;
+        const cost = getBlackHolePhase6TrackCost(track);
+        const have = Math.max(0, Math.floor(Number(number1AscensionEssence) || 0));
+        if (have < cost) {
+            addToLog("Need " + formatCount(cost) + " Ascension Essence for this jet upgrade.", "warning");
+            return;
+        }
+        number1AscensionEssence -= cost;
+        let name = "";
+        if (track === "drain") {
+            number1BlackHoleState.phase6JetEfficiencyLevel = getBlackHolePhase6TrackLevel(track) + 1;
+            name = "Drain efficiency";
+        } else if (track === "boost") {
+            number1BlackHoleState.phase6JetBoostLevel = getBlackHolePhase6TrackLevel(track) + 1;
+            name = "Boost multiplier";
+        } else {
+            number1BlackHoleState.phase6JetBankLevel = getBlackHolePhase6TrackLevel(track) + 1;
+            name = "Boost bank";
+        }
+        addToLog(name + " → tier " + getBlackHolePhase6TrackLevel(track) + ".", "tip");
         autosaveNow();
         queueBlackHoleUiRefresh();
         updateRateDisplay();
@@ -1839,10 +2162,12 @@
             }
             number1BlackHoleState.phase2Mass = L;
             number1BlackHoleState.phase2EssenceBank = bank;
-            number1AscensionBlackHoleLevel = L;
+            number1BlackHoleUxFlags.lastPhase2MassFeedAtMs = Date.now();
+            const parallelAdded = addBlackHolePhase2ParallelBonusFromEssence(have);
             const nextC = L < BLACK_HOLE_PHASE2_MASS_CAP ? getBlackHolePhase2CostAtLevel(L) : 0;
             const bankNote = bank > 0 && nextC > 0 ? (" · " + formatCount(bank) + " / " + formatCount(nextC) + " Essence banked toward the next mass step") : "";
-            addToLog("Fed " + formatCount(have) + " Essence into black hole mass" + bankNote + ".", "tip");
+            const parallelNote = parallelAdded > 0 ? (" · parallel pool +" + (parallelAdded * 100).toFixed(2) + "%") : "";
+            addToLog("Fed " + formatCount(have) + " Essence into black hole mass" + bankNote + parallelNote + ".", "tip");
             if (L >= BLACK_HOLE_PHASE2_MASS_CAP) {
                 number1BlackHoleState.phase2EssenceBank = 0;
                 completeBlackHolePhaseTransition(3, "Phase 2 complete: accretion disk ignites. Phase 3 unlocked.");
@@ -1900,8 +2225,12 @@
                 completeBlackHolePhaseTransition(5, "Phase 4 complete: furnace unlocked. Phase 5 unlocked.");
             }
         } else if (phase === 5) {
+            if ((number1BlackHoleState.phase5PendingMutationLevel || 0) > 0) {
+                addToLog("Choose the pending Furnace Mutation before stoking or feeding again.", "warning");
+                return;
+            }
             const digestEnd = number1BlackHoleState.phase5DigestEndsAtMs || 0;
-            if (!(digestEnd > Date.now())) {
+            if (!(digestEnd > Date.now()) || !(number1BlackHoleState.phase5DigestHandNumber > 0)) {
                 addToLog("Phase 5 has no active digest to accelerate.", "warning");
                 return;
             }
@@ -1910,27 +2239,21 @@
                 addToLog("Need Ascension Essence to stoke the furnace.", "warning");
                 return;
             }
-            number1AscensionEssence -= have;
             const now = Date.now();
-            const cost = Math.max(25, Math.floor(50 + 20 * (number1BlackHoleState.phase5FurnaceLevel || 0)));
-            const floorMs = Math.floor(getBlackHoleNextDigestDurationMs() * 0.01);
-            let pool = have;
-            let digestEndMs = digestEnd;
-            while (pool >= cost && digestEndMs > now) {
-                const remaining = digestEndMs - now;
-                const fullRed = Math.max(1, Math.floor(remaining * 0.06));
-                digestEndMs = now + Math.max(floorMs, remaining - fullRed);
-                pool -= cost;
+            const preview = getBlackHolePhase5StokePreview(have, now);
+            if (!preview) {
+                addToLog("Phase 5 has no active digest to accelerate.", "warning");
+                return;
             }
-            if (pool > 0 && digestEndMs > now && cost > 0) {
-                const remaining = digestEndMs - now;
-                const fullRed = Math.max(1, Math.floor(remaining * 0.06));
-                const reduction = Math.max(1, Math.floor(fullRed * Math.min(1, pool / cost)));
-                digestEndMs = now + Math.max(floorMs, remaining - reduction);
-            }
+            number1AscensionEssence -= have;
+            const digestEndMs = preview.digestEndMs;
             number1BlackHoleState.phase5DigestEndsAtMs = digestEndMs;
-            const leftSec = Math.max(0, Math.ceil((digestEndMs - now) / 1000));
-            addToLog("Furnace: poured " + formatCount(have) + " Essence into digestion (~" + formatSeconds(leftSec) + " remaining).", "tip");
+            number1BlackHoleState.phase5DigestStartedAtMs = preview.start;
+            number1BlackHoleState.phase5DigestDurationMs = preview.duration;
+            const leftSec = Math.max(0, Math.ceil(preview.projectedRemainingMs / 1000));
+            const removedSec = Math.max(0, Math.floor(preview.removedMs / 1000));
+            const pct = Math.floor(getBlackHolePhase5DigestProgress() * 100);
+            addToLog("Furnace: poured " + formatCount(have) + " Essence into digestion (" + formatSeconds(removedSec) + " removed, " + pct + "% digested, ~" + formatSeconds(leftSec) + " remaining).", "tip");
         } else if (phase === 6) {
             const have = Math.max(0, Math.floor(Number(number1AscensionEssence) || 0));
             if (have < 1) {
@@ -1970,12 +2293,49 @@
         number1BlackHoleState.phase4NextWaveAtMs = now + ivMs;
         number1BlackHoleState.phase4ManualReadyAtMs = now + Math.round(ivMs * 0.5);
         number1BlackHoleUxFlags.waveReadyAnnounced = false;
+        number1BlackHoleState.phase4WaveTriggered = true;
+        playBlackHoleScreenEffect("wave");
+        syncBlackHolePhase1Vfx();
         addToLog("Manual Gravitational Wave fired (100x for 5s).", "milestone");
     }
     function getBlackHoleNextDigestDurationMs() {
-        const digested = Math.max(0, Math.floor(number1BlackHoleState.phase5DigestedHands || 0));
-        const d = Math.floor(BLACK_HOLE_DIGEST_BASE_MS / Math.pow(2, digested));
-        return Math.max(5 * 60 * 1000, d);
+        return Math.max(60 * 1000, Math.floor(BLACK_HOLE_DIGEST_BASE_MS * getBlackHolePhase5ShorterOrbitMult()));
+    }
+    function getBlackHolePhase5StokePreview(spendEssence, nowMs) {
+        const now = Number(nowMs) || Date.now();
+        const spend = Math.max(0, Math.floor(Number(spendEssence) || 0));
+        const digestEnd = Number(number1BlackHoleState.phase5DigestEndsAtMs) || 0;
+        if (spend <= 0 || !(digestEnd > now) || !(number1BlackHoleState.phase5DigestHandNumber > 0)) return null;
+        const cost = Math.max(25, Math.floor(50 + 20 * (number1BlackHoleState.phase5FurnaceLevel || 0)));
+        const oldDuration = getBlackHolePhase5DigestDurationMsSafe();
+        const start = Number(number1BlackHoleState.phase5DigestStartedAtMs) || Math.max(0, digestEnd - oldDuration);
+        const floorMs = Math.max(1000, Math.floor(oldDuration * 0.01));
+        let pool = spend;
+        let digestEndMs = digestEnd;
+        while (pool >= cost && digestEndMs > now) {
+            const remaining = digestEndMs - now;
+            const fullRed = Math.max(1, Math.floor(remaining * 0.06));
+            digestEndMs = now + Math.max(floorMs, remaining - fullRed);
+            pool -= cost;
+        }
+        if (pool > 0 && digestEndMs > now && cost > 0) {
+            const remaining = digestEndMs - now;
+            const fullRed = Math.max(1, Math.floor(remaining * 0.06));
+            const reduction = Math.max(1, Math.floor(fullRed * Math.min(1, pool / cost)));
+            digestEndMs = now + Math.max(floorMs, remaining - reduction);
+        }
+        const duration = Math.max(1, digestEndMs - start);
+        const progress = Math.max(0, Math.min(1, (now - start) / duration));
+        return {
+            start,
+            digestEndMs,
+            duration,
+            currentRemainingMs: Math.max(0, digestEnd - now),
+            projectedRemainingMs: Math.max(0, digestEndMs - now),
+            removedMs: Math.max(0, digestEnd - digestEndMs),
+            progress,
+            curved: getBlackHolePhase5DigestCurve(progress)
+        };
     }
     function applyHandSacrifice(handNum) {
         const target = Math.max(1, Math.min(maxHands, handNum | 0));
@@ -2004,6 +2364,10 @@
     }
     function sacrificeNextHandToFurnace() {
         if (getBlackHolePhase() !== 5) return;
+        if ((number1BlackHoleState.phase5PendingMutationLevel || 0) > 0) {
+            addToLog("Choose a Furnace Mutation before feeding the next hand.", "warning");
+            return;
+        }
         if ((number1BlackHoleState.phase5DigestEndsAtMs || 0) > Date.now()) {
             const remainSec = Math.max(0, Math.ceil(((number1BlackHoleState.phase5DigestEndsAtMs || 0) - Date.now()) / 1000));
             addToLog("Digestion is already in progress (" + formatSeconds(remainSec) + " remaining).", "warning");
@@ -2014,13 +2378,73 @@
             completeBlackHolePhaseTransition(6, "Only one hand remains. Phase 6 jets unlocked.");
             return;
         }
-        if (!applyHandSacrifice(handNum)) return;
+        if (unlockedHands < handNum) {
+            addToLog("Furnace needs Hand " + handNum + ", but it is not unlocked yet. Build this run back to " + handNum + " hands, then feed it.", "warning");
+            return;
+        }
+        if (!applyHandSacrifice(handNum)) {
+            addToLog("Furnace could not feed Hand " + handNum + " yet. Unlock it first, then try again.", "warning");
+            return;
+        }
         const now = Date.now();
+        const duration = getBlackHoleNextDigestDurationMs();
         number1BlackHoleState.phase5DigestHandNumber = handNum;
-        number1BlackHoleState.phase5DigestEndsAtMs = now + getBlackHoleNextDigestDurationMs();
+        number1BlackHoleState.phase5DigestStartedAtMs = now;
+        number1BlackHoleState.phase5DigestDurationMs = duration;
+        number1BlackHoleState.phase5DigestEndsAtMs = now + duration;
         number1BlackHoleState.phase5NextSacrificeHand = handNum - 1;
         number1BlackHoleUxFlags.digestReadyAnnounced = false;
-        addToLog("Hand " + handNum + " is fed to the furnace. Digestion begins.", "milestone");
+        playBlackHoleScreenEffect("sacrifice");
+        addToLog("Hand " + handNum + " is fed to the furnace. Digestion begins (" + formatSeconds(Math.ceil(duration / 1000)) + ").", "milestone");
+    }
+    function chooseBlackHoleFurnaceMutation(kind) {
+        if (getBlackHolePhase() !== 5) return;
+        if (!(number1BlackHoleState.phase5PendingMutationLevel > 0)) return;
+        const handNum = Math.max(1, Math.floor(Number(number1BlackHoleState.phase5PendingMutationHand) || number1BlackHoleState.phase5LastDigestedHand || 1));
+        let label = "";
+        if (kind === "hotter-core") {
+            number1BlackHoleState.phase5MutationHotterCore = getBlackHolePhase5MutationLevel("hotter-core") + 1;
+            label = "Hotter Core";
+        } else if (kind === "essence-refinery") {
+            number1BlackHoleState.phase5MutationEssenceRefinery = getBlackHolePhase5MutationLevel("essence-refinery") + 1;
+            label = "Essence Refinery";
+        } else if (kind === "shorter-orbit") {
+            number1BlackHoleState.phase5MutationShorterOrbit = getBlackHolePhase5MutationLevel("shorter-orbit") + 1;
+            label = "Shorter Orbit";
+        } else {
+            return;
+        }
+        number1BlackHoleState.phase5PendingMutationHand = 0;
+        number1BlackHoleState.phase5PendingMutationLevel = 0;
+        addToLog("Furnace Mutation chosen for Hand " + handNum + ": " + label + ".", "milestone");
+        playBlackHoleScreenEffect("digest");
+        updateRateDisplay();
+        updateN1GravityCpsStrip();
+        refreshAscensionPanelIfOpen();
+        autosaveNow();
+        if ((number1BlackHoleState.phase5NextSacrificeHand || 1) <= 1) {
+            completeBlackHolePhaseTransition(6, "Phase 5 complete: jets awakened.");
+        }
+    }
+    function showBlackHoleFurnaceDigestCompletionRitual(handNum, furnaceLevel) {
+        const h = Math.max(1, Math.min(maxHands, Math.floor(Number(handNum) || 1)));
+        const level = Math.max(1, Math.floor(Number(furnaceLevel) || 1));
+        const echoMult = getBlackHoleFurnaceMult();
+        const title = "Hand " + h + " Digested";
+        const body = "The Gravitational Furnace flares and Hand " + h + " collapses into an Echo Hand.\n\n" +
+            "Echo Hands collected: " + level + " / 9\n" +
+            "Current furnace CPS: x" + (echoMult >= 10 ? echoMult.toFixed(2) : echoMult.toFixed(3)) + "\n\n" +
+            "Choose a Furnace Mutation to claim the reward, then feed the next hand.";
+        gamePaused = true;
+        playBlackHoleScreenEffect("digest");
+        window.setTimeout(function () {
+            showStoryBanner({
+                id: level === 1 ? "black-hole-first-digest" : ("black-hole-digest-hand-" + h),
+                order: 1007 + level,
+                title,
+                body
+            });
+        }, Math.min(1200, BLACK_HOLE_SCREEN_FX_MS));
     }
     function tryToggleJet(active) {
         if (getBlackHolePhase() < 6 || getBlackHolePhase() >= 7) return;
@@ -2029,6 +2453,8 @@
             return;
         }
         number1BlackHoleState.phase6JetActive = !!active;
+        if (number1BlackHoleState.phase6JetActive) number1BlackHoleState.phase6JetIgnited = true;
+        syncBlackHolePhase1Vfx();
         addToLog(number1BlackHoleState.phase6JetActive ? "Jet ignition: ON." : "Jet ignition: OFF.", "milestone");
     }
     function updateBlackHolePhaseStep(dtSec) {
@@ -2037,10 +2463,6 @@
         ensureBlackHoleArcStarted();
         const now = Date.now();
         const phase = getBlackHolePhase();
-        if (phase >= 2) {
-            const pb = number1BlackHoleState.phase2ParallelBonusPool || 0;
-            number1BlackHoleState.phase2ParallelBonusPool = Math.min(1.5, pb + dtSec * 0.0002);
-        }
         if (phase === 2) {
             const erg = getBlackHolePhase2CollapseErgosphereTier();
             if (erg > 0 && turboBoostUnlocked) {
@@ -2050,12 +2472,14 @@
         }
         if (phase >= 3 && phase < 6) {
             const f = phase === 3 ? getBlackHolePhase3UpgradeFrac() : 0;
-            const baseCd = Math.max(4, 18 - ((number1BlackHoleState.phase3HawkingRate || 0) + f) - getBlackHolePhase2PhotonHawkingCdTrimSec());
+            const baseCd = Math.max(4, 18 - (getBlackHolePhase3TrackLevel("viscous") + f) - getBlackHolePhase2PhotonHawkingCdTrimSec());
             if (!(number1BlackHoleState.phase3NextHawkingAtMs > 0)) number1BlackHoleState.phase3NextHawkingAtMs = now + baseCd * 1000;
             if (now >= number1BlackHoleState.phase3NextHawkingAtMs) {
-                const durSec = 5 + (number1BlackHoleState.phase3HawkingDuration || 0) + f;
+                const durSec = 5 + getBlackHolePhase3TrackLevel("coronal") + f;
                 number1BlackHoleState.phase3HawkingActiveUntilMs = now + durSec * 1000;
                 number1BlackHoleState.phase3NextHawkingAtMs = now + baseCd * 1000;
+                playBlackHoleScreenEffect("hawking");
+                syncBlackHolePhase1Vfx();
             }
         }
         if (phase >= 4 && phase < 6) {
@@ -2064,6 +2488,9 @@
             if (now >= number1BlackHoleState.phase4NextWaveAtMs) {
                 number1BlackHoleState.phase4WaveActiveUntilMs = now + BLACK_HOLE_PHASE4_WAVE_BOOST_DURATION_SEC * 1000;
                 number1BlackHoleState.phase4NextWaveAtMs = now + ivMs;
+                number1BlackHoleState.phase4WaveTriggered = true;
+                playBlackHoleScreenEffect("wave");
+                syncBlackHolePhase1Vfx();
                 if (now >= (number1BlackHoleState.phase4ManualReadyAtMs || 0)) {
                     number1BlackHoleState.phase4ManualReadyAtMs = now + Math.round(ivMs * 0.5);
                 }
@@ -2077,33 +2504,47 @@
         if (phase === 5) {
             const digestEnd = number1BlackHoleState.phase5DigestEndsAtMs || 0;
             if (digestEnd > 0 && now >= digestEnd) {
+                const completedHand = Math.max(1, Math.floor(Number(number1BlackHoleState.phase5DigestHandNumber) || number1BlackHoleState.phase5NextSacrificeHand + 1 || 1));
                 number1BlackHoleState.phase5DigestEndsAtMs = 0;
+                number1BlackHoleState.phase5DigestStartedAtMs = 0;
+                number1BlackHoleState.phase5DigestDurationMs = 0;
+                number1BlackHoleState.phase5DigestHandNumber = 0;
                 number1BlackHoleState.phase5DigestedHands = (number1BlackHoleState.phase5DigestedHands || 0) + 1;
                 number1BlackHoleState.phase5FurnaceLevel = (number1BlackHoleState.phase5FurnaceLevel || 0) + 1;
-                addToLog("Digestion complete. Furnace level " + number1BlackHoleState.phase5FurnaceLevel + ".", "milestone");
+                number1BlackHoleState.phase5PendingMutationHand = completedHand;
+                number1BlackHoleState.phase5PendingMutationLevel = number1BlackHoleState.phase5FurnaceLevel;
+                number1BlackHoleState.phase5LastDigestedHand = completedHand;
+                number1BlackHoleState.phase5LastDigestCompletedAtMs = now;
+                addToLog("Hand " + completedHand + " digestion complete. Echo Hand formed — choose a Furnace Mutation.", "milestone");
+                showBlackHoleFurnaceDigestCompletionRitual(completedHand, number1BlackHoleState.phase5FurnaceLevel);
                 number1BlackHoleUxFlags.digestReadyAnnounced = true;
-                if ((number1BlackHoleState.phase5NextSacrificeHand || 1) <= 1) {
-                    completeBlackHolePhaseTransition(6, "Phase 5 complete: jets awakened.");
-                }
+                autosaveNow();
             }
-            const passiveMeterPerSec = Math.max(0, 0.5 * (number1BlackHoleState.phase5FurnaceLevel || 0));
+            const passiveMeterPerSec = Math.max(0, 0.5 * getBlackHolePhase5EffectiveFurnacePower());
             if (passiveMeterPerSec > 0) {
                 turboBoostMeter = Math.min(getTurboMeterMax(), turboBoostMeter + passiveMeterPerSec * dtSec);
             }
         }
         if (phase >= 6 && phase < 7) {
             const best = Math.max(0, Number(number1BlackHoleState.phase6JetBestAscensionEssence) || 0);
-            const chargeCap = Math.max(500, best * (0.5 + 0.2 * (number1BlackHoleState.phase6JetBankLevel || 0)));
+            const chargeCap = Math.max(500, best * (0.5 + 0.2 * getBlackHolePhase6TrackLevel("bank")));
             const batteryPerSec = Math.max(1, best * 0.01);
             number1BlackHoleState.phase6JetCharge = Math.min(chargeCap, (number1BlackHoleState.phase6JetCharge || 0) + batteryPerSec * dtSec);
             if (number1BlackHoleState.phase6JetActive) {
-                const eff = 1 + 0.15 * (number1BlackHoleState.phase6JetEfficiencyLevel || 0);
-                const burn = (20 + (number1BlackHoleState.phase6JetFuelBurnPerSec || 0)) / eff;
-                number1BlackHoleState.phase6JetCharge = Math.max(0, number1BlackHoleState.phase6JetCharge - burn * dtSec);
-                if (number1BlackHoleState.phase6JetCharge <= 0) {
+                const eff = 1 + 0.15 * getBlackHolePhase6TrackLevel("drain");
+                const burn = (20 + 4 * getBlackHolePhase6TrackLevel("boost")) / eff;
+                const fuelNeed = burn * dtSec;
+                const fromTank = Math.min(number1BlackHoleState.phase6JetCharge || 0, fuelNeed);
+                number1BlackHoleState.phase6JetCharge = Math.max(0, (number1BlackHoleState.phase6JetCharge || 0) - fromTank);
+                const remainder = Math.max(0, fuelNeed - fromTank);
+                if (remainder > 0 && number1AscensionEssence > 0) {
+                    const fromEssence = Math.min(number1AscensionEssence, Math.ceil(remainder));
+                    number1AscensionEssence -= fromEssence;
+                }
+                if (number1BlackHoleState.phase6JetCharge <= 0 && number1AscensionEssence <= 0) {
                     number1BlackHoleState.phase6JetActive = false;
                     if (!number1BlackHoleUxFlags.jetDryAnnounced) {
-                        addToLog("Jet fuel depleted. Battery recharging.", "warning");
+                        addToLog("Jet fuel depleted. Battery recharging; no Ascension Essence remains for emergency burn.", "warning");
                         number1BlackHoleUxFlags.jetDryAnnounced = true;
                     }
                 }
@@ -2134,10 +2575,12 @@
                 if (h && h.el && h.el.parentNode) h.el.parentNode.removeChild(h.el);
             }
             addToLog("Phase 7 reached. Evaporation begins. The epilogue counter is active.", "milestone");
+            playBlackHoleScreenEffect("evaporation");
         }
         if (phase === 7) {
             number1BlackHoleState.phase7EpilogueCounter += dtSec;
         }
+        syncBlackHolePhase1Vfx();
     }
     const ASCENSION_NODE_AUTOBUY_DEFAULT_ON_ID = "asc_ix_00";
     const ASCENSION_NODE_AUTOBUY_CHEAPEN_ID = "asc_ix_05";
@@ -2583,12 +3026,7 @@
         ascensionMapCollapsePending = true;
         addToLog("Final ascension node owned. Confirm the story modal to collapse the map.", "milestone");
         if (!storyBannerOverlayEl || storyBannerOverlayEl.style.display !== "flex") {
-            showStoryBanner({
-                id: "ascension-map-collapse-ready",
-                order: 1002,
-                title: "Constellation complete",
-                body: "Every ascension branch is mapped. Continue to trigger the collapse into the singularity."
-            });
+            showStoryBannerById("ascension-map-collapse-ready");
         }
     }
     function startAscensionMapCollapseTransition() {
@@ -3142,6 +3580,7 @@
         const bhPhase = getBlackHolePhase();
         const bhMass = Math.floor(Number(number1BlackHoleState.phase2Mass) || 0);
         const p1Spent = Math.floor(Number(number1BlackHoleState.phase1EssenceSpent) || 0);
+        const bhParallel = Math.max(0, Number(number1BlackHoleState.phase2ParallelBonusPool) || 0);
         const blackHolePill = (isBlackHoleArcUnlocked() || bhPhase > 0)
             ? (bhPhase === 1
                 ? "<span class=\"asc-stat-pill asc-stat-pill--wide asc-stat-pill--mass\"><span class=\"asc-stat-pill-k\">Mass accumulator</span> <span class=\"asc-stat-pill-v\">charge " + p1Spent + " / " + BLACK_HOLE_PHASE1_ESSENCE_TARGET + " · inertial ×" + getBlackHolePhase1RunCpsMult().toFixed(2) + "</span></span>"
@@ -3149,12 +3588,16 @@
                     ? "<span class=\"asc-stat-pill asc-stat-pill--wide asc-stat-pill--epilogue\"><span class=\"asc-stat-pill-k\">Evaporation</span> <span class=\"asc-stat-pill-v\">P7 · epilogue</span></span>"
                     : "<span class=\"asc-stat-pill asc-stat-pill--wide asc-stat-pill--void\"><span class=\"asc-stat-pill-k\">Black hole</span> <span class=\"asc-stat-pill-v\">P" + bhPhase + " · ×" + (bhMultStat >= 10 ? bhMultStat.toFixed(2) : bhMultStat.toFixed(3)) + " · mass " + bhMass + "</span></span>")
             : "";
+        const blackHoleParallelPill = bhParallel > 0
+            ? "<span class=\"asc-stat-pill asc-stat-pill--bh-parallel\"><span class=\"asc-stat-pill-k\">BH parallel</span> <span class=\"asc-stat-pill-v\">+" + (bhParallel * 100).toFixed(1) + "% Essence</span></span>"
+            : "";
         return (
             "<span class=\"asc-stat-pill asc-stat-pill--wide\"><span class=\"asc-stat-pill-k\">Nodes</span> <span class=\"asc-stat-pill-v\">" + ownedCount + " / " + totalNodes + "</span></span>" +
             "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">In nodes</span> <span class=\"asc-stat-pill-v\">" + formatCount(invested) + " Essence</span></span>" +
             "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Pool</span> <span class=\"asc-stat-pill-v\">" + formatCount(number1AscensionEssence) + "</span></span>" +
             pendingBonusPill +
             blackHolePill +
+            blackHoleParallelPill +
             "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Cheapen cap</span> <span class=\"asc-stat-pill-v\">" + getMaxCheapenLevel() + "</span></span>" +
             "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Speed</span> <span class=\"asc-stat-pill-v\">−" + speedDiscountPct.toFixed(1) + "% cost</span></span>" +
             "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Combo upgrades</span> <span class=\"asc-stat-pill-v\">×" + comboUpgradesMult.toFixed(2) + "</span></span>" +
@@ -3240,10 +3683,15 @@
             actions = "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn page-btn--mass-pour\" data-asc-black-hole-buy=\"1\"" + (can ? "" : " disabled") + ">Pour in all Essence (" + esc(formatCount(pour)) + ")</button></p>";
         } else if (phase === 2) {
             panelExtraClass = " asc-black-hole--phase2";
+            if (Date.now() - (number1BlackHoleUxFlags.lastPhase2MassFeedAtMs || 0) < 1600) {
+                panelExtraClass += " asc-black-hole--feed-pulse";
+            }
             const L = Math.floor(number1BlackHoleState.phase2Mass || 0);
             const nextCost = getBlackHolePhase2NextCostEssence();
             const bank = Math.floor(number1BlackHoleState.phase2EssenceBank || 0);
             const have = Math.max(0, Math.floor(Number(number1AscensionEssence) || 0));
+            const parallel = Math.max(0, Number(number1BlackHoleState.phase2ParallelBonusPool) || 0);
+            const parallelPct = Math.min(100, Math.round((parallel / 1.5) * 100));
             const tm = getBlackHolePhase2CollapseMassTier();
             const tp = getBlackHolePhase2CollapsePhotonTier();
             const te = getBlackHolePhase2CollapseErgosphereTier();
@@ -3289,7 +3737,11 @@
             };
             body =
                 "<p class=\"asc-black-hole__kicker\">Phase 2 · collapse upgrades</p>" +
-                "<p class=\"asc-black-hole__body\">Before the singularity accepts raw mass, stabilize three channels with Ascension Essence. Each track has <strong>" + BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER + "</strong> tiers. When all are maxed, you may <strong>pour Essence directly into mass</strong> (partial feeds still bank toward the next step).</p>" +
+                "<p class=\"asc-black-hole__body\">Before the singularity accepts raw mass, stabilize three channels with Ascension Essence. Each track has <strong>" + BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER + "</strong> tiers. Every Phase 2 spend also charges the distinct <strong>BH parallel</strong> Essence bonus for future ascends.</p>" +
+                "<div class=\"asc-black-hole__parallel-meter-wrap\" role=\"group\" aria-label=\"Black hole parallel Essence bonus\">" +
+                "<div class=\"asc-black-hole__mass-meter-label\"><span>BH parallel pool</span><span class=\"asc-black-hole__mass-meter-nums\"><strong>+" + esc((parallel * 100).toFixed(1)) + "%</strong> / +150.0% Essence</span></div>" +
+                "<div class=\"asc-black-hole__mass-meter-track asc-black-hole__parallel-meter-track\" role=\"progressbar\" aria-valuenow=\"" + esc((parallel * 100).toFixed(1)) + "\" aria-valuemin=\"0\" aria-valuemax=\"150\" aria-label=\"Black hole parallel Essence bonus\"><div class=\"asc-black-hole__mass-meter-fill asc-black-hole__parallel-meter-fill\" style=\"width:" + parallelPct + "%\"></div></div>" +
+                "</div>" +
                 "<div class=\"asc-black-hole__p2-list\" role=\"group\" aria-label=\"Collapse upgrades\">" +
                 p2Row("mass", "Essence–mass coupling", tm, massEffectHtml, cMass, canMassUp) +
                 p2Row("photon", "Photon shell", tp, photonEffectHtml, cPhoton, canPhotonUp) +
@@ -3303,19 +3755,36 @@
                     : "<p class=\"asc-black-hole__note\">Bring every collapse track to tier " + BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER + " to unlock mass investment.</p>");
             actions = "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-buy=\"1\"" + (canPourMass ? "" : " disabled") + ">Pour all Essence into mass (" + esc(formatCount(have)) + ")</button></p>";
         } else if (phase === 3) {
-            const S = Math.floor(number1BlackHoleState.phase3HawkingStrength || 0);
-            const cost = S >= 6 ? 0 : 75 + 25 * S;
-            const bank = Math.floor(number1BlackHoleState.phase3EssenceBank || 0);
+            panelExtraClass = " asc-black-hole--phase3";
             const have = Math.max(0, Math.floor(Number(number1AscensionEssence) || 0));
-            const can = have >= 1 && S < 6;
-            const bankLine = cost > 0 && bank > 0
-                ? (" · Banked: <strong>" + esc(formatCount(bank)) + "</strong> / " + esc(formatCount(cost)))
-                : (cost > 0 ? (" · Next tier: <strong>" + esc(formatCount(cost)) + "</strong> Essence") : "");
-            body = "<p class=\"asc-black-hole__body\">Phase 3 — Accretion Disk: the disk ignites, and Hawking bursts open short power windows. Partial Essence improves bursts immediately and banks toward the next disk tier.</p>";
-            note = "<p class=\"asc-black-hole__stats\">Phase: <strong>3</strong> · Hawking strength: <strong>" + S + "</strong>" + bankLine + "</p>" +
+            const lum = getBlackHolePhase3TrackLevel("luminosity");
+            const vis = getBlackHolePhase3TrackLevel("viscous");
+            const cor = getBlackHolePhase3TrackLevel("coronal");
+            const p3Row = function (track, title, tier, effectHtml) {
+                const cost = getBlackHolePhase3TrackCost(track);
+                const maxed = tier >= 6;
+                const canBuy = !maxed && have >= cost && cost > 0;
+                return (
+                    "<div class=\"asc-black-hole__p2-row\">" +
+                    "<div class=\"asc-black-hole__p2-row-head\"><span class=\"asc-black-hole__p2-name\">" + esc(title) + "</span>" +
+                    "<span class=\"asc-black-hole__p2-tier\">Tier <strong>" + (maxed ? "max" : (tier + "/6")) + "</strong></span></div>" +
+                    "<p class=\"asc-black-hole__p2-effect\">" + effectHtml + "</p>" +
+                    "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn page-btn--p2-collapse\" data-asc-black-hole-p3=\"" + esc(track) + "\"" +
+                    (canBuy ? "" : " disabled") + ">" + (maxed ? "Maxed" : ("Buy (" + esc(formatCount(cost)) + ")")) + "</button></p>" +
+                    "</div>"
+                );
+            };
+            body = "<p class=\"asc-black-hole__body\">Phase 3 — Accretion Disk: tune the burst in three visible ways: brighter radiation, faster flares, and longer coronal burn windows.</p>" +
+                "<div class=\"asc-black-hole__p2-list\" role=\"group\" aria-label=\"Accretion disk upgrades\">" +
+                p3Row("luminosity", "Disk luminosity", lum, "Brighter Hawking bursts: raises the temporary CPS multiplier during radiation windows.") +
+                p3Row("viscous", "Viscous accretion", vis, "More frequent flares: shortens the Hawking cooldown so bursts arrive sooner.") +
+                p3Row("coronal", "Coronal loop", cor, "Longer burn: extends each Hawking burst duration so windows are easier to use.") +
+                "</div>";
+            note = "<p class=\"asc-black-hole__stats\">Phase: <strong>3</strong> · Luminosity: <strong>" + lum + "</strong> · Viscous: <strong>" + vis + "</strong> · Coronal: <strong>" + cor + "</strong></p>" +
                 "<p class=\"asc-black-hole__stats asc-black-hole__purse\">You hold <strong>" + esc(formatCount(have)) + "</strong> Ascension Essence.</p>";
-            actions = "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-buy=\"1\"" + (can ? "" : " disabled") + ">Pour all Essence into disk (" + esc(formatCount(have)) + ")</button></p>";
+            actions = "";
         } else if (phase === 4) {
+            panelExtraClass = " asc-black-hole--phase4";
             const W = Math.floor(number1BlackHoleState.phase4WaveLevel || 0);
             const cost = getBlackHolePhase4NextCostEssence();
             const bank = Math.floor(number1BlackHoleState.phase4EssenceBank || 0);
@@ -3333,36 +3802,143 @@
                 "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-buy=\"1\"" + (can ? "" : " disabled") + ">Pour all Essence into wave (" + esc(formatCount(have)) + ")</button></p>" +
                 "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-wave=\"1\"" + (manualReady ? "" : " disabled") + ">Manual Gravitational Wave</button></p>";
         } else if (phase === 5) {
+            panelExtraClass = " asc-black-hole--phase5";
             const digestEnd = number1BlackHoleState.phase5DigestEndsAtMs || 0;
-            const digestText = digestEnd > Date.now() ? ("Digest: " + formatSeconds(Math.ceil((digestEnd - Date.now()) / 1000))) : "Digest: ready";
-            const canSpeedDigest = digestEnd > Date.now();
+            const now = Date.now();
+            const lastCompleteAt = Number(number1BlackHoleState.phase5LastDigestCompletedAtMs) || 0;
+            if (lastCompleteAt > 0 && now - lastCompleteAt < BLACK_HOLE_FURNACE_COMPLETION_RITUAL_MS) {
+                panelExtraClass += " asc-black-hole--furnace-ritual";
+            }
+            const activeHand = Math.max(0, Math.floor(number1BlackHoleState.phase5DigestHandNumber || 0));
+            const canSpeedDigest = digestEnd > now && activeHand > 0;
             const speedDigestCost = Math.max(25, Math.floor(50 + 20 * (number1BlackHoleState.phase5FurnaceLevel || 0)));
             const have = Math.max(0, Math.floor(Number(number1AscensionEssence) || 0));
             const canStoke = canSpeedDigest && have >= 1;
-            body = "<p class=\"asc-black-hole__body\">Phase 5 — Gravitational Furnace: feed hands in order (10→1). Every sacrifice is immediate and permanent. While digesting, pour Essence for proportional acceleration; full <strong>" + esc(formatCount(speedDigestCost)) + "</strong> Essence matches a full stoke.</p>";
-            note = "<p class=\"asc-black-hole__stats\">Phase: <strong>5</strong> · Furnace: <strong>" + Math.floor(number1BlackHoleState.phase5FurnaceLevel || 0) + "</strong> · " + digestText + " · Next hand: <strong>" + Math.max(1, Math.floor(number1BlackHoleState.phase5NextSacrificeHand || 1)) + "</strong></p>" +
-                "<p class=\"asc-black-hole__stats asc-black-hole__purse\">You hold <strong>" + esc(formatCount(have)) + "</strong> Ascension Essence.</p>";
+            const completed = Math.max(0, Math.floor(number1BlackHoleState.phase5FurnaceLevel || 0));
+            const nextHand = Math.max(1, Math.floor(number1BlackHoleState.phase5NextSacrificeHand || 1));
+            const pendingMutationLevel = Math.max(0, Math.floor(Number(number1BlackHoleState.phase5PendingMutationLevel) || 0));
+            const pendingMutationHand = Math.max(0, Math.floor(Number(number1BlackHoleState.phase5PendingMutationHand) || 0));
+            const hasPendingMutation = pendingMutationLevel > 0;
+            const nextHandLocked = !canSpeedDigest && nextHand > 1 && unlockedHands < nextHand;
+            const progress = canSpeedDigest ? getBlackHolePhase5DigestProgressAt(now) : 0;
+            const curved = getBlackHolePhase5DigestCurve(progress);
+            const progressPct = Math.floor(progress * 1000) / 10;
+            const curvedPct = Math.floor(curved * 1000) / 10;
+            const digestRemainingSec = canSpeedDigest ? Math.max(0, Math.ceil((digestEnd - now) / 1000)) : 0;
+            const stokePreview = canSpeedDigest && have > 0 ? getBlackHolePhase5StokePreview(have, now) : null;
+            const stokePreviewPct = stokePreview ? Math.floor(stokePreview.progress * 1000) / 10 : progressPct;
+            const stokePreviewCurvedPct = stokePreview ? Math.floor(stokePreview.curved * 1000) / 10 : curvedPct;
+            const stokeRemovedSec = stokePreview ? Math.max(0, Math.floor(stokePreview.removedMs / 1000)) : 0;
+            const stokeRemainingSec = stokePreview ? Math.max(0, Math.ceil(stokePreview.projectedRemainingMs / 1000)) : digestRemainingSec;
+            const currentPower = getBlackHolePhase5EffectiveFurnacePower();
+            const nextFullPower = completed + (canSpeedDigest ? 1 : 0);
+            const hotter = getBlackHolePhase5MutationLevel("hotter-core");
+            const refinery = getBlackHolePhase5MutationLevel("essence-refinery");
+            const orbit = getBlackHolePhase5MutationLevel("shorter-orbit");
+            const furnaceMult = getBlackHoleFurnaceMult();
+            const nextFurnaceMult = Math.pow(BLACK_HOLE_FURNACE_MULT_PER_POWER * getBlackHolePhase5HotterCoreMult(), nextFullPower);
+            const furnaceEssenceBonus = getBlackHoleFurnaceEssenceBonus();
+            const digestedStart = 11 - completed;
+            const echoHands = completed > 0
+                ? Array.from({ length: completed }, (_, i) => Math.max(1, 10 - i)).map(h => {
+                    const pendingClass = hasPendingMutation && h === pendingMutationHand ? " asc-black-hole__echo-hand--pending" : "";
+                    return "<span class=\"asc-black-hole__echo-hand" + pendingClass + "\">H" + h + "</span>";
+                }).join("")
+                : "<span class=\"asc-black-hole__echo-empty\">No Echo Hands yet</span>";
+            const echoTrack = "<div class=\"asc-black-hole__echo-track\" aria-label=\"Echo Hands collected\"><div class=\"asc-black-hole__echo-head\"><span>Echo Hands</span><strong>" + completed + " / 9</strong></div><div class=\"asc-black-hole__echo-list\">" + echoHands + "</div></div>";
+            const mutationSummary = "<div class=\"asc-black-hole__mutation-summary\" aria-label=\"Furnace mutation summary\">" +
+                "<span>Echo CPS <strong>×" + (furnaceMult >= 10 ? furnaceMult.toFixed(2) : furnaceMult.toFixed(3)) + "</strong> · each Echo Hand compounds from ×" + BLACK_HOLE_FURNACE_MULT_PER_POWER.toFixed(2) + " base</span>" +
+                "<span>Hotter Core <strong>" + hotter + "</strong> · raises Echo CPS base +" + Math.round(BLACK_HOLE_FURNACE_HOTTER_CORE_BONUS * 100) + "% / stack</span>" +
+                "<span>Essence Refinery <strong>" + refinery + "</strong> · current furnace Essence bonus +" + (furnaceEssenceBonus * 100).toFixed(1) + "%</span>" +
+                "<span>Shorter Orbit <strong>" + orbit + "</strong> · next digests ×" + getBlackHolePhase5ShorterOrbitMult().toFixed(2) + " time</span>" +
+                "</div>";
+            const ritual = hasPendingMutation
+                ? ("<div class=\"asc-black-hole__furnace-ritual\" role=\"status\">" +
+                    "<div class=\"asc-black-hole__furnace-ritual-kicker\">Furnace completion ritual</div>" +
+                    "<h5>Hand " + pendingMutationHand + " became an Echo Hand</h5>" +
+                    "<p>The furnace flares. Choose one mutation before feeding the next hand.</p>" +
+                    "</div>")
+                : "";
+            const mutationChoices = hasPendingMutation
+                ? ("<div class=\"asc-black-hole__mutation-choices\" role=\"group\" aria-label=\"Choose Furnace Mutation\">" +
+                    "<button type=\"button\" class=\"asc-black-hole__mutation-choice\" data-asc-black-hole-mutation=\"hotter-core\"><strong>Hotter Core</strong><span>Echo Hands burn brighter. The compounding CPS base gains +" + Math.round(BLACK_HOLE_FURNACE_HOTTER_CORE_BONUS * 100) + "% per stack.</span></button>" +
+                    "<button type=\"button\" class=\"asc-black-hole__mutation-choice\" data-asc-black-hole-mutation=\"essence-refinery\"><strong>Essence Refinery</strong><span>Digested hands refine ascension fuel. Furnace Essence bonus gains +" + Math.round(BLACK_HOLE_FURNACE_ESSENCE_REFINERY_BONUS * 100) + "% per stack.</span></button>" +
+                    "<button type=\"button\" class=\"asc-black-hole__mutation-choice\" data-asc-black-hole-mutation=\"shorter-orbit\"><strong>Shorter Orbit</strong><span>The next digestion timers compress. Current timer multiplier: ×" + getBlackHolePhase5ShorterOrbitMult().toFixed(2) + ".</span></button>" +
+                    "</div>")
+                : "";
+            const digestLabel = canSpeedDigest
+                ? ("Hand " + activeHand + " digesting · " + progressPct.toFixed(1) + "% time · " + curvedPct.toFixed(1) + "% power")
+                : (hasPendingMutation ? ("Mutation pending for Hand " + pendingMutationHand) : "Ready for next sacrifice");
+            const digestMeter = canSpeedDigest
+                ? ("<div class=\"asc-black-hole__mass-meter-wrap\" role=\"group\" aria-label=\"Active hand digestion\">" +
+                    "<div class=\"asc-black-hole__mass-meter-label\"><span>Digesting hand " + activeHand + "</span><span class=\"asc-black-hole__mass-meter-nums\"><strong>" + progressPct.toFixed(1) + "%</strong> time · <strong>" + curvedPct.toFixed(1) + "%</strong> power · " + esc(formatSeconds(digestRemainingSec)) + " left</span></div>" +
+                    "<div class=\"asc-black-hole__mass-meter-track asc-black-hole__furnace-meter-track\" role=\"progressbar\" aria-valuenow=\"" + esc(progressPct.toFixed(1)) + "\" aria-valuemin=\"0\" aria-valuemax=\"100\" aria-label=\"Digestion progress\"><div class=\"asc-black-hole__furnace-meter-preview\" style=\"width:" + Math.max(0, Math.min(100, stokePreviewPct)).toFixed(1) + "%\"></div><div class=\"asc-black-hole__mass-meter-fill asc-black-hole__furnace-meter-fill\" style=\"width:" + Math.max(0, Math.min(100, progress * 100)).toFixed(1) + "%\"></div></div>" +
+                    (stokePreview
+                        ? "<p class=\"asc-black-hole__stoke-preview-hint\">Hover or focus <strong>Stoke active digest</strong> to preview the jump.</p><p id=\"asc-black-hole-stoke-preview\" class=\"asc-black-hole__stoke-preview\" aria-live=\"polite\">Projected after stoke: <strong>" + stokePreviewPct.toFixed(1) + "%</strong> time · <strong>" + stokePreviewCurvedPct.toFixed(1) + "%</strong> power · removes <strong>" + esc(formatSeconds(stokeRemovedSec)) + "</strong> · leaves <strong>" + esc(formatSeconds(stokeRemainingSec)) + "</strong></p>"
+                        : "<p id=\"asc-black-hole-stoke-preview\" class=\"asc-black-hole__stoke-preview asc-black-hole__stoke-preview--empty\">Earn Ascension Essence to preview the next stoke jump.</p>") +
+                    "</div>")
+                : "";
+            const digestVisual = canSpeedDigest
+                ? ("<div class=\"asc-black-hole__furnace-visual\" role=\"img\" aria-label=\"Hand " + activeHand + " is " + progressPct.toFixed(1) + "% digested\">" +
+                    "<div class=\"asc-black-hole__furnace-hand-card\">" +
+                    "<div class=\"asc-black-hole__furnace-hand-shell\" style=\"--digest-fill:" + Math.max(0, Math.min(100, progress * 100)).toFixed(1) + "%\">" +
+                    "<div class=\"asc-black-hole__furnace-hand-fill\"></div>" +
+                    "<pre class=\"asc-black-hole__furnace-hand-ascii\">" + esc(hands1[activeHand - 1] || hands1[9] || "") + "</pre>" +
+                    "</div>" +
+                    "<div class=\"asc-black-hole__furnace-hand-label\">Hand " + activeHand + "</div>" +
+                    "</div>" +
+                    "<div class=\"asc-black-hole__furnace-caption\">The silhouette fills as digestion converts the lost hand into furnace power.</div>" +
+                    "</div>")
+                : "";
+            body = "<p class=\"asc-black-hole__body\">Phase 5 — Gravitational Furnace: feed one hand, wait for it to digest, then feed the next. The current hand starts weak and ramps non-linearly toward full furnace power as the 24-hour digest completes. Ascend actively to earn Essence, then stoke the furnace to compress the remaining timer.</p>" +
+                ritual +
+                echoTrack +
+                mutationSummary +
+                digestVisual +
+                digestMeter +
+                mutationChoices;
+            note = "<p class=\"asc-black-hole__stats\">Phase: <strong>5</strong> · Completed hands: <strong>" + completed + "</strong> · Active: <strong>" + esc(digestLabel) + "</strong></p>" +
+                "<p class=\"asc-black-hole__stats\">Furnace power: <strong>" + currentPower.toFixed(2) + "</strong> Echo Hands · Current furnace CPS: <strong>×" + furnaceMult.toFixed(2) + "</strong> · On completion: <strong>×" + nextFurnaceMult.toFixed(2) + "</strong></p>" +
+                "<p class=\"asc-black-hole__stats asc-black-hole__purse\">You hold <strong>" + esc(formatCount(have)) + "</strong> Ascension Essence · full stoke unit: <strong>" + esc(formatCount(speedDigestCost)) + "</strong> Essence.</p>" +
+                (completed > 0 ? "<p class=\"asc-black-hole__stats\">Echo sequence: <strong>Hand 10" + (completed > 1 ? " → Hand " + digestedStart : "") + "</strong> absorbed into the singularity.</p>" : "") +
+                (hasPendingMutation ? "<p class=\"asc-black-hole__note\">Pick a mutation to claim the Echo Hand reward.</p>" : (nextHandLocked ? "<p class=\"asc-black-hole__note\">Next sacrifice requires <strong>Hand " + nextHand + "</strong>. Unlock that hand again on this run before feeding it.</p>" : ""));
             actions =
-                "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-buy=\"1\"" + (canStoke ? "" : " disabled") + ">Pour Essence into digest (" + esc(formatCount(have)) + ")</button></p>" +
-                "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-sacrifice=\"1\"" + (digestEnd > Date.now() ? " disabled" : "") + ">Feed next hand</button></p>";
+                "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-buy=\"1\"" + (canSpeedDigest ? " data-asc-black-hole-stoke-preview-toggle=\"1\" aria-describedby=\"asc-black-hole-stoke-preview\" title=\"Preview the digestion jump by hovering or focusing this button.\"" : "") + (canStoke && !hasPendingMutation ? "" : " disabled") + ">Stoke active digest (" + esc(formatCount(have)) + " Essence)</button></p>" +
+                "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-sacrifice=\"1\"" + (canSpeedDigest || hasPendingMutation ? " disabled" : "") + ">" + (hasPendingMutation ? "Choose mutation first" : (canSpeedDigest ? ("Digesting hand " + activeHand + "...") : (nextHandLocked ? ("Unlock Hand " + nextHand + " to feed") : "Feed next hand"))) + "</button></p>";
         } else if (phase === 6) {
+            panelExtraClass = " asc-black-hole--phase6" + (number1BlackHoleState.phase6JetActive ? " asc-black-hole--jet-active" : "");
             const charge = Math.floor(number1BlackHoleState.phase6JetCharge || 0);
             const best = Math.max(0, Number(number1BlackHoleState.phase6JetBestAscensionEssence) || 0);
-            const chargeCap = Math.max(500, best * (0.5 + 0.2 * (number1BlackHoleState.phase6JetBankLevel || 0)));
-            const nextJet = getBlackHolePhase6NextJetUpgradeCostEssence();
-            const bank = Math.floor(number1BlackHoleState.phase6EssenceBank || 0);
+            const chargeCap = Math.max(500, best * (0.5 + 0.2 * getBlackHolePhase6TrackLevel("bank")));
             const have = Math.max(0, Math.floor(Number(number1AscensionEssence) || 0));
-            const can = have >= 1;
-            const bankLine = nextJet > 0 && bank > 0
-                ? (" · Banked: <strong>" + esc(formatCount(bank)) + "</strong> / " + esc(formatCount(nextJet)))
-                : (nextJet > 0 ? (" · Next upgrade: <strong>" + esc(formatCount(nextJet)) + "</strong> Essence") : "");
-            body = "<p class=\"asc-black-hole__body\">Phase 6 — Astrophysical Jets: charge the battery, ignite the beam, and burn fuel for decisive thrust. Partial Essence scales jet thrust while banking toward the next upgrade bundle.</p>";
-            note = "<p class=\"asc-black-hole__stats\">Phase: <strong>6</strong> · Jet charge: <strong>" + esc(formatCount(charge)) + " / " + esc(formatCount(Math.floor(chargeCap))) + "</strong> · Jet: <strong>" + (number1BlackHoleState.phase6JetActive ? "ON" : "OFF") + "</strong>" + bankLine + "</p>" +
+            const drain = getBlackHolePhase6TrackLevel("drain");
+            const boost = getBlackHolePhase6TrackLevel("boost");
+            const bankLvl = getBlackHolePhase6TrackLevel("bank");
+            const p6Row = function (track, title, tier, effectHtml) {
+                const cost = getBlackHolePhase6TrackCost(track);
+                const canBuy = have >= cost;
+                return (
+                    "<div class=\"asc-black-hole__p2-row\">" +
+                    "<div class=\"asc-black-hole__p2-row-head\"><span class=\"asc-black-hole__p2-name\">" + esc(title) + "</span>" +
+                    "<span class=\"asc-black-hole__p2-tier\">Tier <strong>" + tier + "</strong></span></div>" +
+                    "<p class=\"asc-black-hole__p2-effect\">" + effectHtml + "</p>" +
+                    "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn page-btn--p2-collapse\" data-asc-black-hole-p6=\"" + esc(track) + "\"" +
+                    (canBuy ? "" : " disabled") + ">Buy (" + esc(formatCount(cost)) + ")</button></p>" +
+                    "</div>"
+                );
+            };
+            body = "<p class=\"asc-black-hole__body\">Phase 6 — Astrophysical Jets: the battery creates Essence-equivalent jet fuel from your best ascension. If the tank runs dry while the jet is ON, stored Ascension Essence can burn directly as emergency fuel.</p>" +
+                "<div class=\"asc-black-hole__p2-list\" role=\"group\" aria-label=\"Jet upgrades\">" +
+                p6Row("drain", "Drain efficiency", drain, "Same thrust, cheaper burn: reduces fuel consumed per second while the jet is ON.") +
+                p6Row("boost", "Boost multiplier", boost, "Hotter burn: increases the active jet production multiplier.") +
+                p6Row("bank", "Boost bank", bankLvl, "Bigger tank: raises the Essence-equivalent fuel cap generated from your best ascend.") +
+                "</div>";
+            note = "<p class=\"asc-black-hole__stats\">Phase: <strong>6</strong> · Jet fuel: <strong>" + esc(formatCount(charge)) + " / " + esc(formatCount(Math.floor(chargeCap))) + "</strong> · Jet: <strong>" + (number1BlackHoleState.phase6JetActive ? "ON" : "OFF") + "</strong></p>" +
                 "<p class=\"asc-black-hole__stats asc-black-hole__purse\">You hold <strong>" + esc(formatCount(have)) + "</strong> Ascension Essence.</p>";
             actions =
-                "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-buy=\"1\"" + (can ? "" : " disabled") + ">Pour all Essence into jet (" + esc(formatCount(have)) + ")</button></p>" +
                 "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-jet=\"" + (number1BlackHoleState.phase6JetActive ? "off" : "on") + "\">Turn jet " + (number1BlackHoleState.phase6JetActive ? "off" : "on") + "</button></p>";
         } else {
+            panelExtraClass = " asc-black-hole--phase7";
             body = "<p class=\"asc-black-hole__body\">Phase 7 — Evaporation: one hand, one counter, one beat. Upgrades are silent. Counting continues for closure.</p>";
             note = "<p class=\"asc-black-hole__stats\">Phase: <strong>7</strong> · Epilogue counter: <strong>" + esc(formatCount(Math.floor(number1BlackHoleState.phase7EpilogueCounter || 0))) + "</strong></p>";
         }
@@ -3641,12 +4217,8 @@
             getMilestone: () => {
                 const next = longTermObjectives.find(o => !o.achieved) || longTermObjectives[longTermObjectives.length - 1];
                 if (!next) return { text: "Complete", pct: 100 };
-                const idx = longTermObjectives.indexOf(next);
-                const previousGoal = idx > 0 ? longTermObjectives[idx - 1].goal : 1;
-                const span = Math.max(1, next.goal - previousGoal);
-                const progressed = Math.max(0, Math.min(span, totalChanges - previousGoal));
-                const pct = Math.max(0, Math.min(100, (progressed / span) * 100));
-                return { text: next.text, pct };
+                const progress = getObjectiveProgress(next);
+                return { text: next.text, pct: next.achieved ? 100 : progress.pct };
             },
             isAscensionReady: () => isNumber1AscensionReady(),
             tickBackground: () => {},
@@ -3783,10 +4355,13 @@
             let ascPart = "Ascension: " + (ascReady ? "<span class=\"overview-asc-ready\">Ready</span>" : "Not ready");
             if (entry.number === 1) ascPart += " · Essence: " + formatCount(number1AscensionEssence);
             if (entry.number === 1 && !ascReady) {
-                ascPart += " · Requirement: " + formatCount(ASCENSION_1_REQUIRED_TOTAL) + " total and " + ASCENSION_1_MIN_HANDS + " hands";
+                ascPart += " · Requirement: " + formatCount(ASCENSION_1_REQUIRED_TOTAL) + " total and " + getNumber1AscensionRequiredHands() + " hands";
             }
             if (entry.number === 1 && ascReady) {
                 ascPart += " · Next gain: " + formatCount(gainPreview);
+                if (gainPreviewInfo && gainPreviewInfo.blackHoleMultiplierBonus > 0) {
+                    ascPart += " (BH bonus +" + formatCount(gainPreviewInfo.blackHoleMultiplierBonus) + ")";
+                }
                 if (gainPreviewInfo && gainPreviewInfo.multiplierBonus > 0) {
                     ascPart += " (clap mult +" + formatCount(gainPreviewInfo.multiplierBonus) + ")";
                 }
@@ -3872,6 +4447,40 @@
             "<div class=\"message-log-terminal-body\" id=\"message-log-terminal-body\">" + lines + "</div></div>" +
             "<p class=\"message-log-footnote\">Bottom ticker shows the latest lines; this panel is the full scrollback (oldest → newest).</p>";
     }
+    function renderStoryArchiveHtml() {
+        const canonicalIds = new Set(STORY_BANNERS.map(b => b.id));
+        const legacyClosed = closedBanners.filter(b => b && b.id && !canonicalIds.has(b.id));
+        const chapters = [...STORY_BANNERS, ...legacyClosed].sort((a, b) => a.order - b.order);
+        const unlockedCount = chapters.filter(b => hasUnlockedStoryBanner(b.id)).length;
+        let html = "<section class=\"story-log-section\" aria-label=\"Story Archive\">" +
+            "<h4 class=\"story-log-heading\">Story Archive</h4>" +
+            "<p class=\"story-review-summary\">" + unlockedCount + " / " + chapters.length + " transmissions recovered.</p>" +
+            "<div class=\"story-review-list story-review-list--embedded\">";
+        chapters.forEach((b, index) => {
+            const unlocked = hasUnlockedStoryBanner(b.id);
+            html += "<div class=\"story-review-item" + (unlocked ? " story-review-item--unlocked" : " story-review-item--locked") + "\">";
+            if (unlocked) {
+                html += "<div class=\"story-review-item-head\"><span class=\"story-review-item-kicker\">Transmission " + (index + 1) + "</span><button type=\"button\" class=\"story-review-replay\" data-story-replay-id=\"" + escapeHtml(b.id) + "\">Replay</button></div><strong class=\"story-review-item-title\">" + escapeHtml(b.title) + "</strong><p class=\"story-review-item-body\">" + escapeHtml(b.body) + "</p>";
+            } else {
+                html += "<div class=\"story-review-item-head\"><span class=\"story-review-item-kicker\">Transmission " + (index + 1) + "</span><span class=\"story-review-locked-tag\">Locked</span></div><strong class=\"story-review-item-title\">???</strong><p class=\"story-review-item-body\">Signal not yet recovered. Keep counting to unlock this story beat.</p>";
+            }
+            html += "</div>";
+        });
+        html += "</div></section>";
+        return html;
+    }
+    function renderMessageAndStoryLogPageHtml() {
+        return "<section class=\"message-log-section\" aria-label=\"Message Log\">" +
+            "<h4 class=\"story-log-heading\">Message Log</h4>" +
+            renderMessageLogPageHtml() +
+            "</section>" +
+            renderStoryArchiveHtml();
+    }
+    function refreshStoryArchiveSectionIfOpen() {
+        if (!pagePanelEl || pagePanelEl.style.display === "none" || pagePanelEl.dataset.openPageId !== "messages") return;
+        const section = pagePanelBodyEl ? pagePanelBodyEl.querySelector(".story-log-section") : null;
+        if (section) section.outerHTML = renderStoryArchiveHtml();
+    }
     function scrollMessageLogPanelToBottom() {
         const body = document.getElementById("message-log-terminal-body");
         if (body) body.scrollTop = body.scrollHeight;
@@ -3893,7 +4502,7 @@
     }
     function refreshMessageLogPanelIfOpen() {
         if (!pagePanelEl || pagePanelEl.style.display === "none" || !pagePanelBodyEl || !pagePanelTitleEl) return;
-        if (pagePanelTitleEl.textContent !== "Message Log") return;
+        if (pagePanelEl.dataset.openPageId !== "messages") return;
         const visible = actionLogEntries.filter(entry => isLogCategoryVisible(entry.category));
         const prevBody = document.getElementById("message-log-terminal-body");
         const prevHeader = document.getElementById("message-log-terminal-header");
@@ -3963,7 +4572,7 @@
             wasPinnedToBottom = (prevTop + prevBody.clientHeight) >= (prevHeight - 2);
             wasPinnedToRight = (prevLeft + prevBody.clientWidth) >= (prevWidth - 2);
         }
-        pagePanelBodyEl.innerHTML = renderMessageLogPageHtml();
+        pagePanelBodyEl.innerHTML = renderMessageAndStoryLogPageHtml();
         const nextBody = document.getElementById("message-log-terminal-body");
         if (!nextBody) return;
         if (wasPinnedToBottom) {
@@ -4068,8 +4677,8 @@
             title = "Collectibles";
             bodyHtml = renderComingSoonPoster("Collectibles vault", "<p>Collectibles with unique art, benefits, and cross-number synergies are planned. Each will be earned or unlocked through its own path.</p>");
         } else if (pageId === "messages") {
-            title = "Message Log";
-            bodyHtml = renderMessageLogPageHtml();
+            title = "Message and Story Log";
+            bodyHtml = renderMessageAndStoryLogPageHtml();
         } else if (pageId === "combinations") {
             title = "Combinations";
             bodyHtml = renderCombinationsPageHtml();
@@ -5397,6 +6006,12 @@
         if (p >= 2) {
             const t = getBlackHoleTotalMult();
             const ts = t >= 10 ? t.toFixed(2) : t.toFixed(3);
+            let sub = "All phase effects apply here";
+            if (p >= 5) {
+                const f = getBlackHoleFurnaceMult();
+                const echoes = Math.max(0, Math.floor(Number(number1BlackHoleState.phase5FurnaceLevel) || 0));
+                sub = "Furnace ×" + (f >= 10 ? f.toFixed(2) : f.toFixed(3)) + " · Echo Hands " + echoes;
+            }
             n1GravityCpsStripEl.className = "n1-gravity-cps-strip n1-gravity-cps-strip--void";
             n1GravityCpsStripEl.innerHTML =
                 "<div class=\"n1-gravity-cps-strip__inner\" role=\"status\">" +
@@ -5405,7 +6020,7 @@
                 "<div class=\"n1-gravity-cps-strip__text\">" +
                 "<span class=\"n1-gravity-cps-strip__line\"><span class=\"n1-gravity-cps-strip__name\">Black hole</span>" +
                 "<span class=\"n1-gravity-cps-strip__mult\">Counting ×" + ts + "</span></span>" +
-                "<span class=\"n1-gravity-cps-strip__sub\">All phase effects apply here</span>" +
+                "<span class=\"n1-gravity-cps-strip__sub\">" + sub + "</span>" +
                 "</div></div>";
         }
     }
@@ -5452,6 +6067,10 @@
         const mayPaintHeadline = !throttleCpsHeadline || (nowPaint - cpsHeadlineLastPaintMs >= CPS_HEADLINE_THROTTLE_MS);
         if (incrementalRateEl && mayPaintHeadline) {
             cpsHeadlineLastPaintMs = nowPaint;
+            if (getBlackHolePhase() === 7) {
+                incrementalRateEl.textContent = "1 / second";
+                incrementalRateEl.title = "Evaporation epilogue: the power game is over, and the counter advances exactly once per second.";
+            } else
             if (unlockedHands >= 2) {
                 const totalFormatted = formatCount(cpsTotal < 1e6 ? Math.round(cpsTotal * 100) / 100 : cpsTotal);
                 const bonusDisplayMult = getDisplayedTotalComboBonus();
@@ -6180,7 +6799,7 @@
             number1AscensionClapEssenceProcCount,
             number1HasAscended,
             number1AscensionNodeIds,
-            number1AscensionBlackHoleLevel,
+            number1AscensionBlackHoleLevel: Math.floor(Number(number1BlackHoleState.phase2Mass) || 0),
             number1BlackHoleState,
             unlockedHandsCap,
             ascensionNumber1IntroSeen,
@@ -6375,6 +6994,39 @@
             number1BlackHoleState.phase2CollapsePhotonTier = clampBlackHolePhase2CollapseTier(number1BlackHoleState.phase2CollapsePhotonTier);
             number1BlackHoleState.phase2CollapseErgosphereTier = clampBlackHolePhase2CollapseTier(number1BlackHoleState.phase2CollapseErgosphereTier);
             {
+                const oldS = Math.max(0, Math.min(6, Math.floor(Number(number1BlackHoleState.phase3HawkingStrength) || 0)));
+                if (!(Number(number1BlackHoleState.phase3LuminosityLevel) > 0) && oldS > 0) number1BlackHoleState.phase3LuminosityLevel = oldS;
+                if (!(Number(number1BlackHoleState.phase3ViscousLevel) > 0) && oldS > 0) number1BlackHoleState.phase3ViscousLevel = oldS;
+                if (!(Number(number1BlackHoleState.phase3CoronalLevel) > 0) && oldS > 0) number1BlackHoleState.phase3CoronalLevel = oldS;
+                syncBlackHolePhase3LegacyLevel();
+            }
+            {
+                const now = Date.now();
+                number1BlackHoleState.phase5MutationHotterCore = Math.max(0, Math.floor(Number(number1BlackHoleState.phase5MutationHotterCore) || 0));
+                number1BlackHoleState.phase5MutationEssenceRefinery = Math.max(0, Math.floor(Number(number1BlackHoleState.phase5MutationEssenceRefinery) || 0));
+                number1BlackHoleState.phase5MutationShorterOrbit = Math.max(0, Math.floor(Number(number1BlackHoleState.phase5MutationShorterOrbit) || 0));
+                number1BlackHoleState.phase5PendingMutationHand = Math.max(0, Math.min(maxHands, Math.floor(Number(number1BlackHoleState.phase5PendingMutationHand) || 0)));
+                number1BlackHoleState.phase5PendingMutationLevel = Math.max(0, Math.floor(Number(number1BlackHoleState.phase5PendingMutationLevel) || 0));
+                number1BlackHoleState.phase5LastDigestedHand = Math.max(0, Math.min(maxHands, Math.floor(Number(number1BlackHoleState.phase5LastDigestedHand) || 0)));
+                number1BlackHoleState.phase5LastDigestCompletedAtMs = Math.max(0, Number(number1BlackHoleState.phase5LastDigestCompletedAtMs) || 0);
+                const end = Number(number1BlackHoleState.phase5DigestEndsAtMs) || 0;
+                if (end > now) {
+                    let duration = Number(number1BlackHoleState.phase5DigestDurationMs);
+                    if (!Number.isFinite(duration) || duration <= 0) duration = getBlackHoleNextDigestDurationMs();
+                    let start = Number(number1BlackHoleState.phase5DigestStartedAtMs);
+                    if (!Number.isFinite(start) || start <= 0 || start >= end) start = end - duration;
+                    if (start >= end) start = now;
+                    number1BlackHoleState.phase5DigestStartedAtMs = start;
+                    number1BlackHoleState.phase5DigestDurationMs = Math.max(1, end - start);
+                    number1BlackHoleState.phase5DigestHandNumber = Math.max(1, Math.min(maxHands, Math.floor(Number(number1BlackHoleState.phase5DigestHandNumber) || number1BlackHoleState.phase5NextSacrificeHand + 1 || 1)));
+                } else {
+                    number1BlackHoleState.phase5DigestStartedAtMs = 0;
+                    number1BlackHoleState.phase5DigestDurationMs = 0;
+                    number1BlackHoleState.phase5DigestEndsAtMs = 0;
+                    number1BlackHoleState.phase5DigestHandNumber = 0;
+                }
+            }
+            {
                 const pm = Math.floor(Number(number1BlackHoleState.phase2Mass) || 0);
                 const bk = Math.floor(Number(number1BlackHoleState.phase2EssenceBank) || 0);
                 const sumTiers =
@@ -6409,8 +7061,10 @@
         const capMs = Math.max(0, settings.offlineCapHours * 3600 * 1000);
         const effectiveMs = Math.min(Math.max(0, offlineMs), capMs);
         if (effectiveMs <= 0) return;
-        tickBackgroundNumberModules(effectiveMs / 1000);
-        updateBlackHolePhaseStep(effectiveMs / 1000);
+        const offlineSec = effectiveMs / 1000;
+        tickBackgroundNumberModules(offlineSec);
+        updateBlackHolePhaseStep(offlineSec);
+        const offlineBhMult = getBlackHoleOfflineProductionMult(offlineSec);
         if (getBlackHolePhase() === 7) {
             totalChanges = Math.floor(number1BlackHoleState.phase7EpilogueCounter || 0);
             handEarnings[0] = totalChanges;
@@ -6421,8 +7075,7 @@
         if (rawCps <= 0) return;
         const comboMult = getComboMultiplier();
         const turboMult = getTurboCountMultiplier();
-        const bhMult = getNumber1BlackHoleProductionMult();
-        const gained = Math.round((effectiveMs / 1000) * rawCps * comboMult * turboMult * bhMult);
+        const gained = Math.round(offlineSec * rawCps * comboMult * turboMult * offlineBhMult);
         const totalWeight = cpsPerHand.reduce((a, b) => a + b, 0) || 1;
         for (let i = 0; i < unlockedHands; i++) {
             const weight = cpsPerHand[i] || 0;
@@ -6602,7 +7255,7 @@
             order: 1,
             trigger: () => unlockedHands >= 2,
             title: "Congratulations — you unlocked a second hand!",
-            body: storyTotalCountLead(UNLOCK_THRESHOLDS[0]) + "you unlocked a second hand. Now you will be counting with two hands. Each hand has its own upgrades and its own earnings. Combinations between two hands award one-time bonuses that affect all of your counting. Try to get all of the bonuses!"
+            body: storyTotalCountLead(UNLOCK_THRESHOLDS[0]) + "you unlocked a second hand. Statistically speaking, you've always had a second hand available but you just didn't want to use it or something, but now you will be counting with two hands. Each hand has its own upgrades and its own earnings. Combinations between two hands award one-time bonuses that affect all of your counting. Try to get all of the bonuses!"
         },
         {
             id: "third-hand",
@@ -6616,7 +7269,7 @@
             order: 3,
             trigger: () => totalChanges >= TURBO_UNLOCK_COUNT,
             title: "Turbo Boost unlocked!",
-            body: storyTotalCountLead(TURBO_UNLOCK_COUNT) + "you unlocked Turbo Boost. These hands aren't going to get you to a quadrillion on their own, but with Turbo Boost you can push much further! The gauge to the right of your total count fills when you land hand combos—bigger combos add more. While the meter has charge and Turbo is on, all hand counts are multiplied. After you unlock Turbo-scension on the Ring route, your Burn rate drives how strong the boost is; a bigger tank lets a full bar sustain that intensity longer, and the meter drains more slowly when it is almost empty. Balance building combos with burning through the boost!"
+            body: storyTotalCountLead(TURBO_UNLOCK_COUNT) + "you unlocked Turbo Boost. Three hands aren't going to get you to a quadrillion on their own, but with Turbo Boost you can push much further! The gauge to the right of your total count fills when you land hand combos—bigger combos add more. While the meter has charge and Turbo is on, all hand counts are multiplied. Now your numbers have NOS! Oh and you can get more combos too."
         },
         {
             id: "fourth-hand",
@@ -6637,42 +7290,98 @@
             order: 6,
             trigger: () => unlockedHands >= 6,
             title: "You're now counting on 6 hands!",
-            body: storyTotalCountLead(UNLOCK_THRESHOLDS[4]) + "you unlocked a sixth hand. If you google, \"do any creatures have 6 hands?\" the answer is no. Because of course it is no. Therefore you are an abomination...much like when Spider-Man became a spider man, but look at all those numbers! You can earn bonuses by having interesting hand combinations like all of the hands are on the same number at the end of the tick. It shouldn't be too hard to collect them all."
+            body: storyTotalCountLead(UNLOCK_THRESHOLDS[4]) + "you unlocked a sixth hand. If you google, \"do any creatures have 6 hands?\" the answer is no. Because of course it is no. Therefore you are an abomination...much like when Spider-Man became a spider man, but look at all those numbers! Also with more hands come more bonuses, just like uncle Ben said."
         },
         {
             id: "seventh-hand",
             order: 7,
             trigger: () => unlockedHands >= 7,
             title: "THE SEVENTH HAND HAS APPEARED!",
-            body: storyTotalCountLead(UNLOCK_THRESHOLDS[5]) + "you unlocked a seventh hand. Much like the other hands we have no idea who's they are or why they chose to help you count. But look at all those numbers! You can earn bonuses by having interesting hand combinations like all of the hands are on the same number at the end of the tick. It shouldn't be too hard to collect them all."
+            body: storyTotalCountLead(UNLOCK_THRESHOLDS[5]) + "you unlocked a seventh hand. Much like the other hands we have no idea who's they are or why they chose to help you count. But look at all those numbers! Get those new combos baby, cha-ching."
         },
         {
             id: "eighth-hand",
             order: 8,
             trigger: () => unlockedHands >= 8,
             title: "8 hand counting is now a thing!",
-            body: storyTotalCountLead(UNLOCK_THRESHOLDS[6]) + "you unlocked an eighth hand — and Clapping is now live. When any two hands finish a tick on the digit 5, they clap together (watch for the center-screen animation). Each clap has a 10% chance per hand to grant a bonus Speed level: it boosts your hand's rate like a normal level but does not increase upgrade costs. Your level line shows as \"Level X +Y\" when you have bonus levels. You can turn the animation off in Menu → Show clap animation (bonuses still apply). Combos between hands still work as before — keep mixing digits for bonuses and Turbo meter."
+            body: storyTotalCountLead(UNLOCK_THRESHOLDS[6]) + "you unlocked an eighth hand — give yourself a round of applause. Oh and Clapping is now a thing that helps you count faster. When any two hands finish a tick on the digit 5, they clap together (watch for the center-screen animation). Each clap has a 10% chance per hand to grant a bonus Speed level: it boosts your hand's rate like a normal level but does not increase upgrade costs. Your level line shows as \"Level X +Y\" when you have bonus levels. You can turn the animation off in Menu → Show clap animation (bonuses still apply). Combos between hands still work as before — keep mixing digits for bonuses and Turbo meter."
         },
         {
             id: "ninth-hand",
             order: 9,
             trigger: () => unlockedHands >= 9,
-            title: "Nine is a fun number because it is the first time we see the square of three! If you don't find that interesting too, well thats reasonable.",
-            body: storyTotalCountLead(UNLOCK_THRESHOLDS[7]) + "you unlocked a ninth hand. Anyways, you can earn bonuses by having interesting hand combinations like all of the hands are on the same number at the end of the tick. It shouldn't be too hard to collect them all."
+            title: "Nine is a fun number because it is the first time we see the square of three! If you don't find that interesting too, well that is reasonable.",
+            body: storyTotalCountLead(UNLOCK_THRESHOLDS[7]) + "you unlocked a ninth hand. Did I really not come up with an upgrade for this? Anyways, you can earn bonuses by having interesting hand combinations like all of the hands are on the same number at the end of the tick. It shouldn't be too hard to collect them all."
         },
         {
             id: "tenth-hand",
             order: 10,
             trigger: () => unlockedHands >= 10,
             title: "This is the sound of 10 hands counting!",
-            body: storyTotalCountLead(UNLOCK_THRESHOLDS[8]) + "you unlocked a tenth hand. It is quieter than I thought it would be. You can earn bonuses by having interesting hand combinations like all of the hands are on the same number at the end of the tick. It shouldn't be too hard to collect them all."
+            body: storyTotalCountLead(UNLOCK_THRESHOLDS[8]) + "you unlocked a tenth hand. It is quieter than I thought it would be. Wait did I not add an upgrade for 10 hands either? Not that can't be right, I feel like there is something here. Keep counting while I go look for the next upgrade.."
         },
         {
             id: "black-hole-mass-accumulator-intro",
             order: 50,
             trigger: () => number1HasAscended && isBlackHoleArcUnlocked() && getBlackHolePhase() === 1,
             title: "Gravity takes hold",
-            body: "You have mapped every path. Your numbers are no longer weightless — feed Essence to the Numerical Mass Accumulator on Ascension and feel gravity take hold. Under Count per second, warm numerical mass shows your inertial boost while you charge; after collapse, that readout turns into the cold singularity stack for the black hole itself."
+            body: "You have mapped every path and you cunted so high that your numbers are no longer weightless. I know it sounds crazy but I think it might just be crazy enuogh to work. Let's call this the Numerical Mass Accumulator and by the power of imagination we will use its mass to help you count faster and higher. Feed Essence to the Numerical Mass Accumulator on Ascension for new boosts. Under Count per second, warm numerical mass shows your inertial boost while you charge. I am sure adding more and more numerical mass will have no consequences."
+        },
+        {
+            id: "ascension-map-collapse-ready",
+            order: 1000,
+            trigger: () => false,
+            title: "Constellation complete",
+            body: "Ok, so there appear to be some minor consequences. It looks like our numerical mass is starting to get a bit heavy and collpased in on itself. BUT somehow its still helping us count, so the power of imagination lives. Let's see how far we can push this collapse, let's add some more ascension essence."
+        },
+        {
+            id: "black-hole-phase-1-collapse",
+            order: 1001,
+            trigger: () => false,
+            title: "Mass Accumulator Collapse",
+            body: "Critical mass reached. The accumulator collapses inward. A black hole is born. You done messed up son (or daughter)!"
+        },
+        {
+            id: "black-hole-phase-2-disk",
+            order: 1002,
+            trigger: () => false,
+            title: "Accretion Disk Ignition",
+            body: "Numerical Matter begins to circle the singularity, it makes pretty swirly shapes. Also, the accretion disk ignites. So basically spiecy swirly shapes are going to help us count faster and higher."
+        },
+        {
+            id: "black-hole-phase-3-wave",
+            order: 1003,
+            trigger: () => false,
+            title: "Gravitational Lensing",
+            body: "Spacetime bends around your count. Suck it Einstein! Gravitational Waves begin to pulse. Also, I am not sure if this is actually working, but it looks cool so I am going to leave it in."
+        },
+        {
+            id: "black-hole-phase-4-furnace",
+            order: 1004,
+            trigger: () => false,
+            title: "Gravitational Furnace",
+            body: "It seems like our black hole is growing nicely but recently it just hasn't been itself. We give it essence and more essence but it just doesn't seem to do the trick. Much like our little shop of horrors I feel like we need to feed it soemthing tasty. I dare you to throw one of your hands in there, lol."
+        },
+        {
+            id: "black-hole-phase-5-jets",
+            order: 1005,
+            trigger: () => false,
+            title: "Astrophysical Jets",
+            body: "Going from 10 hands to 1 was quite the sacrifice but little Jimmy (I assume that's our black hole's name) seems pretty happy. He's shooting out astrophysical jets of hypercharged numerical mass. Ride these jet's to the inevitable conclusion so you can prove everyone wrong and say, \"I counted to infinity\"."
+        },
+        {
+            id: "black-hole-phase-6-evaporation",
+            order: 1006,
+            trigger: () => false,
+            title: "Evaporation",
+            body: "The cosmic limit is reached. Upgrades fall silent. Now, count for counting's sake."
+        },
+        {
+            id: "black-hole-first-digest",
+            order: 1007,
+            trigger: () => false,
+            title: "Furnace Response",
+            body: "Digestion complete. The furnace answers with new power."
         }
     ];
     const shownBannerIds = new Set();
@@ -6693,6 +7402,16 @@
     const storyReviewListEl = document.getElementById("story-review-list");
     const storyReviewCloseBtn = document.getElementById("story-review-close");
 
+    function getStoryBannerById(id) {
+        return STORY_BANNERS.find(b => b.id === id) || null;
+    }
+    function showStoryBannerById(id) {
+        const banner = getStoryBannerById(id);
+        if (banner) showStoryBanner(banner);
+    }
+    function hasUnlockedStoryBanner(id) {
+        return shownBannerIds.has(id) || closedBanners.some(b => b && b.id === id);
+    }
     function checkStoryBanners() {
         if (gamePaused) return;
         const pending = STORY_BANNERS.filter(b => !shownBannerIds.has(b.id) && b.trigger());
@@ -6702,9 +7421,13 @@
     }
 
     let currentStoryBanner = null;
+    let currentStoryBannerIsReplay = false;
+    let replayStoryBannerPreviousPaused = false;
 
-    function showStoryBanner(banner) {
+    function showStoryBanner(banner, options = {}) {
         currentStoryBanner = banner;
+        currentStoryBannerIsReplay = !!options.isReplay;
+        replayStoryBannerPreviousPaused = currentStoryBannerIsReplay ? gamePaused : false;
         gamePaused = true;
         if (storyBannerTitleEl) storyBannerTitleEl.textContent = banner.title;
         if (storyBannerBodyEl) storyBannerBodyEl.textContent = banner.body;
@@ -6713,37 +7436,29 @@
 
     function closeStoryBanner() {
         if (!storyBannerOverlayEl || storyBannerOverlayEl.style.display !== "flex") return;
+        const wasReplay = currentStoryBannerIsReplay;
         if (currentStoryBanner) {
-            shownBannerIds.add(currentStoryBanner.id);
-            closedBanners.push({ id: currentStoryBanner.id, order: currentStoryBanner.order, title: currentStoryBanner.title, body: currentStoryBanner.body, closedAt: Date.now() });
+            if (!wasReplay) {
+                shownBannerIds.add(currentStoryBanner.id);
+                closedBanners.push({ id: currentStoryBanner.id, order: currentStoryBanner.order, title: currentStoryBanner.title, body: currentStoryBanner.body, closedAt: Date.now() });
+            }
             currentStoryBanner = null;
         }
+        currentStoryBannerIsReplay = false;
         storyBannerOverlayEl.style.display = "none";
-        if (ascensionMapCollapsePending && !number1BlackHoleState.phase1MapCollapseSeen) {
+        if (!wasReplay && ascensionMapCollapsePending && !number1BlackHoleState.phase1MapCollapseSeen) {
             startAscensionMapCollapseTransition();
         }
-        gamePaused = false;
+        gamePaused = wasReplay ? replayStoryBannerPreviousPaused : false;
+        replayStoryBannerPreviousPaused = false;
         renderStoryReviewList();
-        checkStoryBanners();
+        if (!wasReplay) refreshStoryArchiveSectionIfOpen();
+        if (!wasReplay) checkStoryBanners();
     }
 
     function renderStoryReviewList() {
         if (!storyReviewListEl) return;
-        storyReviewListEl.innerHTML = "";
-        const sorted = [...closedBanners].sort((a, b) => a.order - b.order);
-        if (sorted.length === 0) {
-            const empty = document.createElement("p");
-            empty.className = "story-review-empty";
-            empty.innerHTML = "No story beats yet — they appear as you hit milestones. Richer replay and chapter view — <span class=\"coming-soon-inline\">coming soon</span>.";
-            storyReviewListEl.appendChild(empty);
-            return;
-        }
-        sorted.forEach(b => {
-            const item = document.createElement("div");
-            item.className = "story-review-item";
-            item.innerHTML = "<strong class=\"story-review-item-title\">" + escapeHtml(b.title) + "</strong><p class=\"story-review-item-body\">" + escapeHtml(b.body) + "</p>";
-            storyReviewListEl.appendChild(item);
-        });
+        storyReviewListEl.innerHTML = renderStoryArchiveHtml();
     }
     function escapeHtml(s) {
         const div = document.createElement("div");
@@ -6754,6 +7469,14 @@
     if (storyBannerCloseBtn) storyBannerCloseBtn.addEventListener("click", closeStoryBanner);
     if (storyReviewBtn) storyReviewBtn.addEventListener("click", () => { storyReviewPanelEl.style.display = storyReviewPanelEl.style.display === "none" ? "block" : "none"; renderStoryReviewList(); });
     if (storyReviewCloseBtn) storyReviewCloseBtn.addEventListener("click", () => { storyReviewPanelEl.style.display = "none"; });
+    if (storyReviewListEl) {
+        storyReviewListEl.addEventListener("click", e => {
+            const replayBtn = e.target.closest("[data-story-replay-id]");
+            if (!replayBtn) return;
+            const banner = getStoryBannerById(replayBtn.getAttribute("data-story-replay-id"));
+            if (banner && hasUnlockedStoryBanner(banner.id)) showStoryBanner(banner, { isReplay: true });
+        });
+    }
     if (menuBtn) menuBtn.addEventListener("click", () => {
         if (!settingsPanelEl) return;
         const openNext = settingsPanelEl.style.display === "none";
@@ -6829,6 +7552,14 @@
     });
     if (pagePanelBodyEl) {
         pagePanelBodyEl.addEventListener("pointerup", function(e) {
+            const replayBtn = e.target.closest("[data-story-replay-id]");
+            if (replayBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                const banner = getStoryBannerById(replayBtn.getAttribute("data-story-replay-id"));
+                if (banner && hasUnlockedStoryBanner(banner.id)) showStoryBanner(banner, { isReplay: true });
+                return;
+            }
             const statusBtn = e.target.closest("[data-combo-status]");
             if (statusBtn) {
                 e.preventDefault();
@@ -6858,12 +7589,56 @@
             }
         });
     }
+    function playBlackHoleScreenEffect(kind) {
+        if (typeof document === "undefined" || !document.body) return;
+        const allowed = {
+            hawking: true,
+            wave: true,
+            sacrifice: true,
+            digest: true,
+            evaporation: true
+        };
+        if (!allowed[kind]) return;
+        const wrap = document.createElement("div");
+        wrap.className = "black-hole-screen-fx black-hole-screen-fx--" + kind;
+        wrap.setAttribute("aria-hidden", "true");
+        wrap.innerHTML = "<div class=\"black-hole-screen-fx__core\"></div><div class=\"black-hole-screen-fx__ring\"></div><div class=\"black-hole-screen-fx__field\"></div>";
+        document.body.appendChild(wrap);
+        window.setTimeout(function () {
+            if (wrap.parentNode) wrap.parentNode.removeChild(wrap);
+        }, BLACK_HOLE_SCREEN_FX_MS);
+    }
 
     if (ascensionReadyCtaEl) {
         ascensionReadyCtaEl.addEventListener("click", () => beginNumber1AscensionFlow());
     }
 
     if (pagePanelEl) {
+        const setStokePreviewActive = function(target, active) {
+            const btn = target && typeof target.closest === "function"
+                ? target.closest("[data-asc-black-hole-stoke-preview-toggle]")
+                : null;
+            if (!btn) return;
+            const panel = btn.closest(".asc-black-hole");
+            if (panel) panel.classList.toggle("asc-black-hole--stoke-preview-active", !!active);
+        };
+        pagePanelEl.addEventListener("pointerover", function(e) {
+            setStokePreviewActive(e.target, true);
+        });
+        pagePanelEl.addEventListener("pointerout", function(e) {
+            const btn = e.target && typeof e.target.closest === "function"
+                ? e.target.closest("[data-asc-black-hole-stoke-preview-toggle]")
+                : null;
+            if (!btn) return;
+            if (e.relatedTarget && btn.contains(e.relatedTarget)) return;
+            setStokePreviewActive(btn, false);
+        });
+        pagePanelEl.addEventListener("focusin", function(e) {
+            setStokePreviewActive(e.target, true);
+        });
+        pagePanelEl.addEventListener("focusout", function(e) {
+            setStokePreviewActive(e.target, false);
+        });
         pagePanelEl.addEventListener("click", function(e) {
             const ascTab = e.target.closest("[data-asc-tab]");
             if (ascTab && pagePanelEl.dataset.openPageId === "ascension" && pagePanelBodyEl) {
@@ -6900,6 +7675,18 @@
                 tryBuyBlackHolePhase2CollapseUpgrade(ascBhP2.getAttribute("data-asc-black-hole-p2") || "");
                 return;
             }
+            const ascBhP3 = e.target.closest("[data-asc-black-hole-p3]");
+            if (ascBhP3 && pagePanelEl.dataset.openPageId === "ascension" && ascensionPageActiveNumber === 1 && pagePanelBodyEl) {
+                e.preventDefault();
+                tryBuyBlackHolePhase3DiskUpgrade(ascBhP3.getAttribute("data-asc-black-hole-p3") || "");
+                return;
+            }
+            const ascBhP6 = e.target.closest("[data-asc-black-hole-p6]");
+            if (ascBhP6 && pagePanelEl.dataset.openPageId === "ascension" && ascensionPageActiveNumber === 1 && pagePanelBodyEl) {
+                e.preventDefault();
+                tryBuyBlackHolePhase6JetUpgrade(ascBhP6.getAttribute("data-asc-black-hole-p6") || "");
+                return;
+            }
             const ascBhStart = e.target.closest("[data-asc-black-hole-start]");
             if (ascBhStart && pagePanelEl.dataset.openPageId === "ascension" && ascensionPageActiveNumber === 1 && pagePanelBodyEl) {
                 e.preventDefault();
@@ -6917,6 +7704,13 @@
             if (ascBhSacrifice && pagePanelEl.dataset.openPageId === "ascension" && ascensionPageActiveNumber === 1 && pagePanelBodyEl) {
                 e.preventDefault();
                 sacrificeNextHandToFurnace();
+                queueBlackHoleUiRefresh();
+                return;
+            }
+            const ascBhMutation = e.target.closest("[data-asc-black-hole-mutation]");
+            if (ascBhMutation && pagePanelEl.dataset.openPageId === "ascension" && ascensionPageActiveNumber === 1 && pagePanelBodyEl) {
+                e.preventDefault();
+                chooseBlackHoleFurnaceMutation(ascBhMutation.getAttribute("data-asc-black-hole-mutation") || "");
                 queueBlackHoleUiRefresh();
                 return;
             }
@@ -7430,10 +8224,13 @@
                     let ascPart = "Ascension: " + (ascReady ? "<span class=\"overview-asc-ready\">Ready</span>" : "Not ready");
                     ascPart += " · Essence: " + formatCount(number1AscensionEssence);
                     if (!ascReady) {
-                        ascPart += " · Requirement: " + formatCount(ASCENSION_1_REQUIRED_TOTAL) + " total and " + ASCENSION_1_MIN_HANDS + " hands";
+                        ascPart += " · Requirement: " + formatCount(ASCENSION_1_REQUIRED_TOTAL) + " total and " + getNumber1AscensionRequiredHands() + " hands";
                     }
                     if (ascReady) {
                         ascPart += " · Next gain: " + formatCount(gainPreview);
+                        if (gainPreviewInfo && gainPreviewInfo.blackHoleMultiplierBonus > 0) {
+                            ascPart += " (BH bonus +" + formatCount(gainPreviewInfo.blackHoleMultiplierBonus) + ")";
+                        }
                         if (gainPreviewInfo && gainPreviewInfo.multiplierBonus > 0) {
                             ascPart += " (clap mult +" + formatCount(gainPreviewInfo.multiplierBonus) + ")";
                         }
@@ -7468,6 +8265,10 @@
         if (!pagePanelEl || pagePanelEl.style.display === "none" || !pagePanelBodyEl) return;
         if (pagePanelEl.dataset.openPageId !== "ascension") return;
         if (ascensionPageActiveNumber !== 1) return;
+        if (isBlackHoleArcUnlocked() && getBlackHolePhase() >= 1) {
+            refreshBlackHolePanelLiveDomIfOpen();
+            return;
+        }
         const statsEl = document.getElementById("ascension-hub-stats");
         if (statsEl) statsEl.innerHTML = renderAscensionHubStatsPillsHtml();
         if (typeof updateAscensionMapDetailPanel === "function") updateAscensionMapDetailPanel();
@@ -7478,6 +8279,7 @@
         const gainInfo = computeNumber1AscensionGainBreakdown(totalChanges);
         const baseGain = gainInfo.baseGain;
         const bonusGain = gainInfo.pendingBonus;
+        const blackHoleBonusGain = gainInfo.blackHoleMultiplierBonus;
         const multBonusGain = gainInfo.multiplierBonus;
         const gain = gainInfo.finalGain;
         number1AscensionEssence += gain;
@@ -7546,7 +8348,6 @@
         comboSustainAccumulator = 0;
         comboRunBonusRampAccumulator = 0;
         objectives.forEach(o => { o.achieved = false; });
-        longTermObjectives.forEach(o => { o.achieved = false; });
 
         const h0 = hands[0];
         if (h0) {
@@ -7578,8 +8379,9 @@
         const gainParts = bonusGain > 0
             ? (formatCount(baseGain) + " base + " + formatCount(bonusGain) + " bonus")
             : (formatCount(baseGain) + " base");
+        const bhPart = blackHoleBonusGain > 0 ? (" + " + formatCount(blackHoleBonusGain) + " BH bonus") : "";
         const multPart = multBonusGain > 0 ? (" + " + formatCount(multBonusGain) + " clap multiplier") : "";
-        addToLog("Ascended Number 1 — +" + formatCount(gain) + " Ascension Essence (" + gainParts + multPart + "; total " + formatCount(number1AscensionEssence) + ")", "milestone");
+        addToLog("Ascended Number 1 — +" + formatCount(gain) + " Ascension Essence (" + gainParts + bhPart + multPart + "; total " + formatCount(number1AscensionEssence) + ")", "milestone");
         markMeaningfulProgress();
         autosaveNow();
     }
@@ -7589,11 +8391,14 @@
         const gainInfo = computeNumber1AscensionGainBreakdown(totalChanges);
         const baseGain = gainInfo.baseGain;
         const bonusGain = gainInfo.pendingBonus;
+        const blackHoleBonusGain = gainInfo.blackHoleMultiplierBonus;
         const multBonusGain = gainInfo.multiplierBonus;
         const gain = gainInfo.finalGain;
         const nextTotal = number1AscensionEssence + gain;
         const gainBits = ["base " + formatCount(baseGain)];
         if (bonusGain > 0) gainBits.push("warp bonus " + formatCount(bonusGain));
+        if (blackHoleBonusGain > 0) gainBits.push("BH bonus +" + formatCount(blackHoleBonusGain) + " (" + gainInfo.blackHolePhaseMult.toFixed(3) + "x)");
+            if (gainInfo.blackHoleFurnaceBonus > 0) gainBits.push("furnace +" + gainInfo.blackHoleFurnaceBonus.toFixed(2) + "x");
         if (multBonusGain > 0) gainBits.push("clap mult +" + formatCount(multBonusGain) + " (" + gainInfo.clapMult.toFixed(3) + "x)");
         const bonusLine = gainBits.length > 1 ? (" (" + gainBits.join(" + ") + ")") : "";
         ascensionConfirmBodyEl.textContent = "Your total count is " + formatCount(totalChanges) + ". Ascending now grants " + formatCount(gain) + " Ascension Essence" + bonusLine + " (you will have " + formatCount(nextTotal) + " total).\n\nThis resets Number 1 only: one hand, no upgrades, no combo bonuses, objectives unchecked, turbo reset.\n\nSpend Essence on permanent skill branches in Ascension. Respec is always free.";
@@ -7930,6 +8735,7 @@
         if (getBlackHolePhase() === 7) {
             totalChanges = Math.floor(number1BlackHoleState.phase7EpilogueCounter || 0);
             handEarnings[0] = totalChanges;
+            if (incrementalCountLabelEl) incrementalCountLabelEl.textContent = "Epilogue Count";
             if (incrementalEl) incrementalEl.textContent = formatCount(totalChanges);
             updateRateDisplay();
             updateMilestoneUI();
@@ -8075,14 +8881,14 @@
         const allowed = source.filter(e => !recentRandomLogMessages.includes(e.text));
         const pool = allowed.length > 0 ? allowed : source;
         const pick = pool[Math.floor(Math.random() * pool.length)];
-        addToLog(pick.text, pick.category);
+        setAmbientMessage(pick);
         recentRandomLogMessages.push(pick.text);
         if (recentRandomLogMessages.length > RECENT_RANDOM_LOG_COUNT) recentRandomLogMessages.shift();
     }, 5000);
 
     setTimeout(() => {
         const first = LOG_MESSAGE_ENTRIES[0];
-        if (first) addToLog(first.text, first.category);
+        if (first) setAmbientMessage(first);
     }, 2000);
     setInterval(() => {
         maybeEmitAdaptiveTip(Date.now());
@@ -8324,6 +9130,8 @@
     const devAutobuyDelay01Checkbox = document.getElementById("dev-autobuy-delay-01");
     const devAutobuyCheapenCheckbox = document.getElementById("dev-autobuy-cheapen");
     const devAutobuySlowdownCheckbox = document.getElementById("dev-autobuy-slowdown");
+    const devBlackHolePhaseSelect = document.getElementById("dev-black-hole-phase-select");
+    const devBlackHolePhaseApplyBtn = document.getElementById("dev-black-hole-phase-apply");
 
     const devToolsLoadTime = Date.now();
     let devSecondsInterval = null;
@@ -8331,6 +9139,131 @@
     function updateDevSeconds() {
         if (!devSecondsElapsed) return;
         devSecondsElapsed.textContent = ((Date.now() - devToolsLoadTime) / 1000).toFixed(1);
+    }
+    function updateDevBlackHolePhaseSelect() {
+        if (devBlackHolePhaseSelect) devBlackHolePhaseSelect.value = String(getBlackHolePhase());
+    }
+    function devEnsureBlackHoleUnlockedForPhase(phase) {
+        if (phase <= 0) return;
+        number1HasAscended = true;
+        if (Array.isArray(ASCENSION_MAP_NODES) && ASCENSION_MAP_NODES.length > 0) {
+            number1AscensionNodeIds = ASCENSION_MAP_NODES.map(n => n.id);
+        }
+        if (number1AscensionEssence < 5000) number1AscensionEssence = 5000;
+    }
+    function devSetUnlockedHandsCount(count) {
+        const target = Math.max(1, Math.min(maxHands, Math.floor(Number(count) || 1)));
+        unlockedHandsCap = target;
+        unlockedHands = target;
+        for (let i = 0; i < maxHands; i++) {
+            if (i < target && !(handEarnings[i] > 0)) handEarnings[i] = 1;
+            if (i >= target) {
+                handEarnings[i] = 0;
+                autoBuyEnabledByHand[i] = false;
+                autoBuyCountdownSecondsByHand[i] = 0;
+                timeWarpAuraActiveByHand[i] = false;
+                timeWarpAuraAppearedAtMsByHand[i] = 0;
+            }
+        }
+        shrinkSpeedRowsTo(target);
+        ensureSpeedRows();
+        while (hands.length > target) {
+            const h = hands.pop();
+            if (h && h.el && h.el.parentNode) h.el.parentNode.removeChild(h.el);
+        }
+        while (hands.length < target) {
+            const handNum = hands.length + 1;
+            const slot = speedRowRefs[handNum - 1]?.handMountEl;
+            hands.push(new HandCounter(handNum, HAND_BASE_SPEED, slot));
+        }
+    }
+    function devApplyBlackHolePhase() {
+        if (!devBlackHolePhaseSelect) return;
+        const phase = Math.max(0, Math.min(7, parseInt(devBlackHolePhaseSelect.value, 10) || 0));
+        devEnsureBlackHoleUnlockedForPhase(phase);
+        number1BlackHoleState.phase = phase;
+        number1BlackHoleState.phase1EssenceSpent = phase >= 2 ? BLACK_HOLE_PHASE1_ESSENCE_TARGET : 0;
+        number1BlackHoleState.phase2CollapseMassTier = phase >= 3 ? BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER : 0;
+        number1BlackHoleState.phase2CollapsePhotonTier = phase >= 3 ? BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER : 0;
+        number1BlackHoleState.phase2CollapseErgosphereTier = phase >= 3 ? BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER : 0;
+        number1BlackHoleState.phase2Mass = phase >= 3 ? BLACK_HOLE_PHASE2_MASS_CAP : (phase === 2 ? Math.min(10, BLACK_HOLE_PHASE2_MASS_CAP) : 0);
+        number1BlackHoleState.phase2EssenceBank = 0;
+        number1BlackHoleState.phase2ParallelBonusPool = phase >= 3 ? 1.5 : (phase === 2 ? 0.25 : 0);
+        number1BlackHoleState.phase3LuminosityLevel = phase >= 4 ? 6 : (phase === 3 ? 2 : 0);
+        number1BlackHoleState.phase3ViscousLevel = phase >= 4 ? 6 : (phase === 3 ? 2 : 0);
+        number1BlackHoleState.phase3CoronalLevel = phase >= 4 ? 6 : (phase === 3 ? 2 : 0);
+        syncBlackHolePhase3LegacyLevel();
+        number1BlackHoleState.phase3EssenceBank = 0;
+        number1BlackHoleState.phase3HawkingActiveUntilMs = 0;
+        number1BlackHoleState.phase3NextHawkingAtMs = phase >= 3 && phase < 6 ? Date.now() + 6000 : 0;
+        number1BlackHoleState.phase4WaveLevel = phase >= 5 ? 6 : (phase === 4 ? 2 : 0);
+        number1BlackHoleState.phase4EssenceBank = 0;
+        number1BlackHoleState.phase4WaveTriggered = phase >= 5;
+        number1BlackHoleState.phase4WaveActiveUntilMs = 0;
+        number1BlackHoleState.phase4NextWaveAtMs = phase >= 4 && phase < 6 ? Date.now() + Math.round(getBlackHoleWaveIntervalSec() * 1000) : 0;
+        number1BlackHoleState.phase4ManualReadyAtMs = phase >= 4 && phase < 6 ? Date.now() : 0;
+        number1BlackHoleState.phase5DigestedHands = phase >= 6 ? 9 : (phase === 5 ? 0 : 0);
+        number1BlackHoleState.phase5DigestHandNumber = 0;
+        number1BlackHoleState.phase5DigestStartedAtMs = 0;
+        number1BlackHoleState.phase5DigestDurationMs = 0;
+        number1BlackHoleState.phase5DigestEndsAtMs = 0;
+        number1BlackHoleState.phase5FurnaceLevel = phase >= 6 ? 9 : 0;
+        number1BlackHoleState.phase5NextSacrificeHand = phase >= 6 ? 1 : 10;
+        number1BlackHoleState.phase5MutationHotterCore = phase >= 6 ? 3 : 0;
+        number1BlackHoleState.phase5MutationEssenceRefinery = phase >= 6 ? 3 : 0;
+        number1BlackHoleState.phase5MutationShorterOrbit = phase >= 6 ? 3 : 0;
+        number1BlackHoleState.phase5PendingMutationHand = 0;
+        number1BlackHoleState.phase5PendingMutationLevel = 0;
+        number1BlackHoleState.phase5LastDigestedHand = phase >= 6 ? 2 : 0;
+        number1BlackHoleState.phase5LastDigestCompletedAtMs = 0;
+        number1BlackHoleState.phase6JetCharge = phase >= 6 ? 500 : 0;
+        number1BlackHoleState.phase6JetActive = false;
+        number1BlackHoleState.phase6JetBoostLevel = phase >= 6 ? 1 : 0;
+        number1BlackHoleState.phase6JetEfficiencyLevel = phase >= 6 ? 1 : 0;
+        number1BlackHoleState.phase6JetBankLevel = phase >= 6 ? 1 : 0;
+        number1BlackHoleState.phase6EssenceBank = 0;
+        number1BlackHoleState.phase6JetIgnited = phase >= 7;
+        number1BlackHoleState.phase6JetBestAscensionEssence = phase >= 6 ? Math.max(1000, number1BlackHoleState.phase6JetBestAscensionEssence || 0) : 0;
+        number1BlackHoleState.phase7EpilogueCounter = phase === 7 ? 0 : number1BlackHoleState.phase7EpilogueCounter || 0;
+        number1BlackHoleState.phase7EnteredAtMs = phase === 7 ? Date.now() : 0;
+        number1BlackHoleState.evaporationComplete = phase === 7;
+        if (phase === 0) {
+            number1HasAscended = false;
+            number1AscensionNodeIds = [];
+            number1BlackHoleState.phase = 0;
+            number1BlackHoleState.phase1EssenceSpent = 0;
+        }
+        devSetUnlockedHandsCount(phase >= 6 ? 1 : 10);
+        if (phase === 0) {
+            handEarnings[0] = Math.max(handEarnings[0] || 0, 1e36);
+        }
+        if (phase === 6) {
+            handEarnings[0] = Math.max(handEarnings[0] || 0, ASCENSION_1_REQUIRED_TOTAL);
+        }
+        if (phase === 7) {
+            totalChanges = 0;
+            handEarnings[0] = 0;
+        }
+        if (phase > 0 && phase < 7) {
+            applyAscensionHandUnlockStartingCountFloorToUnlockedHands();
+        }
+        refreshTotalFromHandEarnings();
+        syncBlackHolePhase1Vfx();
+        updateN1GravityCpsStrip();
+        updateObjectives();
+        updateSpeedUpgradeUI();
+        updateCheapenUpgradeUI();
+        updateSlowdownUpgradeUI();
+        updateTimeWarpAuraUI();
+        updateTurboBoostUI();
+        updateRateDisplay();
+        updateMilestoneUI();
+        updateEarnedBonusesUI();
+        updatePageButtonUnlocks();
+        refreshOverviewAndAscensionPanelsIfOpen();
+        updateDevBlackHolePhaseSelect();
+        addToLog("Dev: jumped to Black Hole Phase " + phase + ".", "warning");
+        autosaveNow();
     }
 
     function isDevToolsPanelHidden() {
@@ -8349,12 +9282,16 @@
             devToolsPanel.style.display = show ? "block" : "none";
             if (show) {
                 updateDevSeconds();
+                updateDevBlackHolePhaseSelect();
                 if (!devSecondsInterval) devSecondsInterval = setInterval(updateDevSeconds, 100);
             } else {
                 if (devSecondsInterval) clearInterval(devSecondsInterval);
                 devSecondsInterval = null;
             }
         });
+    }
+    if (devBlackHolePhaseApplyBtn) {
+        devBlackHolePhaseApplyBtn.addEventListener("click", devApplyBlackHolePhase);
     }
 
     if (devAllAutobuyCheckbox) {

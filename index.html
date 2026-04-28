@@ -33,7 +33,7 @@
             <button type="button" class="page-btn" data-page="unlocks">Unlocks</button>
             <button type="button" class="page-btn" data-page="collectibles">Collectibles</button>
             <button type="button" class="page-btn" data-page="combinations" style="display: none;">Combinations</button>
-            <button type="button" class="page-btn" data-page="messages">Message Log</button>
+            <button type="button" class="page-btn" data-page="messages">Message and Story Log</button>
             <button type="button" class="page-btn" data-page="overview">Global Overview</button>
             <button type="button" class="page-btn" data-page="ascension" style="display: none;">Ascension</button>
         </div>
@@ -178,6 +178,20 @@
             <input type="number" id="dev-add-ascension-essence-input" min="0" value="0" class="dev-input" />
             <button type="button" id="dev-add-ascension-essence-btn" class="dev-btn">Add</button>
         </div>
+        <div class="dev-tools-row dev-tools-row--stacked">
+            <label for="dev-black-hole-phase-select">Black Hole phase:</label>
+            <select id="dev-black-hole-phase-select" class="dev-input dev-select">
+                <option value="0">0 — Locked / pre-BH</option>
+                <option value="1">1 — Mass Accumulation</option>
+                <option value="2">2 — Black Hole Collapse</option>
+                <option value="3">3 — Accretion Disk</option>
+                <option value="4">4 — Gravitational Lensing</option>
+                <option value="5">5 — Gravitational Furnace</option>
+                <option value="6">6 — Astrophysical Jets</option>
+                <option value="7">7 — Evaporation</option>
+            </select>
+            <button type="button" id="dev-black-hole-phase-apply" class="dev-btn">Jump</button>
+        </div>
         <div class="dev-tools-row">
             <label><input type="checkbox" id="dev-all-autobuy" /> All autobuyers on</label>
         </div>
@@ -207,7 +221,7 @@
     <div id="ascension-intro-overlay" class="story-banner-overlay" style="display: none;" aria-modal="true">
         <div class="story-banner-modal">
             <h2 class="story-banner-title">Ascension — Number 1</h2>
-            <div class="story-banner-body">Ascension resets your Number 1 run: all extra hands are folded away, speed and cheapen upgrades are cleared, earned combo bonuses are cleared, turbo meter and unlock state reset, and short- and long-term objective checkmarks start fresh.
+            <div class="story-banner-body">Ascension resets your Number 1 run: all extra hands are folded away, speed and cheapen upgrades are cleared, earned combo bonuses are cleared, turbo meter and unlock state reset, and short-term objective checkmarks start fresh.
 
 You keep Ascension Essence forever. The Essence you gain scales with your total count at the moment you ascend — push higher before ascending to earn more.
 
@@ -238,13 +252,6 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
         </div>
     </div>
 
-    <!-- Story / past banners (review) -->
-    <button type="button" id="story-review-btn" class="story-review-btn">Story</button>
-    <div id="story-review-panel" class="story-review-panel" style="display: none;">
-        <h3 class="story-review-heading">Story &amp; progress</h3>
-        <div id="story-review-list" class="story-review-list"></div>
-        <button type="button" id="story-review-close" class="story-review-close">Close</button>
-    </div>
     <div id="settings-panel" class="settings-panel" style="display: none;">
         <h3>Settings</h3>
         <label class="settings-row"><input type="checkbox" id="settings-theme-dark"> Dark mode</label>
@@ -278,6 +285,7 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
 
     <!-- Action log (bottom, expandable) -->
     <div id="action-log" class="action-log">
+        <div id="ambient-message-ticker" class="ambient-message-ticker" aria-live="polite"></div>
         <div id="action-log-lines" class="action-log-lines"></div>
         <button type="button" id="action-log-toggle" class="action-log-toggle">Show more</button>
     </div>
