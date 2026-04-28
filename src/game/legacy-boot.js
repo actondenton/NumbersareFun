@@ -1,12 +1,66 @@
 import {
-    NUMBER2_BG_ROLLS_PER_SEC,
-    NUMBER2_ASCENSION_READY_TOTAL,
-    NUMBER_2_MILESTONES,
-    computeNumber2ActiveRollsPerSec,
-    computeNumber2EffectivePDouble as computeNumber2EffectivePDoubleRule,
-    formatNumber2BigIntDisplay as formatNumber2BigIntDisplayRule,
-    isPrimeInt
+    NUMBER2_ASCENSION_READY_TOTAL
 } from "./number2-rules.js";
+import {
+    BLACK_HOLE_DIGEST_BASE_MS,
+    BLACK_HOLE_EVAPORATION_CAP,
+    BLACK_HOLE_FURNACE_COMPLETION_RITUAL_MS,
+    BLACK_HOLE_FURNACE_ESSENCE_REFINERY_BONUS,
+    BLACK_HOLE_FURNACE_HOTTER_CORE_BONUS,
+    BLACK_HOLE_FURNACE_MULT_PER_POWER,
+    BLACK_HOLE_FURNACE_SHORTER_ORBIT_TRIM,
+    BLACK_HOLE_MAX_LEVEL,
+    BLACK_HOLE_MULT_PER_LEVEL,
+    BLACK_HOLE_PHASE1_ESSENCE_TARGET,
+    BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER,
+    BLACK_HOLE_PHASE2_MASS_CAP,
+    BLACK_HOLE_PHASE4_WAVE_BOOST_DURATION_SEC,
+    BLACK_HOLE_PHASE4_WAVE_BOOST_MULT,
+    BLACK_HOLE_SCREEN_FX_MS,
+    clampBlackHolePhase as clampBlackHolePhaseRule,
+    clampBlackHolePhase2CollapseTier as clampBlackHolePhase2CollapseTierRule,
+    createNumber1BlackHoleState,
+    createNumber1BlackHoleUxFlags,
+    getBlackHoleFurnaceEssenceBonus as getBlackHoleFurnaceEssenceBonusRule,
+    getBlackHoleFurnaceMult as getBlackHoleFurnaceMultRule,
+    getBlackHolePhase2CollapseErgosphereTier as getBlackHolePhase2CollapseErgosphereTierRule,
+    getBlackHolePhase2CollapseMassTier as getBlackHolePhase2CollapseMassTierRule,
+    getBlackHolePhase2CollapsePhotonTier as getBlackHolePhase2CollapsePhotonTierRule,
+    getBlackHolePhase2CollapseUpgradeCost as getBlackHolePhase2CollapseUpgradeCostRule,
+    getBlackHolePhase2CostAtLevel as getBlackHolePhase2CostAtLevelRule,
+    getBlackHolePhase2MassCouplingCostMult as getBlackHolePhase2MassCouplingCostMultRule,
+    getBlackHolePhase2PhotonHawkingCdTrimSec as getBlackHolePhase2PhotonHawkingCdTrimSecRule,
+    getBlackHolePhase2PhotonShellMult as getBlackHolePhase2PhotonShellMultRule,
+    getBlackHolePhase1AscensionEssenceMult as getBlackHolePhase1AscensionEssenceMultRule,
+    getBlackHolePhase1FillRatio as getBlackHolePhase1FillRatioRule,
+    getBlackHolePhase1RunCpsMult as getBlackHolePhase1RunCpsMultRule,
+    getBlackHolePhase1SlowdownCapBonus as getBlackHolePhase1SlowdownCapBonusRule,
+    getBlackHolePhase3TrackCost as getBlackHolePhase3TrackCostRule,
+    getBlackHolePhase3TrackLevel as getBlackHolePhase3TrackLevelRule,
+    getBlackHolePhase3UpgradeFrac as getBlackHolePhase3UpgradeFracRule,
+    getBlackHolePhase4NextCostEssenceForWave as getBlackHolePhase4NextCostEssenceForWaveRule,
+    getBlackHolePhase5DigestCurve as getBlackHolePhase5DigestCurveRule,
+    getBlackHolePhase5DigestProgressAt as getBlackHolePhase5DigestProgressAtRule,
+    getBlackHolePhase5EffectiveFurnacePower as getBlackHolePhase5EffectiveFurnacePowerRule,
+    getBlackHolePhase5EssenceRefineryBonus as getBlackHolePhase5EssenceRefineryBonusRule,
+    getBlackHolePhase5HotterCoreMult as getBlackHolePhase5HotterCoreMultRule,
+    getBlackHolePhase5MutationLevel as getBlackHolePhase5MutationLevelRule,
+    getBlackHolePhase5MutationTotal as getBlackHolePhase5MutationTotalRule,
+    getBlackHolePhase5ShorterOrbitMult as getBlackHolePhase5ShorterOrbitMultRule,
+    getBlackHolePhase6NextJetUpgradeCostEssence as getBlackHolePhase6NextJetUpgradeCostEssenceRule,
+    getBlackHolePhase6TrackCost as getBlackHolePhase6TrackCostRule,
+    getBlackHolePhase6TrackLevel as getBlackHolePhase6TrackLevelRule,
+    getBlackHoleWaveIntervalSec as getBlackHoleWaveIntervalSecRule,
+    isBlackHolePhase3Complete as isBlackHolePhase3CompleteRule,
+    isBlackHolePhase2MassPourUnlocked as isBlackHolePhase2MassPourUnlockedRule,
+    normalizeNumber1BlackHoleStateFromSaveData,
+    syncNumber1BlackHolePhase3LegacyLevel
+} from "./number1-black-hole.js";
+import {
+    createNumber2Controller,
+    createNumber2ModuleDefinition,
+    createNumber2State
+} from "./number2-game.js";
 
     /* ---------------------------------------------------------
        ASCII HANDS (1–10)
@@ -185,73 +239,9 @@ import {
     /** Legacy save field; mapped into black-hole phase state on load. */
     let number1AscensionBlackHoleLevel = 0;
     /** Phase-driven black-hole progression state (BLACK_HOLE_PLAN.md). */
-    let number1BlackHoleState = {
-        phase: 0,
-        phase1EssenceSpent: 0,
-        phase2Mass: 0,
-        /** Essence banked toward the next Phase 2 mass step (partial feeds). */
-        phase2EssenceBank: 0,
-        /** Phase 2 “collapse” upgrades (0–3 each). All three must reach 3 before mass pour unlocks. */
-        phase2CollapseMassTier: 0,
-        phase2CollapsePhotonTier: 0,
-        phase2CollapseErgosphereTier: 0,
-        phase2ParallelBonusPool: 0,
-        phase3HawkingStrength: 0,
-        phase3LuminosityLevel: 0,
-        phase3ViscousLevel: 0,
-        phase3CoronalLevel: 0,
-        /** Essence banked toward the next Phase 3 disk upgrade (partial feeds). */
-        phase3EssenceBank: 0,
-        phase3HawkingRate: 0,
-        phase3HawkingDuration: 0,
-        phase3HawkingActiveUntilMs: 0,
-        phase3NextHawkingAtMs: 0,
-        phase4WaveLevel: 0,
-        /** Essence banked toward the next Phase 4 wave upgrade (partial feeds). */
-        phase4EssenceBank: 0,
-        phase4WaveTriggered: false,
-        phase4WaveActiveUntilMs: 0,
-        phase4NextWaveAtMs: 0,
-        phase4ManualReadyAtMs: 0,
-        phase5DigestedHands: 0,
-        phase5DigestHandNumber: 0,
-        phase5DigestStartedAtMs: 0,
-        phase5DigestDurationMs: 0,
-        phase5DigestEndsAtMs: 0,
-        phase5FurnaceLevel: 0,
-        phase5NextSacrificeHand: 10,
-        phase5MutationHotterCore: 0,
-        phase5MutationEssenceRefinery: 0,
-        phase5MutationShorterOrbit: 0,
-        phase5PendingMutationHand: 0,
-        phase5PendingMutationLevel: 0,
-        phase5LastDigestedHand: 0,
-        phase5LastDigestCompletedAtMs: 0,
-        phase6JetCharge: 0,
-        phase6JetActive: false,
-        phase6JetBoostLevel: 0,
-        phase6JetEfficiencyLevel: 0,
-        phase6JetBankLevel: 0,
-        /** Essence banked toward the next Phase 6 jet upgrade (legacy bundle fallback). */
-        phase6EssenceBank: 0,
-        phase6JetIgnited: false,
-        phase6JetBestAscensionEssence: 0,
-        phase7EpilogueCounter: 0,
-        phase7EnteredAtMs: 0,
-        evaporationComplete: false,
-        /** One-shot “Mass Accumulator unlocked” spectacle (persisted so it plays once per save). */
-        phase1VisualUnlockDone: false,
-        /** One-shot ascension-map collapse transition after final node purchase. */
-        phase1MapCollapseSeen: false
-    };
+    let number1BlackHoleState = createNumber1BlackHoleState();
     /** Non-persistent one-shot UX notices for BH state changes. */
-    let number1BlackHoleUxFlags = {
-        waveReadyAnnounced: false,
-        digestReadyAnnounced: false,
-        jetReadyAnnounced: false,
-        jetDryAnnounced: false,
-        lastPhase2MassFeedAtMs: 0
-    };
+    let number1BlackHoleUxFlags = createNumber1BlackHoleUxFlags();
     const ASCENSION_MAP_COLLAPSE_DURATION_MS = 3100;
     let ascensionMapCollapseActiveUntilMs = 0;
     let ascensionMapCollapseTimerId = 0;
@@ -432,180 +422,82 @@ import {
     let adaptiveLastHintAtMs = 0;
     const unlockedNumbers = new Set([1, 2]);
     /** Number 2 — Double or Nothing (isolated from Number 1 economy). */
-    const number2State = {
-        totalStr: "2",
-        luck: 0,
-        boomTokens: 0,
-        bustTokens: 0,
-        tokenGainCarry: 0,
-        streakDouble: 0,
-        streakNothing: 0,
-        lifetimeDoubles: 0,
-        lifetimeNothings: 0,
-        upgradeLevels: {},
-        started: false,
-        autoTickCarry: 0,
-        bgTickCarry: 0,
-        lastDieA: 1,
-        lastDieB: 1,
-        lastOutcome: "",
-        playingFairActive: false,
-        runTheTableUntilMs: 0,
-        runTheTableReadyAtMs: 0,
-        sandbagReadyAtMs: 0,
-        forceNextNothing: false,
-        hotStreakEnabled: true,
-        gamblersParadoxEnabled: true,
-        number2SaveVersion: 2,
-        ascensionEssence: 0,
-        ascensionNodeIds: [],
-        /** Legacy stub fields (migrated once). */
-        totalTwos: 0,
-        tickCarry: 0
-    };
+    const number2State = createNumber2State();
+    const number2 = createNumber2Controller(number2State, {
+        formatCount,
+        addToLog,
+        autosaveNow,
+        refreshOverviewAndAscensionPanelsIfOpen,
+        refreshGlobalOverviewPanelIfOpen,
+        renderAscensionPageHtml,
+        getPagePanelBodyEl: () => pagePanelBodyEl,
+        getCurrentNumberMode: () => typeof window.getCurrentNumberMode === "function" ? window.getCurrentNumberMode() : 1,
+        isUnlocked: () => isNumber2Unlocked(),
+        getUpgrades: () => typeof NUMBER2_UPGRADES !== "undefined" ? NUMBER2_UPGRADES : [],
+        getAscension2Export: () => typeof ASCENSION2_TREE_EXPORT !== "undefined" ? ASCENSION2_TREE_EXPORT : null,
+        getBasePDouble: () => typeof NUMBER2_BASE_P_DOUBLE === "number" ? NUMBER2_BASE_P_DOUBLE : 0.48,
+        getMinPDouble: () => typeof NUMBER2_P_DOUBLE_MIN === "number" ? NUMBER2_P_DOUBLE_MIN : 0.05,
+        getMaxPDouble: () => typeof NUMBER2_P_DOUBLE_MAX === "number" ? NUMBER2_P_DOUBLE_MAX : 0.95
+    });
     function number2TotalBig() {
-        try {
-            return BigInt(number2State.totalStr || "2");
-        } catch (_) {
-            return 2n;
-        }
+        return number2.totalBig();
     }
     function setNumber2TotalBig(b) {
-        number2State.totalStr = b.toString();
+        number2.setTotalBig(b);
     }
     function formatNumber2BigIntDisplay(b) {
-        return formatNumber2BigIntDisplayRule(b, formatCount);
+        return number2.formatTotalBig(b);
     }
     function getNumber2UpgradeLevel(id) {
-        const n = number2State.upgradeLevels[id];
-        return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+        return number2.getUpgradeLevel(id);
     }
     function getNumber2UpgradeDef(id) {
-        const ups = typeof NUMBER2_UPGRADES !== "undefined" ? NUMBER2_UPGRADES : [];
-        return ups.find(u => u.id === id) || null;
+        return number2.getUpgradeDef(id);
     }
     function getNumber2UpgradeCost(u, level) {
-        if (!u || !Array.isArray(u.cost)) return 0;
-        const idx = Math.max(0, Math.min(u.cost.length - 1, level));
-        return u.cost[idx];
+        return number2.getUpgradeCost(u, level);
     }
     function getPlayingFairTokenMultiplier() {
-        if (!(number2State.playingFairActive && getNumber2UpgradeLevel("playing_fair") > 0)) return 1;
-        const L = getNumber2UpgradeLevel("playing_fair");
-        return L <= 1 ? 2 : L === 2 ? 2.5 : 3;
+        return number2.getPlayingFairTokenMultiplier();
     }
     function addNumber2Tokens(kind, rawAmount, opts) {
-        const amount = Math.max(0, Number(rawAmount) || 0);
-        if (amount <= 0) return 0;
-        const mult = getPlayingFairTokenMultiplier();
-        let banked = amount * mult + (number2State.tokenGainCarry || 0);
-        const whole = Math.floor(banked);
-        number2State.tokenGainCarry = Math.max(0, banked - whole);
-        if (whole <= 0) return 0;
-        if (kind === "boom") number2State.boomTokens = Math.min(Number.MAX_SAFE_INTEGER, (number2State.boomTokens || 0) + whole);
-        else if (kind === "bust") number2State.bustTokens = Math.min(Number.MAX_SAFE_INTEGER, (number2State.bustTokens || 0) + whole);
-        if (!(opts && opts.silent)) {
-            const reason = opts && opts.reason ? " (" + opts.reason + ")" : "";
-            addToLog("Number 2: +" + formatCount(whole) + " " + (kind === "boom" ? "Boom" : "Bust") + " token" + (whole === 1 ? "" : "s") + reason + ".", "milestone");
-        }
-        return whole;
+        return number2.addTokens(kind, rawAmount, opts);
     }
     function hasNumber2ChanceModByUpgrade(id) {
-        return id === "hot_streak" || id === "gamblers_paradox" || id === "run_the_table";
+        return number2.hasChanceModByUpgrade(id);
     }
     function isNumber2UpgradeToggleEnabled(id) {
-        if (id === "hot_streak") return number2State.hotStreakEnabled !== false;
-        if (id === "gamblers_paradox") return number2State.gamblersParadoxEnabled !== false;
-        return true;
+        return number2.isUpgradeToggleEnabled(id);
     }
     function setExclusiveNumber2Toggle(activeId, on) {
-        const enable = !!on;
-        const ids = ["hot_streak", "gamblers_paradox", "playing_fair"];
-        if (!enable) {
-            if (activeId === "hot_streak") number2State.hotStreakEnabled = false;
-            else if (activeId === "gamblers_paradox") number2State.gamblersParadoxEnabled = false;
-            else if (activeId === "playing_fair") number2State.playingFairActive = false;
-            return;
-        }
-        ids.forEach(id => {
-            const isActive = id === activeId;
-            if (id === "hot_streak") number2State.hotStreakEnabled = isActive;
-            else if (id === "gamblers_paradox") number2State.gamblersParadoxEnabled = isActive;
-            else if (id === "playing_fair") number2State.playingFairActive = isActive;
-        });
+        number2.setExclusiveToggle(activeId, on);
     }
     function areNumber2ChanceModsEnabled() {
-        return !number2State.playingFairActive;
+        return number2.areChanceModsEnabled();
     }
     function getNumber2Asc2Totals() {
-        if (typeof ASCENSION2_TREE_EXPORT === "undefined" || !ASCENSION2_TREE_EXPORT.computeAscension2GrantTotals) {
-            return { pDoubleAdd: 0, luckPerDouble: 0, activeRollMult: 0 };
-        }
-        return ASCENSION2_TREE_EXPORT.computeAscension2GrantTotals(number2State.ascensionNodeIds);
+        return number2.getAsc2Totals();
     }
     function getNumber2EffectivePDouble() {
-        const runL = getNumber2UpgradeLevel("run_the_table");
-        return computeNumber2EffectivePDoubleRule({
-            basePDouble: typeof NUMBER2_BASE_P_DOUBLE === "number" ? NUMBER2_BASE_P_DOUBLE : 0.48,
-            minPDouble: typeof NUMBER2_P_DOUBLE_MIN === "number" ? NUMBER2_P_DOUBLE_MIN : 0.05,
-            maxPDouble: typeof NUMBER2_P_DOUBLE_MAX === "number" ? NUMBER2_P_DOUBLE_MAX : 0.95,
-            chanceModsEnabled: areNumber2ChanceModsEnabled(),
-            hotStreakLevel: getNumber2UpgradeLevel("hot_streak"),
-            hotStreakEnabled: isNumber2UpgradeToggleEnabled("hot_streak"),
-            gamblersParadoxLevel: getNumber2UpgradeLevel("gamblers_paradox"),
-            gamblersParadoxEnabled: isNumber2UpgradeToggleEnabled("gamblers_paradox"),
-            runTheTableLevel: runL,
-            runTheTableActive: runL > 0 && (number2State.runTheTableUntilMs || 0) > Date.now(),
-            ascensionPDoubleAdd: getNumber2Asc2Totals().pDoubleAdd || 0
-        });
+        return number2.getEffectivePDouble();
     }
     function getNumber2LuckPerNothing() {
-        return 1;
+        return number2.getLuckPerNothing();
     }
     function getNumber2ActiveRollsPerSec() {
-        return computeNumber2ActiveRollsPerSec(getNumber2Asc2Totals().activeRollMult || 0);
+        return number2.getActiveRollsPerSec();
     }
     function isNumber2Unlocked() {
         return unlockedNumbers.has(2);
     }
     function canTickNumber2() {
-        return isNumber2Unlocked() && !!number2State.started;
+        return number2.canTick();
     }
     function resetNumber2Progress() {
-        number2State.totalStr = "2";
-        number2State.luck = 0;
-        number2State.boomTokens = 0;
-        number2State.bustTokens = 0;
-        number2State.tokenGainCarry = 0;
-        number2State.streakDouble = 0;
-        number2State.streakNothing = 0;
-        number2State.lifetimeDoubles = 0;
-        number2State.lifetimeNothings = 0;
-        number2State.upgradeLevels = {};
-        number2State.autoTickCarry = 0;
-        number2State.bgTickCarry = 0;
-        number2State.lastDieA = 1;
-        number2State.lastDieB = 1;
-        number2State.lastOutcome = "";
-        number2State.playingFairActive = false;
-        number2State.runTheTableUntilMs = 0;
-        number2State.runTheTableReadyAtMs = 0;
-        number2State.sandbagReadyAtMs = 0;
-        number2State.forceNextNothing = false;
-        number2State.hotStreakEnabled = true;
-        number2State.gamblersParadoxEnabled = true;
-        number2State.totalTwos = 0;
-        number2State.tickCarry = 0;
+        number2.reset();
     }
     function reconcileNumber2LockState() {
-        if (!isNumber2Unlocked()) {
-            number2State.started = false;
-            resetNumber2Progress();
-            return;
-        }
-        if (!number2State.started) {
-            resetNumber2Progress();
-        }
+        number2.reconcileLockState();
     }
     function updateNumber2SidebarUnlockUI() {
         const btn = document.querySelector(".nav-btn[data-mode=\"2\"]");
@@ -640,125 +532,19 @@ import {
         }
     }
     function resolveNumber2Roll() {
-        if (number2State.forceNextNothing) {
-            number2State.forceNextNothing = false;
-            let a = 1 + Math.floor(Math.random() * 6);
-            let b = 1 + Math.floor(Math.random() * 6);
-            if (a === b) b = (a % 6) + 1;
-            return { isDouble: false, dieA: a, dieB: b, p: getNumber2EffectivePDouble() };
-        }
-        const p = getNumber2EffectivePDouble();
-        const isDouble = Math.random() < p;
-        let a = 1 + Math.floor(Math.random() * 6);
-        let b = 1 + Math.floor(Math.random() * 6);
-        if (isDouble) {
-            a = 1 + Math.floor(Math.random() * 6);
-            b = a;
-        } else if (a === b) {
-            b = (a % 6) + 1;
-        }
-        return { isDouble, dieA: a, dieB: b, p };
+        return number2.resolveRoll();
     }
     function applyNumber2RollOutcome(res, opts) {
-        const silent = opts && opts.silent;
-        const prevNothingStreak = number2State.streakNothing || 0;
-        number2State.lastDieA = res.dieA;
-        number2State.lastDieB = res.dieB;
-        number2State.lastOutcome = res.isDouble ? "double" : "nothing";
-        if (res.isDouble) {
-            setNumber2TotalBig(number2TotalBig() * 2n);
-            number2State.streakDouble = (number2State.streakDouble || 0) + 1;
-            number2State.streakNothing = 0;
-            number2State.lifetimeDoubles++;
-            number2State.luck += 2;
-            number2State.luck += getNumber2Asc2Totals().luckPerDouble || 0;
-            if (isPrimeInt(number2State.streakDouble || 0)) {
-                addNumber2Tokens("boom", 1, { silent, reason: "prime Double streak " + formatCount(number2State.streakDouble || 0) });
-            }
-            const insuranceL = getNumber2UpgradeLevel("cold_hand_insurance");
-            if (insuranceL > 0 && prevNothingStreak >= 3) {
-                const u = getNumber2UpgradeDef("cold_hand_insurance");
-                const gain = u && Array.isArray(u.boomBonusByLevel) ? (u.boomBonusByLevel[insuranceL - 1] || 0) : insuranceL;
-                addNumber2Tokens("boom", gain, { silent, reason: "Cold Hand Insurance" });
-            }
-            const winL = getNumber2UpgradeLevel("all_i_do_is_win");
-            const winU = getNumber2UpgradeDef("all_i_do_is_win");
-            if (winL > 0 && winU && Array.isArray(winU.bonusDoubleChanceByLevel)) {
-                const procChance = winU.bonusDoubleChanceByLevel[winL - 1] || 0;
-                if (Math.random() < procChance) {
-                    setNumber2TotalBig(number2TotalBig() * 2n);
-                    if (!silent) addToLog("All I Do Is Win triggered: bonus Double!", "milestone");
-                }
-            }
-            if (!silent) addToLog("Number 2: Double! Total is now " + formatNumber2BigIntDisplay(number2TotalBig()) + ".", "milestone");
-        } else {
-            const pennyL = getNumber2UpgradeLevel("in_for_a_penny");
-            const pennyU = getNumber2UpgradeDef("in_for_a_penny");
-            let floorVal = (pennyL > 0 && pennyU && Array.isArray(pennyU.nothingFloorByLevel))
-                ? BigInt(Math.max(0, pennyU.nothingFloorByLevel[pennyL - 1] || 0))
-                : 0n;
-            const poundL = getNumber2UpgradeLevel("in_for_a_pound");
-            if (poundL > 1 && floorVal > 0n) {
-                floorVal = floorVal ** BigInt(poundL);
-            }
-            setNumber2TotalBig(floorVal);
-            number2State.streakNothing = (number2State.streakNothing || 0) + 1;
-            number2State.streakDouble = 0;
-            number2State.lifetimeNothings++;
-            number2State.luck += getNumber2LuckPerNothing();
-            if (isPrimeInt(number2State.streakNothing || 0)) {
-                addNumber2Tokens("bust", 1, { silent, reason: "prime Nothing streak " + formatCount(number2State.streakNothing || 0) });
-            }
-            if (!silent) addToLog("Number 2: Nothing — total reset to " + formatNumber2BigIntDisplay(number2TotalBig()) + ".", "tip");
-        }
-        if (number2State.lifetimeDoubles > 0 && number2State.lifetimeDoubles % 25 === 0 && res.isDouble) {
-            number2State.ascensionEssence = Math.min(Number.MAX_SAFE_INTEGER, (number2State.ascensionEssence || 0) + 1);
-        }
+        number2.applyRollOutcome(res, opts);
     }
     function commitNumber2Roll(opts) {
-        if (!canTickNumber2()) return;
-        const res = resolveNumber2Roll();
-        applyNumber2RollOutcome(res, opts);
-        if (!opts || !opts.skipAutosave) autosaveNow();
-        updateNumber2StageUI();
-        if (!opts || !opts.silent) refreshOverviewAndAscensionPanelsIfOpen();
+        number2.commitRoll(opts);
     }
-    const NUMBER2_MAX_ROLLS_PER_STEP = 400;
     function tickNumber2Background(dtSec) {
-        if (!canTickNumber2()) return;
-        if (!(dtSec > 0)) return;
-        if (typeof window.getCurrentNumberMode === "function" && window.getCurrentNumberMode() === 2) return;
-        number2State.bgTickCarry += dtSec * NUMBER2_BG_ROLLS_PER_SEC;
-        let guard = 0;
-        while (number2State.bgTickCarry >= 1 && guard < NUMBER2_MAX_ROLLS_PER_STEP) {
-            number2State.bgTickCarry -= 1;
-            guard++;
-            commitNumber2Roll({ silent: true, skipAutosave: true });
-        }
-        if (guard > 0) refreshOverviewAndAscensionPanelsIfOpen();
+        number2.tickBackground(dtSec);
     }
     function runNumber2GameLoopStep(dtSec) {
-        if (!canTickNumber2()) return;
-        if (!(dtSec > 0)) return;
-        number2State.autoTickCarry += dtSec * getNumber2ActiveRollsPerSec();
-        let guard = 0;
-        while (number2State.autoTickCarry >= 1 && guard < NUMBER2_MAX_ROLLS_PER_STEP) {
-            number2State.autoTickCarry -= 1;
-            guard++;
-            commitNumber2Roll({ silent: true, skipAutosave: true });
-        }
-        if (number2State.autoTickCarry > 0) {
-            const now = Date.now();
-            if (!number2State._lastN2AutosaveMs) number2State._lastN2AutosaveMs = 0;
-            if (now - number2State._lastN2AutosaveMs > 4000) {
-                number2State._lastN2AutosaveMs = now;
-                autosaveNow();
-            }
-        }
-        if (guard > 0) {
-            updateNumber2StageUI();
-            refreshOverviewAndAscensionPanelsIfOpen();
-        }
+        number2.runGameLoopStep(dtSec);
     }
     function tickNumber1BackgroundCps(dtSec) {
         if (!(dtSec > 0)) return;
@@ -778,156 +564,14 @@ import {
         if (incrementalEl) incrementalEl.textContent = formatCount(totalChanges);
     }
     function updateNumber2StageUI() {
-        function tokenBadgeHtml(kind, amount) {
-            const n = formatCount(Math.max(0, Math.floor(Number(amount) || 0)));
-            if (kind === "boom") return "<span class=\"n2-token n2-token--boom\" title=\"Boom tokens\">✦ Boom " + n + "</span>";
-            if (kind === "bust") return "<span class=\"n2-token n2-token--bust\" title=\"Bust tokens\">✖ Bust " + n + "</span>";
-            return "<span class=\"n2-token\">" + n + "</span>";
-        }
-        const totalEl = document.getElementById("number2-total-display");
-        const dieA = document.getElementById("number2-die-a");
-        const dieB = document.getElementById("number2-die-b");
-        const resEl = document.getElementById("number2-roll-result");
-        const statsEl = document.getElementById("number2-inline-stats");
-        const hintEl = document.getElementById("number2-bg-hint");
-        const listEl = document.getElementById("number2-upgrade-list");
-        if (totalEl) totalEl.textContent = formatNumber2BigIntDisplay(number2TotalBig());
-        if (dieA) {
-            dieA.textContent = String(number2State.lastDieA || 1);
-            dieA.setAttribute("data-face", String(number2State.lastDieA || 1));
-        }
-        if (dieB) {
-            dieB.textContent = String(number2State.lastDieB || 1);
-            dieB.setAttribute("data-face", String(number2State.lastDieB || 1));
-        }
-        if (resEl) {
-            if (number2State.lastOutcome === "double") resEl.textContent = "Double";
-            else if (number2State.lastOutcome === "nothing") resEl.textContent = "Nothing";
-            else resEl.textContent = "";
-        }
-        if (statsEl) {
-            statsEl.innerHTML = "p(Double) " + (getNumber2EffectivePDouble() * 100).toFixed(1) + "% · Luck " + formatCount(number2State.luck || 0) +
-                " · " + tokenBadgeHtml("bust", number2State.bustTokens || 0) + " / " + tokenBadgeHtml("boom", number2State.boomTokens || 0) +
-                " · Streak D" + (number2State.streakDouble || 0) + " / N" + (number2State.streakNothing || 0) +
-                " · Life ×2 " + formatCount(number2State.lifetimeDoubles || 0) + " / Nothing " + formatCount(number2State.lifetimeNothings || 0);
-        }
-        if (hintEl) {
-            const mode = typeof window.getCurrentNumberMode === "function" ? window.getCurrentNumberMode() : 1;
-            hintEl.textContent = mode === 1 && canTickNumber2()
-                ? "While you play Number 1, Number 2 keeps rolling in the background at a slower rate."
-                : "";
-        }
-        if (listEl) {
-            const ups = typeof NUMBER2_UPGRADES !== "undefined" ? NUMBER2_UPGRADES : [];
-            const now = Date.now();
-            const rendered = ups.map(u => {
-                const L = getNumber2UpgradeLevel(u.id);
-                const maxed = L >= u.maxLevel;
-                const st = {
-                    streakDouble: number2State.streakDouble,
-                    streakNothing: number2State.streakNothing,
-                    lifetimeDoubles: number2State.lifetimeDoubles,
-                    lifetimeNothings: number2State.lifetimeNothings
-                };
-                const unlocked = !u.isUnlocked || u.isUnlocked(st);
-                const cost = getNumber2UpgradeCost(u, L);
-                let canBuy = unlocked && !maxed;
-                let costText = "";
-                if (typeof cost === "number") {
-                    if (u.category === "boom") {
-                        costText = tokenBadgeHtml("boom", cost);
-                        canBuy = canBuy && (number2State.boomTokens || 0) >= cost;
-                    } else if (u.category === "bust") {
-                        costText = tokenBadgeHtml("bust", cost);
-                        canBuy = canBuy && (number2State.bustTokens || 0) >= cost;
-                    } else {
-                        costText = formatCount(cost) + " Luck";
-                        canBuy = canBuy && (number2State.luck || 0) >= cost;
-                    }
-                } else if (cost && typeof cost === "object") {
-                    const boomNeed = Math.max(0, Math.floor(cost.boom || 0));
-                    const bustNeed = Math.max(0, Math.floor(cost.bust || 0));
-                    costText = tokenBadgeHtml("boom", boomNeed) + " · " + tokenBadgeHtml("bust", bustNeed);
-                    canBuy = canBuy && (number2State.boomTokens || 0) >= boomNeed && (number2State.bustTokens || 0) >= bustNeed;
-                } else {
-                    costText = "Free";
-                }
-                const cls = "number2-upgrade-item" + (maxed ? " number2-upgrade-item--owned" : "") + (!unlocked ? " number2-upgrade-item--locked" : "");
-                const hasAction = u.id === "run_the_table" || u.id === "sandbagging" || u.id === "playing_fair" ||
-                    u.id === "hot_streak" || u.id === "gamblers_paradox";
-                let actionHtml = "";
-                if (u.id === "run_the_table") {
-                    const cd = Math.max(0, Math.ceil(((number2State.runTheTableReadyAtMs || 0) - now) / 1000));
-                    const active = Math.max(0, Math.ceil(((number2State.runTheTableUntilMs || 0) - now) / 1000));
-                    const enabled = L > 0 && cd <= 0 && active <= 0;
-                    actionHtml = "<button type=\"button\" class=\"page-btn number2-action-btn\" data-n2-action=\"run_the_table\"" + (enabled ? "" : " disabled") + ">" +
-                        (active > 0 ? "Running (" + active + "s)" : cd > 0 ? "Cooldown (" + cd + "s)" : "Activate") + "</button>";
-                } else if (u.id === "sandbagging") {
-                    const cd = Math.max(0, Math.ceil(((number2State.sandbagReadyAtMs || 0) - now) / 1000));
-                    const enabled = L > 0 && cd <= 0 && !number2State.forceNextNothing;
-                    const label = number2State.forceNextNothing ? "Primed" : cd > 0 ? "Cooldown (" + cd + "s)" : "Force Nothing";
-                    actionHtml = "<button type=\"button\" class=\"page-btn number2-action-btn\" data-n2-action=\"sandbagging\"" + (enabled ? "" : " disabled") + ">" + label + "</button>";
-                } else if (u.id === "playing_fair") {
-                    const enabled = L > 0;
-                    const on = !!number2State.playingFairActive;
-                    const label = "Playing Fair: " + (on ? "ON" : "OFF");
-                    const activeCls = on ? " number2-action-btn--active" : "";
-                    actionHtml = "<button type=\"button\" class=\"page-btn number2-action-btn" + activeCls + "\" data-n2-action=\"playing_fair\"" + (enabled ? "" : " disabled") + ">" + label + "</button>";
-                } else if (u.id === "hot_streak") {
-                    const enabled = L > 0;
-                    const on = isNumber2UpgradeToggleEnabled("hot_streak");
-                    const label = "Hot Streak: " + (on ? "ON" : "OFF");
-                    const activeCls = on ? " number2-action-btn--active" : "";
-                    actionHtml = "<button type=\"button\" class=\"page-btn number2-action-btn" + activeCls + "\" data-n2-action=\"hot_streak_toggle\"" + (enabled ? "" : " disabled") + ">" + label + "</button>";
-                } else if (u.id === "gamblers_paradox") {
-                    const enabled = L > 0;
-                    const on = isNumber2UpgradeToggleEnabled("gamblers_paradox");
-                    const label = "Gambler's Paradox: " + (on ? "ON" : "OFF");
-                    const activeCls = on ? " number2-action-btn--active" : "";
-                    actionHtml = "<button type=\"button\" class=\"page-btn number2-action-btn" + activeCls + "\" data-n2-action=\"gamblers_paradox_toggle\"" + (enabled ? "" : " disabled") + ">" + label + "</button>";
-                }
-                return "<li class=\"" + cls + "\"><div class=\"number2-upgrade-item__head\"><strong>" + u.name + "</strong>" +
-                    (maxed ? " <span class=\"number2-tag\">Max</span>" : "") + "</div>" +
-                    "<p class=\"number2-upgrade-item__desc\">" + u.description + "</p>" +
-                    "<div class=\"number2-upgrade-item__meta\">Level " + L + "/" + u.maxLevel + " · Cost " + costText + (hasAction ? " · Active utility" : "") + "</div>" +
-                    (maxed ? "" : "<button type=\"button\" class=\"page-btn number2-buy-btn\" data-n2-upgrade=\"" + u.id + "\"" + (canBuy ? "" : " disabled") + ">Buy</button>") +
-                    actionHtml +
-                    "</li>";
-            });
-            const bustItems = [];
-            const hybridItems = [];
-            const boomItems = [];
-            ups.forEach((u, idx) => {
-                const itemHtml = rendered[idx];
-                if (u.category === "bust") bustItems.push(itemHtml);
-                else if (u.category === "hybrid") hybridItems.push(itemHtml);
-                else boomItems.push(itemHtml);
-            });
-            function colHtml(title, items, mod) {
-                return "<section class=\"number2-upgrade-col number2-upgrade-col--" + mod + "\">" +
-                    "<h4 class=\"number2-upgrade-col__title\">" + title + "</h4>" +
-                    "<ul class=\"number2-upgrade-col__list\">" + items.join("") + "</ul>" +
-                    "</section>";
-            }
-            listEl.innerHTML =
-                "<div class=\"number2-upgrade-columns\">" +
-                colHtml("Bust", bustItems, "bust") +
-                colHtml("Combined", hybridItems, "hybrid") +
-                colHtml("Boom", boomItems, "boom") +
-                "</div>";
-        }
+        number2.updateStageUI();
     }
     window.onBeforeNumberModeSwitch = function() {
         closeInlineMainStagePanels();
     };
     window.onNumberModeSwitched = function(mode) {
         syncPlayStageForNumberMode(mode);
-        if (mode === 2 && isNumber2Unlocked() && !number2State.started) {
-            number2State.started = true;
-            addToLog("Number 2 — Double or Nothing is live. Rolls run faster here; slower in the background on Number 1.", "milestone");
-            refreshOverviewAndAscensionPanelsIfOpen();
-            autosaveNow();
-        }
+        number2.handleModeSwitched(mode);
         if (mode === 1) {
             scheduleFitTopCountRow();
             updateRateDisplay();
@@ -1484,29 +1128,6 @@ import {
     function ascensionPurchasedSet() {
         return new Set(number1AscensionNodeIds);
     }
-    /** Legacy phase-2 style mass constants. */
-    const BLACK_HOLE_MULT_PER_LEVEL = 1.035;
-    const BLACK_HOLE_COST_BASE = 400;
-    const BLACK_HOLE_COST_GROWTH = 1.38;
-    const BLACK_HOLE_MAX_LEVEL = 400;
-    const BLACK_HOLE_PHASE1_ESSENCE_TARGET = 350;
-    const BLACK_HOLE_PHASE4_WAVE_BASE_SEC = 60;
-    const BLACK_HOLE_PHASE4_WAVE_MIN_SEC = 15;
-    const BLACK_HOLE_PHASE4_WAVE_BOOST_MULT = 100;
-    const BLACK_HOLE_PHASE4_WAVE_BOOST_DURATION_SEC = 5;
-    const BLACK_HOLE_FURNACE_MULT_PER_POWER = 2.5;
-    const BLACK_HOLE_FURNACE_HOTTER_CORE_BONUS = 0.18;
-    const BLACK_HOLE_FURNACE_ESSENCE_REFINERY_BONUS = 0.18;
-    const BLACK_HOLE_FURNACE_SHORTER_ORBIT_TRIM = 0.08;
-    const BLACK_HOLE_FURNACE_COMPLETION_RITUAL_MS = 12000;
-    const BLACK_HOLE_EVAPORATION_CAP = 1e308;
-    const BLACK_HOLE_DIGEST_BASE_MS = 24 * 3600 * 1000;
-    /** Mass steps in Phase 2 before transition to accretion (Phase 3); must match tryBuy transition. */
-    const BLACK_HOLE_PHASE2_MASS_CAP = 60;
-    /** Purchases per collapse track before Essence can pour into mass (Phase 2). */
-    const BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER = 3;
-    /** Essence cost multiplier for all Phase 2 costs (upgrades + mass steps). */
-    const BLACK_HOLE_PHASE2_COST_MULT = 10;
     function isNumber1AscensionTreeFullyPurchased() {
         if (!number1HasAscended || !ASCENSION_MAP_NODES || ASCENSION_MAP_NODES.length === 0) return false;
         const s = ascensionPurchasedSet();
@@ -1518,7 +1139,7 @@ import {
         return true;
     }
     function getBlackHolePhase() {
-        return Math.max(0, Math.min(7, Math.floor(Number(number1BlackHoleState.phase) || 0)));
+        return clampBlackHolePhaseRule(number1BlackHoleState.phase);
     }
     function isBlackHoleArcUnlocked() {
         return number1HasAscended && isNumber1AscensionTreeFullyPurchased();
@@ -1558,70 +1179,39 @@ import {
         return false;
     }
     function clampBlackHolePhase2CollapseTier(n) {
-        return Math.max(0, Math.min(BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER, Math.floor(Number(n) || 0)));
+        return clampBlackHolePhase2CollapseTierRule(n);
     }
     function getBlackHolePhase2CollapseMassTier() {
-        return clampBlackHolePhase2CollapseTier(number1BlackHoleState.phase2CollapseMassTier);
+        return getBlackHolePhase2CollapseMassTierRule(number1BlackHoleState);
     }
     function getBlackHolePhase2CollapsePhotonTier() {
-        return clampBlackHolePhase2CollapseTier(number1BlackHoleState.phase2CollapsePhotonTier);
+        return getBlackHolePhase2CollapsePhotonTierRule(number1BlackHoleState);
     }
     function getBlackHolePhase2CollapseErgosphereTier() {
-        return clampBlackHolePhase2CollapseTier(number1BlackHoleState.phase2CollapseErgosphereTier);
+        return getBlackHolePhase2CollapseErgosphereTierRule(number1BlackHoleState);
     }
     /** True when each collapse track has reached max tier — mass pour is allowed. */
     function isBlackHolePhase2MassPourUnlocked() {
-        return (
-            getBlackHolePhase2CollapseMassTier() >= BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER &&
-            getBlackHolePhase2CollapsePhotonTier() >= BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER &&
-            getBlackHolePhase2CollapseErgosphereTier() >= BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER
-        );
+        return isBlackHolePhase2MassPourUnlockedRule(number1BlackHoleState);
     }
     /** Essence→mass coupling: lowers effective Essence cost per mass step (Phase 2 only). */
     function getBlackHolePhase2MassCouplingCostMult() {
-        const t = getBlackHolePhase2CollapseMassTier();
-        if (t <= 0 || getBlackHolePhase() !== 2) return 1;
-        return 1 / (1 + 0.09 * t);
+        return getBlackHolePhase2MassCouplingCostMultRule(number1BlackHoleState, getBlackHolePhase());
     }
     /** Photon shell: small persistent counting mult + Hawking cadence trim (tier stored across phases). */
     function getBlackHolePhase2PhotonShellMult() {
-        const t = getBlackHolePhase2CollapsePhotonTier();
-        if (t <= 0) return 1;
-        return 1 + 0.045 * t;
+        return getBlackHolePhase2PhotonShellMultRule(number1BlackHoleState);
     }
     function getBlackHolePhase2PhotonHawkingCdTrimSec() {
-        const t = getBlackHolePhase2CollapsePhotonTier();
-        if (t <= 0) return 0;
-        return Math.min(6, 0.75 * t);
+        return getBlackHolePhase2PhotonHawkingCdTrimSecRule(number1BlackHoleState);
     }
     /** Next Essence cost for one purchase on a collapse track (`mass` | `photon` | `ergosphere`). */
     function getBlackHolePhase2CollapseUpgradeCost(track) {
-        let tier = 0;
-        let base = 32;
-        if (track === "mass") {
-            tier = getBlackHolePhase2CollapseMassTier();
-            base = 30;
-        } else if (track === "photon") {
-            tier = getBlackHolePhase2CollapsePhotonTier();
-            base = 34;
-        } else if (track === "ergosphere") {
-            tier = getBlackHolePhase2CollapseErgosphereTier();
-            base = 38;
-        } else {
-            return Number.MAX_SAFE_INTEGER;
-        }
-        if (tier >= BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER) return 0;
-        const raw = base * Math.pow(2.08, tier);
-        if (!Number.isFinite(raw) || raw <= 0) return Number.MAX_SAFE_INTEGER;
-        return Math.min(Number.MAX_SAFE_INTEGER, Math.floor(raw * BLACK_HOLE_PHASE2_COST_MULT));
+        return getBlackHolePhase2CollapseUpgradeCostRule(number1BlackHoleState, track);
     }
     /** Essence cost for one mass step from current integer mass level L → L+1 (Phase 2 only). */
     function getBlackHolePhase2CostAtLevel(L) {
-        const lv = Math.max(0, Math.min(BLACK_HOLE_PHASE2_MASS_CAP - 1, Math.floor(L)));
-        const raw = BLACK_HOLE_COST_BASE * Math.pow(BLACK_HOLE_COST_GROWTH, lv);
-        if (!Number.isFinite(raw) || raw <= 0) return Number.MAX_SAFE_INTEGER;
-        const scaled = Math.floor(raw * getBlackHolePhase2MassCouplingCostMult());
-        return Math.min(Number.MAX_SAFE_INTEGER, Math.max(1, Math.floor(scaled * BLACK_HOLE_PHASE2_COST_MULT)));
+        return getBlackHolePhase2CostAtLevelRule(L, getBlackHolePhase2MassCouplingCostMult());
     }
     function getBlackHolePhase2MassMult() {
         const L = Math.max(0, Math.min(BLACK_HOLE_PHASE2_MASS_CAP, Math.floor(Number(number1BlackHoleState.phase2Mass) || 0)));
@@ -1652,90 +1242,52 @@ import {
     }
     /** [0,1] progress from banked Essence toward the next Phase 3 disk upgrade (while still in Phase 3). */
     function getBlackHolePhase3UpgradeFrac() {
-        if (getBlackHolePhase() !== 3) return 0;
-        const S = Math.min(
-            getBlackHolePhase3TrackLevel("luminosity"),
-            getBlackHolePhase3TrackLevel("viscous"),
-            getBlackHolePhase3TrackLevel("coronal")
-        );
-        if (S >= 6) return 0;
-        const bank = Math.max(0, Math.floor(Number(number1BlackHoleState.phase3EssenceBank) || 0));
-        const cost = 75 + 25 * S;
-        if (!(cost > 0)) return 0;
-        return Math.min(1, bank / cost);
+        return getBlackHolePhase3UpgradeFracRule(number1BlackHoleState, getBlackHolePhase());
     }
     function getBlackHolePhase4NextCostEssenceForWave(w) {
-        const W = Math.max(0, Math.floor(Number(w) || 0));
-        if (W >= 6) return 0;
-        return 200 + 80 * W;
+        return getBlackHolePhase4NextCostEssenceForWaveRule(w);
     }
     function getBlackHolePhase4NextCostEssence() {
         return getBlackHolePhase4NextCostEssenceForWave(number1BlackHoleState.phase4WaveLevel || 0);
     }
     function getBlackHolePhase6NextJetUpgradeCostEssence() {
-        const B = Math.floor(Number(number1BlackHoleState.phase6JetBoostLevel) || 0);
-        return 300 + 120 * B;
+        return getBlackHolePhase6NextJetUpgradeCostEssenceRule(number1BlackHoleState);
     }
     function getBlackHolePhase3TrackLevel(track) {
-        let v = 0;
-        if (track === "luminosity") v = number1BlackHoleState.phase3LuminosityLevel;
-        else if (track === "viscous") v = number1BlackHoleState.phase3ViscousLevel;
-        else if (track === "coronal") v = number1BlackHoleState.phase3CoronalLevel;
-        else v = number1BlackHoleState.phase3HawkingStrength;
-        return Math.max(0, Math.min(6, Math.floor(Number(v) || 0)));
+        return getBlackHolePhase3TrackLevelRule(number1BlackHoleState, track);
     }
     function getBlackHolePhase3TrackCost(track) {
-        const L = getBlackHolePhase3TrackLevel(track);
-        if (L >= 6) return 0;
-        const base = track === "luminosity" ? 75 : track === "viscous" ? 85 : 95;
-        return base + 25 * L;
+        return getBlackHolePhase3TrackCostRule(number1BlackHoleState, track);
     }
     function syncBlackHolePhase3LegacyLevel() {
-        const lum = getBlackHolePhase3TrackLevel("luminosity");
-        const vis = getBlackHolePhase3TrackLevel("viscous");
-        const cor = getBlackHolePhase3TrackLevel("coronal");
-        const min = Math.min(lum, vis, cor);
-        number1BlackHoleState.phase3HawkingStrength = Math.max(number1BlackHoleState.phase3HawkingStrength || 0, min);
-        number1BlackHoleState.phase3HawkingRate = vis;
-        number1BlackHoleState.phase3HawkingDuration = cor;
+        syncNumber1BlackHolePhase3LegacyLevel(number1BlackHoleState);
     }
     function isBlackHolePhase3Complete() {
-        return getBlackHolePhase3TrackLevel("luminosity") >= 6 &&
-            getBlackHolePhase3TrackLevel("viscous") >= 6 &&
-            getBlackHolePhase3TrackLevel("coronal") >= 6;
+        return isBlackHolePhase3CompleteRule(number1BlackHoleState);
     }
     function getBlackHolePhase6TrackLevel(track) {
-        let v = 0;
-        if (track === "drain") v = number1BlackHoleState.phase6JetEfficiencyLevel;
-        else if (track === "boost") v = number1BlackHoleState.phase6JetBoostLevel;
-        else if (track === "bank") v = number1BlackHoleState.phase6JetBankLevel;
-        return Math.max(0, Math.floor(Number(v) || 0));
+        return getBlackHolePhase6TrackLevelRule(number1BlackHoleState, track);
     }
     function getBlackHolePhase6TrackCost(track) {
-        const L = getBlackHolePhase6TrackLevel(track);
-        const base = track === "drain" ? 300 : track === "boost" ? 340 : 320;
-        return base + 120 * L;
+        return getBlackHolePhase6TrackCostRule(number1BlackHoleState, track);
     }
     function getBlackHolePhase1FillRatio() {
-        const s = Math.max(0, Math.floor(Number(number1BlackHoleState.phase1EssenceSpent) || 0));
-        return Math.max(0, Math.min(1, s / BLACK_HOLE_PHASE1_ESSENCE_TARGET));
+        return getBlackHolePhase1FillRatioRule(number1BlackHoleState);
     }
     function getBlackHolePhase1RunCpsMult() {
-        return 1 + 1.25 * getBlackHolePhase1FillRatio();
+        return getBlackHolePhase1RunCpsMultRule(number1BlackHoleState);
     }
     function getBlackHolePhase1AscensionEssenceMult() {
-        return 1 + 0.6 * getBlackHolePhase1FillRatio();
+        return getBlackHolePhase1AscensionEssenceMultRule(number1BlackHoleState);
     }
     function getBlackHolePhase1SlowdownCapBonus() {
-        return Math.floor(6 * getBlackHolePhase1FillRatio());
+        return getBlackHolePhase1SlowdownCapBonusRule(number1BlackHoleState);
     }
     function getMaxSlowdownLevelCap() {
         return MAX_SLOWDOWN_LEVEL + getBlackHolePhase1SlowdownCapBonus();
     }
     function getBlackHoleWaveIntervalSec() {
-        const m = Math.max(0, Math.floor(Number(number1BlackHoleState.phase2Mass) || 0));
-        const t = Math.max(0, Math.min(1, m / 250));
-        return BLACK_HOLE_PHASE4_WAVE_BASE_SEC - (BLACK_HOLE_PHASE4_WAVE_BASE_SEC - BLACK_HOLE_PHASE4_WAVE_MIN_SEC) * t;
+        return getBlackHoleWaveIntervalSecRule(number1BlackHoleState);
     }
     function getBlackHoleHawkingMult() {
         const p = getBlackHolePhase();
@@ -1757,57 +1309,37 @@ import {
         return Number.isFinite(raw) && raw > 0 ? raw : getBlackHoleNextDigestDurationMs();
     }
     function getBlackHolePhase5MutationLevel(kind) {
-        let raw = 0;
-        if (kind === "hotter-core") raw = number1BlackHoleState.phase5MutationHotterCore;
-        else if (kind === "essence-refinery") raw = number1BlackHoleState.phase5MutationEssenceRefinery;
-        else if (kind === "shorter-orbit") raw = number1BlackHoleState.phase5MutationShorterOrbit;
-        return Math.max(0, Math.floor(Number(raw) || 0));
+        return getBlackHolePhase5MutationLevelRule(number1BlackHoleState, kind);
     }
     function getBlackHolePhase5MutationTotal() {
-        return getBlackHolePhase5MutationLevel("hotter-core") +
-            getBlackHolePhase5MutationLevel("essence-refinery") +
-            getBlackHolePhase5MutationLevel("shorter-orbit");
+        return getBlackHolePhase5MutationTotalRule(number1BlackHoleState);
     }
     function getBlackHolePhase5HotterCoreMult() {
-        return 1 + BLACK_HOLE_FURNACE_HOTTER_CORE_BONUS * getBlackHolePhase5MutationLevel("hotter-core");
+        return getBlackHolePhase5HotterCoreMultRule(number1BlackHoleState);
     }
     function getBlackHolePhase5EssenceRefineryBonus() {
-        return BLACK_HOLE_FURNACE_ESSENCE_REFINERY_BONUS * getBlackHolePhase5MutationLevel("essence-refinery");
+        return getBlackHolePhase5EssenceRefineryBonusRule(number1BlackHoleState);
     }
     function getBlackHolePhase5ShorterOrbitMult() {
-        const stacks = getBlackHolePhase5MutationLevel("shorter-orbit");
-        return Math.max(0.35, Math.pow(1 - BLACK_HOLE_FURNACE_SHORTER_ORBIT_TRIM, stacks));
+        return getBlackHolePhase5ShorterOrbitMultRule(number1BlackHoleState);
     }
     function getBlackHolePhase5DigestProgressAt(nowMs) {
-        const end = Number(number1BlackHoleState.phase5DigestEndsAtMs) || 0;
-        if (!(end > nowMs)) return 0;
-        const duration = getBlackHolePhase5DigestDurationMsSafe();
-        let start = Number(number1BlackHoleState.phase5DigestStartedAtMs) || 0;
-        if (!(start > 0)) start = end - duration;
-        if (!(duration > 0) || nowMs <= start) return 0;
-        return Math.max(0, Math.min(1, (nowMs - start) / duration));
+        return getBlackHolePhase5DigestProgressAtRule(number1BlackHoleState, nowMs, getBlackHolePhase5DigestDurationMsSafe());
     }
     function getBlackHolePhase5DigestProgress() {
         return getBlackHolePhase5DigestProgressAt(Date.now());
     }
     function getBlackHolePhase5DigestCurve(progress) {
-        const p = Math.max(0, Math.min(1, Number(progress) || 0));
-        // Late-weighted, but close to linear so players feel the hand coming online throughout digestion.
-        return Math.max(0, Math.min(1, Math.pow(p, 1.225)));
+        return getBlackHolePhase5DigestCurveRule(progress);
     }
     function getBlackHolePhase5EffectiveFurnacePower() {
-        const completed = Math.max(0, Math.floor(Number(number1BlackHoleState.phase5FurnaceLevel) || 0));
-        if (getBlackHolePhase() !== 5) return completed;
-        return completed + getBlackHolePhase5DigestCurve(getBlackHolePhase5DigestProgress());
+        return getBlackHolePhase5EffectiveFurnacePowerRule(number1BlackHoleState, getBlackHolePhase(), getBlackHolePhase5DigestProgress());
     }
     function getBlackHoleFurnaceEssenceBonus() {
-        if (getBlackHolePhase() < 5) return 0;
-        return (0.35 + getBlackHolePhase5EssenceRefineryBonus()) * getBlackHolePhase5EffectiveFurnacePower();
+        return getBlackHoleFurnaceEssenceBonusRule(number1BlackHoleState, getBlackHolePhase(), getBlackHolePhase5EffectiveFurnacePower());
     }
     function getBlackHoleFurnaceMult() {
-        if (getBlackHolePhase() < 5) return 1;
-        const basePerPower = BLACK_HOLE_FURNACE_MULT_PER_POWER * getBlackHolePhase5HotterCoreMult();
-        return Math.pow(basePerPower, getBlackHolePhase5EffectiveFurnacePower());
+        return getBlackHoleFurnaceMultRule(number1BlackHoleState, getBlackHolePhase(), getBlackHolePhase5EffectiveFurnacePower());
     }
     function getBlackHoleJetMult() {
         if (getBlackHolePhase() < 6 || !number1BlackHoleState.phase6JetActive) return 1;
@@ -1874,7 +1406,6 @@ import {
     let blackHolePhase1VfxActive = false;
     let blackHolePhase1CollapsePulseQueued = false;
     let blackHolePhase1SurgeTimerId = 0;
-    const BLACK_HOLE_SCREEN_FX_MS = 1800;
     function queueBlackHoleUiRefresh() {
         if (blackHoleUiRefreshQueued) return;
         blackHoleUiRefreshQueued = true;
@@ -2308,7 +1839,6 @@ import {
         if (spend <= 0 || !(digestEnd > now) || !(number1BlackHoleState.phase5DigestHandNumber > 0)) return null;
         const cost = Math.max(25, Math.floor(50 + 20 * (number1BlackHoleState.phase5FurnaceLevel || 0)));
         const oldDuration = getBlackHolePhase5DigestDurationMsSafe();
-        const start = Number(number1BlackHoleState.phase5DigestStartedAtMs) || Math.max(0, digestEnd - oldDuration);
         const floorMs = Math.max(1000, Math.floor(oldDuration * 0.01));
         let pool = spend;
         let digestEndMs = digestEnd;
@@ -2324,7 +1854,8 @@ import {
             const reduction = Math.max(1, Math.floor(fullRed * Math.min(1, pool / cost)));
             digestEndMs = now + Math.max(floorMs, remaining - reduction);
         }
-        const duration = Math.max(1, digestEndMs - start);
+        const duration = oldDuration;
+        const start = digestEndMs - duration;
         const progress = Math.max(0, Math.min(1, (now - start) / duration));
         return {
             start,
@@ -4044,128 +3575,16 @@ import {
         );
     }
     function renderAscensionNumber2ShellHtml() {
-        if (typeof ASCENSION2_TREE_EXPORT === "undefined" || !ASCENSION2_TREE_EXPORT.NODES) {
-            return "<section class=\"asc2-shell\" aria-label=\"Number 2 ascension\"><p class=\"coming-soon-note\">Ascension 2 data not loaded.</p></section>";
-        }
-        const owned = new Set(number2State.ascensionNodeIds || []);
-        const nodes = ASCENSION2_TREE_EXPORT.NODES.map(n => {
-            const has = owned.has(n.id);
-            const parentsOk = !n.parentIds || n.parentIds.length === 0 || n.parentIds.every(pid => owned.has(pid));
-            const canBuy = !has && parentsOk && (number2State.ascensionEssence || 0) >= n.cost;
-            const st = has ? "asc2-node--owned" : canBuy ? "asc2-node--buyable" : "asc2-node--locked";
-            return "<div class=\"asc2-node " + st + "\" data-asc2-node=\"" + n.id + "\">" +
-                "<div class=\"asc2-node__title\">" + n.title + "</div>" +
-                "<div class=\"asc2-node__cost\">Cost " + n.cost + " Luck essence</div>" +
-                "<div class=\"asc2-node__fx\">" + ASCENSION2_TREE_EXPORT.describeGrants(n.grants || {}) + "</div>" +
-                (has ? "<span class=\"asc2-node__badge\">Owned</span>" : "<button type=\"button\" class=\"page-btn asc2-buy\" data-asc2-buy=\"" + n.id + "\"" + (canBuy ? "" : " disabled") + ">Buy</button>") +
-                "</div>";
-        }).join("");
-        return (
-            "<section class=\"asc2-shell\" aria-label=\"Number 2 ascension — Luck table\">" +
-            "<header class=\"asc2-shell__header\"><h4 class=\"asc2-shell__title\">Luck table</h4>" +
-            "<p class=\"asc2-shell__sub\">Separate from Number 1 — spend <strong>Luck essence</strong> (from milestone doubles) on felt-edge upgrades. Respec for Number 2 only is planned.</p>" +
-                "<p class=\"asc2-shell__stat\">Essence: " + formatCount(number2State.ascensionEssence || 0) +
-            " · Ready for ascend gate: " + (number2TotalBig() >= BigInt(NUMBER2_ASCENSION_READY_TOTAL) ? "yes" : "not yet") + "</p></header>" +
-            "<div class=\"asc2-node-grid\">" + nodes + "</div></section>"
-        );
+        return number2.renderAscensionShell();
     }
     function tryBuyNumber2Upgrade(id) {
-        const u = getNumber2UpgradeDef(id);
-        if (!u) return;
-        const L = getNumber2UpgradeLevel(id);
-        if (L >= u.maxLevel) return;
-        const st = {
-            streakDouble: number2State.streakDouble,
-            streakNothing: number2State.streakNothing,
-            lifetimeDoubles: number2State.lifetimeDoubles,
-            lifetimeNothings: number2State.lifetimeNothings
-        };
-        if (u.isUnlocked && !u.isUnlocked(st)) return;
-        const cost = getNumber2UpgradeCost(u, L);
-        if (typeof cost === "number") {
-            if (u.category === "boom") {
-                if ((number2State.boomTokens || 0) < cost) return;
-                number2State.boomTokens -= cost;
-            } else if (u.category === "bust") {
-                if ((number2State.bustTokens || 0) < cost) return;
-                number2State.bustTokens -= cost;
-            } else {
-                if ((number2State.luck || 0) < cost) return;
-                number2State.luck -= cost;
-            }
-        } else if (cost && typeof cost === "object") {
-            const boomNeed = Math.max(0, Math.floor(cost.boom || 0));
-            const bustNeed = Math.max(0, Math.floor(cost.bust || 0));
-            if ((number2State.boomTokens || 0) < boomNeed) return;
-            if ((number2State.bustTokens || 0) < bustNeed) return;
-            number2State.boomTokens -= boomNeed;
-            number2State.bustTokens -= bustNeed;
-        }
-        number2State.upgradeLevels[id] = L + 1;
-        addToLog("Number 2 upgrade: " + u.name + " → level " + (L + 1) + ".", "milestone");
-        updateNumber2StageUI();
-        autosaveNow();
-        refreshOverviewAndAscensionPanelsIfOpen();
+        number2.tryBuyUpgrade(id);
     }
     function tryActivateNumber2UpgradeAction(actionId) {
-        const now = Date.now();
-        if (actionId === "run_the_table") {
-            const L = getNumber2UpgradeLevel("run_the_table");
-            if (L <= 0) return;
-            if ((number2State.runTheTableUntilMs || 0) > now) return;
-            if ((number2State.runTheTableReadyAtMs || 0) > now) return;
-            const durationMs = (L === 1 ? 20 : L === 2 ? 24 : 28) * 1000;
-            const cooldownMs = (L === 1 ? 120 : L === 2 ? 110 : 95) * 1000;
-            number2State.runTheTableUntilMs = now + durationMs;
-            number2State.runTheTableReadyAtMs = now + cooldownMs;
-            addToLog("Run the Table activated for " + Math.round(durationMs / 1000) + "s.", "milestone");
-        } else if (actionId === "sandbagging") {
-            const L = getNumber2UpgradeLevel("sandbagging");
-            if (L <= 0) return;
-            if ((number2State.sandbagReadyAtMs || 0) > now) return;
-            if (number2State.forceNextNothing) return;
-            const cooldownMs = (L === 1 ? 90 : L === 2 ? 75 : L === 3 ? 62 : 50) * 1000;
-            number2State.forceNextNothing = true;
-            number2State.sandbagReadyAtMs = now + cooldownMs;
-            addToLog("Sandbagging primed: next roll is forced Nothing.", "tip");
-        } else if (actionId === "playing_fair") {
-            if (getNumber2UpgradeLevel("playing_fair") <= 0) return;
-            setExclusiveNumber2Toggle("playing_fair", !number2State.playingFairActive);
-            addToLog("Playing Fair " + (number2State.playingFairActive ? "enabled" : "disabled") + ".", "milestone");
-        } else if (actionId === "hot_streak_toggle") {
-            if (getNumber2UpgradeLevel("hot_streak") <= 0) return;
-            setExclusiveNumber2Toggle("hot_streak", !isNumber2UpgradeToggleEnabled("hot_streak"));
-            addToLog("Hot Streak " + (number2State.hotStreakEnabled ? "enabled" : "disabled") + ".", "tip");
-        } else if (actionId === "gamblers_paradox_toggle") {
-            if (getNumber2UpgradeLevel("gamblers_paradox") <= 0) return;
-            setExclusiveNumber2Toggle("gamblers_paradox", !isNumber2UpgradeToggleEnabled("gamblers_paradox"));
-            addToLog("Gambler's Paradox " + (number2State.gamblersParadoxEnabled ? "enabled" : "disabled") + ".", "tip");
-        } else {
-            return;
-        }
-        updateNumber2StageUI();
-        autosaveNow();
+        number2.tryActivateUpgradeAction(actionId);
     }
     function tryBuyAscension2Node(nid) {
-        if (!pagePanelBodyEl) return;
-        if (!nid || typeof ASCENSION2_TREE_EXPORT === "undefined" || !ASCENSION2_TREE_EXPORT.NODES) return;
-        const node = ASCENSION2_TREE_EXPORT.NODES.find(n => n.id === nid);
-        if (!node) return;
-        const owned = new Set(number2State.ascensionNodeIds || []);
-        if (owned.has(nid)) return;
-        const parentsOk = !node.parentIds || node.parentIds.length === 0 || node.parentIds.every(pid => owned.has(pid));
-        if (!parentsOk) return;
-        const cost = node.cost;
-        if ((number2State.ascensionEssence || 0) < cost) {
-            addToLog("Number 2 ascension: not enough Luck essence (" + formatCount(cost) + " required).", "warning");
-            return;
-        }
-        number2State.ascensionEssence -= cost;
-        number2State.ascensionNodeIds.push(nid);
-        addToLog("Number 2 ascension: purchased \"" + node.title + "\".", "milestone");
-        pagePanelBodyEl.innerHTML = renderAscensionPageHtml();
-        autosaveNow();
-        refreshGlobalOverviewPanelIfOpen();
+        number2.tryBuyAscensionNode(nid);
     }
     function renderAscensionPageHtml() {
         if (ascensionPageActiveNumber === 2 && !isNumber2Unlocked()) ascensionPageActiveNumber = 1;
@@ -4186,25 +3605,7 @@ import {
         return "<div class=\"ascension-page\">" + tabsHtml + "<div class=\"ascension-page-body\">" + body + "</div></div>";
     }
     function getNumber2Milestone() {
-        if (!isNumber2Unlocked()) return { text: "Number 2 is not available on this save", pct: 0 };
-        if (!number2State.started) return { text: "Unlocked — switch to Number 2 to begin counting", pct: 0 };
-        const tb = number2TotalBig();
-        let next = null;
-        for (let i = 0; i < NUMBER_2_MILESTONES.length; i++) {
-            const g = BigInt(NUMBER_2_MILESTONES[i].goalStr);
-            if (tb < g) {
-                next = NUMBER_2_MILESTONES[i];
-                break;
-            }
-        }
-        if (!next) return { text: "Complete", pct: 100 };
-        const nextIndex = NUMBER_2_MILESTONES.indexOf(next);
-        const prevGoal = nextIndex > 0 ? BigInt(NUMBER_2_MILESTONES[nextIndex - 1].goalStr) : 2n;
-        const goal = BigInt(next.goalStr);
-        const span = Number(goal - prevGoal);
-        const progressed = Math.min(span, Math.max(0, Number(tb - prevGoal)));
-        const pct = span > 0 ? Math.max(0, Math.min(100, (progressed / span) * 100)) : 100;
-        return { text: next.text, pct };
+        return number2.getMilestone();
     }
     const NUMBER_MODULES = {
         1: createNumberModule({
@@ -4241,95 +3642,10 @@ import {
                 return s;
             }
         }),
-        2: createNumberModule({
-            getLabel: () => "Number 2 — Double or Nothing",
-            getRatePerSec: () => (canTickNumber2() ? getNumber2ActiveRollsPerSec() + NUMBER2_BG_ROLLS_PER_SEC * 0.25 : 0),
-            getMilestone: () => getNumber2Milestone(),
-            isAscensionReady: () => canTickNumber2() && number2TotalBig() >= BigInt(NUMBER2_ASCENSION_READY_TOTAL),
-            tickBackground: (dtSec) => tickNumber2Background(dtSec),
-            getSaveData: () => ({
-                number2SaveVersion: 4,
-                totalStr: number2State.totalStr,
-                luck: number2State.luck,
-                boomTokens: number2State.boomTokens,
-                bustTokens: number2State.bustTokens,
-                tokenGainCarry: number2State.tokenGainCarry,
-                streakDouble: number2State.streakDouble,
-                streakNothing: number2State.streakNothing,
-                lifetimeDoubles: number2State.lifetimeDoubles,
-                lifetimeNothings: number2State.lifetimeNothings,
-                upgradeLevels: { ...number2State.upgradeLevels },
-                started: !!number2State.started,
-                ascensionEssence: number2State.ascensionEssence,
-                ascensionNodeIds: [...(number2State.ascensionNodeIds || [])],
-                autoTickCarry: number2State.autoTickCarry,
-                bgTickCarry: number2State.bgTickCarry,
-                lastDieA: number2State.lastDieA,
-                lastDieB: number2State.lastDieB,
-                lastOutcome: number2State.lastOutcome,
-                playingFairActive: !!number2State.playingFairActive,
-                runTheTableUntilMs: number2State.runTheTableUntilMs || 0,
-                runTheTableReadyAtMs: number2State.runTheTableReadyAtMs || 0,
-                sandbagReadyAtMs: number2State.sandbagReadyAtMs || 0,
-                forceNextNothing: !!number2State.forceNextNothing,
-                hotStreakEnabled: number2State.hotStreakEnabled !== false,
-                gamblersParadoxEnabled: number2State.gamblersParadoxEnabled !== false
-            }),
-            applySaveData: (data) => {
-                if (!data || typeof data !== "object") return;
-                const ver = Number(data.number2SaveVersion);
-                if (ver >= 2 && typeof data.totalStr === "string" && /^[0-9]+$/.test(data.totalStr)) {
-                    number2State.totalStr = data.totalStr;
-                } else if (Number.isFinite(data.totalTwos) && data.totalTwos >= 0) {
-                    number2State.totalStr = "2";
-                    number2State.totalTwos = Math.floor(data.totalTwos);
-                } else {
-                    number2State.totalStr = "2";
-                }
-                if (Number.isFinite(data.luck) && data.luck >= 0) number2State.luck = Math.floor(data.luck);
-                if (Number.isFinite(data.boomTokens) && data.boomTokens >= 0) number2State.boomTokens = Math.floor(data.boomTokens);
-                if (Number.isFinite(data.bustTokens) && data.bustTokens >= 0) number2State.bustTokens = Math.floor(data.bustTokens);
-                if (Number.isFinite(data.tokenGainCarry) && data.tokenGainCarry >= 0) number2State.tokenGainCarry = data.tokenGainCarry;
-                if (Number.isFinite(data.streakDouble) && data.streakDouble >= 0) number2State.streakDouble = Math.floor(data.streakDouble);
-                if (Number.isFinite(data.streakNothing) && data.streakNothing >= 0) number2State.streakNothing = Math.floor(data.streakNothing);
-                if (Number.isFinite(data.lifetimeDoubles) && data.lifetimeDoubles >= 0) number2State.lifetimeDoubles = Math.floor(data.lifetimeDoubles);
-                if (Number.isFinite(data.lifetimeNothings) && data.lifetimeNothings >= 0) number2State.lifetimeNothings = Math.floor(data.lifetimeNothings);
-                if (data.upgradeLevels && typeof data.upgradeLevels === "object") number2State.upgradeLevels = { ...data.upgradeLevels };
-                number2State.started = !!data.started;
-                if (Number.isFinite(data.ascensionEssence) && data.ascensionEssence >= 0) {
-                    number2State.ascensionEssence = Math.min(Number.MAX_SAFE_INTEGER, Math.floor(data.ascensionEssence));
-                }
-                if (Array.isArray(data.ascensionNodeIds)) {
-                    number2State.ascensionNodeIds = data.ascensionNodeIds.filter(id => typeof id === "string");
-                }
-                if (Number.isFinite(data.autoTickCarry) && data.autoTickCarry >= 0) number2State.autoTickCarry = data.autoTickCarry;
-                if (Number.isFinite(data.bgTickCarry) && data.bgTickCarry >= 0) number2State.bgTickCarry = data.bgTickCarry;
-                if (Number.isFinite(data.lastDieA)) number2State.lastDieA = Math.min(6, Math.max(1, Math.floor(data.lastDieA)));
-                if (Number.isFinite(data.lastDieB)) number2State.lastDieB = Math.min(6, Math.max(1, Math.floor(data.lastDieB)));
-                if (data.lastOutcome === "double" || data.lastOutcome === "nothing") number2State.lastOutcome = data.lastOutcome;
-                if (typeof data.playingFairActive === "boolean") number2State.playingFairActive = data.playingFairActive;
-                if (Number.isFinite(data.runTheTableUntilMs) && data.runTheTableUntilMs >= 0) number2State.runTheTableUntilMs = data.runTheTableUntilMs;
-                if (Number.isFinite(data.runTheTableReadyAtMs) && data.runTheTableReadyAtMs >= 0) number2State.runTheTableReadyAtMs = data.runTheTableReadyAtMs;
-                if (Number.isFinite(data.sandbagReadyAtMs) && data.sandbagReadyAtMs >= 0) number2State.sandbagReadyAtMs = data.sandbagReadyAtMs;
-                if (typeof data.forceNextNothing === "boolean") number2State.forceNextNothing = data.forceNextNothing;
-                if (typeof data.hotStreakEnabled === "boolean") number2State.hotStreakEnabled = data.hotStreakEnabled;
-                if (typeof data.gamblersParadoxEnabled === "boolean") number2State.gamblersParadoxEnabled = data.gamblersParadoxEnabled;
-                number2State.number2SaveVersion = 4;
-                try {
-                    let t = BigInt(number2State.totalStr || "0");
-                    if (t < 0n) t = 0n;
-                    number2State.totalStr = t.toString();
-                } catch (_) {
-                    number2State.totalStr = "0";
-                }
-            },
-            getOverviewDetails: () => {
-                if (!isNumber2Unlocked()) return "Number 2 is not available.";
-                if (!number2State.started) return "Unlocked but inactive — switch to Number 2 to begin rolling.";
-                return "Total " + formatNumber2BigIntDisplay(number2TotalBig()) + " · Boom " + formatCount(number2State.boomTokens || 0) +
-                    " · Bust " + formatCount(number2State.bustTokens || 0) + " · Luck " + formatCount(number2State.luck || 0);
-            }
-        })
+        2: createNumberModule(createNumber2ModuleDefinition(number2, number2State, {
+            isUnlocked: () => isNumber2Unlocked(),
+            formatCount
+        }))
     };
     function getUnlockedNumberModules() {
         return Array.from(unlockedNumbers).map(n => ({ number: n, module: NUMBER_MODULES[n] })).filter(x => !!x.module);
@@ -6987,65 +6303,11 @@ import {
             const bh = Number(data.number1AscensionBlackHoleLevel);
             number1AscensionBlackHoleLevel = Number.isFinite(bh) && bh >= 0 ? Math.min(BLACK_HOLE_MAX_LEVEL, Math.floor(bh)) : 0;
         }
-        if (data.number1BlackHoleState && typeof data.number1BlackHoleState === "object") {
-            number1BlackHoleState = Object.assign({}, number1BlackHoleState, data.number1BlackHoleState);
-            number1BlackHoleState.phase = Math.max(0, Math.min(7, Math.floor(Number(number1BlackHoleState.phase) || 0)));
-            number1BlackHoleState.phase2CollapseMassTier = clampBlackHolePhase2CollapseTier(number1BlackHoleState.phase2CollapseMassTier);
-            number1BlackHoleState.phase2CollapsePhotonTier = clampBlackHolePhase2CollapseTier(number1BlackHoleState.phase2CollapsePhotonTier);
-            number1BlackHoleState.phase2CollapseErgosphereTier = clampBlackHolePhase2CollapseTier(number1BlackHoleState.phase2CollapseErgosphereTier);
-            {
-                const oldS = Math.max(0, Math.min(6, Math.floor(Number(number1BlackHoleState.phase3HawkingStrength) || 0)));
-                if (!(Number(number1BlackHoleState.phase3LuminosityLevel) > 0) && oldS > 0) number1BlackHoleState.phase3LuminosityLevel = oldS;
-                if (!(Number(number1BlackHoleState.phase3ViscousLevel) > 0) && oldS > 0) number1BlackHoleState.phase3ViscousLevel = oldS;
-                if (!(Number(number1BlackHoleState.phase3CoronalLevel) > 0) && oldS > 0) number1BlackHoleState.phase3CoronalLevel = oldS;
-                syncBlackHolePhase3LegacyLevel();
-            }
-            {
-                const now = Date.now();
-                number1BlackHoleState.phase5MutationHotterCore = Math.max(0, Math.floor(Number(number1BlackHoleState.phase5MutationHotterCore) || 0));
-                number1BlackHoleState.phase5MutationEssenceRefinery = Math.max(0, Math.floor(Number(number1BlackHoleState.phase5MutationEssenceRefinery) || 0));
-                number1BlackHoleState.phase5MutationShorterOrbit = Math.max(0, Math.floor(Number(number1BlackHoleState.phase5MutationShorterOrbit) || 0));
-                number1BlackHoleState.phase5PendingMutationHand = Math.max(0, Math.min(maxHands, Math.floor(Number(number1BlackHoleState.phase5PendingMutationHand) || 0)));
-                number1BlackHoleState.phase5PendingMutationLevel = Math.max(0, Math.floor(Number(number1BlackHoleState.phase5PendingMutationLevel) || 0));
-                number1BlackHoleState.phase5LastDigestedHand = Math.max(0, Math.min(maxHands, Math.floor(Number(number1BlackHoleState.phase5LastDigestedHand) || 0)));
-                number1BlackHoleState.phase5LastDigestCompletedAtMs = Math.max(0, Number(number1BlackHoleState.phase5LastDigestCompletedAtMs) || 0);
-                const end = Number(number1BlackHoleState.phase5DigestEndsAtMs) || 0;
-                if (end > now) {
-                    let duration = Number(number1BlackHoleState.phase5DigestDurationMs);
-                    if (!Number.isFinite(duration) || duration <= 0) duration = getBlackHoleNextDigestDurationMs();
-                    let start = Number(number1BlackHoleState.phase5DigestStartedAtMs);
-                    if (!Number.isFinite(start) || start <= 0 || start >= end) start = end - duration;
-                    if (start >= end) start = now;
-                    number1BlackHoleState.phase5DigestStartedAtMs = start;
-                    number1BlackHoleState.phase5DigestDurationMs = Math.max(1, end - start);
-                    number1BlackHoleState.phase5DigestHandNumber = Math.max(1, Math.min(maxHands, Math.floor(Number(number1BlackHoleState.phase5DigestHandNumber) || number1BlackHoleState.phase5NextSacrificeHand + 1 || 1)));
-                } else {
-                    number1BlackHoleState.phase5DigestStartedAtMs = 0;
-                    number1BlackHoleState.phase5DigestDurationMs = 0;
-                    number1BlackHoleState.phase5DigestEndsAtMs = 0;
-                    number1BlackHoleState.phase5DigestHandNumber = 0;
-                }
-            }
-            {
-                const pm = Math.floor(Number(number1BlackHoleState.phase2Mass) || 0);
-                const bk = Math.floor(Number(number1BlackHoleState.phase2EssenceBank) || 0);
-                const sumTiers =
-                    number1BlackHoleState.phase2CollapseMassTier +
-                    number1BlackHoleState.phase2CollapsePhotonTier +
-                    number1BlackHoleState.phase2CollapseErgosphereTier;
-                if (getBlackHolePhase() === 2 && (pm > 0 || bk > 0) && sumTiers < BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER * 3) {
-                    number1BlackHoleState.phase2CollapseMassTier = BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER;
-                    number1BlackHoleState.phase2CollapsePhotonTier = BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER;
-                    number1BlackHoleState.phase2CollapseErgosphereTier = BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER;
-                }
-            }
-        } else if (number1AscensionBlackHoleLevel > 0) {
-            number1BlackHoleState.phase = 2;
-            number1BlackHoleState.phase2Mass = Math.max(number1BlackHoleState.phase2Mass || 0, number1AscensionBlackHoleLevel);
-            number1BlackHoleState.phase2CollapseMassTier = BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER;
-            number1BlackHoleState.phase2CollapsePhotonTier = BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER;
-            number1BlackHoleState.phase2CollapseErgosphereTier = BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER;
-        }
+        number1BlackHoleState = normalizeNumber1BlackHoleStateFromSaveData(data.number1BlackHoleState, {
+            legacyBlackHoleLevel: number1AscensionBlackHoleLevel,
+            maxHands,
+            nowMs: Date.now()
+        });
         if (number1HasAscended && isNumber1AscensionTreeFullyPurchased() && getBlackHolePhase() === 0) {
             number1BlackHoleState.phase = 1;
         }
@@ -9092,27 +8354,7 @@ import {
     } catch (_) {}
     syncPlayStageForNumberMode(typeof window.getCurrentNumberMode === "function" ? window.getCurrentNumberMode() : 1);
     try {
-        (function bindNumber2Ui() {
-            const rollBtn = document.getElementById("number2-roll-btn");
-            if (rollBtn) rollBtn.addEventListener("click", () => { commitNumber2Roll({}); });
-            const stage = document.getElementById("number2-stage");
-            if (stage) {
-                stage.addEventListener("click", e => {
-                    const b = e.target.closest("[data-n2-upgrade]");
-                    if (b && !b.disabled) {
-                        e.preventDefault();
-                        tryBuyNumber2Upgrade(b.getAttribute("data-n2-upgrade"));
-                        return;
-                    }
-                    const actionBtn = e.target.closest("[data-n2-action]");
-                    if (actionBtn && !actionBtn.disabled) {
-                        e.preventDefault();
-                        tryActivateNumber2UpgradeAction(actionBtn.getAttribute("data-n2-action"));
-                    }
-                });
-            }
-            updateNumber2StageUI();
-        })();
+        number2.bindUI();
     } catch (err) {
         if (typeof console !== "undefined" && console.error) console.error("Number 2 UI bind failed:", err);
     }
