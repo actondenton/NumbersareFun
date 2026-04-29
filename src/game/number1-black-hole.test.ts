@@ -4,8 +4,10 @@ import {
     BLACK_HOLE_EVAPORATION_CAP,
     BLACK_HOLE_PHASE1_ESSENCE_TARGET,
     BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER,
+    BLACK_HOLE_PHASE2_MASS_CAP,
     clampBlackHolePhase,
     clampBlackHolePhase2CollapseTier,
+    createNumber1BlackHoleDevPhasePreset,
     createNumber1BlackHoleState,
     createNumber1BlackHoleUxFlags,
     getBlackHoleFurnaceEssenceBonus,
@@ -86,6 +88,39 @@ describe("number1 black hole defaults", () => {
         expect(clampBlackHolePhase2CollapseTier(-1)).toBe(0);
         expect(clampBlackHolePhase2CollapseTier(2.9)).toBe(2);
         expect(clampBlackHolePhase2CollapseTier(99)).toBe(3);
+    });
+
+    it("creates dev phase presets with phase-owned black-hole state", () => {
+        const currentState = createNumber1BlackHoleState();
+        currentState.phase3HawkingStrength = 6;
+        currentState.phase6JetBestAscensionEssence = 2400;
+        currentState.phase7EpilogueCounter = 12;
+
+        const phase4 = createNumber1BlackHoleDevPhasePreset(4, {
+            currentState,
+            nowMs: 1000
+        });
+
+        expect(phase4.phase).toBe(4);
+        expect(phase4.phase1EssenceSpent).toBe(BLACK_HOLE_PHASE1_ESSENCE_TARGET);
+        expect(phase4.phase2Mass).toBe(BLACK_HOLE_PHASE2_MASS_CAP);
+        expect(phase4.phase3LuminosityLevel).toBe(6);
+        expect(phase4.phase3HawkingStrength).toBe(6);
+        expect(phase4.phase4WaveLevel).toBe(2);
+        expect(phase4.phase4ManualReadyAtMs).toBe(1000);
+        expect(phase4.phase4NextWaveAtMs).toBe(1000 + Math.round(getBlackHoleWaveIntervalSec(phase4) * 1000));
+        expect(phase4.phase7EpilogueCounter).toBe(12);
+
+        const phase7 = createNumber1BlackHoleDevPhasePreset(7, {
+            currentState,
+            nowMs: 2000
+        });
+
+        expect(phase7.phase6JetBestAscensionEssence).toBe(2400);
+        expect(phase7.phase6JetIgnited).toBe(true);
+        expect(phase7.phase7EpilogueCounter).toBe(0);
+        expect(phase7.phase7EnteredAtMs).toBe(2000);
+        expect(phase7.evaporationComplete).toBe(true);
     });
 
     it("computes Phase 2 collapse unlocks and costs from state", () => {

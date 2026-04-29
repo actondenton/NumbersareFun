@@ -97,6 +97,67 @@ export function createNumber1BlackHoleUxFlags() {
     };
 }
 
+export function createNumber1BlackHoleDevPhasePreset(phase, opts = {}) {
+    const p = clampBlackHolePhase(phase);
+    const now = Number.isFinite(opts.nowMs) ? Number(opts.nowMs) : Date.now();
+    const currentState = opts.currentState && typeof opts.currentState === "object" ? opts.currentState : {};
+    const preset = {
+        phase: p,
+        phase1EssenceSpent: p >= 2 ? BLACK_HOLE_PHASE1_ESSENCE_TARGET : 0,
+        phase2CollapseMassTier: p >= 3 ? BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER : 0,
+        phase2CollapsePhotonTier: p >= 3 ? BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER : 0,
+        phase2CollapseErgosphereTier: p >= 3 ? BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER : 0,
+        phase2Mass: p >= 3 ? BLACK_HOLE_PHASE2_MASS_CAP : (p === 2 ? Math.min(10, BLACK_HOLE_PHASE2_MASS_CAP) : 0),
+        phase2EssenceBank: 0,
+        phase2ParallelBonusPool: p >= 3 ? 1.5 : (p === 2 ? 0.25 : 0),
+        phase3LuminosityLevel: p >= 4 ? 6 : (p === 3 ? 2 : 0),
+        phase3ViscousLevel: p >= 4 ? 6 : (p === 3 ? 2 : 0),
+        phase3CoronalLevel: p >= 4 ? 6 : (p === 3 ? 2 : 0),
+        phase3HawkingStrength: currentState.phase3HawkingStrength || 0,
+        phase3EssenceBank: 0,
+        phase3HawkingActiveUntilMs: 0,
+        phase3NextHawkingAtMs: p >= 3 && p < 6 ? now + 6000 : 0,
+        phase4WaveLevel: p >= 5 ? 6 : (p === 4 ? 2 : 0),
+        phase4EssenceBank: 0,
+        phase4WaveTriggered: p >= 5,
+        phase4WaveActiveUntilMs: 0,
+        phase4NextWaveAtMs: 0,
+        phase4ManualReadyAtMs: p >= 4 && p < 6 ? now : 0,
+        phase5DigestedHands: p >= 6 ? 9 : 0,
+        phase5DigestHandNumber: 0,
+        phase5DigestStartedAtMs: 0,
+        phase5DigestDurationMs: 0,
+        phase5DigestEndsAtMs: 0,
+        phase5FurnaceLevel: p >= 6 ? 9 : 0,
+        phase5NextSacrificeHand: p >= 6 ? 1 : 10,
+        phase5MutationHotterCore: p >= 6 ? 3 : 0,
+        phase5MutationEssenceRefinery: p >= 6 ? 3 : 0,
+        phase5MutationShorterOrbit: p >= 6 ? 3 : 0,
+        phase5PendingMutationHand: 0,
+        phase5PendingMutationLevel: 0,
+        phase5LastDigestedHand: p >= 6 ? 2 : 0,
+        phase5LastDigestCompletedAtMs: 0,
+        phase6JetCharge: p >= 6 ? 500 : 0,
+        phase6JetActive: false,
+        phase6JetBoostLevel: p >= 6 ? 1 : 0,
+        phase6JetEfficiencyLevel: p >= 6 ? 1 : 0,
+        phase6JetBankLevel: p >= 6 ? 1 : 0,
+        phase6EssenceBank: 0,
+        phase6JetIgnited: p >= 7,
+        phase6JetBestAscensionEssence: p >= 6 ? Math.max(1000, currentState.phase6JetBestAscensionEssence || 0) : 0,
+        phase7EpilogueCounter: p === 7 ? 0 : currentState.phase7EpilogueCounter || 0,
+        phase7EnteredAtMs: p === 7 ? now : 0,
+        evaporationComplete: p === 7
+    };
+
+    syncNumber1BlackHolePhase3LegacyLevel(preset);
+    if (p >= 4 && p < 6) {
+        preset.phase4NextWaveAtMs = now + Math.round(getBlackHoleWaveIntervalSec(preset) * 1000);
+    }
+
+    return preset;
+}
+
 export function getBlackHoleNextDigestDurationMs(state) {
     return Math.max(60 * 1000, Math.floor(BLACK_HOLE_DIGEST_BASE_MS * getBlackHolePhase5ShorterOrbitMult(state)));
 }
