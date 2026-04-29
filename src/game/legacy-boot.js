@@ -21,6 +21,7 @@ import {
     clampBlackHolePhase2CollapseTier as clampBlackHolePhase2CollapseTierRule,
     createNumber1BlackHoleState,
     createNumber1BlackHoleUxFlags,
+    createNumber1BlackHoleDevPhasePreset,
     getBlackHoleFurnaceEssenceBonus as getBlackHoleFurnaceEssenceBonusRule,
     getBlackHoleFurnaceMult as getBlackHoleFurnaceMultRule,
     getBlackHolePhase2CollapseErgosphereTier as getBlackHolePhase2CollapseErgosphereTierRule,
@@ -380,7 +381,15 @@ import {
     const ACTION_LOG_MAX = 50;
     const ACTION_LOG_VISIBLE = 3;
     const ACTION_LOG_EXPANDED = 15;
+    const TICKER_SPEED_PX_PER_SEC = 92;
+    const TICKER_ITEM_GAP_PX = 28;
+    const TICKER_QUEUE_MAX = 50;
     const actionLogEntries = [];
+    const tickerQueue = [];
+    const activeTickerItems = [];
+    let tickerReducedMotionQuery = null;
+    let tickerSpawnTimerId = 0;
+    let tickerNextSpawnAtMs = 0;
     let actionLogExpanded = false;
     let messageLogLastRenderedVisibleCount = -1;
     let messageLogLastRenderedHeadSig = "";
@@ -664,22 +673,107 @@ import {
         if (cat === "humor" && !settings.humorEnabled) return false;
         return true;
     }
+    function prefersReducedTickerMotion() {
+        try {
+            if (!tickerReducedMotionQuery && window.matchMedia) {
+                tickerReducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+            }
+            return !!(tickerReducedMotionQuery && tickerReducedMotionQuery.matches);
+        } catch (_) {
+            return false;
+        }
+    }
+    function createTickerItem(entry) {
+        const cat = normalizeLogCategory(entry.category);
+        const item = document.createElement("span");
+        item.className = "ambient-message-ticker__item ambient-message-ticker__item--" + cat;
+        item.textContent = "[" + logCategoryTag(cat) + "] " + entry.text;
+        return item;
+    }
+    function cleanupTickerItem(item) {
+        const idx = activeTickerItems.indexOf(item);
+        if (idx !== -1) activeTickerItems.splice(idx, 1);
+        if (item && item.parentNode) item.parentNode.removeChild(item);
+        if (activeTickerItems.length === 0 && tickerQueue.length > 0 && !tickerSpawnTimerId) {
+            spawnTickerItem();
+        }
+    }
+    function scheduleTickerSpawn(delayMs) {
+        if (tickerSpawnTimerId || tickerQueue.length === 0) return;
+        tickerSpawnTimerId = window.setTimeout(() => {
+            tickerSpawnTimerId = 0;
+            spawnTickerItem();
+        }, Math.max(0, delayMs));
+    }
+    function spawnTickerItem() {
+        if (!ambientMessageTickerEl || tickerQueue.length === 0) return;
+        const containerWidth = ambientMessageTickerEl.clientWidth || 600;
+        const entry = tickerQueue.shift();
+        const item = createTickerItem(entry);
+        ambientMessageTickerEl.appendChild(item);
+        const width = item.getBoundingClientRect().width || Math.max(80, item.textContent.length * 8);
+        const startX = containerWidth;
+        const endX = -width - TICKER_ITEM_GAP_PX;
+        const durationMs = Math.max(4500, ((startX - endX) / TICKER_SPEED_PX_PER_SEC) * 1000);
+        const nextDelayMs = Math.max(240, ((width + TICKER_ITEM_GAP_PX) / TICKER_SPEED_PX_PER_SEC) * 1000);
+        item.style.transform = "translate3d(" + startX + "px, 0, 0)";
+        activeTickerItems.push(item);
+        tickerNextSpawnAtMs = Date.now() + nextDelayMs;
+        if (typeof item.animate === "function") {
+            const animation = item.animate([
+                { transform: "translate3d(" + startX + "px, 0, 0)" },
+                { transform: "translate3d(" + endX + "px, 0, 0)" }
+            ], {
+                duration: durationMs,
+                easing: "linear",
+                fill: "forwards"
+            });
+            animation.onfinish = () => cleanupTickerItem(item);
+            animation.oncancel = () => cleanupTickerItem(item);
+        } else {
+            item.style.transition = "transform " + durationMs + "ms linear";
+            window.requestAnimationFrame(() => {
+                item.style.transform = "translate3d(" + endX + "px, 0, 0)";
+            });
+            window.setTimeout(() => cleanupTickerItem(item), durationMs);
+        }
+        scheduleTickerSpawn(nextDelayMs);
+    }
+    function startTickerLoop() {
+        if (!ambientMessageTickerEl) return;
+        if (prefersReducedTickerMotion()) {
+            const latest = tickerQueue.pop();
+            tickerQueue.length = 0;
+            activeTickerItems.length = 0;
+            if (tickerSpawnTimerId) {
+                window.clearTimeout(tickerSpawnTimerId);
+                tickerSpawnTimerId = 0;
+            }
+            ambientMessageTickerEl.replaceChildren();
+            if (latest) ambientMessageTickerEl.appendChild(createTickerItem(latest));
+            return;
+        }
+        if (activeTickerItems.length === 0) {
+            spawnTickerItem();
+            return;
+        }
+        scheduleTickerSpawn(Math.max(0, tickerNextSpawnAtMs - Date.now()));
+    }
     function setAmbientMessage(entry) {
         if (!ambientMessageTickerEl || !entry) return;
         const cat = normalizeLogCategory(entry.category);
-        if (!isLogCategoryVisible(cat)) {
-            ambientMessageTickerEl.textContent = "";
-            ambientMessageTickerEl.className = "ambient-message-ticker";
-            return;
-        }
-        ambientMessageTickerEl.textContent = entry.text;
-        ambientMessageTickerEl.className = "ambient-message-ticker ambient-message-ticker--" + cat;
+        if (!isLogCategoryVisible(cat)) return;
+        tickerQueue.push({ text: entry.text, category: cat });
+        if (tickerQueue.length > TICKER_QUEUE_MAX) tickerQueue.shift();
+        ambientMessageTickerEl.className = "ambient-message-ticker";
+        startTickerLoop();
     }
     function addToLog(msg, category) {
         const cat = normalizeLogCategory(category);
         if (!isLogCategoryVisible(cat)) return;
         actionLogEntries.push({ text: msg, category: cat });
         if (actionLogEntries.length > ACTION_LOG_MAX) actionLogEntries.shift();
+        setAmbientMessage({ text: msg, category: cat });
         renderActionLog();
         refreshMessageLogPanelIfOpen();
     }
@@ -953,7 +1047,7 @@ import {
                 const requiredHands = getNumber1AscensionRequiredHands();
                 const handReqText = unlockedHands >= requiredHands ? "hands ready" : ("hands: " + unlockedHands + "/" + requiredHands);
                 const readinessText = isNumber1AscensionReady()
-                    ? " — Ascension ready! Use the banner on the main screen or open Ascension."
+                    ? " — Ascension ready! Use the glowing Ascension button."
                     : (" — Ascension: " + formatCount(totalChanges) + " / " + formatCount(ASCENSION_1_REQUIRED_TOTAL) + " (" + ascPct.toFixed(2) + "%), " + handReqText);
                 const pendingBonus = getNumber1AscensionPendingBonusEssence();
                 const pendingText = pendingBonus > 0 ? (" · Pending warp bonus: +" + formatCount(pendingBonus)) : "";
@@ -983,15 +1077,18 @@ import {
                 : "";
         }
         if (ascensionReadyBannerEl) {
-            ascensionReadyBannerEl.hidden = !ready;
-            ascensionReadyBannerEl.setAttribute("aria-hidden", ready ? "false" : "true");
+            ascensionReadyBannerEl.hidden = true;
+            ascensionReadyBannerEl.setAttribute("aria-hidden", "true");
         }
         if (ascensionPageBtn) {
+            ascensionPageBtn.style.display = (number1HasAscended || ready) ? "" : "none";
             ascensionPageBtn.classList.toggle("page-btn--ascension-ready", ready);
             if (ready) {
-                ascensionPageBtn.setAttribute("title", "Ascension ready — open Ascension to ascend or manage Essence");
+                ascensionPageBtn.setAttribute("title", "Ascension ready — click to ascend or manage Essence");
+                ascensionPageBtn.setAttribute("aria-label", "Ascension ready");
             } else {
                 ascensionPageBtn.removeAttribute("title");
+                ascensionPageBtn.removeAttribute("aria-label");
             }
         }
     }
@@ -1421,6 +1518,7 @@ import {
         const p = getBlackHolePhase();
         const now = Date.now();
         const massMood = arc && p === 1;
+        const collapseMood = arc && p === 2;
         const singularityMood = arc && p >= 2 && p <= 6;
         const hawkingActive = arc && p >= 3 && p < 6 && now <= (number1BlackHoleState.phase3HawkingActiveUntilMs || 0);
         const waveActive = arc && p >= 4 && p < 6 && now <= (number1BlackHoleState.phase4WaveActiveUntilMs || 0);
@@ -1436,6 +1534,7 @@ import {
             number1StageRootEl.classList.remove("bh-phase1-unlock-surge");
         }
         number1StageRootEl.classList.toggle("bh-phase1-vfx", massMood);
+        number1StageRootEl.classList.toggle("bh-phase2-collapse-vfx", collapseMood);
         number1StageRootEl.classList.toggle("bh-singularity-vfx", singularityMood);
         number1StageRootEl.classList.toggle("bh-singularity-deep", singularityMood);
         number1StageRootEl.classList.toggle("bh-phase3-hawking-active", hawkingActive);
@@ -1471,12 +1570,64 @@ import {
             });
         });
     }
+    function patchBlackHolePhase1PanelLiveDom(bhEl) {
+        if (!bhEl) return false;
+        const phase = getBlackHolePhase();
+        if (phase !== 1 || !bhEl.classList.contains("asc-black-hole--phase1")) return false;
+        const spent = Math.floor(number1BlackHoleState.phase1EssenceSpent || 0);
+        const rem = Math.max(0, BLACK_HOLE_PHASE1_ESSENCE_TARGET - spent);
+        const have = Math.max(0, Math.floor(Number(number1AscensionEssence) || 0));
+        const pour = Math.min(rem, have);
+        const can = rem > 0 && have > 0;
+        const fillPct = Math.round(getBlackHolePhase1FillRatio() * 100);
+        const meterNums = bhEl.querySelector(".asc-black-hole__mass-meter-nums");
+        if (meterNums) meterNums.innerHTML = "<strong>" + spent + "</strong> / " + BLACK_HOLE_PHASE1_ESSENCE_TARGET + " Essence · " + fillPct + "%";
+        const meterTrack = bhEl.querySelector(".asc-black-hole__mass-meter-track");
+        if (meterTrack) meterTrack.setAttribute("aria-valuenow", String(spent));
+        const meterFill = bhEl.querySelector(".asc-black-hole__mass-meter-fill");
+        if (meterFill) meterFill.style.width = fillPct + "%";
+        const stats = Array.from(bhEl.querySelectorAll(".asc-black-hole__stats"));
+        const multStat = stats.find(el => el.textContent.indexOf("Current total BH mult") >= 0);
+        if (multStat) {
+            const mult = getNumber1BlackHoleProductionMult();
+            const multStr = mult >= 10 ? mult.toFixed(2) : mult.toFixed(3);
+            multStat.innerHTML = "Current total BH mult: <strong>×" + multStr + "</strong>";
+        }
+        const purse = bhEl.querySelector(".asc-black-hole__purse");
+        if (purse) purse.innerHTML = "You hold <strong>" + formatCount(have) + "</strong> Ascension Essence · next pour: <strong>" + formatCount(pour) + "</strong> into mass";
+        const btn = bhEl.querySelector(".page-btn--mass-pour");
+        if (btn) {
+            btn.disabled = !can;
+            btn.textContent = "Pour in all Essence (" + formatCount(pour) + ")";
+        }
+        return true;
+    }
+    function patchBlackHolePhase2PanelLiveDom(bhEl) {
+        if (!bhEl) return false;
+        const phase = getBlackHolePhase();
+        if (phase !== 2 || !bhEl.classList.contains("asc-black-hole--phase2")) return false;
+        const collapseGeometry = bhEl.querySelector(".asc-black-hole__collapse-geometry");
+        if (!collapseGeometry) return false;
+        const wrap = document.createElement("div");
+        wrap.innerHTML = renderNumber1BlackHolePanelHtml();
+        const freshBhEl = wrap.firstElementChild;
+        if (!freshBhEl || !freshBhEl.classList || !freshBhEl.classList.contains("asc-black-hole--phase2")) return false;
+        bhEl.className = freshBhEl.className;
+        Array.from(bhEl.childNodes).forEach(function (node) {
+            if (node !== collapseGeometry) node.remove();
+        });
+        Array.from(freshBhEl.childNodes).forEach(function (node) {
+            if (node.nodeType === 1 && node.classList.contains("asc-black-hole__collapse-geometry")) return;
+            bhEl.appendChild(node);
+        });
+        return true;
+    }
     function refreshBlackHolePanelLiveDomIfOpen() {
         if (!pagePanelEl || pagePanelEl.style.display === "none" || !pagePanelBodyEl) return;
         if (pagePanelEl.dataset.openPageId !== "ascension" || ascensionPageActiveNumber !== 1) return;
         const bhEl = pagePanelBodyEl.querySelector(".asc-black-hole");
         if (bhEl) {
-            bhEl.outerHTML = renderNumber1BlackHolePanelHtml();
+            if (!patchBlackHolePhase1PanelLiveDom(bhEl) && !patchBlackHolePhase2PanelLiveDom(bhEl)) bhEl.outerHTML = renderNumber1BlackHolePanelHtml();
         } else {
             refreshAscensionPanelIfOpen();
         }
@@ -1840,19 +1991,26 @@ import {
         const cost = Math.max(25, Math.floor(50 + 20 * (number1BlackHoleState.phase5FurnaceLevel || 0)));
         const oldDuration = getBlackHolePhase5DigestDurationMsSafe();
         const floorMs = Math.max(1000, Math.floor(oldDuration * 0.01));
+        const getStokedRemainingMs = function (remaining, reduction) {
+            const rem = Math.max(0, Math.floor(Number(remaining) || 0));
+            const red = Math.max(0, Math.floor(Number(reduction) || 0));
+            if (rem <= 1 || red <= 0) return rem;
+            if (rem <= floorMs) return Math.max(1, rem - red);
+            return Math.min(rem, Math.max(floorMs, rem - red));
+        };
         let pool = spend;
         let digestEndMs = digestEnd;
         while (pool >= cost && digestEndMs > now) {
             const remaining = digestEndMs - now;
             const fullRed = Math.max(1, Math.floor(remaining * 0.06));
-            digestEndMs = now + Math.max(floorMs, remaining - fullRed);
+            digestEndMs = now + getStokedRemainingMs(remaining, fullRed);
             pool -= cost;
         }
         if (pool > 0 && digestEndMs > now && cost > 0) {
             const remaining = digestEndMs - now;
             const fullRed = Math.max(1, Math.floor(remaining * 0.06));
             const reduction = Math.max(1, Math.floor(fullRed * Math.min(1, pool / cost)));
-            digestEndMs = now + Math.max(floorMs, remaining - reduction);
+            digestEndMs = now + getStokedRemainingMs(remaining, reduction);
         }
         const duration = oldDuration;
         const start = digestEndMs - duration;
@@ -1966,16 +2124,17 @@ import {
             "Echo Hands collected: " + level + " / 9\n" +
             "Current furnace CPS: x" + (echoMult >= 10 ? echoMult.toFixed(2) : echoMult.toFixed(3)) + "\n\n" +
             "Choose a Furnace Mutation to claim the reward, then feed the next hand.";
-        gamePaused = true;
-        playBlackHoleScreenEffect("digest");
-        window.setTimeout(function () {
-            showStoryBanner({
-                id: level === 1 ? "black-hole-first-digest" : ("black-hole-digest-hand-" + h),
-                order: 1007 + level,
-                title,
-                body
-            });
-        }, Math.min(1200, BLACK_HOLE_SCREEN_FX_MS));
+        showStoryBanner({
+            id: level === 1 ? "black-hole-first-digest" : ("black-hole-digest-hand-" + h),
+            order: 1007 + level,
+            title,
+            body
+        }, {
+            onClose: function () {
+                queueBlackHoleUiRefresh();
+                playBlackHoleScreenEffect("digest");
+            }
+        });
     }
     function tryToggleJet(active) {
         if (getBlackHolePhase() < 6 || getBlackHolePhase() >= 7) return;
@@ -3196,6 +3355,14 @@ import {
             const cpsM = getBlackHolePhase1RunCpsMult().toFixed(2);
             const ascM = getBlackHolePhase1AscensionEssenceMult().toFixed(2);
             body =
+                "<div class=\"asc-black-hole__mass-geometry\" aria-hidden=\"true\">" +
+                "<div class=\"asc-black-hole__tesseract\">" +
+                "<span class=\"asc-black-hole__tesseract-frame asc-black-hole__tesseract-frame--outer\"></span><span class=\"asc-black-hole__tesseract-frame asc-black-hole__tesseract-frame--mid\"></span><span class=\"asc-black-hole__tesseract-frame asc-black-hole__tesseract-frame--inner\"></span><span class=\"asc-black-hole__tesseract-frame asc-black-hole__tesseract-frame--core\"></span>" +
+                "<span class=\"asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--a\"></span><span class=\"asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--b\"></span><span class=\"asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--c\"></span><span class=\"asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--d\"></span><span class=\"asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--e\"></span><span class=\"asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--f\"></span><span class=\"asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--g\"></span><span class=\"asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--h\"></span><span class=\"asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--i\"></span><span class=\"asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--j\"></span><span class=\"asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--k\"></span><span class=\"asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--l\"></span>" +
+                "<span class=\"asc-black-hole__tesseract-node asc-black-hole__tesseract-node--a\"></span><span class=\"asc-black-hole__tesseract-node asc-black-hole__tesseract-node--b\"></span><span class=\"asc-black-hole__tesseract-node asc-black-hole__tesseract-node--c\"></span><span class=\"asc-black-hole__tesseract-node asc-black-hole__tesseract-node--d\"></span><span class=\"asc-black-hole__tesseract-node asc-black-hole__tesseract-node--e\"></span><span class=\"asc-black-hole__tesseract-node asc-black-hole__tesseract-node--f\"></span><span class=\"asc-black-hole__tesseract-node asc-black-hole__tesseract-node--g\"></span><span class=\"asc-black-hole__tesseract-node asc-black-hole__tesseract-node--h\"></span>" +
+                "</div>" +
+                "<div class=\"asc-black-hole__numeral-dust\"><span>1</span><span>1</span><span>1</span><span>1</span><span>1</span><span>1</span><span>1</span><span>1</span></div>" +
+                "</div>" +
                 "<p class=\"asc-black-hole__kicker\">Phase 1 · toward critical mass</p>" +
                 "<p class=\"asc-black-hole__body\">You've mapped every branch — now your totals gain <strong>weight</strong>. This sink is the only use for Ascension Essence here: one button pours <strong>everything</strong> you hold into mass. Heavier numbers count faster, ascend richer, and pull harder on your slowdown ceiling.</p>" +
                 "<div class=\"asc-black-hole__mass-meter-wrap\" role=\"group\" aria-label=\"Numerical mass charge\">" +
@@ -3267,6 +3434,10 @@ import {
                 );
             };
             body =
+                "<div class=\"asc-black-hole__collapse-geometry\" aria-hidden=\"true\">" +
+                "<span class=\"asc-black-hole__collapse-core\"></span>" +
+                "<span class=\"asc-black-hole__collapse-shard asc-black-hole__collapse-shard--a\"></span><span class=\"asc-black-hole__collapse-shard asc-black-hole__collapse-shard--b\"></span><span class=\"asc-black-hole__collapse-shard asc-black-hole__collapse-shard--c\"></span><span class=\"asc-black-hole__collapse-shard asc-black-hole__collapse-shard--d\"></span><span class=\"asc-black-hole__collapse-shard asc-black-hole__collapse-shard--e\"></span><span class=\"asc-black-hole__collapse-shard asc-black-hole__collapse-shard--f\"></span><span class=\"asc-black-hole__collapse-shard asc-black-hole__collapse-shard--g\"></span><span class=\"asc-black-hole__collapse-shard asc-black-hole__collapse-shard--h\"></span><span class=\"asc-black-hole__collapse-shard asc-black-hole__collapse-shard--i\"></span><span class=\"asc-black-hole__collapse-shard asc-black-hole__collapse-shard--j\"></span>" +
+                "</div>" +
                 "<p class=\"asc-black-hole__kicker\">Phase 2 · collapse upgrades</p>" +
                 "<p class=\"asc-black-hole__body\">Before the singularity accepts raw mass, stabilize three channels with Ascension Essence. Each track has <strong>" + BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER + "</strong> tiers. Every Phase 2 spend also charges the distinct <strong>BH parallel</strong> Essence bonus for future ascends.</p>" +
                 "<div class=\"asc-black-hole__parallel-meter-wrap\" role=\"group\" aria-label=\"Black hole parallel Essence bonus\">" +
@@ -3350,6 +3521,7 @@ import {
             const pendingMutationLevel = Math.max(0, Math.floor(Number(number1BlackHoleState.phase5PendingMutationLevel) || 0));
             const pendingMutationHand = Math.max(0, Math.floor(Number(number1BlackHoleState.phase5PendingMutationHand) || 0));
             const hasPendingMutation = pendingMutationLevel > 0;
+            const rewardBeatActive = hasPendingMutation && lastCompleteAt > 0 && now - lastCompleteAt < BLACK_HOLE_FURNACE_COMPLETION_RITUAL_MS;
             const nextHandLocked = !canSpeedDigest && nextHand > 1 && unlockedHands < nextHand;
             const progress = canSpeedDigest ? getBlackHolePhase5DigestProgressAt(now) : 0;
             const curved = getBlackHolePhase5DigestCurve(progress);
@@ -3373,7 +3545,8 @@ import {
             const echoHands = completed > 0
                 ? Array.from({ length: completed }, (_, i) => Math.max(1, 10 - i)).map(h => {
                     const pendingClass = hasPendingMutation && h === pendingMutationHand ? " asc-black-hole__echo-hand--pending" : "";
-                    return "<span class=\"asc-black-hole__echo-hand" + pendingClass + "\">H" + h + "</span>";
+                    const rewardClass = rewardBeatActive && h === pendingMutationHand ? " asc-black-hole__echo-hand--new" : "";
+                    return "<span class=\"asc-black-hole__echo-hand" + pendingClass + rewardClass + "\">H" + h + "</span>";
                 }).join("")
                 : "<span class=\"asc-black-hole__echo-empty\">No Echo Hands yet</span>";
             const echoTrack = "<div class=\"asc-black-hole__echo-track\" aria-label=\"Echo Hands collected\"><div class=\"asc-black-hole__echo-head\"><span>Echo Hands</span><strong>" + completed + " / 9</strong></div><div class=\"asc-black-hole__echo-list\">" + echoHands + "</div></div>";
@@ -3391,7 +3564,7 @@ import {
                     "</div>")
                 : "";
             const mutationChoices = hasPendingMutation
-                ? ("<div class=\"asc-black-hole__mutation-choices\" role=\"group\" aria-label=\"Choose Furnace Mutation\">" +
+                ? ("<div class=\"asc-black-hole__mutation-choices" + (rewardBeatActive ? " asc-black-hole__mutation-choices--reward" : "") + "\" role=\"group\" aria-label=\"Choose Furnace Mutation\">" +
                     "<button type=\"button\" class=\"asc-black-hole__mutation-choice\" data-asc-black-hole-mutation=\"hotter-core\"><strong>Hotter Core</strong><span>Echo Hands burn brighter. The compounding CPS base gains +" + Math.round(BLACK_HOLE_FURNACE_HOTTER_CORE_BONUS * 100) + "% per stack.</span></button>" +
                     "<button type=\"button\" class=\"asc-black-hole__mutation-choice\" data-asc-black-hole-mutation=\"essence-refinery\"><strong>Essence Refinery</strong><span>Digested hands refine ascension fuel. Furnace Essence bonus gains +" + Math.round(BLACK_HOLE_FURNACE_ESSENCE_REFINERY_BONUS * 100) + "% per stack.</span></button>" +
                     "<button type=\"button\" class=\"asc-black-hole__mutation-choice\" data-asc-black-hole-mutation=\"shorter-orbit\"><strong>Shorter Orbit</strong><span>The next digestion timers compress. Current timer multiplier: ×" + getBlackHolePhase5ShorterOrbitMult().toFixed(2) + ".</span></button>" +
@@ -3483,8 +3656,36 @@ import {
             "</section>"
         );
     }
+    function renderNumber1AscendControlHtml() {
+        const ready = isNumber1AscensionReady();
+        const esc = escapeAscensionHtml;
+        const requiredHands = getNumber1AscensionRequiredHands();
+        const gainInfo = ready ? computeNumber1AscensionGainBreakdown(totalChanges) : null;
+        const gainText = gainInfo ? formatCount(gainInfo.finalGain) : "0";
+        const gainFormulaText = gainInfo
+            ? " Formula: base " + formatCount(gainInfo.baseGain) +
+                (gainInfo.pendingBonus > 0 ? " + warp bonus " + formatCount(gainInfo.pendingBonus) : "") +
+                (gainInfo.blackHoleMultiplierBonus > 0 ? " + BH bonus " + formatCount(gainInfo.blackHoleMultiplierBonus) + " (" + gainInfo.blackHolePhaseMult.toFixed(3) + "x)" : "") +
+                (gainInfo.multiplierBonus > 0 ? " + clap mult " + formatCount(gainInfo.multiplierBonus) + " (" + gainInfo.clapMult.toFixed(3) + "x)" : "") +
+                " = " + gainText + "."
+            : "";
+        const requirementText = ready
+            ? "Ready now: ascend Number 1 for " + gainText + " Ascension Essence." + gainFormulaText
+            : "Not ready: reach " + formatCount(ASCENSION_1_REQUIRED_TOTAL) + " total and " + requiredHands + " hand" + (requiredHands === 1 ? "" : "s") + ". Current: " + formatCount(totalChanges) + " total, " + unlockedHands + "/" + requiredHands + " hands.";
+        return (
+            "<section class=\"ascension-run-action" + (ready ? " ascension-run-action--ready" : "") + "\" aria-label=\"Number 1 ascend action\">" +
+            "<div class=\"ascension-run-action__copy\">" +
+            "<strong class=\"ascension-run-action__title\">Number 1 Ascension</strong>" +
+            "<span class=\"ascension-run-action__status\">" + esc(requirementText) + "</span>" +
+            "</div>" +
+            "<button type=\"button\" class=\"page-btn ascend-number-btn ascension-run-action__btn\" data-number=\"1\"" + (ready ? "" : " disabled aria-disabled=\"true\"") + ">Ascend now</button>" +
+            "</section>"
+        );
+    }
     function renderAscensionUpgradesHtml() {
-        if (!number1HasAscended) return "";
+        if (!number1HasAscended) {
+            return "<section class=\"ascension-placeholder\"><strong>Ascension map locked.</strong><br>Complete your first Number 1 ascension to unlock the permanent skill map.</section>";
+        }
         const esc = escapeAscensionHtml;
         const s = ascensionPurchasedSet();
         const collapseActive = isAscensionMapCollapseTransitionActive();
@@ -3599,7 +3800,7 @@ import {
                 "</div>";
         }
         let body = "";
-        if (n === 1) body = renderAscensionUpgradesHtml();
+        if (n === 1) body = renderNumber1AscendControlHtml() + renderAscensionUpgradesHtml();
         else if (n === 2 && tab2) body = renderAscensionNumber2ShellHtml();
         else body = renderAscensionUpgradesHtml();
         return "<div class=\"ascension-page\">" + tabsHtml + "<div class=\"ascension-page-body\">" + body + "</div></div>";
@@ -3813,7 +4014,7 @@ import {
             combinationsPageBtn.style.display = unlocked ? "" : "none";
         }
         if (ascensionPageBtn) {
-            ascensionPageBtn.style.display = number1HasAscended ? "" : "none";
+            ascensionPageBtn.style.display = (number1HasAscended || isNumber1AscensionReady()) ? "" : "none";
         }
     }
     function refreshMessageLogPanelIfOpen() {
@@ -4447,11 +4648,13 @@ import {
         if (!needUp && !needDown) {
             upgradeScrollHintMessagesEl.textContent = "";
             upgradeScrollHintJumpsEl.innerHTML = "";
+            upgradeScrollHintEl.classList.remove("upgrade-scroll-hint--down-only");
             upgradeScrollHintEl.hidden = true;
             upgradeScrollHintLastStateKey = "";
             return;
         }
         upgradeScrollHintEl.hidden = false;
+        upgradeScrollHintEl.classList.toggle("upgrade-scroll-hint--down-only", needDown && !needUp);
         const upTwAny = needUp && above.some(e => handHasActiveTimeWarpAura(e.handIndex));
         const upGrAny = needUp && above.some(e => handScrollHintHasUpgradeReason(e.handIndex));
         const downTwAny = needDown && below.some(e => handHasActiveTimeWarpAura(e.handIndex));
@@ -6684,11 +6887,13 @@ import {
 
     let currentStoryBanner = null;
     let currentStoryBannerIsReplay = false;
+    let currentStoryBannerOnClose = null;
     let replayStoryBannerPreviousPaused = false;
 
     function showStoryBanner(banner, options = {}) {
         currentStoryBanner = banner;
         currentStoryBannerIsReplay = !!options.isReplay;
+        currentStoryBannerOnClose = typeof options.onClose === "function" ? options.onClose : null;
         replayStoryBannerPreviousPaused = currentStoryBannerIsReplay ? gamePaused : false;
         gamePaused = true;
         if (storyBannerTitleEl) storyBannerTitleEl.textContent = banner.title;
@@ -6699,6 +6904,7 @@ import {
     function closeStoryBanner() {
         if (!storyBannerOverlayEl || storyBannerOverlayEl.style.display !== "flex") return;
         const wasReplay = currentStoryBannerIsReplay;
+        const onClose = currentStoryBannerOnClose;
         if (currentStoryBanner) {
             if (!wasReplay) {
                 shownBannerIds.add(currentStoryBanner.id);
@@ -6707,6 +6913,7 @@ import {
             currentStoryBanner = null;
         }
         currentStoryBannerIsReplay = false;
+        currentStoryBannerOnClose = null;
         storyBannerOverlayEl.style.display = "none";
         if (!wasReplay && ascensionMapCollapsePending && !number1BlackHoleState.phase1MapCollapseSeen) {
             startAscensionMapCollapseTransition();
@@ -6715,6 +6922,7 @@ import {
         replayStoryBannerPreviousPaused = false;
         renderStoryReviewList();
         if (!wasReplay) refreshStoryArchiveSectionIfOpen();
+        if (onClose) onClose();
         if (!wasReplay) checkStoryBanners();
     }
 
@@ -7034,6 +7242,7 @@ import {
             }
             const btn = e.target.closest(".ascend-number-btn");
             if (!btn) return;
+            if (btn.disabled || btn.getAttribute("aria-disabled") === "true") return;
             const n = parseInt(btn.getAttribute("data-number"), 10);
             if (n === 1) beginNumber1AscensionFlow();
         });
@@ -7433,9 +7642,24 @@ import {
         if (pagePanelEl.dataset.openPageId !== "overview") return;
         pagePanelBodyEl.innerHTML = renderGlobalOverview();
     }
+    function patchNumber1AscendControlIfOpen() {
+        if (!pagePanelEl || pagePanelEl.style.display === "none" || !pagePanelBodyEl) return;
+        if (pagePanelEl.dataset.openPageId !== "ascension" || ascensionPageActiveNumber !== 1) return;
+        const control = pagePanelBodyEl.querySelector(".ascension-run-action");
+        if (control) control.outerHTML = renderNumber1AscendControlHtml();
+    }
     function refreshAscensionPanelIfOpen() {
         if (!pagePanelEl || pagePanelEl.style.display === "none" || !pagePanelBodyEl) return;
         if (pagePanelEl.dataset.openPageId !== "ascension") return;
+        patchNumber1AscendControlIfOpen();
+        if (ascensionPageActiveNumber === 1 && (getBlackHolePhase() === 1 || getBlackHolePhase() === 2)) {
+            const bhEl = pagePanelBodyEl.querySelector(".asc-black-hole");
+            if (bhEl && (patchBlackHolePhase1PanelLiveDom(bhEl) || patchBlackHolePhase2PanelLiveDom(bhEl))) {
+                const statsEl = document.getElementById("ascension-hub-stats");
+                if (statsEl) statsEl.innerHTML = renderAscensionHubStatsPillsHtml();
+                return;
+            }
+        }
         teardownAscensionMapPanZoom();
         pagePanelBodyEl.innerHTML = renderAscensionPageHtml();
         if (ascensionPageActiveNumber === 1 && number1HasAscended) {
@@ -7527,6 +7751,7 @@ import {
         if (!pagePanelEl || pagePanelEl.style.display === "none" || !pagePanelBodyEl) return;
         if (pagePanelEl.dataset.openPageId !== "ascension") return;
         if (ascensionPageActiveNumber !== 1) return;
+        patchNumber1AscendControlIfOpen();
         if (isBlackHoleArcUnlocked() && getBlackHolePhase() >= 1) {
             refreshBlackHolePanelLiveDomIfOpen();
             return;
@@ -8034,7 +8259,8 @@ import {
             acc += BigInt(dt) * multBig;
             const ticksBig = acc / 1000n;
             acc %= 1000n;
-            const ticksNum = ticksBig <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(ticksBig) : Number.MAX_SAFE_INTEGER;
+            const ticksFloat = Number(ticksBig);
+            const ticksNum = Number.isFinite(ticksFloat) ? ticksFloat : BLACK_HOLE_EVAPORATION_CAP;
             let targetCount = alignedCount;
             if (ticksBig > 0n) {
                 const tMod = Number(ticksBig % 10n);
@@ -8146,7 +8372,7 @@ import {
         setAmbientMessage(pick);
         recentRandomLogMessages.push(pick.text);
         if (recentRandomLogMessages.length > RECENT_RANDOM_LOG_COUNT) recentRandomLogMessages.shift();
-    }, 5000);
+    }, 20000);
 
     setTimeout(() => {
         const first = LOG_MESSAGE_ENTRIES[0];
@@ -8423,52 +8649,10 @@ import {
         if (!devBlackHolePhaseSelect) return;
         const phase = Math.max(0, Math.min(7, parseInt(devBlackHolePhaseSelect.value, 10) || 0));
         devEnsureBlackHoleUnlockedForPhase(phase);
-        number1BlackHoleState.phase = phase;
-        number1BlackHoleState.phase1EssenceSpent = phase >= 2 ? BLACK_HOLE_PHASE1_ESSENCE_TARGET : 0;
-        number1BlackHoleState.phase2CollapseMassTier = phase >= 3 ? BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER : 0;
-        number1BlackHoleState.phase2CollapsePhotonTier = phase >= 3 ? BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER : 0;
-        number1BlackHoleState.phase2CollapseErgosphereTier = phase >= 3 ? BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER : 0;
-        number1BlackHoleState.phase2Mass = phase >= 3 ? BLACK_HOLE_PHASE2_MASS_CAP : (phase === 2 ? Math.min(10, BLACK_HOLE_PHASE2_MASS_CAP) : 0);
-        number1BlackHoleState.phase2EssenceBank = 0;
-        number1BlackHoleState.phase2ParallelBonusPool = phase >= 3 ? 1.5 : (phase === 2 ? 0.25 : 0);
-        number1BlackHoleState.phase3LuminosityLevel = phase >= 4 ? 6 : (phase === 3 ? 2 : 0);
-        number1BlackHoleState.phase3ViscousLevel = phase >= 4 ? 6 : (phase === 3 ? 2 : 0);
-        number1BlackHoleState.phase3CoronalLevel = phase >= 4 ? 6 : (phase === 3 ? 2 : 0);
-        syncBlackHolePhase3LegacyLevel();
-        number1BlackHoleState.phase3EssenceBank = 0;
-        number1BlackHoleState.phase3HawkingActiveUntilMs = 0;
-        number1BlackHoleState.phase3NextHawkingAtMs = phase >= 3 && phase < 6 ? Date.now() + 6000 : 0;
-        number1BlackHoleState.phase4WaveLevel = phase >= 5 ? 6 : (phase === 4 ? 2 : 0);
-        number1BlackHoleState.phase4EssenceBank = 0;
-        number1BlackHoleState.phase4WaveTriggered = phase >= 5;
-        number1BlackHoleState.phase4WaveActiveUntilMs = 0;
-        number1BlackHoleState.phase4NextWaveAtMs = phase >= 4 && phase < 6 ? Date.now() + Math.round(getBlackHoleWaveIntervalSec() * 1000) : 0;
-        number1BlackHoleState.phase4ManualReadyAtMs = phase >= 4 && phase < 6 ? Date.now() : 0;
-        number1BlackHoleState.phase5DigestedHands = phase >= 6 ? 9 : (phase === 5 ? 0 : 0);
-        number1BlackHoleState.phase5DigestHandNumber = 0;
-        number1BlackHoleState.phase5DigestStartedAtMs = 0;
-        number1BlackHoleState.phase5DigestDurationMs = 0;
-        number1BlackHoleState.phase5DigestEndsAtMs = 0;
-        number1BlackHoleState.phase5FurnaceLevel = phase >= 6 ? 9 : 0;
-        number1BlackHoleState.phase5NextSacrificeHand = phase >= 6 ? 1 : 10;
-        number1BlackHoleState.phase5MutationHotterCore = phase >= 6 ? 3 : 0;
-        number1BlackHoleState.phase5MutationEssenceRefinery = phase >= 6 ? 3 : 0;
-        number1BlackHoleState.phase5MutationShorterOrbit = phase >= 6 ? 3 : 0;
-        number1BlackHoleState.phase5PendingMutationHand = 0;
-        number1BlackHoleState.phase5PendingMutationLevel = 0;
-        number1BlackHoleState.phase5LastDigestedHand = phase >= 6 ? 2 : 0;
-        number1BlackHoleState.phase5LastDigestCompletedAtMs = 0;
-        number1BlackHoleState.phase6JetCharge = phase >= 6 ? 500 : 0;
-        number1BlackHoleState.phase6JetActive = false;
-        number1BlackHoleState.phase6JetBoostLevel = phase >= 6 ? 1 : 0;
-        number1BlackHoleState.phase6JetEfficiencyLevel = phase >= 6 ? 1 : 0;
-        number1BlackHoleState.phase6JetBankLevel = phase >= 6 ? 1 : 0;
-        number1BlackHoleState.phase6EssenceBank = 0;
-        number1BlackHoleState.phase6JetIgnited = phase >= 7;
-        number1BlackHoleState.phase6JetBestAscensionEssence = phase >= 6 ? Math.max(1000, number1BlackHoleState.phase6JetBestAscensionEssence || 0) : 0;
-        number1BlackHoleState.phase7EpilogueCounter = phase === 7 ? 0 : number1BlackHoleState.phase7EpilogueCounter || 0;
-        number1BlackHoleState.phase7EnteredAtMs = phase === 7 ? Date.now() : 0;
-        number1BlackHoleState.evaporationComplete = phase === 7;
+        Object.assign(number1BlackHoleState, createNumber1BlackHoleDevPhasePreset(phase, {
+            currentState: number1BlackHoleState,
+            nowMs: Date.now()
+        }));
         if (phase === 0) {
             number1HasAscended = false;
             number1AscensionNodeIds = [];

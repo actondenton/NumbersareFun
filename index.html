@@ -56,9 +56,28 @@
         </div>
     </div>
 
+    <!-- Message ticker: latest gameplay messages, full scrollback remains in Message Log page -->
+    <div id="action-log" class="action-log" aria-label="Message ticker">
+        <div id="ambient-message-ticker" class="ambient-message-ticker" aria-live="polite"></div>
+        <div id="action-log-lines" class="action-log-lines" hidden></div>
+        <button type="button" id="action-log-toggle" class="action-log-toggle" hidden>Show more</button>
+    </div>
+
     <!-- Play stage: marquee count + hands (theater / Mario 3-style foreground) -->
     <main class="play-stage" id="play-stage" aria-label="Play area">
         <div id="number1-stage-root" class="number1-stage-root">
+        <div class="number1-stage-mass-bg asc-black-hole__mass-geometry" aria-hidden="true">
+            <div class="asc-black-hole__tesseract">
+                <span class="asc-black-hole__tesseract-frame asc-black-hole__tesseract-frame--outer"></span><span class="asc-black-hole__tesseract-frame asc-black-hole__tesseract-frame--mid"></span><span class="asc-black-hole__tesseract-frame asc-black-hole__tesseract-frame--inner"></span><span class="asc-black-hole__tesseract-frame asc-black-hole__tesseract-frame--core"></span>
+                <span class="asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--a"></span><span class="asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--b"></span><span class="asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--c"></span><span class="asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--d"></span><span class="asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--e"></span><span class="asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--f"></span><span class="asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--g"></span><span class="asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--h"></span><span class="asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--i"></span><span class="asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--j"></span><span class="asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--k"></span><span class="asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--l"></span>
+                <span class="asc-black-hole__tesseract-node asc-black-hole__tesseract-node--a"></span><span class="asc-black-hole__tesseract-node asc-black-hole__tesseract-node--b"></span><span class="asc-black-hole__tesseract-node asc-black-hole__tesseract-node--c"></span><span class="asc-black-hole__tesseract-node asc-black-hole__tesseract-node--d"></span><span class="asc-black-hole__tesseract-node asc-black-hole__tesseract-node--e"></span><span class="asc-black-hole__tesseract-node asc-black-hole__tesseract-node--f"></span><span class="asc-black-hole__tesseract-node asc-black-hole__tesseract-node--g"></span><span class="asc-black-hole__tesseract-node asc-black-hole__tesseract-node--h"></span>
+            </div>
+            <div class="asc-black-hole__numeral-dust"><span>1</span><span>1</span><span>1</span><span>1</span><span>1</span><span>1</span><span>1</span><span>1</span></div>
+        </div>
+        <div class="number1-stage-collapse-bg asc-black-hole__collapse-geometry" aria-hidden="true">
+            <span class="asc-black-hole__collapse-core"></span>
+            <span class="asc-black-hole__collapse-shard asc-black-hole__collapse-shard--a"></span><span class="asc-black-hole__collapse-shard asc-black-hole__collapse-shard--b"></span><span class="asc-black-hole__collapse-shard asc-black-hole__collapse-shard--c"></span><span class="asc-black-hole__collapse-shard asc-black-hole__collapse-shard--d"></span><span class="asc-black-hole__collapse-shard asc-black-hole__collapse-shard--e"></span><span class="asc-black-hole__collapse-shard asc-black-hole__collapse-shard--f"></span><span class="asc-black-hole__collapse-shard asc-black-hole__collapse-shard--g"></span><span class="asc-black-hole__collapse-shard asc-black-hole__collapse-shard--h"></span><span class="asc-black-hole__collapse-shard asc-black-hole__collapse-shard--i"></span><span class="asc-black-hole__collapse-shard asc-black-hole__collapse-shard--j"></span>
+        </div>
         <!-- Global Incremental Counter -->
         <div class="top-count-row">
             <div class="top-count-row__segment top-count-row__segment--left incremental-count-container">
@@ -281,13 +300,6 @@ After your first ascension, open Ascension to spend Essence on permanent skill b
             <div id="page-panel-body"></div>
             <button type="button" id="page-panel-close" class="page-panel-close">Close</button>
         </div>
-    </div>
-
-    <!-- Action log (bottom, expandable) -->
-    <div id="action-log" class="action-log">
-        <div id="ambient-message-ticker" class="ambient-message-ticker" aria-live="polite"></div>
-        <div id="action-log-lines" class="action-log-lines"></div>
-        <button type="button" id="action-log-toggle" class="action-log-toggle">Show more</button>
     </div>
 
     <script type="module" src="/src/main.ts"></script>
