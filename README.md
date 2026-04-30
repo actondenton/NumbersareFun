@@ -12,8 +12,6 @@ Use these files for current gameplay work:
 - `style.css` is the active stylesheet for the Vite app.
 - `ascension-tree-data.js`, `ascension2-tree-data.js`, and `number2-upgrades.js` are active gameplay data files loaded by `src/main.ts`.
 
-The `Numbers/` directory is an older prototype snapshot. Treat it as reference material unless a task explicitly says to revive or compare that prototype.
-
 ## Development
 
 ```sh
