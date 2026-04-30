@@ -8,7 +8,6 @@ import {
     BLACK_HOLE_FURNACE_ESSENCE_REFINERY_BONUS,
     BLACK_HOLE_FURNACE_HOTTER_CORE_BONUS,
     BLACK_HOLE_FURNACE_MULT_PER_POWER,
-    BLACK_HOLE_FURNACE_SHORTER_ORBIT_TRIM,
     BLACK_HOLE_MAX_LEVEL,
     BLACK_HOLE_MULT_PER_LEVEL,
     BLACK_HOLE_PHASE1_ESSENCE_TARGET,
@@ -18,7 +17,6 @@ import {
     BLACK_HOLE_PHASE4_WAVE_BOOST_MULT,
     BLACK_HOLE_SCREEN_FX_MS,
     clampBlackHolePhase as clampBlackHolePhaseRule,
-    clampBlackHolePhase2CollapseTier as clampBlackHolePhase2CollapseTierRule,
     createNumber1BlackHoleState,
     createNumber1BlackHoleUxFlags,
     createNumber1BlackHoleDevPhasePreset,
@@ -43,10 +41,8 @@ import {
     getBlackHolePhase5DigestCurve as getBlackHolePhase5DigestCurveRule,
     getBlackHolePhase5DigestProgressAt as getBlackHolePhase5DigestProgressAtRule,
     getBlackHolePhase5EffectiveFurnacePower as getBlackHolePhase5EffectiveFurnacePowerRule,
-    getBlackHolePhase5EssenceRefineryBonus as getBlackHolePhase5EssenceRefineryBonusRule,
     getBlackHolePhase5HotterCoreMult as getBlackHolePhase5HotterCoreMultRule,
     getBlackHolePhase5MutationLevel as getBlackHolePhase5MutationLevelRule,
-    getBlackHolePhase5MutationTotal as getBlackHolePhase5MutationTotalRule,
     getBlackHolePhase5ShorterOrbitMult as getBlackHolePhase5ShorterOrbitMultRule,
     getBlackHolePhase6NextJetUpgradeCostEssence as getBlackHolePhase6NextJetUpgradeCostEssenceRule,
     getBlackHolePhase6TrackCost as getBlackHolePhase6TrackCostRule,
@@ -452,62 +448,8 @@ import {
         getMinPDouble: () => typeof NUMBER2_P_DOUBLE_MIN === "number" ? NUMBER2_P_DOUBLE_MIN : 0.05,
         getMaxPDouble: () => typeof NUMBER2_P_DOUBLE_MAX === "number" ? NUMBER2_P_DOUBLE_MAX : 0.95
     });
-    function number2TotalBig() {
-        return number2.totalBig();
-    }
-    function setNumber2TotalBig(b) {
-        number2.setTotalBig(b);
-    }
-    function formatNumber2BigIntDisplay(b) {
-        return number2.formatTotalBig(b);
-    }
-    function getNumber2UpgradeLevel(id) {
-        return number2.getUpgradeLevel(id);
-    }
-    function getNumber2UpgradeDef(id) {
-        return number2.getUpgradeDef(id);
-    }
-    function getNumber2UpgradeCost(u, level) {
-        return number2.getUpgradeCost(u, level);
-    }
-    function getPlayingFairTokenMultiplier() {
-        return number2.getPlayingFairTokenMultiplier();
-    }
-    function addNumber2Tokens(kind, rawAmount, opts) {
-        return number2.addTokens(kind, rawAmount, opts);
-    }
-    function hasNumber2ChanceModByUpgrade(id) {
-        return number2.hasChanceModByUpgrade(id);
-    }
-    function isNumber2UpgradeToggleEnabled(id) {
-        return number2.isUpgradeToggleEnabled(id);
-    }
-    function setExclusiveNumber2Toggle(activeId, on) {
-        number2.setExclusiveToggle(activeId, on);
-    }
-    function areNumber2ChanceModsEnabled() {
-        return number2.areChanceModsEnabled();
-    }
-    function getNumber2Asc2Totals() {
-        return number2.getAsc2Totals();
-    }
-    function getNumber2EffectivePDouble() {
-        return number2.getEffectivePDouble();
-    }
-    function getNumber2LuckPerNothing() {
-        return number2.getLuckPerNothing();
-    }
-    function getNumber2ActiveRollsPerSec() {
-        return number2.getActiveRollsPerSec();
-    }
     function isNumber2Unlocked() {
         return unlockedNumbers.has(2);
-    }
-    function canTickNumber2() {
-        return number2.canTick();
-    }
-    function resetNumber2Progress() {
-        number2.reset();
     }
     function reconcileNumber2LockState() {
         number2.reconcileLockState();
@@ -535,7 +477,7 @@ import {
             n1.style.display = "none";
             n2.style.display = "flex";
             n2.setAttribute("aria-hidden", "false");
-            updateNumber2StageUI();
+            number2.updateStageUI();
         } else {
             n1.style.display = "";
             n2.style.display = "none";
@@ -543,21 +485,6 @@ import {
             syncBlackHolePhase1Vfx();
             updateN1GravityCpsStrip();
         }
-    }
-    function resolveNumber2Roll() {
-        return number2.resolveRoll();
-    }
-    function applyNumber2RollOutcome(res, opts) {
-        number2.applyRollOutcome(res, opts);
-    }
-    function commitNumber2Roll(opts) {
-        number2.commitRoll(opts);
-    }
-    function tickNumber2Background(dtSec) {
-        number2.tickBackground(dtSec);
-    }
-    function runNumber2GameLoopStep(dtSec) {
-        number2.runGameLoopStep(dtSec);
     }
     /**
      * Number 1 CPS gain while the stage is not ticking every hand (focused on Number 2, or large offline windows).
@@ -587,9 +514,6 @@ import {
     function tickNumber1BackgroundCps(dtSec) {
         applyNumber1DetachedCpsProgress(dtSec);
         if (incrementalEl) incrementalEl.textContent = formatCount(totalChanges);
-    }
-    function updateNumber2StageUI() {
-        number2.updateStageUI();
     }
     window.onBeforeNumberModeSwitch = function() {
         closeInlineMainStagePanels();
@@ -1291,9 +1215,6 @@ import {
         if (Math.floor(Number(number1BlackHoleState.phase6EssenceBank) || 0) > 0) return true;
         return false;
     }
-    function clampBlackHolePhase2CollapseTier(n) {
-        return clampBlackHolePhase2CollapseTierRule(n);
-    }
     function getBlackHolePhase2CollapseMassTier() {
         return getBlackHolePhase2CollapseMassTierRule(number1BlackHoleState);
     }
@@ -1424,14 +1345,8 @@ import {
     function getBlackHolePhase5MutationLevel(kind) {
         return getBlackHolePhase5MutationLevelRule(number1BlackHoleState, kind);
     }
-    function getBlackHolePhase5MutationTotal() {
-        return getBlackHolePhase5MutationTotalRule(number1BlackHoleState);
-    }
     function getBlackHolePhase5HotterCoreMult() {
         return getBlackHolePhase5HotterCoreMultRule(number1BlackHoleState);
-    }
-    function getBlackHolePhase5EssenceRefineryBonus() {
-        return getBlackHolePhase5EssenceRefineryBonusRule(number1BlackHoleState);
     }
     function getBlackHolePhase5ShorterOrbitMult() {
         return getBlackHolePhase5ShorterOrbitMultRule(number1BlackHoleState);
@@ -1516,7 +1431,6 @@ import {
         return getBlackHoleTotalMult();
     }
     let blackHoleUiRefreshQueued = false;
-    let blackHolePhase1VfxActive = false;
     let blackHolePhase1CollapsePulseQueued = false;
     let blackHolePhase1SurgeTimerId = 0;
     let blackHoleLensingManualBurstTimerId = 0;
@@ -1701,7 +1615,6 @@ import {
         if (incrementalCountLabelEl) {
             incrementalCountLabelEl.textContent = p === 7 ? "Epilogue Count" : "Total Count";
         }
-        blackHolePhase1VfxActive = massMood;
         if (!massMood) {
             if (blackHolePhase1SurgeTimerId) {
                 clearTimeout(blackHolePhase1SurgeTimerId);
@@ -4200,18 +4113,6 @@ import {
             "</section>"
         );
     }
-    function renderAscensionNumber2ShellHtml() {
-        return number2.renderAscensionShell();
-    }
-    function tryBuyNumber2Upgrade(id) {
-        number2.tryBuyUpgrade(id);
-    }
-    function tryActivateNumber2UpgradeAction(actionId) {
-        number2.tryActivateUpgradeAction(actionId);
-    }
-    function tryBuyAscension2Node(nid) {
-        number2.tryBuyAscensionNode(nid);
-    }
     function renderAscensionPageHtml() {
         if (ascensionPageActiveNumber === 2 && !isNumber2Unlocked()) ascensionPageActiveNumber = 1;
         const n = ascensionPageActiveNumber;
@@ -4226,12 +4127,9 @@ import {
         }
         let body = "";
         if (n === 1) body = renderNumber1AscendControlHtml() + renderAscensionUpgradesHtml();
-        else if (n === 2 && tab2) body = renderAscensionNumber2ShellHtml();
+        else if (n === 2 && tab2) body = number2.renderAscensionShell();
         else body = renderAscensionUpgradesHtml();
         return "<div class=\"ascension-page\">" + tabsHtml + "<div class=\"ascension-page-body\">" + body + "</div></div>";
-    }
-    function getNumber2Milestone() {
-        return number2.getMilestone();
     }
     const NUMBER_MODULES = {
         1: createNumberModule({
@@ -7387,11 +7285,7 @@ import {
                 syncInlinePanelsVsGameplay();
             }
         };
-        if (typeof playCurtainAnimation === "function") {
-            playCurtainAnimation(applyToggle);
-        } else {
-            applyToggle();
-        }
+        applyToggle();
     });
     if (settingsCloseBtn) settingsCloseBtn.addEventListener("click", () => {
         if (settingsPanelEl) settingsPanelEl.style.display = "none";
@@ -7431,11 +7325,7 @@ import {
     pageButtons.forEach(btn => {
         btn.addEventListener("click", () => {
             const pageId = btn.getAttribute("data-page");
-            if (typeof playCurtainAnimation === "function") {
-                playCurtainAnimation(() => showPagePanel(pageId));
-            } else {
-                showPagePanel(pageId);
-            }
+            showPagePanel(pageId);
         });
     });
     if (pagePanelCloseBtn) pagePanelCloseBtn.addEventListener("click", () => {
@@ -7558,7 +7448,7 @@ import {
             if (asc2Buy && pagePanelEl.dataset.openPageId === "ascension" && ascensionPageActiveNumber === 2 && pagePanelBodyEl) {
                 e.preventDefault();
                 const nid = asc2Buy.getAttribute("data-asc2-buy");
-                tryBuyAscension2Node(nid);
+                number2.tryBuyAscensionNode(nid);
                 return;
             }
             const ascBhBuy = e.target.closest("[data-asc-black-hole-buy]");
@@ -7622,18 +7512,14 @@ import {
             const openAsc = e.target.closest("[data-open-ascension]");
             if (openAsc) {
                 e.preventDefault();
-                const openAscPanel = () => showPagePanel("ascension");
-                if (typeof playCurtainAnimation === "function") playCurtainAnimation(openAscPanel);
-                else openAscPanel();
+                showPagePanel("ascension");
                 return;
             }
             const openAscN2 = e.target.closest("[data-open-ascension-n2]");
             if (openAscN2) {
                 e.preventDefault();
                 ascensionPageActiveNumber = 2;
-                const openAscPanel = () => showPagePanel("ascension");
-                if (typeof playCurtainAnimation === "function") playCurtainAnimation(openAscPanel);
-                else openAscPanel();
+                showPagePanel("ascension");
                 return;
             }
             const ascMapViewport = e.target.closest("#ascension-map-viewport");
@@ -8685,7 +8571,7 @@ import {
         syncBlackHolePhase1Vfx();
         const mode = typeof window.getCurrentNumberMode === "function" ? window.getCurrentNumberMode() : 1;
         if (mode === 2 && isNumber2Unlocked() && number2State.started) {
-            runNumber2GameLoopStep(dtSec);
+            number2.runGameLoopStep(dtSec);
             return;
         }
         if (getBlackHolePhase() === 7) {
@@ -9081,8 +8967,19 @@ import {
     const devBlackHolePhaseSelect = document.getElementById("dev-black-hole-phase-select");
     const devBlackHolePhaseApplyBtn = document.getElementById("dev-black-hole-phase-apply");
     const devPauseGameCheckbox = document.getElementById("dev-pause-game");
+    const devN1StageBgStaticCheckbox = document.getElementById("dev-n1-stage-bg-static");
 
-    const devToolsLoadTime = Date.now();
+    const DEV_SESSION_N1_STAGE_BG_STATIC = "numbersarefun_dev_n1_stage_bg_static";
+
+    function applyDevN1StageBackgroundMotionStatic(off) {
+        if (off) document.documentElement.setAttribute("data-dev-n1-stage-bg-motion", "off");
+        else document.documentElement.removeAttribute("data-dev-n1-stage-bg-motion");
+    }
+    function syncDevN1StageBackgroundMotionFromSession() {
+        const off = sessionStorage.getItem(DEV_SESSION_N1_STAGE_BG_STATIC) === "1";
+        applyDevN1StageBackgroundMotionStatic(off);
+        if (devN1StageBgStaticCheckbox) devN1StageBgStaticCheckbox.checked = off;
+    }
     let devSecondsInterval = null;
 
     function updateDevSeconds() {
@@ -9191,6 +9088,7 @@ import {
                 updateDevSeconds();
                 updateDevBlackHolePhaseSelect();
                 if (devPauseGameCheckbox) devPauseGameCheckbox.checked = devFreezeGame;
+                syncDevN1StageBackgroundMotionFromSession();
                 if (!devSecondsInterval) devSecondsInterval = setInterval(updateDevSeconds, 100);
             } else {
                 if (devSecondsInterval) clearInterval(devSecondsInterval);
@@ -9206,6 +9104,16 @@ import {
             devFreezeGame = !!devPauseGameCheckbox.checked;
         });
     }
+    if (devN1StageBgStaticCheckbox) {
+        devN1StageBgStaticCheckbox.addEventListener("change", () => {
+            const off = !!devN1StageBgStaticCheckbox.checked;
+            try {
+                sessionStorage.setItem(DEV_SESSION_N1_STAGE_BG_STATIC, off ? "1" : "0");
+            } catch (_) {}
+            applyDevN1StageBackgroundMotionStatic(off);
+        });
+    }
+    syncDevN1StageBackgroundMotionFromSession();
 
     if (devAllAutobuyCheckbox) {
         devAllAutobuyCheckbox.addEventListener("change", () => {
