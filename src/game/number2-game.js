@@ -47,7 +47,7 @@ export function createNumber2Controller(state, deps) {
     const formatCount = d.formatCount || (n => String(n));
     const addToLog = d.addToLog || function () {};
     const autosaveNow = d.autosaveNow || function () {};
-    const refreshOverviewAndAscensionPanelsIfOpen = d.refreshOverviewAndAscensionPanelsIfOpen || function () {};
+    const refreshOverviewAndAscensionHubLiveIfOpen = d.refreshOverviewAndAscensionHubLiveIfOpen || d.refreshOverviewAndAscensionPanelsIfOpen || function () {};
     const refreshGlobalOverviewPanelIfOpen = d.refreshGlobalOverviewPanelIfOpen || function () {};
     const renderAscensionPageHtml = d.renderAscensionPageHtml || function () { return ""; };
     const getPagePanelBodyEl = d.getPagePanelBodyEl || function () { return null; };
@@ -178,7 +178,7 @@ export function createNumber2Controller(state, deps) {
         if (mode !== 2 || !isUnlocked() || state.started) return false;
         state.started = true;
         addToLog("Number 2 — Double or Nothing is live. Rolls run faster here; slower in the background on Number 1.", "milestone");
-        refreshOverviewAndAscensionPanelsIfOpen();
+        refreshOverviewAndAscensionHubLiveIfOpen();
         autosaveNow();
         return true;
     }
@@ -263,8 +263,8 @@ export function createNumber2Controller(state, deps) {
         const res = resolveRoll();
         applyRollOutcome(res, opts);
         if (!opts || !opts.skipAutosave) autosaveNow();
-        updateStageUI();
-        if (!opts || !opts.silent) refreshOverviewAndAscensionPanelsIfOpen();
+        if (!(opts && opts.skipStageUI)) updateStageUI();
+        if (!opts || !opts.silent) refreshOverviewAndAscensionHubLiveIfOpen();
     }
     const maxRollsPerStep = 400;
     function tickBackground(dtSec) {
@@ -276,9 +276,12 @@ export function createNumber2Controller(state, deps) {
         while (state.bgTickCarry >= 1 && guard < maxRollsPerStep) {
             state.bgTickCarry -= 1;
             guard++;
-            commitRoll({ silent: true, skipAutosave: true });
+            commitRoll({ silent: true, skipAutosave: true, skipStageUI: true });
         }
-        if (guard > 0) refreshOverviewAndAscensionPanelsIfOpen();
+        if (guard > 0) {
+            updateStageUI();
+            refreshOverviewAndAscensionHubLiveIfOpen();
+        }
     }
     function runGameLoopStep(dtSec) {
         if (!canTick()) return;
@@ -288,7 +291,7 @@ export function createNumber2Controller(state, deps) {
         while (state.autoTickCarry >= 1 && guard < maxRollsPerStep) {
             state.autoTickCarry -= 1;
             guard++;
-            commitRoll({ silent: true, skipAutosave: true });
+            commitRoll({ silent: true, skipAutosave: true, skipStageUI: true });
         }
         if (state.autoTickCarry > 0) {
             const now = Date.now();
@@ -300,7 +303,7 @@ export function createNumber2Controller(state, deps) {
         }
         if (guard > 0) {
             updateStageUI();
-            refreshOverviewAndAscensionPanelsIfOpen();
+            refreshOverviewAndAscensionHubLiveIfOpen();
         }
     }
     function tokenBadgeHtml(kind, amount) {
@@ -479,7 +482,7 @@ export function createNumber2Controller(state, deps) {
         addToLog("Number 2 upgrade: " + u.name + " → level " + (L + 1) + ".", "milestone");
         updateStageUI();
         autosaveNow();
-        refreshOverviewAndAscensionPanelsIfOpen();
+        refreshOverviewAndAscensionHubLiveIfOpen();
     }
     function tryActivateUpgradeAction(actionId) {
         const now = Date.now();

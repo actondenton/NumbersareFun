@@ -63,6 +63,9 @@ import {
     createNumber2State
 } from "./number2-game.js";
 
+    /** Stoke won't compress digestion below ~this much remaining time (~8s, within typical 5–10s UX buffer). */
+    const BLACK_HOLE_PHASE5_STOKE_MIN_REMAINING_MS = 8000;
+
     /* ---------------------------------------------------------
        ASCII HANDS (1–10)
     --------------------------------------------------------- */
@@ -437,6 +440,7 @@ import {
         addToLog,
         autosaveNow,
         refreshOverviewAndAscensionPanelsIfOpen,
+        refreshOverviewAndAscensionHubLiveIfOpen,
         refreshGlobalOverviewPanelIfOpen,
         renderAscensionPageHtml,
         getPagePanelBodyEl: () => pagePanelBodyEl,
@@ -555,21 +559,33 @@ import {
     function runNumber2GameLoopStep(dtSec) {
         number2.runGameLoopStep(dtSec);
     }
-    function tickNumber1BackgroundCps(dtSec) {
-        if (!(dtSec > 0)) return;
+    /**
+     * Number 1 CPS gain while the stage is not ticking every hand (focused on Number 2, or large offline windows).
+     * Same stack as {@link applyOfflineProgress}: raw CPS × combo × turbo × offline-averaged black-hole mult
+     * (Hawking/wave boosts time-averaged, not the live burst mult from {@link getNumber1BlackHoleProductionMult}).
+     * Phase 7 epilogue: no hand CPS accrual — the epilogue counter advances only in the black-hole phase step.
+     * @returns {number} Count integrated for this slice (after rounding)
+     */
+    function applyNumber1DetachedCpsProgress(dtSec) {
+        if (!(dtSec > 0)) return 0;
+        if (getBlackHolePhase() === 7) return 0;
+        const offlineBhMult = getBlackHoleOfflineProductionMult(dtSec);
         const cpsPerHand = getRawCpsPerHand();
         const rawCps = cpsPerHand.reduce((a, b) => a + b, 0);
-        if (rawCps <= 0) return;
+        if (rawCps <= 0) return 0;
         const comboMult = getComboMultiplier();
         const turboMult = getTurboCountMultiplier();
-        const bhMult = getNumber1BlackHoleProductionMult();
-        const gained = Math.round(dtSec * rawCps * comboMult * turboMult * bhMult);
+        const gained = Math.round(dtSec * rawCps * comboMult * turboMult * offlineBhMult);
         const totalWeight = cpsPerHand.reduce((a, b) => a + b, 0) || 1;
         for (let i = 0; i < unlockedHands; i++) {
             const weight = cpsPerHand[i] || 0;
             handEarnings[i] = (handEarnings[i] || 0) + Math.round((weight / totalWeight) * gained);
         }
         refreshTotalFromHandEarnings();
+        return gained;
+    }
+    function tickNumber1BackgroundCps(dtSec) {
+        applyNumber1DetachedCpsProgress(dtSec);
         if (incrementalEl) incrementalEl.textContent = formatCount(totalChanges);
     }
     function updateNumber2StageUI() {
@@ -1503,6 +1519,10 @@ import {
     let blackHolePhase1VfxActive = false;
     let blackHolePhase1CollapsePulseQueued = false;
     let blackHolePhase1SurgeTimerId = 0;
+    let blackHoleLensingManualBurstTimerId = 0;
+    let blackHoleLensingAutoTickTimerId = 0;
+    let blackHoleLensRippleCssLastMs = 0;
+    let blackHoleLensRippleLastIv = 0;
     function queueBlackHoleUiRefresh() {
         if (blackHoleUiRefreshQueued) return;
         blackHoleUiRefreshQueued = true;
@@ -1510,6 +1530,162 @@ import {
             blackHoleUiRefreshQueued = false;
             refreshGlobalOverviewPanelIfOpen();
             refreshBlackHolePanelLiveDomIfOpen();
+        });
+    }
+    function syncBlackHolePhase4LensingRipples() {
+        if (!number1StageRootEl) return;
+        const arc = isBlackHoleArcUnlocked();
+        const p = getBlackHolePhase();
+        const lensOn = arc && p >= 4 && p < 6;
+        number1StageRootEl.classList.toggle("bh-phase4-lensing-cadence", lensOn);
+        if (!lensOn) {
+            number1StageRootEl.style.removeProperty("--bh-lens-period");
+            number1StageRootEl.style.removeProperty("--bh-lens-ripple-delay");
+            blackHoleLensRippleCssLastMs = 0;
+            blackHoleLensRippleLastIv = 0;
+            if (blackHoleLensingManualBurstTimerId) {
+                clearTimeout(blackHoleLensingManualBurstTimerId);
+                blackHoleLensingManualBurstTimerId = 0;
+            }
+            if (blackHoleLensingAutoTickTimerId) {
+                clearTimeout(blackHoleLensingAutoTickTimerId);
+                blackHoleLensingAutoTickTimerId = 0;
+            }
+            number1StageRootEl.classList.remove("bh-phase4-lensing-manual-burst", "bh-phase4-lensing-auto-tick");
+        }
+    }
+    function pulseBlackHoleLensingManualBurst() {
+        if (!number1StageRootEl) return;
+        if (blackHoleLensingManualBurstTimerId) {
+            clearTimeout(blackHoleLensingManualBurstTimerId);
+            blackHoleLensingManualBurstTimerId = 0;
+        }
+        number1StageRootEl.classList.remove("bh-phase4-lensing-manual-burst");
+        void number1StageRootEl.offsetWidth;
+        number1StageRootEl.classList.add("bh-phase4-lensing-manual-burst");
+        blackHoleLensingManualBurstTimerId = setTimeout(function () {
+            blackHoleLensingManualBurstTimerId = 0;
+            if (number1StageRootEl) number1StageRootEl.classList.remove("bh-phase4-lensing-manual-burst");
+        }, 720);
+    }
+    function pulseBlackHoleLensingAutoTick() {
+        if (!number1StageRootEl) return;
+        if (blackHoleLensingAutoTickTimerId) clearTimeout(blackHoleLensingAutoTickTimerId);
+        number1StageRootEl.classList.remove("bh-phase4-lensing-auto-tick");
+        void number1StageRootEl.offsetWidth;
+        number1StageRootEl.classList.add("bh-phase4-lensing-auto-tick");
+        blackHoleLensingAutoTickTimerId = setTimeout(function () {
+            blackHoleLensingAutoTickTimerId = 0;
+            if (number1StageRootEl) number1StageRootEl.classList.remove("bh-phase4-lensing-auto-tick");
+        }, 480);
+    }
+    const PHASE5_THERMAL_PROP_KEYS = ["--bh-phase5-prime", "--bh-phase5-cool", "--bh-phase5-furnace", "--bh-phase5-wash-mid"];
+    function phase5ThermalClearCustomProps(el) {
+        if (!el || !el.style) return;
+        PHASE5_THERMAL_PROP_KEYS.forEach(function (k) {
+            el.style.removeProperty(k);
+        });
+    }
+    function clamp01(v) {
+        return Math.max(0, Math.min(1, Number(v)));
+    }
+    function lerpRgb(c0, c1, t0) {
+        const t = clamp01(t0);
+        return [
+            Math.round(Math.max(0, Math.min(255, c0[0] + (c1[0] - c0[0]) * t))),
+            Math.round(Math.max(0, Math.min(255, c0[1] + (c1[1] - c0[1]) * t))),
+            Math.round(Math.max(0, Math.min(255, c0[2] + (c1[2] - c0[2]) * t))),
+        ];
+    }
+    /** r,g,b for rgba(..., alpha) shorthand */
+    function rgbTripleVar(rgb) {
+        return rgb[0] + "," + rgb[1] + "," + rgb[2];
+    }
+    /**
+     * 9 digest acts in three bands: hands 1–3 magnetic→red, 4–6 deep red hot, 7–9 white-hot.
+     * heatUnified is 0..1 (fractional digest progress included).
+     */
+    function getBlackHolePhase5DigestThermalPalette(heatUnified) {
+        const hueRaw = clamp01(heatUnified) * 9;
+        const capped = Math.min(9, hueRaw);
+        const segIdx = Math.min(2, Math.floor(capped / 3));
+        let u = (capped - segIdx * 3) / 3;
+        u = clamp01(u);
+        u *= u * (3 - 2 * u);
+        const magPrime = [185, 118, 246];
+        const tealCool = [92, 210, 255];
+        const redPrime = [236, 64, 108];
+        const coralCool = [255, 110, 86];
+        const deepPrime = [255, 32, 24];
+        const coalsCool = [255, 66, 44];
+        const whitePrime = [255, 253, 248];
+        const ivoryCool = [255, 244, 220];
+        const furnaceA = [255, 92, 112];
+        const furnaceB = [255, 54, 48];
+        const furnaceC = [255, 22, 16];
+        const furnaceD = [255, 248, 232];
+        const washA = [56, 18, 98];
+        const washB = [98, 24, 86];
+        const washC = [154, 20, 32];
+        const washD = [112, 86, 98];
+        let primeRgb;
+        let coolRgb;
+        let furnaceRgb;
+        let washRgb;
+        if (segIdx === 0) {
+            primeRgb = lerpRgb(magPrime, redPrime, u);
+            coolRgb = lerpRgb(tealCool, coralCool, u);
+            furnaceRgb = lerpRgb(furnaceA, furnaceB, u);
+            washRgb = lerpRgb(washA, washB, u);
+        } else if (segIdx === 1) {
+            primeRgb = lerpRgb(redPrime, deepPrime, u);
+            coolRgb = lerpRgb(coralCool, coalsCool, u);
+            furnaceRgb = lerpRgb(furnaceB, furnaceC, u);
+            washRgb = lerpRgb(washB, washC, u);
+        } else {
+            primeRgb = lerpRgb(deepPrime, whitePrime, u);
+            coolRgb = lerpRgb(coalsCool, ivoryCool, u);
+            furnaceRgb = lerpRgb(furnaceC, furnaceD, u);
+            washRgb = lerpRgb(washC, washD, u);
+        }
+        return {
+            prime: rgbTripleVar(primeRgb),
+            cool: rgbTripleVar(coolRgb),
+            furnace: rgbTripleVar(furnaceRgb),
+            washMid: rgbTripleVar(washRgb),
+        };
+    }
+    function computePhase5DigestHeatUnified(nowMs) {
+        let digested = Math.max(0, Math.floor(Number(number1BlackHoleState.phase5DigestedHands) || 0));
+        digested = Math.min(9, digested);
+        if (digested >= 9) return 9;
+        const end = Number(number1BlackHoleState.phase5DigestEndsAtMs) || 0;
+        const start = Number(number1BlackHoleState.phase5DigestStartedAtMs) || 0;
+        const handNum = Math.floor(Number(number1BlackHoleState.phase5DigestHandNumber) || 0);
+        let frac = 0;
+        if (end > nowMs && handNum > 0 && end > start) {
+            frac = (nowMs - start) / (end - start);
+            frac = clamp01(frac);
+            frac *= frac * (3 - 2 * frac);
+        }
+        return Math.min(9, digested + frac);
+    }
+    /** Play stage colour ramp (per digest + slow in-digest ease); drives --bh-phase5-* on stage + inner root */
+    function syncBlackHolePhase5ThermalTheme(nowMs) {
+        const els = [number1StageRootEl, playStageEl].filter(Boolean);
+        const arc = isBlackHoleArcUnlocked();
+        const p = getBlackHolePhase();
+        if (!(arc && p === 5)) {
+            els.forEach(phase5ThermalClearCustomProps);
+            return;
+        }
+        const heatUnified = clamp01(computePhase5DigestHeatUnified(nowMs) / 9);
+        const pal = getBlackHolePhase5DigestThermalPalette(heatUnified);
+        els.forEach(function (el) {
+            el.style.setProperty("--bh-phase5-prime", pal.prime);
+            el.style.setProperty("--bh-phase5-cool", pal.cool);
+            el.style.setProperty("--bh-phase5-furnace", pal.furnace);
+            el.style.setProperty("--bh-phase5-wash-mid", pal.washMid);
         });
     }
     function syncBlackHolePhase1Vfx() {
@@ -1537,8 +1713,10 @@ import {
         number1StageRootEl.classList.toggle("bh-phase2-collapse-vfx", collapseMood);
         number1StageRootEl.classList.toggle("bh-singularity-vfx", singularityMood);
         number1StageRootEl.classList.toggle("bh-singularity-deep", singularityMood);
+        number1StageRootEl.classList.toggle("bh-phase3-accretion-disk", arc && p === 3);
         number1StageRootEl.classList.toggle("bh-phase3-hawking-active", hawkingActive);
         number1StageRootEl.classList.toggle("bh-phase4-wave-active", waveActive);
+        number1StageRootEl.classList.toggle("bh-phase5-magnetic-furnace", arc && p === 5);
         number1StageRootEl.classList.toggle("bh-phase6-jet-beam", arc && p === 6);
         number1StageRootEl.classList.toggle("bh-phase6-jet-active", arc && p === 6 && !!number1BlackHoleState.phase6JetActive);
         number1StageRootEl.classList.toggle("bh-phase7-stillness", arc && p === 7);
@@ -1558,6 +1736,8 @@ import {
             }
             autosaveNow();
         }
+        syncBlackHolePhase4LensingRipples();
+        syncBlackHolePhase5ThermalTheme(now);
     }
     function triggerBlackHolePhase1CollapseVfx() {
         if (!number1StageRootEl || blackHolePhase1CollapsePulseQueued) return;
@@ -1622,17 +1802,69 @@ import {
         });
         return true;
     }
+    let patchBlackHolePhase3LastDataKey = "";
+    function patchBlackHolePhase3PanelLiveDom(bhEl) {
+        if (!bhEl) return false;
+        const phase = getBlackHolePhase();
+        if (phase !== 3 || !bhEl.classList.contains("asc-black-hole--phase3")) return false;
+        if (!bhEl.querySelector(".asc-black-hole__disk-hero")) return false;
+        const lum = getBlackHolePhase3TrackLevel("luminosity");
+        const vis = getBlackHolePhase3TrackLevel("viscous");
+        const cor = getBlackHolePhase3TrackLevel("coronal");
+        const have = Math.max(0, Math.floor(Number(number1AscensionEssence) || 0));
+        const mult = getNumber1BlackHoleProductionMult();
+        const multStr = mult >= 10 ? mult.toFixed(2) : mult.toFixed(3);
+        const dataKey = lum + "|" + vis + "|" + cor + "|" + have + "|" + multStr;
+        if (dataKey === patchBlackHolePhase3LastDataKey) return true;
+        patchBlackHolePhase3LastDataKey = dataKey;
+        const statsBlocks = Array.from(bhEl.querySelectorAll(".asc-black-hole__stats"));
+        const multStat = statsBlocks.find(el => el.textContent.indexOf("Current total BH mult") >= 0);
+        if (multStat) {
+            multStat.innerHTML = "Current total BH mult: <strong>×" + multStr + "</strong>";
+        }
+        const phaseStat = bhEl.querySelector("[data-asc-bh-disk-phase-stats]");
+        if (phaseStat) {
+            phaseStat.innerHTML = "Phase: <strong>3</strong> · Luminosity: <strong>" + lum + "</strong> · Viscous: <strong>" + vis + "</strong> · Coronal: <strong>" + cor + "</strong>";
+        }
+        const purse = bhEl.querySelector("[data-asc-bh-disk-purse]");
+        if (purse) purse.innerHTML = "You hold <strong>" + formatCount(have) + "</strong> Ascension Essence.";
+        const patchP3Row = function (track, tier) {
+            const row = bhEl.querySelector(".asc-black-hole__disk-row--" + track);
+            if (!row) return;
+            const cost = getBlackHolePhase3TrackCost(track);
+            const maxed = tier >= 6;
+            const canBuy = !maxed && have >= cost && cost > 0;
+            const tierStrong = row.querySelector(".asc-black-hole__p2-tier strong");
+            if (tierStrong) tierStrong.textContent = maxed ? "max" : (tier + "/6");
+            const pipsWrap = row.querySelector(".asc-black-hole__disk-pips");
+            if (pipsWrap) pipsWrap.setAttribute("aria-label", tier + " of 6 tiers lit");
+            const pips = row.querySelectorAll(".asc-black-hole__disk-pip");
+            for (let idx = 0; idx < pips.length; idx++) {
+                const i = idx + 1;
+                if (i <= tier) pips[idx].classList.add("asc-black-hole__disk-pip--lit");
+                else pips[idx].classList.remove("asc-black-hole__disk-pip--lit");
+            }
+            const btn = row.querySelector("[data-asc-black-hole-p3]");
+            if (btn) {
+                btn.disabled = !canBuy;
+                btn.textContent = maxed ? "Maxed" : ("Buy (" + formatCount(cost) + ")");
+            }
+        };
+        patchP3Row("luminosity", lum);
+        patchP3Row("viscous", vis);
+        patchP3Row("coronal", cor);
+        return true;
+    }
     function refreshBlackHolePanelLiveDomIfOpen() {
         if (!pagePanelEl || pagePanelEl.style.display === "none" || !pagePanelBodyEl) return;
         if (pagePanelEl.dataset.openPageId !== "ascension" || ascensionPageActiveNumber !== 1) return;
         const bhEl = pagePanelBodyEl.querySelector(".asc-black-hole");
         if (bhEl) {
-            if (!patchBlackHolePhase1PanelLiveDom(bhEl) && !patchBlackHolePhase2PanelLiveDom(bhEl)) bhEl.outerHTML = renderNumber1BlackHolePanelHtml();
+            if (!patchBlackHolePhase1PanelLiveDom(bhEl) && !patchBlackHolePhase2PanelLiveDom(bhEl) && !patchBlackHolePhase3PanelLiveDom(bhEl)) bhEl.outerHTML = renderNumber1BlackHolePanelHtml();
         } else {
             refreshAscensionPanelIfOpen();
         }
-        const statsEl = document.getElementById("ascension-hub-stats");
-        if (statsEl) statsEl.innerHTML = renderAscensionHubStatsPillsHtml();
+        patchAscensionHubStatsPillsDomIfChanged();
     }
     function completeBlackHolePhaseTransition(nextPhase, message) {
         const from = getBlackHolePhase();
@@ -1927,7 +2159,17 @@ import {
                 addToLog("Phase 5 has no active digest to accelerate.", "warning");
                 return;
             }
-            number1AscensionEssence -= have;
+            const spent = Math.max(0, Math.floor(Number(preview.spentEssence) || 0));
+            if (spent < 1) {
+                addToLog(
+                    "Digestion is already inside the furnace buffer (~" +
+                        Math.ceil(BLACK_HOLE_PHASE5_STOKE_MIN_REMAINING_MS / 1000) +
+                        "s or less remaining); Essence wasn't spent.",
+                    "warning"
+                );
+                return;
+            }
+            number1AscensionEssence -= spent;
             const digestEndMs = preview.digestEndMs;
             number1BlackHoleState.phase5DigestEndsAtMs = digestEndMs;
             number1BlackHoleState.phase5DigestStartedAtMs = preview.start;
@@ -1935,7 +2177,19 @@ import {
             const leftSec = Math.max(0, Math.ceil(preview.projectedRemainingMs / 1000));
             const removedSec = Math.max(0, Math.floor(preview.removedMs / 1000));
             const pct = Math.floor(getBlackHolePhase5DigestProgress() * 100);
-            addToLog("Furnace: poured " + formatCount(have) + " Essence into digestion (" + formatSeconds(removedSec) + " removed, " + pct + "% digested, ~" + formatSeconds(leftSec) + " remaining).", "tip");
+            let msg =
+                "Furnace: spent " +
+                formatCount(spent) +
+                " Essence (" +
+                formatSeconds(removedSec) +
+                " removed, " +
+                pct +
+                "% digested, ~" +
+                formatSeconds(leftSec) +
+                " remaining).";
+            if (spent < have)
+                msg += " (" + formatCount(have - spent) + " Essence untouched — digestion only needed up to ~" + formatSeconds(Math.ceil(BLACK_HOLE_PHASE5_STOKE_MIN_REMAINING_MS / 1000)) + " left.)";
+            addToLog(msg, "tip");
         } else if (phase === 6) {
             const have = Math.max(0, Math.floor(Number(number1AscensionEssence) || 0));
             if (have < 1) {
@@ -1978,6 +2232,7 @@ import {
         number1BlackHoleState.phase4WaveTriggered = true;
         playBlackHoleScreenEffect("wave");
         syncBlackHolePhase1Vfx();
+        pulseBlackHoleLensingManualBurst();
         addToLog("Manual Gravitational Wave fired (100x for 5s).", "milestone");
     }
     function getBlackHoleNextDigestDurationMs() {
@@ -1985,12 +2240,36 @@ import {
     }
     function getBlackHolePhase5StokePreview(spendEssence, nowMs) {
         const now = Number(nowMs) || Date.now();
-        const spend = Math.max(0, Math.floor(Number(spendEssence) || 0));
+        const spendBudget = Math.max(0, Math.floor(Number(spendEssence) || 0));
         const digestEnd = Number(number1BlackHoleState.phase5DigestEndsAtMs) || 0;
-        if (spend <= 0 || !(digestEnd > now) || !(number1BlackHoleState.phase5DigestHandNumber > 0)) return null;
-        const cost = Math.max(25, Math.floor(50 + 20 * (number1BlackHoleState.phase5FurnaceLevel || 0)));
+        if (!(digestEnd > now) || !(number1BlackHoleState.phase5DigestHandNumber > 0)) return null;
+        if (spendBudget < 0) return null;
+
         const oldDuration = getBlackHolePhase5DigestDurationMsSafe();
+        const duration = oldDuration;
+
+        /** spendBudget 0 ⇒ current progress without spending (for HUD / clamps). */
+        if (spendBudget === 0) {
+            const start0 = digestEnd - duration;
+            const progress0 = Math.max(0, Math.min(1, duration > 0 ? (now - start0) / duration : 0));
+            return {
+                start: start0,
+                digestEndMs: digestEnd,
+                duration,
+                currentRemainingMs: Math.max(0, digestEnd - now),
+                projectedRemainingMs: Math.max(0, digestEnd - now),
+                removedMs: 0,
+                progress: progress0,
+                curved: getBlackHolePhase5DigestCurve(progress0),
+                spentEssence: 0,
+                unspentBudget: 0,
+            };
+        }
+
+        const cost = Math.max(25, Math.floor(50 + 20 * (number1BlackHoleState.phase5FurnaceLevel || 0)));
         const floorMs = Math.max(1000, Math.floor(oldDuration * 0.01));
+        const stopRm = BLACK_HOLE_PHASE5_STOKE_MIN_REMAINING_MS;
+
         const getStokedRemainingMs = function (remaining, reduction) {
             const rem = Math.max(0, Math.floor(Number(remaining) || 0));
             const red = Math.max(0, Math.floor(Number(reduction) || 0));
@@ -1998,23 +2277,36 @@ import {
             if (rem <= floorMs) return Math.max(1, rem - red);
             return Math.min(rem, Math.max(floorMs, rem - red));
         };
-        let pool = spend;
+
+        let poolRemain = spendBudget;
         let digestEndMs = digestEnd;
-        while (pool >= cost && digestEndMs > now) {
+
+        while (poolRemain >= cost && digestEndMs > now) {
             const remaining = digestEndMs - now;
+            if (remaining <= stopRm) break;
             const fullRed = Math.max(1, Math.floor(remaining * 0.06));
-            digestEndMs = now + getStokedRemainingMs(remaining, fullRed);
-            pool -= cost;
+            let newRm = getStokedRemainingMs(remaining, fullRed);
+            if (newRm < stopRm) newRm = stopRm;
+            digestEndMs = now + newRm;
+            poolRemain -= cost;
         }
-        if (pool > 0 && digestEndMs > now && cost > 0) {
+
+        /** Leftover purse below one full stoke tier: proportional trim, billed as spent remainder. */
+        if (poolRemain > 0 && digestEndMs > now && cost > 0) {
             const remaining = digestEndMs - now;
-            const fullRed = Math.max(1, Math.floor(remaining * 0.06));
-            const reduction = Math.max(1, Math.floor(fullRed * Math.min(1, pool / cost)));
-            digestEndMs = now + getStokedRemainingMs(remaining, reduction);
+            if (remaining > stopRm) {
+                const fullRed = Math.max(1, Math.floor(remaining * 0.06));
+                const reduction = Math.max(1, Math.floor(fullRed * Math.min(1, poolRemain / cost)));
+                let newRm = getStokedRemainingMs(remaining, reduction);
+                if (newRm < stopRm) newRm = stopRm;
+                digestEndMs = now + newRm;
+                poolRemain = 0;
+            }
         }
-        const duration = oldDuration;
+
+        const spentEssence = spendBudget - poolRemain;
         const start = digestEndMs - duration;
-        const progress = Math.max(0, Math.min(1, (now - start) / duration));
+        const progress = Math.max(0, Math.min(1, duration > 0 ? (now - start) / duration : 0));
         return {
             start,
             digestEndMs,
@@ -2023,7 +2315,9 @@ import {
             projectedRemainingMs: Math.max(0, digestEndMs - now),
             removedMs: Math.max(0, digestEnd - digestEndMs),
             progress,
-            curved: getBlackHolePhase5DigestCurve(progress)
+            curved: getBlackHolePhase5DigestCurve(progress),
+            spentEssence,
+            unspentBudget: Math.max(0, poolRemain),
         };
     }
     function applyHandSacrifice(handNum) {
@@ -2173,6 +2467,21 @@ import {
             }
         }
         if (phase >= 4 && phase < 6) {
+            if (number1StageRootEl && isBlackHoleArcUnlocked()) {
+                const ivLens = Math.max(8, getBlackHoleWaveIntervalSec());
+                number1StageRootEl.style.setProperty("--bh-lens-period", ivLens + "s");
+                const ivDelta = Math.abs(ivLens - blackHoleLensRippleLastIv);
+                const rippleDelaySyncMs = 320;
+                if (ivDelta > 0.051 || !blackHoleLensRippleLastIv || now - blackHoleLensRippleCssLastMs >= rippleDelaySyncMs) {
+                    blackHoleLensRippleCssLastMs = now;
+                    blackHoleLensRippleLastIv = ivLens;
+                    const nextAt = number1BlackHoleState.phase4NextWaveAtMs || 0;
+                    let remSec = nextAt > now ? (nextAt - now) / 1000 : 0;
+                    if (remSec > ivLens) remSec = ivLens;
+                    const elapsedLens = Math.max(0, ivLens - remSec);
+                    number1StageRootEl.style.setProperty("--bh-lens-ripple-delay", (-elapsedLens) + "s");
+                }
+            }
             const ivMs = Math.round(getBlackHoleWaveIntervalSec() * 1000);
             if (!(number1BlackHoleState.phase4NextWaveAtMs > 0)) number1BlackHoleState.phase4NextWaveAtMs = now + ivMs;
             if (now >= number1BlackHoleState.phase4NextWaveAtMs) {
@@ -2180,6 +2489,7 @@ import {
                 number1BlackHoleState.phase4NextWaveAtMs = now + ivMs;
                 number1BlackHoleState.phase4WaveTriggered = true;
                 playBlackHoleScreenEffect("wave");
+                pulseBlackHoleLensingAutoTick();
                 syncBlackHolePhase1Vfx();
                 if (now >= (number1BlackHoleState.phase4ManualReadyAtMs || 0)) {
                     number1BlackHoleState.phase4ManualReadyAtMs = now + Math.round(ivMs * 0.5);
@@ -2270,7 +2580,6 @@ import {
         if (phase === 7) {
             number1BlackHoleState.phase7EpilogueCounter += dtSec;
         }
-        syncBlackHolePhase1Vfx();
     }
     const ASCENSION_NODE_AUTOBUY_DEFAULT_ON_ID = "asc_ix_00";
     const ASCENSION_NODE_AUTOBUY_CHEAPEN_ID = "asc_ix_05";
@@ -3302,6 +3611,15 @@ import {
             "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Warp aura</span> <span class=\"asc-stat-pill-v\">≤" + formatCount(Math.round(getTimeWarpAuraSpawnSpanMaxSec())) + "s</span></span>"
         );
     }
+    /** Skip innerHTML when unchanged — avoids layout when the pills game loop polls ~1 Hz while ascension stays open. */
+    function patchAscensionHubStatsPillsDomIfChanged() {
+        const statsEl = document.getElementById("ascension-hub-stats");
+        if (!statsEl) return;
+        const nextHtml = renderAscensionHubStatsPillsHtml();
+        if (statsEl.dataset.ascHubPillsSnap === nextHtml) return;
+        statsEl.dataset.ascHubPillsSnap = nextHtml;
+        statsEl.innerHTML = nextHtml;
+    }
     function renderAscensionMapDebugOverlaySvg() {
         if (!ascensionMapDebugEnabled()) return "";
         const H = (ASCENSION_TREE_EXPORT && ASCENSION_TREE_EXPORT.HUB_CENTER) || { x: 50, y: 51 };
@@ -3321,6 +3639,61 @@ import {
             }
         });
         return "<svg class=\"ascension-map-debug-svg\" viewBox=\"0 0 100 " + vbH + "\" preserveAspectRatio=\"xMidYMid meet\" aria-hidden=\"true\">" + lines.join("") + dots + "</svg>";
+    }
+    /** Vogel (golden-angle) spiral from disk center; glyphs follow the Fibonacci sequence. */
+    function renderAccretionDiskSpiralNumeralsHtml() {
+        const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
+        /** Larger radius + exponent > 0.5 opens the Vogel arms so the spiral reads clearly in the hero. */
+        const SCALE_REM = 1.02;
+        const RADIAL_EXP = 0.63;
+        const DURATION_SEC = 180;
+        const MAX_TERMS = 12;
+        const fib = [1];
+        let prev = 1;
+        let cur = 1;
+        while (fib.length < MAX_TERMS) {
+            const next = prev + cur;
+            prev = cur;
+            cur = next;
+            fib.push(next);
+        }
+        const n = fib.length;
+        const arms = [];
+        for (let i = 0; i < n; i++) {
+            let dx = 0;
+            let dy = 0;
+            if (i > 0) {
+                const r = SCALE_REM * Math.pow(i, RADIAL_EXP);
+                const ang = (i - 1) * GOLDEN_ANGLE;
+                dx = r * Math.cos(ang);
+                dy = r * Math.sin(ang);
+            }
+            const fadeDelay = -(i * DURATION_SEC / n);
+            const wideClass = fib[i] >= 100 ? " asc-black-hole__disk-number-glyph--wide" : "";
+            arms.push(
+                "<span class=\"asc-black-hole__disk-spiral-arm\" style=\"--sdx:" + dx.toFixed(3) + "rem;--sdy:" + dy.toFixed(3) + "rem;--spiral-anim-delay:" + fadeDelay.toFixed(2) + "s\">" +
+                "<span class=\"asc-black-hole__disk-number\"><span class=\"asc-black-hole__disk-number-glyph" + wideClass + "\">" + fib[i] + "</span></span></span>"
+            );
+        }
+        return "<span class=\"asc-black-hole__disk-spiral\" aria-hidden=\"true\">" + arms.join("") + "</span>";
+    }
+    function renderAccretionDiskHeroInnerHtml() {
+        return (
+            "<span class=\"asc-black-hole__disk-glow\"></span>" +
+            "<span class=\"asc-black-hole__disk-band asc-black-hole__disk-band--outer\"></span>" +
+            "<span class=\"asc-black-hole__disk-band asc-black-hole__disk-band--inner\"></span>" +
+            "<span class=\"asc-black-hole__disk-core\"></span>" +
+            renderAccretionDiskSpiralNumeralsHtml()
+        );
+    }
+    function initNumber1StageAccretionDiskBg() {
+        const wrap = document.getElementById("number1-stage-disk-bg");
+        if (!wrap || wrap.dataset.diskBgInit === "1") return;
+        wrap.dataset.diskBgInit = "1";
+        wrap.innerHTML =
+            "<div class=\"asc-black-hole__disk-hero number1-stage-disk-hero\" aria-hidden=\"true\">" +
+            renderAccretionDiskHeroInnerHtml() +
+            "</div>";
     }
     function renderNumber1BlackHolePanelHtml() {
         const esc = escapeAscensionHtml;
@@ -3462,28 +3835,41 @@ import {
             const lum = getBlackHolePhase3TrackLevel("luminosity");
             const vis = getBlackHolePhase3TrackLevel("viscous");
             const cor = getBlackHolePhase3TrackLevel("coronal");
+            const p3TierPips = function (track, tier) {
+                const dots = [];
+                for (let i = 1; i <= 6; i++) {
+                    dots.push("<span class=\"asc-black-hole__disk-pip" + (i <= tier ? " asc-black-hole__disk-pip--lit" : "") + "\" aria-hidden=\"true\">" + i + "</span>");
+                }
+                return "<div class=\"asc-black-hole__disk-pips asc-black-hole__disk-pips--" + esc(track) + "\" aria-label=\"" + esc(tier + " of 6 tiers lit") + "\">" + dots.join("") + "</div>";
+            };
             const p3Row = function (track, title, tier, effectHtml) {
                 const cost = getBlackHolePhase3TrackCost(track);
                 const maxed = tier >= 6;
                 const canBuy = !maxed && have >= cost && cost > 0;
                 return (
-                    "<div class=\"asc-black-hole__p2-row\">" +
+                    "<div class=\"asc-black-hole__p2-row asc-black-hole__disk-row asc-black-hole__disk-row--" + esc(track) + "\">" +
+                    "<div class=\"asc-black-hole__disk-track-icon\" aria-hidden=\"true\"><span></span></div>" +
                     "<div class=\"asc-black-hole__p2-row-head\"><span class=\"asc-black-hole__p2-name\">" + esc(title) + "</span>" +
                     "<span class=\"asc-black-hole__p2-tier\">Tier <strong>" + (maxed ? "max" : (tier + "/6")) + "</strong></span></div>" +
                     "<p class=\"asc-black-hole__p2-effect\">" + effectHtml + "</p>" +
+                    p3TierPips(track, tier) +
                     "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn page-btn--p2-collapse\" data-asc-black-hole-p3=\"" + esc(track) + "\"" +
                     (canBuy ? "" : " disabled") + ">" + (maxed ? "Maxed" : ("Buy (" + esc(formatCount(cost)) + ")")) + "</button></p>" +
                     "</div>"
                 );
             };
-            body = "<p class=\"asc-black-hole__body\">Phase 3 — Accretion Disk: tune the burst in three visible ways: brighter radiation, faster flares, and longer coronal burn windows.</p>" +
+            body =
+                "<div class=\"asc-black-hole__disk-hero\" aria-hidden=\"true\">" +
+                renderAccretionDiskHeroInnerHtml() +
+                "</div>" +
+                "<p class=\"asc-black-hole__body\">Phase 3 — Accretion Disk: tune the burst in three visible ways: brighter radiation, faster flares, and longer coronal burn windows.</p>" +
                 "<div class=\"asc-black-hole__p2-list\" role=\"group\" aria-label=\"Accretion disk upgrades\">" +
                 p3Row("luminosity", "Disk luminosity", lum, "Brighter Hawking bursts: raises the temporary CPS multiplier during radiation windows.") +
                 p3Row("viscous", "Viscous accretion", vis, "More frequent flares: shortens the Hawking cooldown so bursts arrive sooner.") +
                 p3Row("coronal", "Coronal loop", cor, "Longer burn: extends each Hawking burst duration so windows are easier to use.") +
                 "</div>";
-            note = "<p class=\"asc-black-hole__stats\">Phase: <strong>3</strong> · Luminosity: <strong>" + lum + "</strong> · Viscous: <strong>" + vis + "</strong> · Coronal: <strong>" + cor + "</strong></p>" +
-                "<p class=\"asc-black-hole__stats asc-black-hole__purse\">You hold <strong>" + esc(formatCount(have)) + "</strong> Ascension Essence.</p>";
+            note = "<p class=\"asc-black-hole__stats\" data-asc-bh-disk-phase-stats>Phase: <strong>3</strong> · Luminosity: <strong>" + lum + "</strong> · Viscous: <strong>" + vis + "</strong> · Coronal: <strong>" + cor + "</strong></p>" +
+                "<p class=\"asc-black-hole__stats asc-black-hole__purse\" data-asc-bh-disk-purse>You hold <strong>" + esc(formatCount(have)) + "</strong> Ascension Essence.</p>";
             actions = "";
         } else if (phase === 4) {
             panelExtraClass = " asc-black-hole--phase4";
@@ -3515,12 +3901,14 @@ import {
             const canSpeedDigest = digestEnd > now && activeHand > 0;
             const speedDigestCost = Math.max(25, Math.floor(50 + 20 * (number1BlackHoleState.phase5FurnaceLevel || 0)));
             const have = Math.max(0, Math.floor(Number(number1AscensionEssence) || 0));
-            const canStoke = canSpeedDigest && have >= 1;
-            const completed = Math.max(0, Math.floor(number1BlackHoleState.phase5FurnaceLevel || 0));
-            const nextHand = Math.max(1, Math.floor(number1BlackHoleState.phase5NextSacrificeHand || 1));
             const pendingMutationLevel = Math.max(0, Math.floor(Number(number1BlackHoleState.phase5PendingMutationLevel) || 0));
             const pendingMutationHand = Math.max(0, Math.floor(Number(number1BlackHoleState.phase5PendingMutationHand) || 0));
             const hasPendingMutation = pendingMutationLevel > 0;
+            const stokePreview = canSpeedDigest && have > 0 ? getBlackHolePhase5StokePreview(have, now) : null;
+            const stokeSpend = stokePreview && stokePreview.spentEssence != null ? Math.max(0, Math.floor(Number(stokePreview.spentEssence))) : 0;
+            const canStoke = canSpeedDigest && !hasPendingMutation && stokeSpend >= 1;
+            const completed = Math.max(0, Math.floor(number1BlackHoleState.phase5FurnaceLevel || 0));
+            const nextHand = Math.max(1, Math.floor(number1BlackHoleState.phase5NextSacrificeHand || 1));
             const rewardBeatActive = hasPendingMutation && lastCompleteAt > 0 && now - lastCompleteAt < BLACK_HOLE_FURNACE_COMPLETION_RITUAL_MS;
             const nextHandLocked = !canSpeedDigest && nextHand > 1 && unlockedHands < nextHand;
             const progress = canSpeedDigest ? getBlackHolePhase5DigestProgressAt(now) : 0;
@@ -3528,7 +3916,7 @@ import {
             const progressPct = Math.floor(progress * 1000) / 10;
             const curvedPct = Math.floor(curved * 1000) / 10;
             const digestRemainingSec = canSpeedDigest ? Math.max(0, Math.ceil((digestEnd - now) / 1000)) : 0;
-            const stokePreview = canSpeedDigest && have > 0 ? getBlackHolePhase5StokePreview(have, now) : null;
+            const bufferSecCeil = Math.max(5, Math.ceil(BLACK_HOLE_PHASE5_STOKE_MIN_REMAINING_MS / 1000));
             const stokePreviewPct = stokePreview ? Math.floor(stokePreview.progress * 1000) / 10 : progressPct;
             const stokePreviewCurvedPct = stokePreview ? Math.floor(stokePreview.curved * 1000) / 10 : curvedPct;
             const stokeRemovedSec = stokePreview ? Math.max(0, Math.floor(stokePreview.removedMs / 1000)) : 0;
@@ -3603,11 +3991,24 @@ import {
                 mutationChoices;
             note = "<p class=\"asc-black-hole__stats\">Phase: <strong>5</strong> · Completed hands: <strong>" + completed + "</strong> · Active: <strong>" + esc(digestLabel) + "</strong></p>" +
                 "<p class=\"asc-black-hole__stats\">Furnace power: <strong>" + currentPower.toFixed(2) + "</strong> Echo Hands · Current furnace CPS: <strong>×" + furnaceMult.toFixed(2) + "</strong> · On completion: <strong>×" + nextFurnaceMult.toFixed(2) + "</strong></p>" +
-                "<p class=\"asc-black-hole__stats asc-black-hole__purse\">You hold <strong>" + esc(formatCount(have)) + "</strong> Ascension Essence · full stoke unit: <strong>" + esc(formatCount(speedDigestCost)) + "</strong> Essence.</p>" +
+                "<p class=\"asc-black-hole__stats asc-black-hole__purse\">You hold <strong>" + esc(formatCount(have)) + "</strong> Ascension Essence · full stoke unit: <strong>" + esc(formatCount(speedDigestCost)) + "</strong>. Stoking trims time until ~<strong>" + bufferSecCeil + "</strong>s remain and only spends Essence that actually accelerates digestion.</p>" +
                 (completed > 0 ? "<p class=\"asc-black-hole__stats\">Echo sequence: <strong>Hand 10" + (completed > 1 ? " → Hand " + digestedStart : "") + "</strong> absorbed into the singularity.</p>" : "") +
                 (hasPendingMutation ? "<p class=\"asc-black-hole__note\">Pick a mutation to claim the Echo Hand reward.</p>" : (nextHandLocked ? "<p class=\"asc-black-hole__note\">Next sacrifice requires <strong>Hand " + nextHand + "</strong>. Unlock that hand again on this run before feeding it.</p>" : ""));
+            const stokeBtnLabel =
+                !canSpeedDigest
+                    ? "Stoke active digest"
+                    : hasPendingMutation
+                      ? "Stoke (mutation pending)"
+                      : stokeSpend >= 1
+                        ? ("Stoke active digest (" + esc(formatCount(stokeSpend)) + " Essence)")
+                        : ("Digest buffer (~≤" + bufferSecCeil + "s left) · won't spend Essence yet");
             actions =
-                "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-buy=\"1\"" + (canSpeedDigest ? " data-asc-black-hole-stoke-preview-toggle=\"1\" aria-describedby=\"asc-black-hole-stoke-preview\" title=\"Preview the digestion jump by hovering or focusing this button.\"" : "") + (canStoke && !hasPendingMutation ? "" : " disabled") + ">Stoke active digest (" + esc(formatCount(have)) + " Essence)</button></p>" +
+                "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-buy=\"1\"" +
+                    (canSpeedDigest ? " data-asc-black-hole-stoke-preview-toggle=\"1\" aria-describedby=\"asc-black-hole-stoke-preview\" title=\"Charges only Essence needed to shorten this digestion (stops ~" + bufferSecCeil + "s remaining).\"" : "") +
+                    (canStoke ? "" : " disabled") +
+                    ">" +
+                    esc(stokeBtnLabel) +
+                    "</button></p>" +
                 "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-sacrifice=\"1\"" + (canSpeedDigest || hasPendingMutation ? " disabled" : "") + ">" + (hasPendingMutation ? "Choose mutation first" : (canSpeedDigest ? ("Digesting hand " + activeHand + "...") : (nextHandLocked ? ("Unlock Hand " + nextHand + " to feed") : "Feed next hand"))) + "</button></p>";
         } else if (phase === 6) {
             panelExtraClass = " asc-black-hole--phase6" + (number1BlackHoleState.phase6JetActive ? " asc-black-hole--jet-active" : "");
@@ -3656,9 +4057,33 @@ import {
             "</section>"
         );
     }
-    function renderNumber1AscendControlHtml() {
+    /** Fingerprint ascend-control copy + affordances for ~1 Hz incremental patch (avoid outerHTML churn). */
+    function getNumber1AscendControlLivePatchDigest() {
+        const essence = Math.floor(Number(number1AscensionEssence) || 0);
+        if (!number1HasAscended) {
+            return "pre|" + unlockedHands + "|" + totalChanges + "|" + essence;
+        }
+        const ph = getBlackHolePhase();
+        if (ph === 7) {
+            return "p7|" + totalChanges + "|" + unlockedHands + "|" + essence;
+        }
+        const req = getNumber1AscensionRequiredHands();
+        if (!isNumber1AscensionReady()) {
+            return "nr|" + totalChanges + "|" + unlockedHands + "|" + req + "|" + ASCENSION_1_REQUIRED_TOTAL + "|" + essence;
+        }
+        const g = computeNumber1AscensionGainBreakdown(totalChanges);
+        return (
+            "r|" + g.finalGain + "|" + g.baseGain + "|" + g.pendingBonus + "|" + g.blackHolePhaseMult + "|" + g.beforeMult + "|" + g.clapMult + "|" +
+            g.blackHoleMultiplierBonus + "|" + g.multiplierBonus
+        );
+    }
+    function renderNumber1AscendControlHtml(livePatchDigest) {
         const ready = isNumber1AscensionReady();
         const esc = escapeAscensionHtml;
+        const digestAttr =
+            typeof livePatchDigest === "string" && livePatchDigest.length > 0
+                ? " data-live-patch-digest=\"" + esc(livePatchDigest) + "\""
+                : "";
         const requiredHands = getNumber1AscensionRequiredHands();
         const gainInfo = ready ? computeNumber1AscensionGainBreakdown(totalChanges) : null;
         const gainText = gainInfo ? formatCount(gainInfo.finalGain) : "0";
@@ -3673,7 +4098,7 @@ import {
             ? "Ready now: ascend Number 1 for " + gainText + " Ascension Essence." + gainFormulaText
             : "Not ready: reach " + formatCount(ASCENSION_1_REQUIRED_TOTAL) + " total and " + requiredHands + " hand" + (requiredHands === 1 ? "" : "s") + ". Current: " + formatCount(totalChanges) + " total, " + unlockedHands + "/" + requiredHands + " hands.";
         return (
-            "<section class=\"ascension-run-action" + (ready ? " ascension-run-action--ready" : "") + "\" aria-label=\"Number 1 ascend action\">" +
+            "<section" + digestAttr + " class=\"ascension-run-action" + (ready ? " ascension-run-action--ready" : "") + "\" aria-label=\"Number 1 ascend action\">" +
             "<div class=\"ascension-run-action__copy\">" +
             "<strong class=\"ascension-run-action__title\">Number 1 Ascension</strong>" +
             "<span class=\"ascension-run-action__status\">" + esc(requirementText) + "</span>" +
@@ -4152,17 +4577,20 @@ import {
     /** Full Combinations panel rebuild is expensive; game loop calls this every tick when the page is open. */
     const COMBINATIONS_FULL_REFRESH_MIN_MS = 350;
     let lastCombinationsFullRefreshMs = 0;
+    /** Bonus breakdown list only: full DOM rebuild at most this often when the panel is auto-refreshed from the game loop (not on explicit user/sync events). */
+    const EARNED_BONUSES_UI_AUTO_MIN_MS = 350;
+    let lastEarnedBonusesUiRebuildAtMs = 0;
 
     function refreshCombinationsPanelIfOpen(force) {
         if (!pagePanelEl || pagePanelEl.style.display === "none" || !pagePanelBodyEl || !pagePanelTitleEl) return;
         if (pagePanelTitleEl.textContent !== "Combinations") return;
         const now = Date.now();
         if (!force && now < comboFilterPauseAutoRefreshUntilMs) {
-            updateEarnedBonusesUI();
+            updateEarnedBonusesUI(false);
             return;
         }
         if (!force && now - lastCombinationsFullRefreshMs < COMBINATIONS_FULL_REFRESH_MIN_MS) {
-            updateEarnedBonusesUI();
+            updateEarnedBonusesUI(false);
             return;
         }
         lastCombinationsFullRefreshMs = now;
@@ -5268,7 +5696,7 @@ import {
         if (!(chance > 0) || Math.random() >= chance) return false;
         number1AscensionPendingBonusEssence = getNumber1AscensionPendingBonusEssence() + 1;
         updateMilestoneUI();
-        refreshOverviewAndAscensionPanelsIfOpen();
+        refreshOverviewAndAscensionHubLiveIfOpen();
         autosaveNow();
         if (!opts.silentLog) {
             addToLog("Warp essence bonus: banked +1 Ascension Essence for your next ascend (" + sourceLabel + " trigger).", "milestone");
@@ -6124,7 +6552,7 @@ import {
      */
     function tryTurboScensionActivationUpgrade(opts) {
         opts = opts || {};
-        if (!isTurboScensionUnlocked() || !turboBoostUnlocked || gamePaused) return false;
+        if (!isTurboScensionUnlocked() || !turboBoostUnlocked || gameplaySimFrozen()) return false;
         const cost = getTurboScensionActivationCost();
         if (turboActivationCount < cost) return false;
         turboActivationCount -= cost;
@@ -6529,28 +6957,23 @@ import {
         const offlineSec = effectiveMs / 1000;
         tickBackgroundNumberModules(offlineSec);
         updateBlackHolePhaseStep(offlineSec);
-        const offlineBhMult = getBlackHoleOfflineProductionMult(offlineSec);
-        if (getBlackHolePhase() === 7) {
-            totalChanges = Math.floor(number1BlackHoleState.phase7EpilogueCounter || 0);
-            handEarnings[0] = totalChanges;
-            return;
-        }
-        const cpsPerHand = getRawCpsPerHand();
-        const rawCps = cpsPerHand.reduce((a, b) => a + b, 0);
-        if (rawCps <= 0) return;
-        const comboMult = getComboMultiplier();
-        const turboMult = getTurboCountMultiplier();
-        const gained = Math.round(offlineSec * rawCps * comboMult * turboMult * offlineBhMult);
-        const totalWeight = cpsPerHand.reduce((a, b) => a + b, 0) || 1;
-        for (let i = 0; i < unlockedHands; i++) {
-            const weight = cpsPerHand[i] || 0;
-            handEarnings[i] = (handEarnings[i] || 0) + Math.round((weight / totalWeight) * gained);
-        }
-        refreshTotalFromHandEarnings();
-        if (showSummary && offlineSummaryBodyEl && offlineSummaryPanelEl) {
-            const capped = offlineMs > capMs;
-            offlineSummaryBodyEl.textContent = "Simulated " + (effectiveMs / 1000).toFixed(1) + "s offline and gained " + formatCount(gained) + (capped ? " (capped)." : ".");
-            offlineSummaryPanelEl.style.display = "flex";
+        try {
+            if (getBlackHolePhase() === 7) {
+                totalChanges = Math.floor(number1BlackHoleState.phase7EpilogueCounter || 0);
+                handEarnings[0] = totalChanges;
+                return;
+            }
+            const cpsPerHandProbe = getRawCpsPerHand();
+            const rawCpsProbe = cpsPerHandProbe.reduce((a, b) => a + b, 0);
+            if (rawCpsProbe <= 0) return;
+            const gained = applyNumber1DetachedCpsProgress(offlineSec);
+            if (showSummary && offlineSummaryBodyEl && offlineSummaryPanelEl) {
+                const capped = offlineMs > capMs;
+                offlineSummaryBodyEl.textContent = "Simulated " + (effectiveMs / 1000).toFixed(1) + "s offline and gained " + formatCount(gained) + (capped ? " (capped)." : ".");
+                offlineSummaryPanelEl.style.display = "flex";
+            }
+        } finally {
+            syncBlackHolePhase1Vfx();
         }
     }
 
@@ -6569,7 +6992,7 @@ import {
 
     function beginHiddenOfflineTracking() {
         // If gameplay is intentionally paused by a modal/overlay, do not accrue offline gains.
-        if (gamePaused) {
+        if (gameplaySimFrozen()) {
             hiddenStartedAtMs = null;
             lastGameLoopPerfMs = null;
             simLagMs = 0;
@@ -6590,7 +7013,7 @@ import {
             return;
         }
         const offlineMs = Math.max(0, Date.now() - hiddenAt);
-        if (!gamePaused && offlineMs > 0) {
+        if (!gameplaySimFrozen() && offlineMs > 0) {
             applyOfflineProgress(offlineMs, { showSummary: false });
         }
         lastGameLoopPerfMs = null;
@@ -6657,6 +7080,11 @@ import {
     const HAND_BASE_SPEED = 1000; // ms per tick; same for all hands
 
     let gamePaused = false;
+    /** Dev-tools freeze: skips simulation without touching overlay `gamePaused` (story, ascension dialogs, …). */
+    let devFreezeGame = false;
+    function gameplaySimFrozen() {
+        return gamePaused || devFreezeGame;
+    }
 
     const deleteSaveOverlayEl = document.getElementById("delete-save-overlay");
     const deleteSaveNoBtn = document.getElementById("delete-save-no");
@@ -6878,7 +7306,7 @@ import {
         return shownBannerIds.has(id) || closedBanners.some(b => b && b.id === id);
     }
     function checkStoryBanners() {
-        if (gamePaused) return;
+        if (gameplaySimFrozen()) return;
         const pending = STORY_BANNERS.filter(b => !shownBannerIds.has(b.id) && b.trigger());
         pending.sort((a, b) => a.order - b.order);
         const toShow = pending[0];
@@ -7590,9 +8018,19 @@ import {
         requestAnimationFrame(() => bubble.classList.add("combo-bubble-visible"));
         setTimeout(() => { if (bubble.parentNode) bubble.parentNode.removeChild(bubble); }, COMBO_BUBBLE_DURATION_MS);
     }
-    function updateEarnedBonusesUI() {
+    /**
+     * Rebuilds the Combinations panel "Bonus breakdown" list.
+     * @param {boolean} [forceRebuild=true] When false, skips work if called too soon from the panel auto-refresh path (game loop); all other call sites use default immediate rebuild.
+     */
+    function updateEarnedBonusesUI(forceRebuild) {
         const listEl = document.getElementById("earned-bonuses-list");
         if (!listEl) return;
+        const force = forceRebuild !== false;
+        const now = Date.now();
+        if (!force && listEl.childElementCount > 0 && now - lastEarnedBonusesUiRebuildAtMs < EARNED_BONUSES_UI_AUTO_MIN_MS) {
+            return;
+        }
+        lastEarnedBonusesUiRebuildAtMs = now;
         listEl.innerHTML = "";
         if (unlockedHands < 2) {
             const placeLi = document.createElement("li");
@@ -7603,6 +8041,8 @@ import {
         }
         const earnedSet = new Set(earnedComboNames);
         const byMinHands = getCombosByMinHands();
+        const totals = computeAscensionGrantTotals();
+        const tierLive = computeActiveEarnedComboTierProducts(totals);
         const combinedMult = getDisplayedTotalComboBonus();
         const appliedMult = getComboMultiplier();
         const combinedLi = document.createElement("li");
@@ -7617,7 +8057,7 @@ import {
             const allEarned = earnedInGroup.length === group.length;
             if (allEarned) {
                 const totalMult = earnedInGroup.reduce((m, c) => m * c.bonus, 1);
-                const ap = tierActive[n];
+                const ap = tierLive[n];
                 const activePart = ap == null
                     ? "Matching your hands now: —"
                     : "Matching your hands now: ×" + ap.toFixed(2);
@@ -7645,8 +8085,10 @@ import {
     function patchNumber1AscendControlIfOpen() {
         if (!pagePanelEl || pagePanelEl.style.display === "none" || !pagePanelBodyEl) return;
         if (pagePanelEl.dataset.openPageId !== "ascension" || ascensionPageActiveNumber !== 1) return;
+        const digest = getNumber1AscendControlLivePatchDigest();
         const control = pagePanelBodyEl.querySelector(".ascension-run-action");
-        if (control) control.outerHTML = renderNumber1AscendControlHtml();
+        if (control && control.getAttribute("data-live-patch-digest") === digest) return;
+        if (control) control.outerHTML = renderNumber1AscendControlHtml(digest);
     }
     function refreshAscensionPanelIfOpen() {
         if (!pagePanelEl || pagePanelEl.style.display === "none" || !pagePanelBodyEl) return;
@@ -7655,8 +8097,7 @@ import {
         if (ascensionPageActiveNumber === 1 && (getBlackHolePhase() === 1 || getBlackHolePhase() === 2)) {
             const bhEl = pagePanelBodyEl.querySelector(".asc-black-hole");
             if (bhEl && (patchBlackHolePhase1PanelLiveDom(bhEl) || patchBlackHolePhase2PanelLiveDom(bhEl))) {
-                const statsEl = document.getElementById("ascension-hub-stats");
-                if (statsEl) statsEl.innerHTML = renderAscensionHubStatsPillsHtml();
+                patchAscensionHubStatsPillsDomIfChanged();
                 return;
             }
         }
@@ -7668,6 +8109,23 @@ import {
     }
     function refreshOverviewAndAscensionPanelsIfOpen() {
         refreshGlobalOverviewPanelIfOpen();
+        refreshAscensionPanelIfOpen();
+    }
+    /**
+     * Overview always patches via refreshGlobalOverviewPanelIfOpen. Ascension: Number 1 tab uses
+     * patchAscensionPanelLiveDom (no full body replace). Number 2 tab or missing ascension page skips
+     * N1 patch; if ascension is open on tab 2, falls back to refreshAscensionPanelIfOpen.
+     * Full innerHTML on the open Number 1 ascension tab was restarting CSS (Phase 3 disk numerals) when
+     * triggered from frequent events (claps, warp essence, Number 2 background rolls).
+     */
+    function refreshOverviewAndAscensionHubLiveIfOpen() {
+        refreshGlobalOverviewPanelIfOpen();
+        if (!pagePanelEl || pagePanelEl.style.display === "none" || !pagePanelBodyEl) return;
+        if (pagePanelEl.dataset.openPageId !== "ascension") return;
+        if (ascensionPageActiveNumber === 1) {
+            patchAscensionPanelLiveDom();
+            return;
+        }
         refreshAscensionPanelIfOpen();
     }
     /**
@@ -7687,19 +8145,25 @@ import {
             const stats = card.querySelectorAll(".overview-stat");
             if (stats[0]) {
                 const v = stats[0].querySelector(".overview-stat-value");
-                if (v) v.textContent = rateStr;
+                if (v && v.textContent !== rateStr) v.textContent = rateStr;
             }
             if (stats[1]) {
                 const v = stats[1].querySelector(".overview-stat-milestone-text");
                 const fill = stats[1].querySelector(".overview-mini-fill");
                 const bar = stats[1].querySelector(".overview-mini-progress");
-                if (v) v.textContent = milestone.text + " · " + pct.toFixed(1) + "%";
-                if (fill) fill.style.width = pct + "%";
-                if (bar) bar.setAttribute("aria-valuenow", String(pct.toFixed(1)));
+                const milestoneTxt = milestone.text + " · " + pct.toFixed(1) + "%";
+                const pctStr = String(pct.toFixed(1));
+                if (v && v.textContent !== milestoneTxt) v.textContent = milestoneTxt;
+                if (fill) {
+                    const w = pct + "%";
+                    if (fill.style.width !== w) fill.style.width = w;
+                }
+                if (bar && bar.getAttribute("aria-valuenow") !== pctStr) bar.setAttribute("aria-valuenow", pctStr);
             }
             if (stats[2]) {
                 const v = stats[2].querySelector(".overview-stat-value");
-                if (v) v.textContent = m.getOverviewDetails();
+                const detailsStr = m.getOverviewDetails();
+                if (v && v.textContent !== detailsStr) v.textContent = detailsStr;
             }
             if (entry.number === 1) {
                 const ascReady = m.isAscensionReady();
@@ -7725,7 +8189,10 @@ import {
                     if (number1HasAscended) {
                         ascPart += " <button type=\"button\" class=\"page-btn overview-open-ascension-btn\" data-open-ascension>Skill tree</button>";
                     }
-                    cell.innerHTML = ascPart;
+                    if (cell.dataset.overviewAscSnap !== ascPart) {
+                        cell.innerHTML = ascPart;
+                        cell.dataset.overviewAscSnap = ascPart;
+                    }
                 }
             }
             if (entry.number === 2) {
@@ -7742,7 +8209,10 @@ import {
                             ascPart += " · Gate: Number 2 total ≥ " + formatCount(NUMBER2_ASCENSION_READY_TOTAL) + ".";
                         }
                     }
-                    cell.innerHTML = ascPart;
+                    if (cell.dataset.overviewAscSnap !== ascPart) {
+                        cell.innerHTML = ascPart;
+                        cell.dataset.overviewAscSnap = ascPart;
+                    }
                 }
             }
         });
@@ -7756,8 +8226,7 @@ import {
             refreshBlackHolePanelLiveDomIfOpen();
             return;
         }
-        const statsEl = document.getElementById("ascension-hub-stats");
-        if (statsEl) statsEl.innerHTML = renderAscensionHubStatsPillsHtml();
+        patchAscensionHubStatsPillsDomIfChanged();
         if (typeof updateAscensionMapDetailPanel === "function") updateAscensionMapDetailPanel();
     }
 
@@ -7896,7 +8365,7 @@ import {
         if (ascensionNumber1IntroSeen) return;
         if (!isNumber1AscensionReady()) return;
         if (!ascensionIntroOverlayEl) return;
-        if (gamePaused) return;
+        if (gameplaySimFrozen()) return;
         ascensionNumber1IntroSeen = true;
         gamePaused = true;
         ascensionIntroOverlayEl.style.display = "flex";
@@ -8114,7 +8583,7 @@ import {
         }, staggerDelayMs);
     }
     function processClappingThisTick() {
-        if (!isClappingUnlocked() || gamePaused) return;
+        if (!isClappingUnlocked() || gameplaySimFrozen()) return;
         const nowMs = Date.now();
         function handOffClapCooldown(handIndex) {
             const until = clapCooldownUntilMsByHand[handIndex] || 0;
@@ -8204,7 +8673,7 @@ import {
             updateSlowdownUpgradeUI();
             updateRateDisplay();
             updateMilestoneUI();
-            refreshOverviewAndAscensionPanelsIfOpen();
+            refreshOverviewAndAscensionHubLiveIfOpen();
         }
     }
 
@@ -8283,7 +8752,7 @@ import {
                 applyTurboPassiveMeterRegen(dtSec);
             }
             if (isTurboScensionUpgradeAutobuyUnlocked()) {
-                while (!gamePaused && tryTurboScensionActivationUpgrade({ skipLog: true, skipAutosave: true, skipUIUpdate: true })) {
+                while (!gameplaySimFrozen() && tryTurboScensionActivationUpgrade({ skipLog: true, skipAutosave: true, skipUIUpdate: true })) {
                     turboScensionAutobuyDidUpgrade = true;
                 }
                 if (turboScensionAutobuyDidUpgrade) autosaveNow();
@@ -8325,8 +8794,15 @@ import {
         }
     }
 
+    let lastUIUpdateMs = 0;
+    let lastOverviewUpdateMs = 0;
+    const OVERVIEW_PANEL_LIVE_PATCH_MS = 1000;
+    const UI_UPDATE_THROTTLE_MS = 150;
+    /** When autobuy / warp-assist skips per-purchase upgrade DOM, flush once this step (or with the normal throttle). */
+    let batchedUpgradeUiFlush = false;
+
     function gameLoopTick() {
-        if (gamePaused) {
+        if (gameplaySimFrozen()) {
             lastGameLoopPerfMs = null;
             simLagMs = 0;
             return;
@@ -8345,17 +8821,20 @@ import {
             catchUpSteps++;
         }
         const nowOverview = Date.now();
-        if (nowOverview - lastOverviewUpdateMs >= 1000) {
+        if (
+            typeof document !== "undefined" &&
+            !document.hidden &&
+            nowOverview - lastOverviewUpdateMs >= OVERVIEW_PANEL_LIVE_PATCH_MS &&
+            pagePanelEl &&
+            pagePanelEl.style.display !== "none" &&
+            pagePanelBodyEl
+        ) {
             lastOverviewUpdateMs = nowOverview;
-            patchGlobalOverviewLiveDom();
-            patchAscensionPanelLiveDom();
+            const openPageId = pagePanelEl.dataset.openPageId || "";
+            if (openPageId === "overview") patchGlobalOverviewLiveDom();
+            else if (openPageId === "ascension") patchAscensionPanelLiveDom();
         }
     }
-    let lastUIUpdateMs = 0;
-    let lastOverviewUpdateMs = 0;
-    const UI_UPDATE_THROTTLE_MS = 150;
-    /** When autobuy / warp-assist skips per-purchase upgrade DOM, flush once this step (or with the normal throttle). */
-    let batchedUpgradeUiFlush = false;
     if (!gameLoopTimer) gameLoopTimer = setInterval(gameLoopTick, GAME_LOOP_MS);
     document.addEventListener("visibilitychange", () => {
         if (document.hidden) beginHiddenOfflineTracking();
@@ -8363,7 +8842,7 @@ import {
     });
 
     setInterval(() => {
-        if (gamePaused) return;
+        if (gameplaySimFrozen()) return;
         const source = LOG_MESSAGE_ENTRIES.filter(e => isLogCategoryVisible(e.category));
         if (source.length === 0) return;
         const allowed = source.filter(e => !recentRandomLogMessages.includes(e.text));
@@ -8566,6 +9045,7 @@ import {
     updatePageButtonUnlocks();
     updateNumber2SidebarUnlockUI();
     initInlineRightPanels();
+    initNumber1StageAccretionDiskBg();
     loadSettings();
     applyTheme();
     applySettingsToUI();
@@ -8600,6 +9080,7 @@ import {
     const devAutobuySlowdownCheckbox = document.getElementById("dev-autobuy-slowdown");
     const devBlackHolePhaseSelect = document.getElementById("dev-black-hole-phase-select");
     const devBlackHolePhaseApplyBtn = document.getElementById("dev-black-hole-phase-apply");
+    const devPauseGameCheckbox = document.getElementById("dev-pause-game");
 
     const devToolsLoadTime = Date.now();
     let devSecondsInterval = null;
@@ -8709,6 +9190,7 @@ import {
             if (show) {
                 updateDevSeconds();
                 updateDevBlackHolePhaseSelect();
+                if (devPauseGameCheckbox) devPauseGameCheckbox.checked = devFreezeGame;
                 if (!devSecondsInterval) devSecondsInterval = setInterval(updateDevSeconds, 100);
             } else {
                 if (devSecondsInterval) clearInterval(devSecondsInterval);
@@ -8718,6 +9200,11 @@ import {
     }
     if (devBlackHolePhaseApplyBtn) {
         devBlackHolePhaseApplyBtn.addEventListener("click", devApplyBlackHolePhase);
+    }
+    if (devPauseGameCheckbox) {
+        devPauseGameCheckbox.addEventListener("change", () => {
+            devFreezeGame = !!devPauseGameCheckbox.checked;
+        });
     }
 
     if (devAllAutobuyCheckbox) {
