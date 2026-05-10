@@ -59,6 +59,9 @@ import {
     createNumber2State
 } from "./number2-game.js";
 
+    /** Page-load epoch ms for dev tools fallback when `performance.now` is unavailable. */
+    const devToolsLoadTimeMs = Date.now();
+
     /** Stoke won't compress digestion below ~this much remaining time (~8s, within typical 5–10s UX buffer). */
     const BLACK_HOLE_PHASE5_STOKE_MIN_REMAINING_MS = 8000;
 
@@ -585,7 +588,7 @@ import {
             return "Tip: Turbo is unlocked. Build meter from combos, then toggle Turbo on. Boost scales with your Burn tier; a full tank runs longer with a bigger cap, and the gauge eases off near empty.";
         }
         if (!isTimeWarpUnlocked()) {
-            return "Tip: Slowdown can trade speed for heavier ticks per hand. Use it where upgrades are expensive.";
+            return "Tip: Compaction can trade speed for heavier ticks per hand. Use it where upgrades are expensive.";
         }
         return "Tip: Watch for Time Warp auras and click them for a large production burst (" + TIME_WARP_MANUAL_CLICK_SCALE + "× " + getTimeWarpProductionSecondsBonus() + "s of that hand's rate).";
     }
@@ -915,16 +918,17 @@ import {
 
     const objectivesEl = document.getElementById("objectives");
     const CONFETTI_COLORS = ["#4CAF50", "#9aa0ff", "#FFC107", "#E91E63", "#00BCD4", "#8BC34A", "#FF9800"];
-    function sprayConfettiFrom(originEl) {
+    const CONFETTI_HOLD_REMOVE_MS = 3200;
+    let holdRepeatConfettiContainer = null;
+    let holdRepeatConfettiRemoveTimer = 0;
+    function fillConfettiParticles(container, originEl) {
         const el = originEl || objectivesEl;
-        if (!el) return;
+        if (!el || !container) return;
         const rect = el.getBoundingClientRect();
         const cx = rect.left + rect.width / 2;
         const cy = rect.top + rect.height / 2;
         const count = 18;
-        const container = document.createElement("div");
-        container.className = "confetti-container";
-        container.style.pointerEvents = "none";
+        container.replaceChildren();
         for (let i = 0; i < count; i++) {
             const p = document.createElement("div");
             p.className = "confetti-particle";
@@ -942,8 +946,33 @@ import {
             p.style.setProperty("--dy", dy + "px");
             container.appendChild(p);
         }
+    }
+    function sprayConfettiFrom(originEl, opts) {
+        const el = originEl || objectivesEl;
+        if (!el) return;
+        const holdRepeatCoalesce = !!(opts && opts.holdRepeatCoalesce);
+        if (holdRepeatCoalesce) {
+            if (!holdRepeatConfettiContainer || !holdRepeatConfettiContainer.parentNode) {
+                holdRepeatConfettiContainer = document.createElement("div");
+                holdRepeatConfettiContainer.className = "confetti-container";
+                holdRepeatConfettiContainer.style.pointerEvents = "none";
+                document.body.appendChild(holdRepeatConfettiContainer);
+            }
+            fillConfettiParticles(holdRepeatConfettiContainer, el);
+            if (holdRepeatConfettiRemoveTimer) clearTimeout(holdRepeatConfettiRemoveTimer);
+            holdRepeatConfettiRemoveTimer = setTimeout(function () {
+                holdRepeatConfettiRemoveTimer = 0;
+                if (holdRepeatConfettiContainer && holdRepeatConfettiContainer.parentNode) holdRepeatConfettiContainer.remove();
+                holdRepeatConfettiContainer = null;
+            }, CONFETTI_HOLD_REMOVE_MS);
+            return;
+        }
+        const container = document.createElement("div");
+        container.className = "confetti-container";
+        container.style.pointerEvents = "none";
+        fillConfettiParticles(container, el);
         document.body.appendChild(container);
-        setTimeout(() => container.remove(), 3200);
+        setTimeout(() => container.remove(), CONFETTI_HOLD_REMOVE_MS);
     }
     function sprayShortTermConfetti() {
         sprayConfettiFrom(objectivesEl);
@@ -1603,7 +1632,10 @@ import {
         });
     }
     function syncBlackHolePhase1Vfx() {
-        if (!number1StageRootEl) return;
+        if (!number1StageRootEl) {
+            document.documentElement.setAttribute("data-n1-bh-vfx-synced", "");
+            return;
+        }
         const arc = isBlackHoleArcUnlocked();
         const p = getBlackHolePhase();
         const now = Date.now();
@@ -1651,6 +1683,7 @@ import {
         }
         syncBlackHolePhase4LensingRipples();
         syncBlackHolePhase5ThermalTheme(now);
+        document.documentElement.setAttribute("data-n1-bh-vfx-synced", "");
     }
     function triggerBlackHolePhase1CollapseVfx() {
         if (!number1StageRootEl || blackHolePhase1CollapsePulseQueued) return;
@@ -3650,7 +3683,7 @@ import {
                 "<div class=\"asc-black-hole__numeral-dust\"><span>1</span><span>1</span><span>1</span><span>1</span><span>1</span><span>1</span><span>1</span><span>1</span></div>" +
                 "</div>" +
                 "<p class=\"asc-black-hole__kicker\">Phase 1 · toward critical mass</p>" +
-                "<p class=\"asc-black-hole__body\">You've mapped every branch — now your totals gain <strong>weight</strong>. This sink is the only use for Ascension Essence here: one button pours <strong>everything</strong> you hold into mass. Heavier numbers count faster, ascend richer, and pull harder on your slowdown ceiling.</p>" +
+                "<p class=\"asc-black-hole__body\">You've mapped every branch — now your totals gain <strong>weight</strong>. This sink is the only use for Ascension Essence here: one button pours <strong>everything</strong> you hold into mass. Heavier numbers count faster, ascend richer, and pull harder on your Compaction ceiling.</p>" +
                 "<div class=\"asc-black-hole__mass-meter-wrap\" role=\"group\" aria-label=\"Numerical mass charge\">" +
                 "<div class=\"asc-black-hole__mass-meter-label\"><span>Mass charge</span><span class=\"asc-black-hole__mass-meter-nums\"><strong>" + spent + "</strong> / " + BLACK_HOLE_PHASE1_ESSENCE_TARGET + " Essence · " + fillPct + "%</span></div>" +
                 "<div class=\"asc-black-hole__mass-meter-track\" role=\"progressbar\" aria-valuenow=\"" + spent + "\" aria-valuemin=\"0\" aria-valuemax=\"" + BLACK_HOLE_PHASE1_ESSENCE_TARGET + "\" aria-label=\"Essence poured into numerical mass\"><div class=\"asc-black-hole__mass-meter-fill\" style=\"width:" + fillPct + "%\"></div></div>" +
@@ -3658,7 +3691,7 @@ import {
                 "<ul class=\"asc-black-hole__effect-list\" aria-label=\"Mass effects on this run\">" +
                 "<li><span class=\"asc-black-hole__effect-name\">Inertial counting</span><span class=\"asc-black-hole__effect-val\">run CPS ×" + esc(cpsM) + "</span><span class=\"asc-black-hole__effect-hint\">ticks feel heavier as the bar fills</span></li>" +
                 "<li><span class=\"asc-black-hole__effect-name\">Essence coupling</span><span class=\"asc-black-hole__effect-val\">Ascend payout ×" + esc(ascM) + "</span><span class=\"asc-black-hole__effect-hint\">next Number 1 ascend earns more Essence</span></li>" +
-                "<li><span class=\"asc-black-hole__effect-name\">Drag ceiling</span><span class=\"asc-black-hole__effect-val\">slowdown cap " + slowdownCap + "</span><span class=\"asc-black-hole__effect-hint\">room to lean on slowdown upgrades</span></li>" +
+                "<li><span class=\"asc-black-hole__effect-name\">Drag ceiling</span><span class=\"asc-black-hole__effect-val\">Compaction cap " + slowdownCap + "</span><span class=\"asc-black-hole__effect-hint\">room to lean on Compaction upgrades</span></li>" +
                 "</ul>";
             note = "<p class=\"asc-black-hole__stats asc-black-hole__purse\">You hold <strong>" + esc(formatCount(have)) + "</strong> Ascension Essence · next pour: <strong>" + esc(formatCount(pour)) + "</strong> into mass</p>";
             if (!can && rem > 0) {
@@ -4259,7 +4292,7 @@ import {
         const c = normalizeLogCategory(category);
         if (c === "tip") return "TIP";
         if (c === "fact") return "FACT";
-        if (c === "milestone") return "MILE";
+        if (c === "milestone") return "MILESTONE";
         if (c === "warning") return "WARN";
         if (c === "humor") return "JOKE";
         return "LOG";
@@ -4275,8 +4308,13 @@ import {
             messageLogLastRenderedVisibleCount = 0;
             messageLogLastRenderedHeadSig = "";
             messageLogLastRenderedTailSig = "";
-            return "<p class=\"message-log-empty\">No messages yet. Tips, facts, and milestones will appear here as you play. Humor lines respect Settings → Humor messages.</p>" +
-                "<p class=\"coming-soon-note coming-soon-note--compact\">Filters, search, and save export for this log — <span class=\"coming-soon-inline\">coming soon</span>.</p>";
+            return "<div class=\"message-log-terminal message-log-terminal--empty\" role=\"log\" aria-relevant=\"additions\">" +
+                "<div class=\"message-log-terminal-header\" id=\"message-log-terminal-header\">message_feed // 0 line(s) visible</div>" +
+                "<div class=\"message-log-terminal-body message-log-terminal-body--empty\" id=\"message-log-terminal-body\">" +
+                "<p class=\"message-log-empty\">No messages yet. Tips, facts, and milestones will appear here as you play. Humor lines respect Settings → Humor messages.</p>" +
+                "<p class=\"coming-soon-note coming-soon-note--compact\">Filters, search, and save export for this log — <span class=\"coming-soon-inline\">coming soon</span>.</p>" +
+                "</div></div>" +
+                "<p class=\"message-log-footnote\">Bottom ticker shows the latest lines; this panel is the full scrollback (oldest → newest).</p>";
         }
         messageLogLastRenderedVisibleCount = visible.length;
         messageLogLastRenderedHeadSig = visible[0].category + "\n" + visible[0].text;
@@ -4590,6 +4628,11 @@ import {
         if (lv <= 0) return 1n;
         return 1n << BigInt(lv);
     }
+    /** Stable integer key: same effective speed → same bucket (avoids `Math.pow(2, level)` float collisions at high levels). */
+    function getHandSpeedSyncBucketKey(handIndex) {
+        if (handIndex < 0 || handIndex >= unlockedHands) return null;
+        return String(getEffectiveSpeedLevel(handIndex));
+    }
     function getUpgradeCost(handIndex, nextLevel) {
         const baseCost = 10 + Math.floor(Math.pow(4, nextLevel));
         const ascSpeed = computeAscensionGrantTotals().speedMult;
@@ -4600,6 +4643,89 @@ import {
     const speedRowRefs = [];
     let handUpgradeDetailTipLogged = false;
     const UPGRADE_HOLD_REPEAT_MS = 100;
+    /** Hover-only: detail tooltip waits this long before showing (focus / tap-to-pin stay immediate). */
+    const UPGRADE_TOOLTIP_HOVER_DELAY_MS = 3000;
+    const upgradeTooltipHoverTimers = new WeakMap();
+    function clearUpgradeTooltipHoverTimer(btn) {
+        const id = upgradeTooltipHoverTimers.get(btn);
+        if (id) clearTimeout(id);
+        upgradeTooltipHoverTimers.delete(btn);
+    }
+    function cancelUpgradeTooltipHoverShow(btn) {
+        clearUpgradeTooltipHoverTimer(btn);
+        if (btn) btn.classList.remove("upgrade-tooltip-hover-show");
+    }
+    function scheduleUpgradeTooltipHoverShow(btn) {
+        cancelUpgradeTooltipHoverShow(btn);
+        const id = setTimeout(function() {
+            upgradeTooltipHoverTimers.delete(btn);
+            if (!btn || !btn.isConnected) return;
+            btn.classList.add("upgrade-tooltip-hover-show");
+            requestAnimationFrame(function() {
+                positionTooltipForButton(btn);
+            });
+        }, UPGRADE_TOOLTIP_HOVER_DELAY_MS);
+        upgradeTooltipHoverTimers.set(btn, id);
+    }
+    function positionTooltipForButton(btn) {
+        const tip = btn && btn.querySelector(".upgrade-details-tooltip");
+        if (!tip) return;
+        const prevDisplay = tip.style.display;
+        const prevVisibility = tip.style.visibility;
+        const hiddenByCss = getComputedStyle(tip).display === "none";
+        if (hiddenByCss) {
+            tip.style.visibility = "hidden";
+            tip.style.display = "block";
+        }
+        const margin = 8;
+        const btnRect = btn.getBoundingClientRect();
+        const tipRect = tip.getBoundingClientRect();
+        let left = btnRect.left;
+        if (left + tipRect.width > window.innerWidth - margin) left = window.innerWidth - margin - tipRect.width;
+        if (left < margin) left = margin;
+        let top = btnRect.bottom + 8;
+        if (top + tipRect.height > window.innerHeight - margin) {
+            top = btnRect.top - tipRect.height - 8;
+        }
+        if (top < margin) top = margin;
+        tip.style.left = Math.round(left) + "px";
+        tip.style.top = Math.round(top) + "px";
+        if (hiddenByCss) {
+            tip.style.display = prevDisplay;
+            tip.style.visibility = prevVisibility;
+        }
+    }
+    function positionVisibleTooltips() {
+        if (!speedUpgradesContainerEl) return;
+        speedUpgradesContainerEl.querySelectorAll(".upgrade-btn.tooltip-open, .upgrade-btn.upgrade-tooltip-hover-show, .upgrade-btn:focus-within").forEach(positionTooltipForButton);
+    }
+    function onWindowScrollResizeForUpgrades() {
+        positionVisibleTooltips();
+        scheduleHandUpgradeScrollHintUpdate();
+    }
+    /** Per-button mouseenter/leave avoids delegated mouseout false positives (e.g. sibling Autobuy, layout) that reset the hover timer. */
+    function bindUpgradeTooltipHoverOnRow(row) {
+        if (!row) return;
+        row.querySelectorAll(".upgrade-btn").forEach(function(b) {
+            if (b.dataset.tooltipHoverBound === "1") return;
+            b.dataset.tooltipHoverBound = "1";
+            function onPointerIn() {
+                scheduleUpgradeTooltipHoverShow(b);
+                requestAnimationFrame(function() {
+                    if (b.classList.contains("upgrade-tooltip-hover-show") || b.classList.contains("tooltip-open")) {
+                        positionTooltipForButton(b);
+                    }
+                });
+            }
+            b.addEventListener("mouseenter", onPointerIn);
+            b.addEventListener("pointerenter", onPointerIn);
+            function onPointerOut() {
+                cancelUpgradeTooltipHoverShow(b);
+            }
+            b.addEventListener("mouseleave", onPointerOut);
+            b.addEventListener("pointerleave", onPointerOut);
+        });
+    }
     let upgradeHoldRepeatState = null;
     let upgradeHoldSuppressClickBtn = null;
     let upgradeHoldRepeatTipLogged = false;
@@ -4678,10 +4804,10 @@ import {
                 "</button></span></span>" +
                 "<span class=\"upgrade-row-slowdown\" style=\"display: none;\">" +
                 "<span class=\"upgrade-pillar upgrade-pillar--slowdown\">" +
-                "<span class=\"upgrade-pillar-heading\">Slowdown</span>" +
+                "<span class=\"upgrade-pillar-heading\">Compaction</span>" +
                 "<button type=\"button\" class=\"upgrade-btn slowdown-upgrade-btn\" data-hand-index=\"" + i + "\">" +
                 "<span class=\"upgrade-btn-fill\"></span>" +
-                "<span class=\"upgrade-btn-body\"><span class=\"upgrade-btn-level\"></span><span class=\"upgrade-btn-label\">Slowdown</span></span>" +
+                "<span class=\"upgrade-btn-body\"><span class=\"upgrade-btn-level\"></span><span class=\"upgrade-btn-label\">Compaction</span></span>" +
                 "<span class=\"upgrade-details-tooltip\" role=\"tooltip\"></span>" +
                 "</button></span></span>";
             const upgradesCol = document.createElement("div");
@@ -4690,6 +4816,7 @@ import {
             wrapper.appendChild(handCol);
             wrapper.appendChild(upgradesCol);
             speedUpgradesContainerEl.appendChild(wrapper);
+            bindUpgradeTooltipHoverOnRow(row);
             const cheapenWrap = row.querySelector(".upgrade-row-cheapen");
             const slowdownWrap = row.querySelector(".upgrade-row-slowdown");
             speedRowRefs.push({
@@ -5092,7 +5219,7 @@ import {
         }
         if (!opts?.fromAutobuy) {
             const origin = opts?.confettiOrigin || speedRowRefs[handIndex]?.btn?.closest(".speed-upgrade-row");
-            if (origin) sprayConfettiFrom(origin);
+            if (origin) sprayConfettiFrom(origin, opts?.confettiHoldRepeatCoalesce ? { holdRepeatCoalesce: true } : undefined);
         }
         if (opts?.skipUpgradeDom) {
             batchedUpgradeUiFlush = true;
@@ -5105,9 +5232,9 @@ import {
     }
 
     /* ---------------------------------------------------------
-       CHEAPEN SPEED UPGRADE (per-hand), max 6 per hand. 99%, 99.9%, ...
+       CHEAPEN SPEED UPGRADE (per-hand), max 9 per hand (base; ascension adds). 99%, 99.9%, ...
     --------------------------------------------------------- */
-    const BASE_MAX_CHEAPEN_LEVEL = 6;
+    const BASE_MAX_CHEAPEN_LEVEL = 9;
     let cheapenLevel = Array(maxHands).fill(0);
     let cheapenBonusLevel = Array(maxHands).fill(0);
     function getEffectiveCheapenLevel(handIndex) {
@@ -5117,8 +5244,16 @@ import {
         const level = getEffectiveCheapenLevel(handIndex);
         return level === 0 ? 1 : Math.pow(10, -(level + 1));
     }
+    /** Levels 1–6: legacy exponential. Level 7+ = 1e9 × 1000^(n−7) → billions, trillions, quadrillions, … */
+    const CHEAPEN_EXTENDED_COST_BASE = 1e9;
+    const CHEAPEN_LEGACY_MAX_NEXT_LEVEL = 6;
+    const CHEAPEN_EXTENDED_START_NEXT_LEVEL = 7;
     function getCheapenUpgradeCost(handIndex, nextLevel) {
-        return 1000 * Math.pow(10, nextLevel - 1);
+        const n = Math.max(1, Math.floor(Number(nextLevel) || 1));
+        if (n <= CHEAPEN_LEGACY_MAX_NEXT_LEVEL) {
+            return 1000 * Math.pow(10, n - 1);
+        }
+        return Math.floor(CHEAPEN_EXTENDED_COST_BASE * Math.pow(1000, n - CHEAPEN_EXTENDED_START_NEXT_LEVEL));
     }
     let cheapenSectionUnlocked = false;
     let devCheapenAutobuyOn = false;
@@ -5220,7 +5355,7 @@ import {
         if (!opts?.silentLog) addToLog("Speed cheapen purchased for Hand " + handNum + " (level " + cheapenLevel[handIndex] + ")", "tip");
         incrementalEl.textContent = formatCount(totalChanges);
         const origin = confettiOriginEl || speedRowRefs[handIndex]?.cheapenBtn?.closest(".speed-upgrade-row");
-        if (origin && !opts?.fromAutobuy) sprayConfettiFrom(origin);
+        if (origin && !opts?.fromAutobuy) sprayConfettiFrom(origin, opts?.confettiHoldRepeatCoalesce ? { holdRepeatCoalesce: true } : undefined);
         if (opts?.skipUpgradeDom) {
             batchedUpgradeUiFlush = true;
         } else {
@@ -5305,13 +5440,13 @@ import {
     }
 
     /* ---------------------------------------------------------
-       SLOWDOWN UPGRADE (per-hand), unlock at 1e15, max 3 levels.
+       COMPACTION upgrade (per-hand), unlock at 1e15, max 3 levels.
        Purchase resets Speed to 0; each level multiplies tick value by 10^level.
-       Digit animation cadence follows Speed upgrades again (same interval math as no slowdown).
+       Digit animation cadence follows Speed upgrades again (same interval math as without Compaction).
     --------------------------------------------------------- */
     const SLOWDOWN_UNLOCK_COUNT = 1e15;
     const MAX_SLOWDOWN_LEVEL = 3;
-    /* Level 1 unchanged; each further level is 1,000× the prior (before ascension slowdown cost mult). */
+    /* Level 1 unchanged; each further level is 1,000× the prior (before ascension Compaction cost mult). */
     const SLOWDOWN_COSTS = [1e16, 1e19, 1e22];
     let slowdownLevel = Array(maxHands).fill(0);
     let slowdownBonusLevel = Array(maxHands).fill(0);
@@ -5336,7 +5471,7 @@ import {
         return totalChanges >= SLOWDOWN_UNLOCK_COUNT;
     }
     function getSlowdownEffectText(level) {
-        if (level <= 0) return "No slowdown";
+        if (level <= 0) return "No Compaction";
         return "+" + formatCount(getSlowdownMultiplierForLevel(level)) + "× tick value; digit speed scales with Speed upgrades";
     }
     function getSlowdownMultiplierForLevel(level) {
@@ -5347,7 +5482,7 @@ import {
         const unlocked = isSlowdownUnlocked();
         if (unlocked && !slowdownUnlockLogged) {
             slowdownUnlockLogged = true;
-            addToLog("Slowdown system unlocked (all hands).", "milestone");
+            addToLog("Compaction unlocked (all hands).", "milestone");
         }
         for (let i = 0; i < unlockedHands; i++) {
             const ref = speedRowRefs[i];
@@ -5380,7 +5515,7 @@ import {
                 ref.slowdownBtn.classList.remove("upgrade-btn--afford-pulse");
                 setUpgradeTooltipText(ref.slowdownBtn, "Base level: " + level + "/" + cap + "\nBonus (clap): " + bonusLevel + "\nEffective: " + effectiveLevel + "\nBalance/Cost: MAX\nEffect: " + getSlowdownEffectText(effectiveLevel));
                 const slowLbl = ref.slowdownBtn && ref.slowdownBtn.querySelector(".upgrade-btn-label");
-                if (slowLbl) slowLbl.textContent = level > 0 ? "" : "Slowdown";
+                if (slowLbl) slowLbl.textContent = level > 0 ? "" : "Compaction";
             } else {
                 if (ref.slowdownLevelEl) {
                     ref.slowdownLevelEl.innerHTML = level > 0 || bonusLevel > 0
@@ -5389,7 +5524,7 @@ import {
                     ref.slowdownLevelEl.classList.toggle("upgrade-btn-level--hidden", level <= 0 && bonusLevel <= 0);
                 }
                 const slowLbl = ref.slowdownBtn && ref.slowdownBtn.querySelector(".upgrade-btn-label");
-                if (slowLbl) slowLbl.textContent = level > 0 ? "" : "Slowdown";
+                if (slowLbl) slowLbl.textContent = level > 0 ? "" : "Compaction";
                 ref.slowdownBtn.style.display = "";
                 ref.slowdownBtn.disabled = !canAfford;
                 const progress = cost > 0 ? Math.max(0, Math.min(1, balance / cost)) : 1;
@@ -5417,16 +5552,16 @@ import {
         markMeaningfulProgress();
         refreshTotalFromHandEarnings();
         slowdownLevel[handIndex] = nextLevel;
-        // Slowdown is a deliberate "tempo reset" for this hand.
+        // Compaction: deliberate tempo reset for this hand.
         // Reset speed upgrades so displayed speed/CPS state and progression align.
         speedLevel[handIndex] = 0;
         const handNum = handIndex + 1;
-        if (!opts?.silentLog) addToLog("Slowdown purchased for Hand " + handNum + " (level " + nextLevel + "). Speed level reset.", "tip");
+        if (!opts?.silentLog) addToLog("Compaction purchased for Hand " + handNum + " (level " + nextLevel + "). Speed level reset.", "tip");
         incrementalEl.textContent = formatCount(totalChanges);
         const targetHand = hands[handIndex];
         if (targetHand) targetHand.tickAccBig = 0n;
         const origin = originEl || speedRowRefs[handIndex]?.slowdownBtn?.closest(".speed-upgrade-row");
-        if (origin && !opts?.fromAutobuy) sprayConfettiFrom(origin);
+        if (origin && !opts?.fromAutobuy) sprayConfettiFrom(origin, opts?.confettiHoldRepeatCoalesce ? { holdRepeatCoalesce: true } : undefined);
         if (opts?.skipUpgradeDom) {
             batchedUpgradeUiFlush = true;
         } else {
@@ -5513,7 +5648,7 @@ import {
     }
     /**
      * Per-hand count/s from that hand before combo/turbo (matches gameLoopTick weighting).
-     * Tick cadence embeds Speed (2^level); Slowdown multiplies tick value only (10^level).
+     * Tick cadence embeds Speed (2^level); Compaction multiplies tick value only (10^level).
      */
     function getHandPerHandRawCps(handIndex) {
         if (handIndex < 0 || handIndex >= unlockedHands) return 0;
@@ -5526,7 +5661,7 @@ import {
         const slow = getSlowdownMultiplier(handIndex);
         return clampFiniteNonNegative(animPerSec * slow);
     }
-    /** Speed-upgrade multiplier shown as the “base” in base × combo × turbo × slowdown (always ≥ 1). */
+    /** Speed-upgrade multiplier shown as the “base” in base × combo × turbo × Compaction (always ≥ 1). */
     function getHandBaseCpsBeforeSlowdownMult(handIndex) {
         if (handIndex < 0 || handIndex >= unlockedHands) return 0;
         return getSpeedMultiplier(handIndex);
@@ -5624,7 +5759,7 @@ import {
             addToLog("Time Warp overflow (all hands, " + pct + "% of each hand's rate — Warp Factor 36): " + bits.join(" · ") + ".", "milestone");
         }
     }
-    /** Pinky ascension: after a manual aura click grant, spend that hand’s balance on every affordable Speed/Cheapen/Slowdown upgrade (cheapens first for better prices). */
+    /** Pinky ascension: after a manual aura click grant, spend that hand’s balance on every affordable Speed/Cheapen/Compaction upgrade (cheapens first for better prices). */
     function applyTimeWarpManualAutoBuyAssistForHand(handIndex) {
         if (handIndex < 0 || handIndex >= unlockedHands) return;
         if (!computeAscensionGrantTotals().warpAutoBuyAssist) return;
@@ -5906,7 +6041,7 @@ import {
         if (incrementalRateEl) {
             incrementalRateEl.classList.toggle("rate-turbo-active", turboBoostEnabled && turboMult > 1);
             incrementalRateEl.classList.toggle("incremental-rate-value--pre-bh-wrap", !blackHoleSectionActive && unlockedHands >= 2);
-            incrementalRateEl.title = "Total count per second from your current hands, speed/slowdown levels, combo bonus, turbo, and black hole — same basis as hand tooltips. During play the center line repaints at most once per second so it stays easy to read; it also updates right away after purchases, turbo, and similar changes.";
+            incrementalRateEl.title = "Total count per second from your current hands, Speed and Compaction levels, combo bonus, turbo, and black hole — same basis as hand tooltips. During play the center line repaints at most once per second so it stays easy to read; it also updates right away after purchases, turbo, and similar changes.";
         }
         const nowPaint = Date.now();
         const mayPaintHeadline = !throttleCpsHeadline || (nowPaint - cpsHeadlineLastPaintMs >= CPS_HEADLINE_THROTTLE_MS);
@@ -6102,7 +6237,7 @@ import {
             ref.statusBaseEl.textContent = formatCpsForDisplay(baseCps);
             ref.statusEffectiveEl.textContent = formatCpsForDisplay(eff);
             const baseStr = formatCpsForDisplay(baseCps);
-            ref.statusFormulaEl.textContent = "base × combo × turbo × slowdown: " + baseStr + " × " +
+            ref.statusFormulaEl.textContent = "base × combo × turbo × Compaction: " + baseStr + " × " +
                 comboF.toFixed(2) + " × " + turboF.toFixed(2) + " × " + slowF.toFixed(2) + " = " + formatCpsForDisplay(eff);
             ref.statusCompactEl.textContent = "Hand " + (i + 1) + ": " + formatCount(bal) + " · " + formatCpsForDisplay(rawHand) + " → " + formatCpsForDisplay(eff);
         }
@@ -6119,7 +6254,7 @@ import {
             const eff = getHandEffectiveCps(i);
             const bal = handEarnings[i] || 0;
             const n = i + 1;
-            const formula = "base × combo × turbo × slowdown: " + formatCpsForDisplay(baseCps) + " × " +
+            const formula = "base × combo × turbo × Compaction: " + formatCpsForDisplay(baseCps) + " × " +
                 comboF.toFixed(2) + " × " + turboF.toFixed(2) + " × " + slowF.toFixed(2) + " = " + formatCpsForDisplay(eff);
             cards.push(
                 "<li class=\"combo-hand-status-card\" data-hand-index=\"" + i + "\">" +
@@ -6412,7 +6547,7 @@ import {
         }
         if (isSlowdownUnlocked() && !slowdownUnlockLogged) {
             slowdownUnlockLogged = true;
-            addToLog("Slowdown system unlocked (all hands).", "milestone");
+            addToLog("Compaction unlocked (all hands).", "milestone");
         }
         if (isTimeWarpUnlocked() && !timeWarpUnlockLogged) {
             timeWarpUnlockLogged = true;
@@ -6649,7 +6784,8 @@ import {
             unlockedHandsCap,
             ascensionNumber1IntroSeen,
             ascensionTreeVersion: ASCENSION_TREE_VERSION,
-            clapCooldownUntilMsByHand
+            clapCooldownUntilMsByHand,
+            totalPlayTimeMs: saveTotalPlayTimeMs
         };
     }
     function autosaveNow() {
@@ -6693,6 +6829,11 @@ import {
     }
     function applyLoadedState(data) {
         if (!data || typeof data !== "object") return;
+        {
+            const t = Number(data.totalPlayTimeMs);
+            saveTotalPlayTimeMs = Number.isFinite(t) && t >= 0 ? Math.min(Number.MAX_SAFE_INTEGER, Math.floor(t)) : 0;
+        }
+        lastSavePlayWallMs = null;
         if (Array.isArray(data.handEarnings)) handEarnings = data.handEarnings.slice(0, maxHands).concat(Array(Math.max(0, maxHands - data.handEarnings.length)).fill(0));
         if (Array.isArray(data.speedLevel)) speedLevel = data.speedLevel.slice(0, maxHands).concat(Array(Math.max(0, maxHands - data.speedLevel.length)).fill(0));
         if (Array.isArray(data.speedBonusLevel)) speedBonusLevel = data.speedBonusLevel.slice(0, maxHands).concat(Array(Math.max(0, maxHands - data.speedBonusLevel.length)).fill(0));
@@ -6983,6 +7124,10 @@ import {
     function gameplaySimFrozen() {
         return gamePaused || devFreezeGame;
     }
+
+    /** Wall-clock ms accumulated while this save was active (sim not frozen); persisted as totalPlayTimeMs. */
+    let saveTotalPlayTimeMs = 0;
+    let lastSavePlayWallMs = null;
 
     const deleteSaveOverlayEl = document.getElementById("delete-save-overlay");
     const deleteSaveNoBtn = document.getElementById("delete-save-no");
@@ -8384,7 +8529,7 @@ import {
     function grantClapBonusSlowdownLevelForHand(handIndex) {
         if (handIndex < 0 || handIndex >= unlockedHands) return;
         slowdownBonusLevel[handIndex] = (slowdownBonusLevel[handIndex] || 0) + 1;
-        // Same functional reset behavior as buying a slowdown level: purchased speed levels are reset.
+        // Same functional reset behavior as buying a Compaction level: purchased speed levels are reset.
         speedLevel[handIndex] = 0;
         const h = hands[handIndex];
         if (h) h.tickAccBig = 0n;
@@ -8549,7 +8694,7 @@ import {
             const bits = [];
             if (bonusHandsOneIndexed.length > 0) bits.push("bonus speed on " + bonusHandsOneIndexed.map(n => "Hand " + n).join(", "));
             if (cheapenBonusHandsOneIndexed.length > 0) bits.push("bonus cheapen on " + cheapenBonusHandsOneIndexed.map(n => "Hand " + n).join(", "));
-            if (slowdownBonusHandsOneIndexed.length > 0) bits.push("bonus slowdown on " + slowdownBonusHandsOneIndexed.map(n => "Hand " + n).join(", "));
+            if (slowdownBonusHandsOneIndexed.length > 0) bits.push("bonus Compaction on " + slowdownBonusHandsOneIndexed.map(n => "Hand " + n).join(", "));
             if (essenceProcCountThisTick > 0) {
                 bits.push("essence multiplier proc ×" + essenceProcCountThisTick + " (now " + getNumber1AscensionClapEssenceMultiplier().toFixed(3) + "x)");
             }
@@ -8561,6 +8706,41 @@ import {
             updateMilestoneUI();
             refreshOverviewAndAscensionHubLiveIfOpen();
         }
+    }
+
+    let lastSameSpeedHandAlignWallMs = Date.now();
+    const SAME_SPEED_HAND_ALIGN_INTERVAL_MS = 1000;
+    /** Re-align digit + sub-tick carry for hands that share the same speed tier (lowest-id hand is source of truth). */
+    function maybeAlignSameSpeedHandPhasesFromWallClock() {
+        if (gameplaySimFrozen()) return;
+        const now = Date.now();
+        if (now - lastSameSpeedHandAlignWallMs < SAME_SPEED_HAND_ALIGN_INTERVAL_MS) return;
+        lastSameSpeedHandAlignWallMs = now;
+        const buckets = new Map();
+        hands.forEach(h => {
+            const handIndex = h.id - 1;
+            if (handIndex < 0 || handIndex >= unlockedHands) return;
+            const baseSpeed = (Number.isFinite(h.baseSpeed) && h.baseSpeed > 0) ? h.baseSpeed : HAND_BASE_SPEED;
+            const intervalMs = getTickIntervalMs(baseSpeed, handIndex);
+            if (intervalMs <= 0) return;
+            const bucketKey = getHandSpeedSyncBucketKey(handIndex);
+            if (bucketKey == null) return;
+            if (!buckets.has(bucketKey)) buckets.set(bucketKey, []);
+            buckets.get(bucketKey).push(h);
+        });
+        buckets.forEach(groupHands => {
+            if (groupHands.length < 2) return;
+            groupHands.sort((a, b) => a.id - b.id);
+            const leader = groupHands[0];
+            const acc = leader.tickAccBig != null ? leader.tickAccBig : 0n;
+            const cnt = leader.count;
+            groupHands.forEach(h => {
+                if (h.count === cnt && h.tickAccBig === acc) return;
+                h.count = cnt;
+                h.tickAccBig = acc;
+                h.render();
+            });
+        });
     }
 
     function runGameLoopStep() {
@@ -8584,19 +8764,20 @@ import {
             return;
         }
         updateTimeWarpSystem(dtSec);
+        maybeAlignSameSpeedHandPhasesFromWallClock();
         const ticksPerHand = Array(unlockedHands).fill(0);
         // Hands with the same speed multiplier share one tick phase and the same 1–10 digit
-        // so pair-style combos stay achievable (stable bucket key: mult is an exact power of 2).
-        // Slowdown only scales tick *value* per hand (see effectiveTicksPerHand); cadence follows Speed.
+        // so pair-style combos stay achievable (stable bucket key: effective speed level).
+        // Compaction only scales tick *value* per hand (see effectiveTicksPerHand); cadence follows Speed.
         const buckets = new Map();
         hands.forEach(h => {
             const handIndex = h.id - 1;
             if (handIndex < 0 || handIndex >= unlockedHands) return;
-            const mult = getSpeedMultiplier(handIndex);
             const baseSpeed = (Number.isFinite(h.baseSpeed) && h.baseSpeed > 0) ? h.baseSpeed : HAND_BASE_SPEED;
             const intervalMs = getTickIntervalMs(baseSpeed, handIndex);
             if (intervalMs <= 0) return;
-            const bucketKey = String(mult);
+            const bucketKey = getHandSpeedSyncBucketKey(handIndex);
+            if (bucketKey == null) return;
             if (!buckets.has(bucketKey)) buckets.set(bucketKey, []);
             buckets.get(bucketKey).push(h);
         });
@@ -8688,11 +8869,21 @@ import {
     let batchedUpgradeUiFlush = false;
 
     function gameLoopTick() {
+        const wallNow = Date.now();
         if (gameplaySimFrozen()) {
             lastGameLoopPerfMs = null;
             simLagMs = 0;
+            lastSavePlayWallMs = null;
             return;
         }
+        if (lastSavePlayWallMs != null) {
+            let d = wallNow - lastSavePlayWallMs;
+            if (d > 0) {
+                if (d > GAME_LOOP_MAX_ELAPSED_MS) d = GAME_LOOP_MAX_ELAPSED_MS;
+                saveTotalPlayTimeMs = Math.min(Number.MAX_SAFE_INTEGER, saveTotalPlayTimeMs + d);
+            }
+        }
+        lastSavePlayWallMs = wallNow;
         const perfNow = performance.now();
         let elapsed = lastGameLoopPerfMs != null ? perfNow - lastGameLoopPerfMs : GAME_LOOP_MS;
         lastGameLoopPerfMs = perfNow;
@@ -8748,49 +8939,10 @@ import {
     }, 2000);
 
     if (speedUpgradesContainerEl) {
-        function positionTooltipForButton(btn) {
-            const tip = btn && btn.querySelector(".upgrade-details-tooltip");
-            if (!tip) return;
-            const prevDisplay = tip.style.display;
-            const prevVisibility = tip.style.visibility;
-            const hiddenByCss = getComputedStyle(tip).display === "none";
-            if (hiddenByCss) {
-                tip.style.visibility = "hidden";
-                tip.style.display = "block";
-            }
-            const margin = 8;
-            const btnRect = btn.getBoundingClientRect();
-            const tipRect = tip.getBoundingClientRect();
-            let left = btnRect.left;
-            if (left + tipRect.width > window.innerWidth - margin) left = window.innerWidth - margin - tipRect.width;
-            if (left < margin) left = margin;
-            let top = btnRect.bottom + 8;
-            if (top + tipRect.height > window.innerHeight - margin) {
-                top = btnRect.top - tipRect.height - 8;
-            }
-            if (top < margin) top = margin;
-            tip.style.left = Math.round(left) + "px";
-            tip.style.top = Math.round(top) + "px";
-            if (hiddenByCss) {
-                tip.style.display = prevDisplay;
-                tip.style.visibility = prevVisibility;
-            }
-        }
-        function positionVisibleTooltips() {
-            speedUpgradesContainerEl.querySelectorAll(".upgrade-btn.tooltip-open, .upgrade-btn:hover, .upgrade-btn:focus-within").forEach(positionTooltipForButton);
-        }
-        function onWindowScrollResizeForUpgrades() {
-            positionVisibleTooltips();
-            scheduleHandUpgradeScrollHintUpdate();
-        }
-        speedUpgradesContainerEl.addEventListener("mouseover", function(e) {
-            const btn = e.target.closest(".upgrade-btn");
-            if (!btn) return;
-            requestAnimationFrame(() => positionTooltipForButton(btn));
-        });
         speedUpgradesContainerEl.addEventListener("focusin", function(e) {
             const btn = e.target.closest(".upgrade-btn");
             if (!btn) return;
+            clearUpgradeTooltipHoverTimer(btn);
             requestAnimationFrame(() => positionTooltipForButton(btn));
         });
         window.addEventListener("resize", onWindowScrollResizeForUpgrades);
@@ -8815,17 +8967,27 @@ import {
             stopUpgradeHoldRepeat(false);
             upgradeHoldSuppressClickBtn = null;
             let buyFn;
+            let buyFnHoldRepeat;
             if (speedBtn) {
                 buyFn = function () {
                     buySpeedUpgradeForHand(handIndex, { confettiOrigin: btn });
+                };
+                buyFnHoldRepeat = function () {
+                    buySpeedUpgradeForHand(handIndex, { confettiOrigin: btn, confettiHoldRepeatCoalesce: true });
                 };
             } else if (cheapenBtn) {
                 buyFn = function () {
                     buyCheapenUpgradeForHand(handIndex, btn);
                 };
+                buyFnHoldRepeat = function () {
+                    buyCheapenUpgradeForHand(handIndex, btn, { confettiHoldRepeatCoalesce: true });
+                };
             } else {
                 buyFn = function () {
                     buySlowdownUpgradeForHand(handIndex, btn);
+                };
+                buyFnHoldRepeat = function () {
+                    buySlowdownUpgradeForHand(handIndex, btn, { confettiHoldRepeatCoalesce: true });
                 };
             }
             buyFn();
@@ -8835,10 +8997,10 @@ import {
                     firstTick = false;
                     if (!upgradeHoldRepeatTipLogged) {
                         upgradeHoldRepeatTipLogged = true;
-                        addToLog("Hold the mouse (or finger) on Speed, Cheapen, or Slowdown to buy upgrades one after another while you have enough currency.", "tip");
+                        addToLog("Hold the mouse (or finger) on Speed, Cheapen, or Compaction to buy upgrades one after another while you have enough currency.", "tip");
                     }
                 }
-                buyFn();
+                buyFnHoldRepeat();
             }, UPGRADE_HOLD_REPEAT_MS);
             upgradeHoldRepeatState = { intervalId: intervalId, buttonEl: btn };
         }, true);
@@ -8956,6 +9118,7 @@ import {
     const devToolsToggle = document.getElementById("dev-tools-toggle");
     const devToolsPanel = document.getElementById("dev-tools-panel");
     const devSecondsElapsed = document.getElementById("dev-seconds-elapsed");
+    const devSaveTotalSecondsEl = document.getElementById("dev-save-total-seconds");
     const devAddCountInput = document.getElementById("dev-add-count-input");
     const devAddCountBtn = document.getElementById("dev-add-count-btn");
     const devAddAscensionEssenceInput = document.getElementById("dev-add-ascension-essence-input");
@@ -8982,9 +9145,27 @@ import {
     }
     let devSecondsInterval = null;
 
-    function updateDevSeconds() {
-        if (!devSecondsElapsed) return;
-        devSecondsElapsed.textContent = ((Date.now() - devToolsLoadTime) / 1000).toFixed(1);
+    function updateDevToolsTimeLabels() {
+        if (devSecondsElapsed) {
+            let elapsedMs;
+            try {
+                elapsedMs = typeof performance !== "undefined" && typeof performance.now === "function"
+                    ? performance.now()
+                    : Date.now() - devToolsLoadTimeMs;
+            } catch (_) {
+                elapsedMs = Date.now() - devToolsLoadTimeMs;
+            }
+            if (!Number.isFinite(elapsedMs) || elapsedMs < 0) elapsedMs = 0;
+            devSecondsElapsed.textContent = String(Math.round(elapsedMs / 1000));
+        }
+        if (devSaveTotalSecondsEl) {
+            let displayMs = saveTotalPlayTimeMs;
+            if (!gameplaySimFrozen() && lastSavePlayWallMs != null) {
+                const extra = Math.min(GAME_LOOP_MAX_ELAPSED_MS, Math.max(0, Date.now() - lastSavePlayWallMs));
+                displayMs = Math.min(Number.MAX_SAFE_INTEGER, displayMs + extra);
+            }
+            devSaveTotalSecondsEl.textContent = String(Math.round(displayMs / 1000));
+        }
     }
     function updateDevBlackHolePhaseSelect() {
         if (devBlackHolePhaseSelect) devBlackHolePhaseSelect.value = String(getBlackHolePhase());
@@ -9085,11 +9266,11 @@ import {
             const show = isDevToolsPanelHidden();
             devToolsPanel.style.display = show ? "block" : "none";
             if (show) {
-                updateDevSeconds();
+                updateDevToolsTimeLabels();
                 updateDevBlackHolePhaseSelect();
                 if (devPauseGameCheckbox) devPauseGameCheckbox.checked = devFreezeGame;
                 syncDevN1StageBackgroundMotionFromSession();
-                if (!devSecondsInterval) devSecondsInterval = setInterval(updateDevSeconds, 100);
+                if (!devSecondsInterval) devSecondsInterval = setInterval(updateDevToolsTimeLabels, 1000);
             } else {
                 if (devSecondsInterval) clearInterval(devSecondsInterval);
                 devSecondsInterval = null;

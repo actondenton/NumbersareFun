@@ -3,7 +3,7 @@
         if (g.speedCostMult != null) parts.push("Speed upgrades cost " + ((1 - g.speedCostMult) * 100).toFixed(1) + "% less (multiplicative)");
         if (g.cheapenCap != null) parts.push("+" + g.cheapenCap + " max Cheapen level");
         if (g.autoBuyDelayMult != null) parts.push("Speed autobuy delay \u00d7" + g.autoBuyDelayMult.toFixed(3));
-        if (g.slowdownCostMult != null) parts.push("Slowdown upgrades cost " + ((1 - g.slowdownCostMult) * 100).toFixed(1) + "% less (multiplicative)");
+        if (g.slowdownCostMult != null) parts.push("Compaction upgrades cost " + ((1 - g.slowdownCostMult) * 100).toFixed(1) + "% less (multiplicative)");
         if (g.comboMultAdd != null) parts.push("+" + (g.comboMultAdd * 100).toFixed(2) + "% combo multiplier");
         if (g.comboTriggerProductionFrac != null) parts.push("+" + (g.comboTriggerProductionFrac * 100).toFixed(2) + "% of 1s global CPS on combo pulse (split)");
         if (g.turboScaling != null) parts.push("+25 turbo meter & \u00d71.25 turbo cap stack");

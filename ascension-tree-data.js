@@ -60,10 +60,10 @@
         if (g.speedCostMult != null) parts.push("Speed upgrades cost " + ((1 - g.speedCostMult) * 100).toFixed(1) + "% less (multiplicative)");
         if (g.autoBuyDefaultOnForNewHands) parts.push("Hands unlocked after this purchase default to Speed autobuy On");
         if (g.autoBuyAlsoCheapen) parts.push("While Speed autobuy is on for a hand, also autobuy Cheapen there (same cadence as Speed)");
-        if (g.autoBuyAlsoSlowdown) parts.push("While Speed autobuy is on for a hand, also autobuy Slowdown there (same cadence as Speed)");
+        if (g.autoBuyAlsoSlowdown) parts.push("While Speed autobuy is on for a hand, also autobuy Compaction there (same cadence as Speed)");
         if (g.cheapenCap != null) parts.push("+" + g.cheapenCap + " max Cheapen level");
         if (g.autoBuyDelayMult != null) parts.push("Speed autobuy delay \u00d7" + g.autoBuyDelayMult.toFixed(3));
-        if (g.slowdownCostMult != null) parts.push("Slowdown upgrades cost " + ((1 - g.slowdownCostMult) * 100).toFixed(1) + "% less (multiplicative)");
+        if (g.slowdownCostMult != null) parts.push("Compaction upgrades cost " + ((1 - g.slowdownCostMult) * 100).toFixed(1) + "% less (multiplicative)");
         if (g.comboMultAdd != null) {
             parts.push("Adds +" + (g.comboMultAdd * 100).toFixed(2) + "% to your overall combo bonus on Number 1");
         }
@@ -139,7 +139,7 @@
         if (g.warpOverflow != null) parts.push("+" + (g.warpOverflow * 5) + "% Time Warp overflow (toward 90% cap)");
         if (g.warpSpawnIntervalMult != null) parts.push("Time Warp aura spawn span \u00d7" + g.warpSpawnIntervalMult.toFixed(3) + " (min 1s)");
         if (g.warpAutoBuyAssist === true) {
-            parts.push("When you manually click a Time Warp aura on a hand, after the normal warp grant that hand also buys every Speed, Cheapen, and Slowdown upgrade it can afford (repeats until nothing left; Slowdown still resets Speed on that hand)");
+            parts.push("When you manually click a Time Warp aura on a hand, after the normal warp grant that hand also buys every Speed, Cheapen, and Compaction upgrade it can afford (repeats until nothing left; Compaction still resets Speed on that hand)");
         }
         if (g.warpManualGrantSeconds != null && Number.isFinite(g.warpManualGrantSeconds) && g.warpManualGrantSeconds >= 60) {
             parts.push("Manual Time Warp burst uses " + g.warpManualGrantSeconds + " seconds of that hand's effective rate at the usual click multiplier (base 60s without this; highest purchased seconds value wins)");
@@ -168,13 +168,13 @@
             parts.push("Cheapen Clap Echo chain: each cheapen echo roll can continue chaining at 10% per wave");
         }
         if (g.clapSlowdownBonusChanceAdd != null && g.clapSlowdownBonusChanceAdd > 0) {
-            parts.push("Each clap roll has +" + (g.clapSlowdownBonusChanceAdd * 100).toFixed(2) + "% chance to grant a bonus Slowdown level on that hand (uses normal slowdown behavior: resets purchased Speed levels only)");
+            parts.push("Each clap roll has +" + (g.clapSlowdownBonusChanceAdd * 100).toFixed(2) + "% chance to grant a bonus Compaction level on that hand (uses normal Compaction behavior: resets purchased Speed levels only)");
         }
         if (g.clapSlowdownExtraRoll === true) {
-            parts.push("Slowdown Clap Echo: when a slowdown clap bonus procs, 10% chance for an immediate extra bonus roll on that same hand");
+            parts.push("Compaction Clap Echo: when a Compaction clap bonus procs, 10% chance for an immediate extra bonus roll on that same hand");
         }
         if (g.clapSlowdownChainRolls === true) {
-            parts.push("Slowdown Clap Echo chain: each slowdown echo roll can continue chaining at 10% per wave");
+            parts.push("Compaction Clap Echo chain: each Compaction echo roll can continue chaining at 10% per wave");
         }
         if (g.clapEssenceProcChanceAdd != null && g.clapEssenceProcChanceAdd > 0) {
             parts.push("Each clap roll has +" + (g.clapEssenceProcChanceAdd * 100).toFixed(2) + "% chance to strengthen this run's Ascension Essence multiplier");
@@ -664,22 +664,22 @@
             { cost: 6, grants: { clapEssenceProcChanceAdd: 0.007, clapEssenceMultiplierStepAdd: 0.0012 }, title: "Essence Echo I" },
             { cost: 7, grants: { clapCheapenBonusChanceAdd: 0.006 }, title: "Cheapen Clap II" },
             { cost: 8, grants: { clapBonusChanceAdd: 0.012 } },
-            { cost: 9, grants: { clapSlowdownBonusChanceAdd: 0.004 }, title: "Slowdown Clap I" },
+            { cost: 9, grants: { clapSlowdownBonusChanceAdd: 0.004 }, title: "Compaction Clap I" },
             { cost: 9, grants: { clapCheapenExtraRoll: true }, title: "Cheapen Echo" },
             { cost: 11, grants: { clapEssenceProcChanceAdd: 0.007, clapEssenceMultiplierStepAdd: 0.0012 }, title: "Essence Echo II" },
             { cost: 12, grants: { clapBonusChanceAdd: 0.012 } },
             { cost: 13, grants: { clapCooldownMult: 0.97 } },
-            { cost: 14, grants: { clapSlowdownBonusChanceAdd: 0.004 }, title: "Slowdown Clap II" },
+            { cost: 14, grants: { clapSlowdownBonusChanceAdd: 0.004 }, title: "Compaction Clap II" },
             { cost: 16, grants: { clapCheapenBonusChanceAdd: 0.007 }, title: "Cheapen Clap III" },
             { cost: 18, grants: { clapCheapenChainRolls: true }, title: "Cheapen Echo Chain" },
             { cost: 19, grants: { clapEssenceProcChanceAdd: 0.008, clapEssenceMultiplierStepAdd: 0.0014 }, title: "Essence Echo III" },
-            { cost: 22, grants: { clapSlowdownExtraRoll: true }, title: "Slowdown Echo" },
+            { cost: 22, grants: { clapSlowdownExtraRoll: true }, title: "Compaction Echo" },
             { cost: 24, grants: { clapCooldownMult: 0.97 } },
             { cost: 26, grants: { clapBonusChanceAdd: 0.012 } },
-            { cost: 29, grants: { clapSlowdownBonusChanceAdd: 0.005 }, title: "Slowdown Clap III" },
+            { cost: 29, grants: { clapSlowdownBonusChanceAdd: 0.005 }, title: "Compaction Clap III" },
             { cost: 32, grants: { clapEssenceProcChanceAdd: 0.01, clapEssenceMultiplierStepAdd: 0.0018 }, title: "Essence Echo IV" },
             { cost: 36, grants: { clapCheapenBonusChanceAdd: 0.008 }, title: "Cheapen Clap IV" },
-            { cost: 39, grants: { clapSlowdownChainRolls: true }, title: "Slowdown Echo Chain" },
+            { cost: 39, grants: { clapSlowdownChainRolls: true }, title: "Compaction Echo Chain" },
             { cost: 44, grants: { clapEssenceProcChanceAdd: 0.012, clapEssenceMultiplierStepAdd: 0.0024 }, title: "Essence Surge I" },
             { cost: 48, grants: { clapBonusChanceAdd: 0.012, clapCooldownMult: 0.96 } },
             { cost: 53, grants: { clapCheapenBonusChanceAdd: 0.01, clapSlowdownBonusChanceAdd: 0.006, clapEssenceProcChanceAdd: 0.014, clapEssenceMultiplierStepAdd: 0.003 }, title: "Essence Surge II" },

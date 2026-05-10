@@ -3,6 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <title>NumbersareFun</title>
+    <!-- Hide late-game Number 1 stage art until JS applies black-hole phase from save (avoids FOUC / noscript spoilers). -->
+    <style>
+        html:not([data-n1-bh-vfx-synced]) #number1-stage-root .number1-stage-mass-bg,
+        html:not([data-n1-bh-vfx-synced]) #number1-stage-root .number1-stage-collapse-bg,
+        html:not([data-n1-bh-vfx-synced]) #number1-stage-root .number1-stage-disk-bg,
+        html:not([data-n1-bh-vfx-synced]) #number1-stage-root .number1-stage-lensing-ripples,
+        html:not([data-n1-bh-vfx-synced]) #number1-stage-root .number1-stage-coronal-cage {
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+    </style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
@@ -206,6 +218,10 @@
             <span id="dev-seconds-elapsed">0</span>
         </div>
         <div class="dev-tools-row">
+            <label>Total time in save (~s):</label>
+            <span id="dev-save-total-seconds">0</span>
+        </div>
+        <div class="dev-tools-row">
             <label><input type="checkbox" id="dev-pause-game" /> Pause game simulation</label>
         </div>
         <div class="dev-tools-row">
@@ -245,7 +261,7 @@
             <label><input type="checkbox" id="dev-autobuy-cheapen" /> Autobuy cheapen (0.1s)</label>
         </div>
         <div class="dev-tools-row">
-            <label><input type="checkbox" id="dev-autobuy-slowdown" /> Autobuy slowdown (0.1s)</label>
+            <label><input type="checkbox" id="dev-autobuy-slowdown" /> Autobuy Compaction (0.1s)</label>
         </div>
         <div class="dev-tools-row">
             <button type="button" id="dev-delete-save" class="dev-delete-save-btn">Delete save data…</button>
