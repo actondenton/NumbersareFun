@@ -140,6 +140,18 @@ html[data-theme="light"] .turbo-scension-upgrade-btn {
   background: rgba(255, 255, 255, 0.88);
   color: #2a3358;
 }
+html[data-theme="light"] .turbo-scension-upgrade-btn:disabled {
+  color: rgba(42, 51, 88, 0.48);
+  border-color: rgba(90, 104, 160, 0.22);
+  background: rgba(232, 236, 248, 0.95);
+}
+html[data-theme="light"] .turbo-scension-tooltip-host .upgrade-details-tooltip {
+  background-color: #f4fbf7;
+  background: #f4fbf7;
+  color: #0d281f;
+  border-color: #2a6b52;
+  box-shadow: 0 12px 28px rgba(15, 40, 30, 0.22);
+}
 html[data-theme="light"] .hand-upgrade-row {
   background: rgba(255, 255, 255, 0.62);
 }
@@ -181,6 +193,20 @@ html[data-theme="light"] .story-review-panel {
 html[data-theme="light"] .combo-earned-bonuses-intro {
   color: #4a5578;
 }
+html[data-theme="light"] .combo-discovery-milestone-ui {
+  background: rgba(230, 234, 255, 0.92);
+  border-color: rgba(106, 118, 200, 0.4);
+}
+html[data-theme="light"] .combo-discovery-milestone-line {
+  color: #2a3153;
+}
+html[data-theme="light"] .combo-discovery-milestone-bar-track {
+  background: rgba(60, 70, 120, 0.12);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+html[data-theme="light"] .combo-discovery-milestone-bar-fill {
+  background: linear-gradient(180deg, #5c6bc0 0%, #3949ab 100%);
+}
 html[data-theme="light"] .story-review-summary {
   background: rgba(76, 100, 200, 0.08);
   border-color: rgba(76, 100, 200, 0.22);
@@ -210,6 +236,9 @@ html[data-theme="light"] .story-log-heading {
 }
 html[data-theme="light"] #earned-bonuses-list {
   color: #2a3153;
+}
+html[data-theme="light"] #earned-bonuses-list li.earned-bonus-item-queued {
+  color: #e65100;
 }
 html[data-theme="light"] .settings-delete-save-block {
   border-top-color: rgba(60, 70, 100, 0.2);
@@ -271,6 +300,10 @@ html[data-theme="light"] .action-log-toggle {
 }
 html[data-theme="light"] .action-log-toggle:hover {
   color: #3f4c78;
+}
+html[data-theme="light"] .action-log .action-log-lines .action-log-line.action-log-cat-system,
+html[data-theme="light"] .ambient-message-ticker__item--system {
+  color: #546e7a;
 }
 
 /* Dark mode contrast pass (keep dark surfaces, raise text readability) */
@@ -706,6 +739,13 @@ html[data-theme="light"] .ascension-ready-banner__sub strong {
   font-family: var(--font-gameplay);
   overflow: hidden;
   transition: border-color 0.4s ease, box-shadow 0.45s ease, background 0.45s ease;
+}
+
+/* Above #upgrade-container and other z-index:2 siblings on #number1-stage-root so
+   fixed `.upgrade-details-tooltip` panels from the Turbo-scension HUD are not painted
+   underneath the hand rows (same tooltip markup as upgrades; stacking context order was wrong). */
+#number1-stage-root > .top-count-row {
+  z-index: 5;
 }
 
 .top-count-row__segment {
@@ -1153,8 +1193,11 @@ html[data-theme="light"] .n1-bh-visual__core {
   text-align: center;
 }
 .turbo-scension-upgrade-btn:disabled {
-  opacity: 0.45;
+  opacity: 1;
   cursor: not-allowed;
+  color: rgba(221, 228, 255, 0.5);
+  border-color: rgba(140, 160, 255, 0.25);
+  background: rgba(40, 48, 90, 0.5);
 }
 
 .turbo-scension-levels {
@@ -1169,6 +1212,17 @@ html[data-theme="light"] .n1-bh-visual__core {
   min-width: 0;
   width: 100%;
   text-align: left;
+}
+.turbo-scension-levels .turbo-scension-tooltip-host {
+  cursor: help;
+  min-width: 0;
+}
+.turbo-scension-level-line-label {
+  min-width: 0;
+}
+.turbo-scension-tooltip-host.turbo-scension-level-line:focus-visible {
+  outline: 2px solid rgba(140, 160, 255, 0.45);
+  outline-offset: 1px;
 }
 
 .turbo-scension-level-line--leveler {
@@ -1690,7 +1744,7 @@ html[data-theme="light"] .hand-slot-main .hand-slot-hand-label {
     transform: translateX(-50%);
     margin-top: 0;
   }
-  .hand-slot:hover .hand-status-block,
+  .hand-slot.hand-status-tooltip-hover-show .hand-status-block,
   .hand-slot:focus-within .hand-status-block {
     display: block;
   }
@@ -2159,6 +2213,7 @@ html[data-theme="dark"] .slowdown-upgrade-btn .upgrade-btn-level {
   padding: 10px 12px;
   border-radius: 8px;
   border: 1px solid #2a5a45;
+  background-color: #06100d;
   background: #06100d;
   color: #a8e4cb;
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
@@ -2166,6 +2221,14 @@ html[data-theme="dark"] .slowdown-upgrade-btn .upgrade-btn-level {
   white-space: pre-wrap;
   line-height: 1.45;
   pointer-events: none;
+  opacity: 1;
+}
+.turbo-scension-tooltip-host .upgrade-details-tooltip {
+  font-size: 2em;
+  background-color: #071914;
+  background: #071914;
+  border-color: #358066;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.72);
 }
 .upgrade-tooltip-line {
   display: block;
@@ -2177,7 +2240,10 @@ html[data-theme="dark"] .slowdown-upgrade-btn .upgrade-btn-level {
 }
 .upgrade-btn.upgrade-tooltip-hover-show .upgrade-details-tooltip,
 .upgrade-btn:focus-visible .upgrade-details-tooltip,
-.upgrade-btn.tooltip-open .upgrade-details-tooltip {
+.upgrade-btn.tooltip-open .upgrade-details-tooltip,
+.turbo-scension-tooltip-host.upgrade-tooltip-hover-show .upgrade-details-tooltip,
+.turbo-scension-tooltip-host:focus-visible .upgrade-details-tooltip,
+.turbo-scension-tooltip-host.tooltip-open .upgrade-details-tooltip {
   display: block;
 }
 @media (max-width: 640px) {
@@ -2850,6 +2916,33 @@ html[data-theme="light"] .page-btn.page-btn--new-bonus-pulse {
     font-size: 1rem;
     color: #9aa0ff;
 }
+.combo-discovery-milestone-ui {
+    margin: 0 0 12px 0;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(154, 160, 255, 0.35);
+    background: rgba(30, 34, 55, 0.75);
+}
+.combo-discovery-milestone-line {
+    margin: 0 0 8px 0;
+    font-size: 0.84rem;
+    line-height: 1.35;
+    color: #c5c8f0;
+}
+.combo-discovery-milestone-bar-track {
+    height: 12px;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.35);
+    overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+.combo-discovery-milestone-bar-fill {
+    height: 100%;
+    width: 100%;
+    border-radius: 6px;
+    background: linear-gradient(180deg, #7b86ff 0%, #4f5dcc 100%);
+    transition: width 0.08s linear;
+}
 .combo-earned-bonuses-intro {
     margin: 0 0 10px 0;
     font-size: 0.82rem;
@@ -2884,6 +2977,11 @@ html[data-theme="light"] .page-btn.page-btn--new-bonus-pulse {
 #earned-bonuses-list li.earned-bonus-undiscovered {
     color: #e57373;
     font-style: italic;
+}
+#earned-bonuses-list li.earned-bonus-item-queued {
+    color: #ffcc80;
+    font-style: italic;
+    font-weight: 600;
 }
 
 .hands-grid {
@@ -3020,7 +3118,8 @@ html[data-theme="light"] .page-btn.page-btn--new-bonus-pulse {
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 9000;
+    /* Above full-screen .page-panel (100004) so combo discovery bubbles show while e.g. Combinations is open (queued milestones). Below ledger beam VFX (~100050). */
+    z-index: 100006;
 }
 .combo-bubble {
     position: absolute;
@@ -4037,6 +4136,9 @@ html[data-theme="light"] .combo-hand-status-compact {
 .page-modal .message-log-line.message-log-cat-humor {
     color: #f48fb1;
 }
+.page-modal .message-log-line.message-log-cat-system {
+    color: #b0bec5;
+}
 .message-log-empty {
     font-size: 0.9rem;
     color: #b0b8c8;
@@ -4105,6 +4207,9 @@ html[data-theme="light"] .combo-hand-status-compact {
 .ambient-message-ticker--humor {
     color: #f48fb1;
 }
+.ambient-message-ticker--system {
+    color: #b0bec5;
+}
 .ambient-message-ticker__item--tip {
     color: #4dd0e1;
 }
@@ -4119,6 +4224,9 @@ html[data-theme="light"] .combo-hand-status-compact {
 }
 .ambient-message-ticker__item--humor {
     color: #f48fb1;
+}
+.ambient-message-ticker__item--system {
+    color: #b0bec5;
 }
 
 .action-log-lines {
@@ -4152,6 +4260,9 @@ html[data-theme="light"] .combo-hand-status-compact {
 }
 .action-log .action-log-lines .action-log-line.action-log-cat-humor {
     color: #f48fb1;
+}
+.action-log .action-log-lines .action-log-line.action-log-cat-system {
+    color: #b0bec5;
 }
 
 .action-log-toggle {
@@ -8138,5 +8249,197 @@ html[data-theme="light"] .asc2-node {
     }
     .number2-action-btn--active {
         animation: none;
+    }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Ledger beam VFX (log → bonus / clap sinks)                                   */
+/* -------------------------------------------------------------------------- */
+.ledger-beam-layer {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 100050;
+    overflow: visible;
+}
+.ledger-beam-canvas {
+    position: absolute;
+    left: 0;
+    top: 0;
+    pointer-events: none;
+}
+.ledger-beam-micro {
+    position: fixed;
+    font-size: 11px;
+    font-weight: 700;
+    pointer-events: none;
+    z-index: 100051;
+    letter-spacing: 0.02em;
+    color: rgba(186, 214, 255, 0.96);
+    text-shadow: 0 0 8px rgba(96, 130, 220, 0.85);
+    font-variant-numeric: tabular-nums;
+}
+.ledger-beam-micro--clap {
+    color: rgba(255, 228, 190, 0.98);
+    text-shadow: 0 0 8px rgba(255, 150, 64, 0.8);
+}
+html[data-theme="light"] .ledger-beam-micro {
+    color: rgba(50, 72, 130, 0.92);
+    text-shadow: 0 0 4px rgba(180, 200, 255, 0.65);
+}
+html[data-theme="light"] .ledger-beam-micro--clap {
+    color: rgba(130, 60, 0, 0.92);
+    text-shadow: 0 0 4px rgba(255, 200, 120, 0.55);
+}
+.ledger-beam-fallback-chip {
+    position: fixed;
+    left: 50%;
+    top: clamp(56px, 12vh, 120px);
+    transform: translateX(-50%);
+    z-index: 100051;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    pointer-events: none;
+    white-space: nowrap;
+    background: rgba(35, 28, 20, 0.92);
+    border: 1px solid rgba(255, 180, 100, 0.55);
+    color: #ffd9a8;
+    box-shadow: 0 0 18px rgba(255, 140, 60, 0.35);
+}
+html[data-theme="light"] .ledger-beam-fallback-chip {
+    background: rgba(255, 252, 248, 0.96);
+    border-color: rgba(200, 120, 40, 0.5);
+    color: #8d4a00;
+    box-shadow: 0 2px 10px rgba(180, 100, 30, 0.18);
+}
+.ledger-beam-pop-wrap {
+    position: fixed;
+    z-index: 100052;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    pointer-events: none;
+    white-space: nowrap;
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+}
+.ledger-beam-pop-delta {
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    color: #a7f5c8;
+    text-shadow: 0 0 8px rgba(120, 220, 170, 0.45);
+}
+.ledger-beam-pop-wrap--clap .ledger-beam-pop-delta {
+    color: #ffe0b2;
+    text-shadow: 0 0 8px rgba(255, 160, 80, 0.45);
+}
+html[data-theme="light"] .ledger-beam-pop-delta {
+    color: #2e7d4a;
+    text-shadow: none;
+}
+html[data-theme="light"] .ledger-beam-pop-wrap--clap .ledger-beam-pop-delta {
+    color: #c65100;
+}
+.ledger-beam-pop-wrap--clap .ledger-beam-pop-new {
+    color: #ffb74d;
+    text-shadow: 0 0 10px rgba(255, 145, 60, 0.65);
+}
+.ledger-beam-pop-wrap:not(.ledger-beam-pop-wrap--clap) .ledger-beam-pop-new {
+    color: #9aa0ff;
+    text-shadow: 0 0 10px rgba(120, 140, 255, 0.55);
+}
+html[data-theme="light"] .ledger-beam-pop-wrap--clap .ledger-beam-pop-new {
+    color: #e65100;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+html[data-theme="light"] .ledger-beam-pop-wrap:not(.ledger-beam-pop-wrap--clap) .ledger-beam-pop-new {
+    color: #3949ab;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+.ledger-beam-pop-ghost {
+    opacity: 0;
+}
+.ledger-beam-pop-new {
+    opacity: 0;
+}
+.ledger-beam-pop-wrap--run .ledger-beam-pop-ghost {
+    animation: ledger-beam-pop-ghost 0.32s ease-out forwards;
+}
+.ledger-beam-pop-wrap--run .ledger-beam-pop-new {
+    animation: ledger-beam-pop-new 0.38s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+@keyframes ledger-beam-pop-ghost {
+    0% { opacity: 0.95; transform: translateY(4px); }
+    100% { opacity: 0; transform: translateY(-16px); }
+}
+@keyframes ledger-beam-pop-new {
+    0% { opacity: 0; transform: translateY(14px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+.ledger-beam-sink-flash {
+    animation: ledger-beam-sink-pulse 0.36s ease-out;
+}
+@keyframes ledger-beam-sink-pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(154, 160, 255, 0.55);
+    }
+    40% {
+        box-shadow: 0 0 0 6px rgba(154, 160, 255, 0.12);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(154, 160, 255, 0);
+    }
+}
+html[data-theme="light"] .ledger-beam-sink-flash {
+    animation: ledger-beam-sink-pulse-light 0.36s ease-out;
+}
+@keyframes ledger-beam-sink-pulse-light {
+    0% {
+        box-shadow: 0 0 0 0 rgba(57, 73, 171, 0.35);
+    }
+    40% {
+        box-shadow: 0 0 0 5px rgba(57, 73, 171, 0.08);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(57, 73, 171, 0);
+    }
+}
+.ledger-beam-sink-flash--clap {
+    animation: ledger-beam-sink-pulse-clap 0.36s ease-out;
+}
+@keyframes ledger-beam-sink-pulse-clap {
+    0% {
+        box-shadow: 0 0 0 0 rgba(255, 180, 100, 0.5);
+    }
+    40% {
+        box-shadow: 0 0 0 6px rgba(255, 150, 60, 0.15);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(255, 150, 60, 0);
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .ledger-beam-pop-wrap--run .ledger-beam-pop-ghost,
+    .ledger-beam-pop-wrap--run .ledger-beam-pop-new {
+        animation: none;
+        opacity: 1;
+        transform: none;
+    }
+    .ledger-beam-pop-ghost {
+        display: none;
+    }
+    .ledger-beam-pop-new {
+        opacity: 1;
+    }
+    .ledger-beam-pop-delta {
+        opacity: 1;
     }
 }

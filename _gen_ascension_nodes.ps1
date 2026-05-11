@@ -13,7 +13,7 @@ function GVel([int]$i) {
 function GCombo([int]$i) {
     $m = $i % 3
     if ($m -eq 0) { return '{ comboMultAdd: 0.004 }' }
-    if ($m -eq 1) { return '{ comboTriggerProductionFrac: 0.004 }' }
+    if ($m -eq 1) { return '{ comboEarnedPatternMultAdd: 0.05 }' }
     return '{ comboMultAdd: 0.003 }'
 }
 function GTurbo([int]$i) {

@@ -4,8 +4,10 @@
         if (g.cheapenCap != null) parts.push("+" + g.cheapenCap + " max Cheapen level");
         if (g.autoBuyDelayMult != null) parts.push("Speed autobuy delay \u00d7" + g.autoBuyDelayMult.toFixed(3));
         if (g.slowdownCostMult != null) parts.push("Compaction upgrades cost " + ((1 - g.slowdownCostMult) * 100).toFixed(1) + "% less (multiplicative)");
-        if (g.comboMultAdd != null) parts.push("+" + (g.comboMultAdd * 100).toFixed(2) + "% combo multiplier");
-        if (g.comboTriggerProductionFrac != null) parts.push("+" + (g.comboTriggerProductionFrac * 100).toFixed(2) + "% of 1s global CPS on combo pulse (split)");
+        if (g.comboMultAdd != null) parts.push("+" + (g.comboMultAdd * 100).toFixed(2) + "% index Time Warp combo stack");
+        if (g.comboEarnedPatternMultAdd != null && g.comboEarnedPatternMultAdd > 0) {
+            parts.push("+" + (g.comboEarnedPatternMultAdd * 100).toFixed(2) + "% middle ascension pattern mult step");
+        }
         if (g.turboScaling != null) parts.push("+25 turbo meter & \u00d71.25 turbo cap stack");
         if (g.comboTurboPointsMult != null) parts.push("+" + (g.comboTurboPointsMult * 100).toFixed(1) + "% turbo points from combos");
         if (g.warpOverflow != null) parts.push("+" + (g.warpOverflow * 5) + "% Time Warp overflow (toward 90% cap)");

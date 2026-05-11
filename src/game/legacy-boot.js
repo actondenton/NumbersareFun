@@ -399,7 +399,7 @@ import {
     const RECENT_RANDOM_LOG_COUNT = 3;
     const recentRandomLogMessages = [];
     /** Typed message log: category drives GLaDOS-style color coding; humor filtered by settings. */
-    const LOG_CATEGORIES = ["tip", "fact", "milestone", "warning", "humor"];
+    const LOG_CATEGORIES = ["tip", "fact", "milestone", "warning", "humor", "system"];
     const LOG_MESSAGE_ENTRIES = [
         { text: "Keep counting!", category: "tip" },
         { text: "How fast can you count?", category: "tip" },
@@ -421,7 +421,7 @@ import {
         { text: "If machines do all the counting what will we use our fingers for?", category: "humor" }
     ];
     const SETTINGS_KEY = "naf.settings.v1";
-    const SAVE_KEY = "naf.save.v1";
+    const SAVE_KEY = "naf.save.v2";
     /** When true, autosave is skipped (e.g. right before deleting save + reload). */
     let suppressAutosave = false;
     const AUTOSAVE_INTERVAL_MS = 10000;
@@ -491,7 +491,7 @@ import {
     }
     /**
      * Number 1 CPS gain while the stage is not ticking every hand (focused on Number 2, or large offline windows).
-     * Same stack as {@link applyOfflineProgress}: raw CPS × combo × turbo × offline-averaged black-hole mult
+     * Same stack as {@link applyOfflineProgress}: raw CPS × pattern catalog × middle-finger ascension pattern mult × turbo × offline-averaged black-hole mult
      * (Hawking/wave boosts time-averaged, not the live burst mult from {@link getNumber1BlackHoleProductionMult}).
      * Phase 7 epilogue: no hand CPS accrual — the epilogue counter advances only in the black-hole phase step.
      * @returns {number} Count integrated for this slice (after rounding)
@@ -749,6 +749,35 @@ import {
         } else {
             actionLogEl.scrollLeft = prevLeft;
         }
+    }
+    /** Wipe prior-run scrollback and ticker queue when Number 1 ascends so the log starts fresh for the new run. */
+    function clearActionLogBacklogOnAscension() {
+        actionLogEntries.length = 0;
+        tickerQueue.length = 0;
+        if (tickerSpawnTimerId) {
+            window.clearTimeout(tickerSpawnTimerId);
+            tickerSpawnTimerId = 0;
+        }
+        tickerNextSpawnAtMs = 0;
+        const items = activeTickerItems.slice();
+        items.forEach(function (item) {
+            if (item && typeof item.getAnimations === "function") {
+                item.getAnimations().forEach(a => {
+                    try { a.cancel(); } catch (_) {}
+                });
+            }
+            if (item && item.parentNode) item.parentNode.removeChild(item);
+        });
+        activeTickerItems.length = 0;
+        if (ambientMessageTickerEl) {
+            ambientMessageTickerEl.replaceChildren();
+            ambientMessageTickerEl.className = "ambient-message-ticker";
+        }
+        messageLogLastRenderedVisibleCount = -1;
+        messageLogLastRenderedHeadSig = "";
+        messageLogLastRenderedTailSig = "";
+        renderActionLog();
+        refreshMessageLogPanelIfOpen();
     }
     if (actionLogToggle) {
         actionLogToggle.addEventListener("click", () => {
@@ -1911,7 +1940,7 @@ import {
         number1AscensionEssence -= cost;
         const parallelAdded = addBlackHolePhase2ParallelBonusFromEssence(cost);
         const parallelNote = parallelAdded > 0 ? (" · parallel pool +" + (parallelAdded * 100).toFixed(2) + "%") : "";
-        addToLog(name + " → tier " + (cur + 1) + "/" + BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER + parallelNote + ".", "tip");
+        addToLog(name + " → tier " + (cur + 1) + "/" + BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER + parallelNote + ".", "system");
         if (isBlackHolePhase2MassPourUnlocked()) {
             addToLog("Singularity accepts direct mass feeds. Pour Essence when you are ready.", "milestone");
         }
@@ -1942,7 +1971,7 @@ import {
             name = "Coronal loop";
         }
         syncBlackHolePhase3LegacyLevel();
-        addToLog(name + " → tier " + getBlackHolePhase3TrackLevel(track) + "/6.", "tip");
+        addToLog(name + " → tier " + getBlackHolePhase3TrackLevel(track) + "/6.", "system");
         if (isBlackHolePhase3Complete()) {
             number1BlackHoleState.phase3EssenceBank = 0;
             completeBlackHolePhaseTransition(4, "Phase 3 complete: lensing active. Phase 4 unlocked.");
@@ -1972,7 +2001,7 @@ import {
             number1BlackHoleState.phase6JetBankLevel = getBlackHolePhase6TrackLevel(track) + 1;
             name = "Boost bank";
         }
-        addToLog(name + " → tier " + getBlackHolePhase6TrackLevel(track) + ".", "tip");
+        addToLog(name + " → tier " + getBlackHolePhase6TrackLevel(track) + ".", "system");
         autosaveNow();
         queueBlackHoleUiRefresh();
         updateRateDisplay();
@@ -1996,7 +2025,7 @@ import {
             }
             number1AscensionEssence -= spend;
             number1BlackHoleState.phase1EssenceSpent = Math.min(BLACK_HOLE_PHASE1_ESSENCE_TARGET, (number1BlackHoleState.phase1EssenceSpent || 0) + spend);
-            addToLog("Mass Accumulator absorbed " + formatCount(spend) + " Essence.", "tip");
+            addToLog("Mass Accumulator absorbed " + formatCount(spend) + " Essence.", "system");
             if (number1BlackHoleState.phase1EssenceSpent >= BLACK_HOLE_PHASE1_ESSENCE_TARGET) {
                 completeBlackHolePhaseTransition(2, "Phase 1 complete: accumulator collapse. Phase 2 unlocked.");
             }
@@ -2027,7 +2056,7 @@ import {
             const nextC = L < BLACK_HOLE_PHASE2_MASS_CAP ? getBlackHolePhase2CostAtLevel(L) : 0;
             const bankNote = bank > 0 && nextC > 0 ? (" · " + formatCount(bank) + " / " + formatCount(nextC) + " Essence banked toward the next mass step") : "";
             const parallelNote = parallelAdded > 0 ? (" · parallel pool +" + (parallelAdded * 100).toFixed(2) + "%") : "";
-            addToLog("Fed " + formatCount(have) + " Essence into black hole mass" + bankNote + parallelNote + ".", "tip");
+            addToLog("Fed " + formatCount(have) + " Essence into black hole mass" + bankNote + parallelNote + ".", "system");
             if (L >= BLACK_HOLE_PHASE2_MASS_CAP) {
                 number1BlackHoleState.phase2EssenceBank = 0;
                 completeBlackHolePhaseTransition(3, "Phase 2 complete: accretion disk ignites. Phase 3 unlocked.");
@@ -2054,7 +2083,7 @@ import {
             number1BlackHoleState.phase3EssenceBank = bank;
             const nextC = S < 6 ? 75 + 25 * S : 0;
             const bankNote = bank > 0 && nextC > 0 ? (" · " + formatCount(bank) + " / " + formatCount(nextC) + " toward next disk tier") : "";
-            addToLog("Fed " + formatCount(have) + " Essence into the accretion disk" + bankNote + ".", "tip");
+            addToLog("Fed " + formatCount(have) + " Essence into the accretion disk" + bankNote + ".", "system");
             if (S >= 6) {
                 number1BlackHoleState.phase3EssenceBank = 0;
                 completeBlackHolePhaseTransition(4, "Phase 3 complete: lensing active. Phase 4 unlocked.");
@@ -2079,7 +2108,7 @@ import {
             number1BlackHoleState.phase4EssenceBank = bank;
             const nextC = W < 6 ? getBlackHolePhase4NextCostEssenceForWave(W) : 0;
             const bankNote = bank > 0 && nextC > 0 ? (" · " + formatCount(bank) + " / " + formatCount(nextC) + " toward next wave tier") : "";
-            addToLog("Fed " + formatCount(have) + " Essence into gravitational lensing" + bankNote + ".", "tip");
+            addToLog("Fed " + formatCount(have) + " Essence into gravitational lensing" + bankNote + ".", "system");
             if (W >= 6) {
                 number1BlackHoleState.phase4EssenceBank = 0;
                 completeBlackHolePhaseTransition(5, "Phase 4 complete: furnace unlocked. Phase 5 unlocked.");
@@ -2135,7 +2164,7 @@ import {
                 " remaining).";
             if (spent < have)
                 msg += " (" + formatCount(have - spent) + " Essence untouched — digestion only needed up to ~" + formatSeconds(Math.ceil(BLACK_HOLE_PHASE5_STOKE_MIN_REMAINING_MS / 1000)) + " left.)";
-            addToLog(msg, "tip");
+            addToLog(msg, "system");
         } else if (phase === 6) {
             const have = Math.max(0, Math.floor(Number(number1AscensionEssence) || 0));
             if (have < 1) {
@@ -2157,7 +2186,7 @@ import {
             number1BlackHoleState.phase6EssenceBank = bank;
             const nextC = getBlackHolePhase6NextJetUpgradeCostEssence();
             const bankNote = bank > 0 && nextC > 0 ? (" · " + formatCount(bank) + " / " + formatCount(nextC) + " toward next jet upgrade") : "";
-            addToLog("Fed " + formatCount(have) + " Essence into jet systems" + bankNote + ".", "tip");
+            addToLog("Fed " + formatCount(have) + " Essence into jet systems" + bankNote + ".", "system");
         }
         updateRateDisplay();
         queueBlackHoleUiRefresh();
@@ -2590,21 +2619,13 @@ import {
         return any;
     }
     const ASCENSION_TURBO_BURN_EFFICIENCY_MAX_REDUCE = 0.99;
-    const ASCENSION_COMBO_PRODUCTION_FRAC_CAP = 0.5;
-    /** Middle-finger only: `comboEarnedPatternMultAdd` multiplies as Π(1 + x) over purchased middle nodes; product capped. Tuning target ~6–7× product at full middle (see combo sustain + pulse scaling for ~10× end-to-end reference). */
+    /** Middle-finger only: `comboEarnedPatternMultAdd` multiplies as Π(1 + x) over purchased middle nodes; product capped. */
     const ASCENSION_COMBO_EARNED_PATTERN_MULT_CAP = 10;
     /** Save/load: activation counts are edge-based (combo appears after being absent); version ≠ this clears counts on load. */
     const COMBO_ACTIVATION_EDGE_SAVE_VERSION = 2;
-    const COMBO_SUSTAIN_ACC_MAX = 1;
-    const COMBO_SUSTAIN_BASE_MAX_MULT_ADD = 0.055;
-    const COMBO_SUSTAIN_MAX_MULT_ADD_CAP = 0.42;
-    const COMBO_SUSTAIN_BASE_FILL_PER_TICK = 0.0012;
-    const COMBO_SUSTAIN_FILL_EXTRA_CAP = 0.028;
-    const COMBO_SUSTAIN_MAX_MULT_ADD_SUM_CAP = 0.38;
-    const COMBO_ACTIVATION_LOG_COEFF_CAP = 0.065;
-    const COMBO_ACTIVATION_LOG_BONUS_CAP = 0.45;
-    /** Save/load sanity only (corrupted saves); no gameplay cap on run ramp. */
-    const COMBO_RUN_BONUS_RAMP_LOAD_CAP = 1e15;
+    /** Default gap between catalog “Discovered combo” milestones; reduced by middle `comboDiscoveryMilestoneCooldownMult` (× each, min 0.1s). */
+    const COMBO_DISCOVERY_MILESTONE_COOLDOWN_BASE_MS = 60000;
+    const COMBO_DISCOVERY_MILESTONE_COOLDOWN_MIN_MS = 100;
     /** `computeAscensionGrantTotals` only depends on purchased node ids — reuse until that set changes. */
     let _ascensionGrantTotalsCacheKey = "";
     let _ascensionGrantTotalsCache = null;
@@ -2618,12 +2639,7 @@ import {
         let warpOverflow = 0;
         let speedMult = 1;
         let comboMultAdd = 0;
-        let comboRunBonusAddPerTick = 0;
         let comboEarnedPatternMult = 1;
-        let comboSustainMaxMultAdd = 0;
-        let comboSustainFillPerTick = 0;
-        let comboActivationLogCoeff = 0;
-        let comboTriggerProductionFrac = 0;
         let comboTurboPointsMult = 1;
         let turboBoostComboFillAdd = 0;
         let autoBuyDelayMult = 1;
@@ -2661,6 +2677,7 @@ import {
         let turboOffMeterFillMult = 1;
         let turboPassiveMeterPerSec = 0;
         let handUnlockStartingCount = 0n;
+        let comboDiscoveryMilestoneCooldownMult = 1;
         number1AscensionNodeIds.forEach(id => {
             const def = ASCENSION_MAP_NODE_BY_ID[id];
             if (!def || !def.grants) return;
@@ -2676,10 +2693,6 @@ import {
                 comboEarnedPatternMult *= 1 + g.comboEarnedPatternMultAdd;
             }
             if (def.finger === "middle") {
-                if (typeof g.comboSustainMaxMultAdd === "number" && g.comboSustainMaxMultAdd > 0) comboSustainMaxMultAdd += g.comboSustainMaxMultAdd;
-                if (typeof g.comboSustainFillPerTick === "number" && g.comboSustainFillPerTick > 0) comboSustainFillPerTick += g.comboSustainFillPerTick;
-                if (typeof g.comboActivationLogCoeff === "number" && g.comboActivationLogCoeff > 0) comboActivationLogCoeff += g.comboActivationLogCoeff;
-                if (typeof g.comboRunBonusAddPerTick === "number" && g.comboRunBonusAddPerTick > 0) comboRunBonusAddPerTick += g.comboRunBonusAddPerTick;
                 if (g.comboClapExtraRoll === true) comboClapExtraRoll = true;
                 if (g.comboClapChainRolls === true) comboClapChainRolls = true;
                 if (typeof g.comboTimeWarpDelayReduceSec === "number" && g.comboTimeWarpDelayReduceSec > 0) {
@@ -2688,8 +2701,10 @@ import {
                 if (typeof g.comboTimeWarpDelayReduceMult === "number" && g.comboTimeWarpDelayReduceMult > 1) {
                     comboTimeWarpDelayReduceMult *= g.comboTimeWarpDelayReduceMult;
                 }
+                if (typeof g.comboDiscoveryMilestoneCooldownMult === "number" && g.comboDiscoveryMilestoneCooldownMult > 0 && g.comboDiscoveryMilestoneCooldownMult <= 1) {
+                    comboDiscoveryMilestoneCooldownMult *= g.comboDiscoveryMilestoneCooldownMult;
+                }
             }
-            if (typeof g.comboTriggerProductionFrac === "number" && g.comboTriggerProductionFrac > 0) comboTriggerProductionFrac += g.comboTriggerProductionFrac;
             if (typeof g.comboTurboPointsMult === "number" && g.comboTurboPointsMult > 0) comboTurboPointsMult *= 1 + g.comboTurboPointsMult;
             if (typeof g.turboBoostComboFillAdd === "number" && g.turboBoostComboFillAdd > 0) turboBoostComboFillAdd += g.turboBoostComboFillAdd;
             if (typeof g.autoBuyDelayMult === "number" && g.autoBuyDelayMult > 0 && g.autoBuyDelayMult <= 1) autoBuyDelayMult *= g.autoBuyDelayMult;
@@ -2749,11 +2764,7 @@ import {
                 turboPassiveMeterPerSec += g.turboPassiveMeterPerSec;
             }
         });
-        comboTriggerProductionFrac = Math.min(ASCENSION_COMBO_PRODUCTION_FRAC_CAP, comboTriggerProductionFrac);
         comboEarnedPatternMult = Math.min(ASCENSION_COMBO_EARNED_PATTERN_MULT_CAP, comboEarnedPatternMult);
-        comboSustainMaxMultAdd = Math.min(COMBO_SUSTAIN_MAX_MULT_ADD_SUM_CAP, comboSustainMaxMultAdd);
-        comboSustainFillPerTick = Math.min(COMBO_SUSTAIN_FILL_EXTRA_CAP, comboSustainFillPerTick);
-        comboActivationLogCoeff = Math.min(COMBO_ACTIVATION_LOG_COEFF_CAP, comboActivationLogCoeff);
         clapBonusChanceAdd = Math.min(0.45, clapBonusChanceAdd);
         clapCheapenBonusChanceAdd = Math.min(0.9, clapCheapenBonusChanceAdd);
         clapSlowdownBonusChanceAdd = Math.min(0.75, clapSlowdownBonusChanceAdd);
@@ -2766,12 +2777,7 @@ import {
             warpOverflow,
             speedMult,
             comboMultAdd,
-            comboRunBonusAddPerTick,
             comboEarnedPatternMult,
-            comboSustainMaxMultAdd,
-            comboSustainFillPerTick,
-            comboActivationLogCoeff,
-            comboTriggerProductionFrac,
             comboTurboPointsMult,
             turboBoostComboFillAdd,
             autoBuyDelayMult,
@@ -2808,11 +2814,19 @@ import {
             turboMeterDrainMult,
             turboOffMeterFillMult,
             turboPassiveMeterPerSec,
-            handUnlockStartingCount
+            handUnlockStartingCount,
+            comboDiscoveryMilestoneCooldownMult
         };
         _ascensionGrantTotalsCacheKey = cacheKey;
         _ascensionGrantTotalsCache = out;
         return out;
+    }
+    /** Effective delay after a catalog discovery milestone before the next can apply (ascension reduces from 60s, floor 0.1s). */
+    function getComboDiscoveryMilestoneCooldownMs() {
+        const t = computeAscensionGrantTotals();
+        const mult = Number(t.comboDiscoveryMilestoneCooldownMult) || 1;
+        const m = Math.max(0, Math.min(1, mult));
+        return Math.max(COMBO_DISCOVERY_MILESTONE_COOLDOWN_MIN_MS, Math.min(COMBO_DISCOVERY_MILESTONE_COOLDOWN_BASE_MS, Math.round(COMBO_DISCOVERY_MILESTONE_COOLDOWN_BASE_MS * m)));
     }
     function getAscensionCheapenCapBonusFromTree() {
         return computeAscensionGrantTotals().cheapenCap;
@@ -3495,10 +3509,10 @@ import {
         const ownedCount = number1AscensionNodeIds.length;
         const invested = getAscensionEssenceInvestedInNodes();
         const speedDiscountPct = (1 - totals.speedMult) * 100;
-        const earnedPatMult = totals.comboEarnedPatternMult > 1 ? totals.comboEarnedPatternMult : 1;
-        /** Middle-branch combo purchases: (1 + comboMultAdd) × comboEarnedPatternMult — same factors as in total bonus (without pattern base or rhythm). */
-        const comboUpgradesMult = (1 + (totals.comboMultAdd || 0)) * earnedPatMult;
-        const comboPulsePct = totals.comboTriggerProductionFrac * 100;
+        const ascPatForPill = unlockedHands >= 2 ? getAscensionComboPatternMult() : 1;
+        const catalogForPill = unlockedHands >= 2 ? getPatternCatalogMultiplier() : 1;
+        const comboCpsTotalPill = catalogForPill * ascPatForPill;
+        const warpComboStack = unlockedHands >= 2 ? getTimeWarpComboMultiplier() : 1;
         const turboPtsPct = (totals.comboTurboPointsMult - 1) * 100;
         const turboSustainParts = [];
         if ((totals.turboMeterFromComboMult || 1) > 1.001) turboSustainParts.push("×" + (totals.turboMeterFromComboMult || 1).toFixed(2) + " combo→meter");
@@ -3507,15 +3521,6 @@ import {
         if ((totals.turboPassiveMeterPerSec || 0) > 0) turboSustainParts.push("+" + totals.turboPassiveMeterPerSec + "/s On");
         const turboSustainPill = turboSustainParts.length
             ? "<span class=\"asc-stat-pill asc-stat-pill--wide\"><span class=\"asc-stat-pill-k\">Turbo sustain</span> <span class=\"asc-stat-pill-v\">" + turboSustainParts.join(" · ") + "</span></span>"
-            : "";
-        const sustainFillAsc = totals.comboSustainFillPerTick || 0;
-        const sustainMaxAsc = totals.comboSustainMaxMultAdd || 0;
-        const pulseLogCoeff = totals.comboActivationLogCoeff || 0;
-        const sustainPill = sustainFillAsc > 1e-9 || sustainMaxAsc > 1e-9
-            ? "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Sustain</span> <span class=\"asc-stat-pill-v\">+" + (sustainFillAsc * 100).toFixed(2) + "% fill/tick · +" + (sustainMaxAsc * 100).toFixed(0) + "% cap</span></span>"
-            : "";
-        const pulseScalePill = pulseLogCoeff > 1e-9
-            ? "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Pulse log</span> <span class=\"asc-stat-pill-v\">×" + pulseLogCoeff.toFixed(3) + "</span></span>"
             : "";
         const pendingBonusEss = getNumber1AscensionPendingBonusEssence();
         const pendingBonusPill = pendingBonusEss > 0
@@ -3545,10 +3550,9 @@ import {
             blackHoleParallelPill +
             "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Cheapen cap</span> <span class=\"asc-stat-pill-v\">" + getMaxCheapenLevel() + "</span></span>" +
             "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Speed</span> <span class=\"asc-stat-pill-v\">−" + speedDiscountPct.toFixed(1) + "% cost</span></span>" +
-            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Combo upgrades</span> <span class=\"asc-stat-pill-v\">×" + comboUpgradesMult.toFixed(2) + "</span></span>" +
-            sustainPill +
-            pulseScalePill +
-            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Combo pulse</span> <span class=\"asc-stat-pill-v\">" + comboPulsePct.toFixed(1) + "% CPS</span></span>" +
+            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Combo CPS</span> <span class=\"asc-stat-pill-v\">×" + comboCpsTotalPill.toFixed(2) + "</span></span>" +
+            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Catalog</span> <span class=\"asc-stat-pill-v\">×" + catalogForPill.toFixed(2) + "</span></span>" +
+            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Warp stack</span> <span class=\"asc-stat-pill-v\">×" + warpComboStack.toFixed(2) + "</span></span>" +
             "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Turbo pts</span> <span class=\"asc-stat-pill-v\">+" + turboPtsPct.toFixed(0) + "%</span></span>" +
             "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Turbo cap</span> <span class=\"asc-stat-pill-v\">" + formatCount(Math.round(getTurboCountMultiplierMax() * 100) / 100) + "×</span></span>" +
             "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Meter</span> <span class=\"asc-stat-pill-v\">" + formatCount(getTurboMeterMax()) + "</span></span>" +
@@ -4295,6 +4299,7 @@ import {
         if (c === "milestone") return "MILESTONE";
         if (c === "warning") return "WARN";
         if (c === "humor") return "JOKE";
+        if (c === "system") return "SYSTEM";
         return "LOG";
     }
     function renderMessageLogLineHtml(entry) {
@@ -4311,7 +4316,7 @@ import {
             return "<div class=\"message-log-terminal message-log-terminal--empty\" role=\"log\" aria-relevant=\"additions\">" +
                 "<div class=\"message-log-terminal-header\" id=\"message-log-terminal-header\">message_feed // 0 line(s) visible</div>" +
                 "<div class=\"message-log-terminal-body message-log-terminal-body--empty\" id=\"message-log-terminal-body\">" +
-                "<p class=\"message-log-empty\">No messages yet. Tips, facts, and milestones will appear here as you play. Humor lines respect Settings → Humor messages.</p>" +
+                "<p class=\"message-log-empty\">No messages yet. Tips, facts, milestones, and system notices will appear here as you play. Humor lines respect Settings → Humor messages.</p>" +
                 "<p class=\"coming-soon-note coming-soon-note--compact\">Filters, search, and save export for this log — <span class=\"coming-soon-inline\">coming soon</span>.</p>" +
                 "</div></div>" +
                 "<p class=\"message-log-footnote\">Bottom ticker shows the latest lines; this panel is the full scrollback (oldest → newest).</p>";
@@ -4467,42 +4472,68 @@ import {
         messageLogLastRenderedHeadSig = headSig;
         messageLogLastRenderedTailSig = tailSig;
     }
-    function renderCombinationsPageHtml() {
-        if (unlockedHands < 2) return "<p class=\"message-log-empty\">Unlock Hand 2 to view combinations.</p>";
+    /** Shared context for Combination Index summary + list (filters applied). */
+    function getComboIndexListContext() {
         const discovered = new Set(earnedComboNames);
         const activeNow = new Set(getActiveCombos().map(c => c.name));
         const available = COMBOS.filter(c => unlockedHands >= c.minHands);
-        const handOptions = ["all"].concat(Array.from(new Set(available.map(c => c.minHands))).sort((a, b) => a - b).map(String));
         let rows = available.slice();
         if (comboIndexStatusFilter === "discovered") rows = rows.filter(c => discovered.has(c.name));
         if (comboIndexStatusFilter === "undiscovered") rows = rows.filter(c => !discovered.has(c.name));
         if (comboIndexHandsFilter !== "all") rows = rows.filter(c => String(c.minHands) === comboIndexHandsFilter);
         const discoveredCount = available.filter(c => discovered.has(c.name)).length;
+        return { discovered, activeNow, available, rows, discoveredCount };
+    }
+    function buildComboIndexLiveSummaryText(ctx) {
+        return "Discovered " + ctx.discoveredCount + " / " + ctx.available.length + ". Currently active: " + (ctx.activeNow.size > 0 ? Array.from(ctx.activeNow).join(", ") : "None") + ".";
+    }
+    function buildComboIndexListItemsInnerHtml(ctx) {
+        const listItems = ctx.rows.map(c => {
+            const found = ctx.discovered.has(c.name);
+            const css = found ? "earned-bonus-item-earned" : "earned-bonus-undiscovered";
+            const activeBadge = ctx.activeNow.has(c.name) ? " <span class=\"overview-card-badge overview-card-badge--live\">Active</span>" : "";
+            const pulseEdges = comboActivationCounts[c.name] || 0;
+            return "<li class=\"" + css + "\"><strong>" + c.name + "</strong>" + activeBadge + "<div>Hands: " + c.minHands + " · Effect: x" + c.bonus.toFixed(2) + " · Pulse count (edges): " + formatCount(pulseEdges) + "</div></li>";
+        }).join("");
+        return listItems || "<li class=\"earned-bonuses-placeholder\">No combinations match the current filters.</li>";
+    }
+    /** Updates index summary + list only; keeps #earned-bonuses-list and modal scroll stable. */
+    function patchCombinationsPageLiveDom() {
+        if (unlockedHands < 2) return false;
+        const summaryEl = document.getElementById("combo-index-live-summary");
+        const listEl = document.getElementById("combo-index-list");
+        if (!summaryEl || !listEl) return false;
+        const ctx = getComboIndexListContext();
+        summaryEl.textContent = buildComboIndexLiveSummaryText(ctx);
+        listEl.innerHTML = buildComboIndexListItemsInnerHtml(ctx);
+        return true;
+    }
+    function renderCombinationsPageHtml() {
+        if (unlockedHands < 2) return "<p class=\"message-log-empty\">Unlock Hand 2 to view combinations.</p>";
+        const ctx = getComboIndexListContext();
+        const handOptions = ["all"].concat(Array.from(new Set(ctx.available.map(c => c.minHands))).sort((a, b) => a - b).map(String));
         const statusButtons = [
             { id: "all", label: "All" },
-            { id: "discovered", label: "Discovered" },
+            { id: "disciscovered", label: "Discovered" },
             { id: "undiscovered", label: "Undiscovered" }
         ].map(b => "<button type=\"button\" class=\"page-btn combo-filter-btn" + (comboIndexStatusFilter === b.id ? " combo-filter-active" : "") + "\" data-combo-status=\"" + b.id + "\">" + b.label + "</button>").join(" ");
         const handButtons = handOptions.map(h => {
             const label = h === "all" ? "All hand counts" : (h + "-hand combos");
             return "<button type=\"button\" class=\"page-btn combo-filter-btn" + (comboIndexHandsFilter === h ? " combo-filter-active" : "") + "\" data-combo-hands=\"" + h + "\">" + label + "</button>";
         }).join(" ");
-        const listItems = rows.map(c => {
-            const found = discovered.has(c.name);
-            const css = found ? "earned-bonus-item-earned" : "earned-bonus-undiscovered";
-            const activeBadge = activeNow.has(c.name) ? " <span class=\"overview-card-badge overview-card-badge--live\">Active</span>" : "";
-            const pulseEdges = comboActivationCounts[c.name] || 0;
-            return "<li class=\"" + css + "\"><strong>" + c.name + "</strong>" + activeBadge + "<div>Hands: " + c.minHands + " · Effect: x" + c.bonus.toFixed(2) + " · Pulse count (edges): " + formatCount(pulseEdges) + "</div></li>";
-        }).join("");
-        return "<div class=\"coming-soon-sneak-peek\"><p class=\"coming-soon-sneak-title\">Combination Index</p><p>Discovered " + discoveredCount + " / " + available.length + ". Currently active: " + (activeNow.size > 0 ? Array.from(activeNow).join(", ") : "None") + ".</p></div>" +
+        return "<div class=\"coming-soon-sneak-peek\"><p class=\"coming-soon-sneak-title\">Combination Index</p><p id=\"combo-index-live-summary\">" + buildComboIndexLiveSummaryText(ctx) + "</p></div>" +
             renderComboPagePerHandStatusSectionHtml() +
             "<section class=\"combo-earned-bonuses-section\" aria-labelledby=\"combo-bonus-breakdown-heading\">" +
             "<h3 id=\"combo-bonus-breakdown-heading\" class=\"combo-earned-bonuses-heading\">Bonus breakdown</h3>" +
-            "<p class=\"combo-earned-bonuses-intro\">How pattern bonuses feed the <strong>total bonus</strong> on Count per second (tiers add; patterns multiply within a tier; combo upgrades and rhythm multiply on top).</p>" +
+            "<div id=\"combo-discovery-milestone-ui\" class=\"combo-discovery-milestone-ui\" hidden aria-live=\"polite\">" +
+            "<p id=\"combo-discovery-milestone-line\" class=\"combo-discovery-milestone-line\"></p>" +
+            "<div class=\"combo-discovery-milestone-bar-track\" id=\"combo-discovery-milestone-bar-track\" role=\"progressbar\" aria-valuemin=\"0\" aria-valuemax=\"100\" aria-valuenow=\"0\" aria-label=\"Pattern catalog unlock cooldown\">" +
+            "<div id=\"combo-discovery-milestone-bar-fill\" class=\"combo-discovery-milestone-bar-fill\"></div></div></div>" +
+            "<p class=\"combo-earned-bonuses-intro\">Unlocked patterns form your <strong>pattern catalog</strong> (tier sum: hand-count tiers add, and patterns multiply within each tier). <strong>Count per second</strong> multiplies by that catalog and by middle-finger ascension pattern tiers. <strong>Time Warp</strong> uses catalog × index combo % × the same ascension pattern mult.</p>" +
             "<ul id=\"earned-bonuses-list\" class=\"earned-bonuses-list--page\"></ul></section>" +
             "<div class=\"combo-filter-row\">" + statusButtons + "</div>" +
             "<div class=\"combo-filter-row\">" + handButtons + "</div>" +
-            "<ul id=\"combo-index-list\">" + (listItems || "<li class=\"earned-bonuses-placeholder\">No combinations match the current filters.</li>") + "</ul>";
+            "<ul id=\"combo-index-list\">" + buildComboIndexListItemsInnerHtml(ctx) + "</ul>";
     }
     let comboFilterInteractionLockUntilMs = 0;
     let comboFilterLastApplyAtMs = 0;
@@ -4516,22 +4547,87 @@ import {
     /** Bonus breakdown list only: full DOM rebuild at most this often when the panel is auto-refreshed from the game loop (not on explicit user/sync events). */
     const EARNED_BONUSES_UI_AUTO_MIN_MS = 350;
     let lastEarnedBonusesUiRebuildAtMs = 0;
+    /** When auto-refresh would rebuild the same bonus breakdown text, skip DOM work so #earned-bonuses-list scroll is stable. */
+    let lastEarnedBonusesUiDigest = "";
+
+    /** m:ss countdown for pattern-catalog milestone UI (ceil seconds). */
+    function formatComboDiscoveryMilestoneCountdown(remainMs) {
+        const sec = Math.max(0, Math.ceil(remainMs / 1000));
+        const m = Math.floor(sec / 60);
+        const s = sec % 60;
+        return m + ":" + (s < 10 ? "0" : "") + s;
+    }
+    /** Live countdown + queue hint while combo discovery milestones are pending (Combinations page). */
+    function updateComboDiscoveryMilestonePanelIfOpen() {
+        if (!pagePanelEl || pagePanelEl.style.display === "none" || !pagePanelTitleEl) return;
+        if (pagePanelTitleEl.textContent !== "Combinations") return;
+        if (unlockedHands < 2) return;
+        const wrap = document.getElementById("combo-discovery-milestone-ui");
+        const line = document.getElementById("combo-discovery-milestone-line");
+        const track = document.getElementById("combo-discovery-milestone-bar-track");
+        const fill = document.getElementById("combo-discovery-milestone-bar-fill");
+        if (!wrap || !line || !track || !fill) return;
+        const q = comboDiscoveryMilestonePendingQueue.length;
+        if (q === 0) {
+            wrap.hidden = true;
+            return;
+        }
+        wrap.hidden = false;
+        const now = Date.now();
+        const waiting = comboDiscoveryMilestoneReadyAtMs !== 0 && now < comboDiscoveryMilestoneReadyAtMs;
+        let spanEff = comboDiscoveryMilestoneCooldownSpanMs > 0 ? comboDiscoveryMilestoneCooldownSpanMs : getComboDiscoveryMilestoneCooldownMs();
+        spanEff = Math.max(COMBO_DISCOVERY_MILESTONE_COOLDOWN_MIN_MS, spanEff);
+        let remainMs = 0;
+        let pct = 100;
+        if (waiting) {
+            remainMs = comboDiscoveryMilestoneReadyAtMs - now;
+            pct = Math.max(0, Math.min(100, (remainMs / spanEff) * 100));
+        }
+        let text;
+        if (waiting) {
+            const cd = formatComboDiscoveryMilestoneCountdown(remainMs);
+            if (q > 1) {
+                text = q + " discoveries queued — showing the next in " + cd + ".";
+            } else {
+                text = "Next unlock ready in " + cd + ".";
+            }
+        } else {
+            text = q > 1
+                ? (q + " discoveries queued — applying the next catalog unlock now.")
+                : "Next catalog unlock is ready — applying now.";
+        }
+        line.textContent = text;
+        fill.style.width = pct + "%";
+        track.setAttribute("aria-valuenow", String(Math.round(pct)));
+        track.setAttribute("aria-valuetext", waiting ? formatComboDiscoveryMilestoneCountdown(remainMs) + " remaining" : "Ready");
+    }
 
     function refreshCombinationsPanelIfOpen(force) {
         if (!pagePanelEl || pagePanelEl.style.display === "none" || !pagePanelBodyEl || !pagePanelTitleEl) return;
         if (pagePanelTitleEl.textContent !== "Combinations") return;
         const now = Date.now();
         if (!force && now < comboFilterPauseAutoRefreshUntilMs) {
+            patchCombinationsPageLiveDom();
+            refreshCombinationsHandStatusIfOpen();
             updateEarnedBonusesUI(false);
-            return;
-        }
-        if (!force && now - lastCombinationsFullRefreshMs < COMBINATIONS_FULL_REFRESH_MIN_MS) {
+        } else if (!force && now - lastCombinationsFullRefreshMs < COMBINATIONS_FULL_REFRESH_MIN_MS) {
+            patchCombinationsPageLiveDom();
+            refreshCombinationsHandStatusIfOpen();
             updateEarnedBonusesUI(false);
-            return;
+        } else {
+            lastCombinationsFullRefreshMs = now;
+            if (force) {
+                pagePanelBodyEl.innerHTML = renderCombinationsPageHtml();
+                updateEarnedBonusesUI();
+            } else if (patchCombinationsPageLiveDom()) {
+                refreshCombinationsHandStatusIfOpen();
+                updateEarnedBonusesUI(false);
+            } else {
+                pagePanelBodyEl.innerHTML = renderCombinationsPageHtml();
+                updateEarnedBonusesUI();
+            }
         }
-        lastCombinationsFullRefreshMs = now;
-        pagePanelBodyEl.innerHTML = renderCombinationsPageHtml();
-        updateEarnedBonusesUI();
+        updateComboDiscoveryMilestonePanelIfOpen();
     }
     function syncMessageLogScrollContainerMode(pageId) {
         if (!pageModalEl) return;
@@ -4546,7 +4642,7 @@ import {
         if (pageId === "achievements") {
             title = "Achievements";
             bodyHtml = renderComingSoonPoster("Achievement boards", "<p>Global and per-number achievement lists, filters, and rewards will live here.</p>" +
-                "<p class=\"coming-soon-note\">Until then, pattern bonuses and your total bonus multiplier are on the <strong>Combinations</strong> page.</p>");
+                "<p class=\"coming-soon-note\">Until then, pattern catalog breakdown and combo multipliers are on the <strong>Combinations</strong> page.</p>");
         } else if (pageId === "unlocks") {
             title = "Unlocks";
             bodyHtml = renderComingSoonPoster("Unlock atlas", "<p>A full unlock tree (hands, turbo, numbers, and cross-number gates) will be mapped here with clearer progress links.</p>") +
@@ -4585,7 +4681,10 @@ import {
         }
         if (pageId === "combinations") {
             lastCombinationsFullRefreshMs = Date.now();
-            requestAnimationFrame(() => updateEarnedBonusesUI());
+            requestAnimationFrame(() => {
+                updateEarnedBonusesUI();
+                updateComboDiscoveryMilestonePanelIfOpen();
+            });
         }
         if (pageId === "ascension" && ascensionPageActiveNumber === 1 && number1HasAscended) {
             requestAnimationFrame(() => initAscensionMapPanZoom());
@@ -4644,8 +4743,9 @@ import {
     let handUpgradeDetailTipLogged = false;
     const UPGRADE_HOLD_REPEAT_MS = 100;
     /** Hover-only: detail tooltip waits this long before showing (focus / tap-to-pin stay immediate). */
-    const UPGRADE_TOOLTIP_HOVER_DELAY_MS = 3000;
+    const UPGRADE_TOOLTIP_HOVER_DELAY_MS = 1500;
     const upgradeTooltipHoverTimers = new WeakMap();
+    const handStatusTooltipHoverTimers = new WeakMap();
     function clearUpgradeTooltipHoverTimer(btn) {
         const id = upgradeTooltipHoverTimers.get(btn);
         if (id) clearTimeout(id);
@@ -4662,13 +4762,112 @@ import {
             if (!btn || !btn.isConnected) return;
             btn.classList.add("upgrade-tooltip-hover-show");
             requestAnimationFrame(function() {
-                positionTooltipForButton(btn);
+                positionTooltipForHost(btn);
             });
         }, UPGRADE_TOOLTIP_HOVER_DELAY_MS);
         upgradeTooltipHoverTimers.set(btn, id);
     }
-    function positionTooltipForButton(btn) {
-        const tip = btn && btn.querySelector(".upgrade-details-tooltip");
+    function clearHandStatusTooltipHoverTimer(slot) {
+        const id = handStatusTooltipHoverTimers.get(slot);
+        if (id) clearTimeout(id);
+        handStatusTooltipHoverTimers.delete(slot);
+    }
+    function cancelHandStatusTooltipHoverShow(slot) {
+        clearHandStatusTooltipHoverTimer(slot);
+        if (slot) slot.classList.remove("hand-status-tooltip-hover-show");
+    }
+    function scheduleHandStatusTooltipHoverShow(slot) {
+        cancelHandStatusTooltipHoverShow(slot);
+        const id = setTimeout(function() {
+            handStatusTooltipHoverTimers.delete(slot);
+            if (!slot || !slot.isConnected) return;
+            slot.classList.add("hand-status-tooltip-hover-show");
+        }, UPGRADE_TOOLTIP_HOVER_DELAY_MS);
+        handStatusTooltipHoverTimers.set(slot, id);
+    }
+    /** Per-hand-slot hover delay (matches upgrade button tooltips); focus-within stays immediate via CSS. */
+    function bindHandStatusTooltipHover(handSlot) {
+        if (!handSlot || handSlot.dataset.handStatusTooltipHoverBound === "1") return;
+        handSlot.dataset.handStatusTooltipHoverBound = "1";
+        function onPointerIn() {
+            scheduleHandStatusTooltipHoverShow(handSlot);
+        }
+        handSlot.addEventListener("mouseenter", onPointerIn);
+        handSlot.addEventListener("pointerenter", onPointerIn);
+        function onPointerOut() {
+            cancelHandStatusTooltipHoverShow(handSlot);
+        }
+        handSlot.addEventListener("mouseleave", onPointerOut);
+        handSlot.addEventListener("pointerleave", onPointerOut);
+    }
+    function dismissAllHandStatusHoverTooltips() {
+        if (!speedUpgradesContainerEl) return;
+        speedUpgradesContainerEl.querySelectorAll(".hand-slot").forEach(slot => cancelHandStatusTooltipHoverShow(slot));
+    }
+    /** Clear delayed hover tooltips only (not pinned `tooltip-open`). */
+    function dismissAllHoverOnlyTooltips() {
+        dismissAllHandStatusHoverTooltips();
+        if (speedUpgradesContainerEl) {
+            speedUpgradesContainerEl.querySelectorAll(".upgrade-btn.upgrade-tooltip-hover-show").forEach(cancelUpgradeTooltipHoverShow);
+        }
+        if (turboScensionPanelEl) {
+            turboScensionPanelEl.querySelectorAll(".turbo-scension-tooltip-host.upgrade-tooltip-hover-show").forEach(cancelUpgradeTooltipHoverShow);
+        }
+    }
+    function pointerEventInsideTooltipHoverHost(el) {
+        if (!el || typeof el.closest !== "function") return false;
+        return !!(
+            el.closest(".hand-slot") ||
+            el.closest(".upgrade-btn") ||
+            el.closest(".turbo-scension-tooltip-host")
+        );
+    }
+    let tooltipGlobalPointerMoveFlushRaf = 0;
+    let tooltipGlobalPointerMoveX = 0;
+    let tooltipGlobalPointerMoveY = 0;
+    /** When the mouse/pen moves anywhere not over a tooltip host, drop hover-only tooltips (fixes stuck overlays). */
+    function bindGlobalPointerMoveDismissHoverTooltips() {
+        if (document.documentElement.dataset.nafTooltipGlobalMoveDismissBound === "1") return;
+        document.documentElement.dataset.nafTooltipGlobalMoveDismissBound = "1";
+        document.addEventListener(
+            "pointermove",
+            function (e) {
+                const pt = e.pointerType;
+                if (pt && pt !== "mouse" && pt !== "pen") return;
+                tooltipGlobalPointerMoveX = e.clientX;
+                tooltipGlobalPointerMoveY = e.clientY;
+                if (tooltipGlobalPointerMoveFlushRaf) return;
+                tooltipGlobalPointerMoveFlushRaf = requestAnimationFrame(function () {
+                    tooltipGlobalPointerMoveFlushRaf = 0;
+                    let el = null;
+                    try {
+                        el = document.elementFromPoint(tooltipGlobalPointerMoveX, tooltipGlobalPointerMoveY);
+                    } catch (_) {
+                        return;
+                    }
+                    if (pointerEventInsideTooltipHoverHost(el)) return;
+                    dismissAllHoverOnlyTooltips();
+                });
+            },
+            true
+        );
+    }
+    /** Dismiss floating hand details when the user presses in the upgrade column (avoids hover/focus tooltip blocking clicks). */
+    function bindHandStatusDismissOnUpgradeColumnPointerDown() {
+        if (!speedUpgradesContainerEl || speedUpgradesContainerEl.dataset.handStatusUpgradeColDismissBound === "1") return;
+        speedUpgradesContainerEl.dataset.handStatusUpgradeColDismissBound = "1";
+        speedUpgradesContainerEl.addEventListener(
+            "pointerdown",
+            function (e) {
+                const t = e.target;
+                if (!t || typeof t.closest !== "function") return;
+                if (t.closest(".hand-upgrades-column")) dismissAllHoverOnlyTooltips();
+            },
+            true
+        );
+    }
+    function positionTooltipForHost(host) {
+        const tip = host && host.querySelector(".upgrade-details-tooltip");
         if (!tip) return;
         const prevDisplay = tip.style.display;
         const prevVisibility = tip.style.visibility;
@@ -4678,7 +4877,7 @@ import {
             tip.style.display = "block";
         }
         const margin = 8;
-        const btnRect = btn.getBoundingClientRect();
+        const btnRect = host.getBoundingClientRect();
         const tipRect = tip.getBoundingClientRect();
         let left = btnRect.left;
         if (left + tipRect.width > window.innerWidth - margin) left = window.innerWidth - margin - tipRect.width;
@@ -4695,9 +4894,16 @@ import {
             tip.style.visibility = prevVisibility;
         }
     }
+    function positionTooltipForButton(btn) {
+        positionTooltipForHost(btn);
+    }
     function positionVisibleTooltips() {
-        if (!speedUpgradesContainerEl) return;
-        speedUpgradesContainerEl.querySelectorAll(".upgrade-btn.tooltip-open, .upgrade-btn.upgrade-tooltip-hover-show, .upgrade-btn:focus-within").forEach(positionTooltipForButton);
+        if (speedUpgradesContainerEl) {
+            speedUpgradesContainerEl.querySelectorAll(".upgrade-btn.tooltip-open, .upgrade-btn.upgrade-tooltip-hover-show, .upgrade-btn:focus-within").forEach(positionTooltipForHost);
+        }
+        if (turboScensionPanelEl) {
+            turboScensionPanelEl.querySelectorAll(".turbo-scension-tooltip-host.upgrade-tooltip-hover-show, .turbo-scension-tooltip-host:focus-within, .turbo-scension-tooltip-host.tooltip-open").forEach(positionTooltipForHost);
+        }
     }
     function onWindowScrollResizeForUpgrades() {
         positionVisibleTooltips();
@@ -4713,7 +4919,7 @@ import {
                 scheduleUpgradeTooltipHoverShow(b);
                 requestAnimationFrame(function() {
                     if (b.classList.contains("upgrade-tooltip-hover-show") || b.classList.contains("tooltip-open")) {
-                        positionTooltipForButton(b);
+                        positionTooltipForHost(b);
                     }
                 });
             }
@@ -4726,6 +4932,31 @@ import {
             b.addEventListener("pointerleave", onPointerOut);
         });
     }
+    function bindTurboScensionTooltipHovers() {
+        if (!turboScensionPanelEl) return;
+        turboScensionPanelEl.querySelectorAll(".turbo-scension-tooltip-host").forEach(function(host) {
+            if (host.dataset.turboScensionTooltipHoverBound === "1") return;
+            host.dataset.turboScensionTooltipHoverBound = "1";
+            function onPointerIn() {
+                scheduleUpgradeTooltipHoverShow(host);
+                requestAnimationFrame(function() {
+                    if (host.classList.contains("upgrade-tooltip-hover-show") || host.classList.contains("tooltip-open")) {
+                        positionTooltipForHost(host);
+                    }
+                });
+            }
+            host.addEventListener("mouseenter", onPointerIn);
+            host.addEventListener("pointerenter", onPointerIn);
+            function onPointerOut() {
+                cancelUpgradeTooltipHoverShow(host);
+            }
+            host.addEventListener("mouseleave", onPointerOut);
+            host.addEventListener("pointerleave", onPointerOut);
+        });
+    }
+    bindTurboScensionTooltipHovers();
+    bindHandStatusDismissOnUpgradeColumnPointerDown();
+    bindGlobalPointerMoveDismissHoverTooltips();
     let upgradeHoldRepeatState = null;
     let upgradeHoldSuppressClickBtn = null;
     let upgradeHoldRepeatTipLogged = false;
@@ -4783,6 +5014,7 @@ import {
             handSlot.appendChild(handSlotMain);
             handSlot.appendChild(statusBlock);
             handCol.appendChild(handSlot);
+            bindHandStatusTooltipHover(handSlot);
             const row = document.createElement("div");
             row.className = "speed-upgrade-row";
             row.setAttribute("data-hand-index", String(i));
@@ -4887,6 +5119,7 @@ import {
         }
     }
     function updateSpeedUpgradeUI() {
+        bumpUpgradeEtaSmoothPass();
         if (totalChanges >= 10) {
             upgradeContainer.classList.add("show-upgrade-content");
             if (!handUpgradeDetailTipLogged) {
@@ -4925,7 +5158,7 @@ import {
                 setUpgradeButtonProgress(ref.btn, progress);
                 ref.btn.classList.toggle("upgrade-btn--afford-pulse", canAfford);
                 ref.btn.classList.remove("upgrade-btn-maxed");
-                setUpgradeTooltipText(ref.btn, "Base level: " + speedLevel[i] + "\nBonus (clap): " + bonusB + "\nEffective: " + effLv + "\nBalance/Cost: " + formatCount(balance) + " / " + formatCount(cost) + "\nEffect next: +" + percent.toFixed(1) + "%");
+                setUpgradeTooltipText(ref.btn, "Base level: " + speedLevel[i] + "\nBonus (clap): " + bonusB + "\nEffective: " + effLv + "\nBalance/Cost: " + formatCount(balance) + " / " + formatCount(cost) + "\nEffect next: +" + percent.toFixed(1) + "%" + formatUpgradeAffordEtaLine(balance, cost, i));
                 if (ref.autobuyToggleEl) {
                     ref.autobuyToggleEl.checked = !!autoBuyEnabledByHand[i];
                     ref.autobuyToggleEl.disabled = !autoBuyUnlocked;
@@ -5210,7 +5443,7 @@ import {
         const handNum = handIndex + 1;
         const upgradedHand = hands[handIndex];
         if (upgradedHand) upgradedHand.tickAccBig = 0n;
-        if (!opts?.silentLog) addToLog("Speed upgrade purchased for Hand " + handNum + " (level " + speedLevel[handIndex] + ")", "tip");
+        if (!opts?.silentLog) addToLog("Speed upgrade purchased for Hand " + handNum + " (level " + speedLevel[handIndex] + ")", "system");
         incrementalEl.textContent = formatCount(totalChanges);
         hands.forEach(h => h.restartTimer());
         if (autoBuyUnlocked) {
@@ -5232,9 +5465,9 @@ import {
     }
 
     /* ---------------------------------------------------------
-       CHEAPEN SPEED UPGRADE (per-hand), max 9 per hand (base; ascension adds). 99%, 99.9%, ...
+       CHEAPEN SPEED UPGRADE (per-hand), max 10 per hand (base; ascension adds). 99%, 99.9%, ...
     --------------------------------------------------------- */
-    const BASE_MAX_CHEAPEN_LEVEL = 9;
+    const BASE_MAX_CHEAPEN_LEVEL = 10;
     let cheapenLevel = Array(maxHands).fill(0);
     let cheapenBonusLevel = Array(maxHands).fill(0);
     function getEffectiveCheapenLevel(handIndex) {
@@ -5244,14 +5477,40 @@ import {
         const level = getEffectiveCheapenLevel(handIndex);
         return level === 0 ? 1 : Math.pow(10, -(level + 1));
     }
-    /** Levels 1–6: legacy exponential. Level 7+ = 1e9 × 1000^(n−7) → billions, trillions, quadrillions, … */
+    /** Levels 1–6: legacy exponential. Level 7–9 = 1e9 × 1000^(n−7). Level 10 = 1.5×10^24. Levels 11+ use CHEAPEN_COST_RAW_BY_NEXT_LEVEL below (then ×1000 per tier if cap ever exceeds 16). */
     const CHEAPEN_EXTENDED_COST_BASE = 1e9;
     const CHEAPEN_LEGACY_MAX_NEXT_LEVEL = 6;
     const CHEAPEN_EXTENDED_START_NEXT_LEVEL = 7;
+    /** Raw hand count to buy cheapen level 10 (nextLevel === 10). */
+    const CHEAPEN_COST_LEVEL_10_RAW = 1.5e24;
+    /**
+     * Raw costs for nextLevel 11 … 16 (max 10 base cheapen + 6 ascension cheapenCap).
+     * Each step ×1000 on previous; level 11+ > level 10.
+     */
+    const CHEAPEN_COST_RAW_BY_NEXT_LEVEL = [
+        1.5e27, // 11 — 1.5 octillion (short scale)
+        1.5e30, // 12 — 1.5 nonillion
+        1.5e33, // 13 — 1.5 decillion
+        1.5e36, // 14 — 1.5 undecillion
+        1.5e39, // 15 — 1.5 duodecillion
+        1.5e42  // 16 — 1.5 tredecillion
+    ];
     function getCheapenUpgradeCost(handIndex, nextLevel) {
         const n = Math.max(1, Math.floor(Number(nextLevel) || 1));
         if (n <= CHEAPEN_LEGACY_MAX_NEXT_LEVEL) {
             return 1000 * Math.pow(10, n - 1);
+        }
+        if (n === 10) {
+            return Math.floor(CHEAPEN_COST_LEVEL_10_RAW);
+        }
+        if (n > 10) {
+            const idx = n - 11;
+            if (idx >= 0 && idx < CHEAPEN_COST_RAW_BY_NEXT_LEVEL.length) {
+                return Math.floor(CHEAPEN_COST_RAW_BY_NEXT_LEVEL[idx]);
+            }
+            const last = CHEAPEN_COST_RAW_BY_NEXT_LEVEL[CHEAPEN_COST_RAW_BY_NEXT_LEVEL.length - 1];
+            const extraTiers = idx - CHEAPEN_COST_RAW_BY_NEXT_LEVEL.length + 1;
+            return Math.floor(last * Math.pow(1000, extraTiers));
         }
         return Math.floor(CHEAPEN_EXTENDED_COST_BASE * Math.pow(1000, n - CHEAPEN_EXTENDED_START_NEXT_LEVEL));
     }
@@ -5332,7 +5591,7 @@ import {
                 setUpgradeButtonProgress(ref.cheapenBtn, progress);
                 ref.cheapenBtn.classList.remove("upgrade-btn-maxed");
                 ref.cheapenBtn.classList.toggle("upgrade-btn--afford-pulse", canAfford);
-                setUpgradeTooltipText(ref.cheapenBtn, "Base level: " + level + "/" + cap + "\nBonus (clap): " + bonusLevel + "\nEffective: " + effectiveLevel + "\nBalance/Cost: " + formatCount(balance) + " / " + formatCount(cost) + "\nEffect next base: " + getCheapenEffectText(nextLevel));
+                setUpgradeTooltipText(ref.cheapenBtn, "Base level: " + level + "/" + cap + "\nBonus (clap): " + bonusLevel + "\nEffective: " + effectiveLevel + "\nBalance/Cost: " + formatCount(balance) + " / " + formatCount(cost) + "\nEffect next base: " + getCheapenEffectText(nextLevel) + formatUpgradeAffordEtaLine(balance, cost, i));
             }
         }
         updateHandUpgradeScrollHint();
@@ -5352,7 +5611,7 @@ import {
         refreshTotalFromHandEarnings();
         cheapenLevel[handIndex] = level + 1;
         const handNum = handIndex + 1;
-        if (!opts?.silentLog) addToLog("Speed cheapen purchased for Hand " + handNum + " (level " + cheapenLevel[handIndex] + ")", "tip");
+        if (!opts?.silentLog) addToLog("Speed cheapen purchased for Hand " + handNum + " (level " + cheapenLevel[handIndex] + ")", "system");
         incrementalEl.textContent = formatCount(totalChanges);
         const origin = confettiOriginEl || speedRowRefs[handIndex]?.cheapenBtn?.closest(".speed-upgrade-row");
         if (origin && !opts?.fromAutobuy) sprayConfettiFrom(origin, opts?.confettiHoldRepeatCoalesce ? { holdRepeatCoalesce: true } : undefined);
@@ -5440,14 +5699,16 @@ import {
     }
 
     /* ---------------------------------------------------------
-       COMPACTION upgrade (per-hand), unlock at 1e15, max 3 levels.
+       COMPACTION upgrade (per-hand), unlock at 1e15, base max 4 (+ up to +6 from Black Hole Phase 1 fill).
        Purchase resets Speed to 0; each level multiplies tick value by 10^level.
        Digit animation cadence follows Speed upgrades again (same interval math as without Compaction).
     --------------------------------------------------------- */
     const SLOWDOWN_UNLOCK_COUNT = 1e15;
-    const MAX_SLOWDOWN_LEVEL = 3;
+    const MAX_SLOWDOWN_LEVEL = 4;
     /* Level 1 unchanged; each further level is 1,000× the prior (before ascension Compaction cost mult). */
     const SLOWDOWN_COSTS = [1e16, 1e19, 1e22];
+    /** Raw count for base level 4 (nextLevel === 4): 10 septillion (10×10^24). */
+    const SLOWDOWN_COST_LEVEL_4_RAW = 10e24;
     let slowdownLevel = Array(maxHands).fill(0);
     let slowdownBonusLevel = Array(maxHands).fill(0);
     let slowdownUnlockLogged = false;
@@ -5462,8 +5723,13 @@ import {
     function getSlowdownUpgradeCost(nextLevel) {
         const cap = getMaxSlowdownLevelCap();
         if (nextLevel <= 0 || nextLevel > cap) return null;
-        const idx = Math.min(SLOWDOWN_COSTS.length - 1, nextLevel - 1);
-        var raw = SLOWDOWN_COSTS[idx] * Math.pow(10, Math.max(0, nextLevel - SLOWDOWN_COSTS.length));
+        var raw;
+        if (nextLevel === 4) {
+            raw = SLOWDOWN_COST_LEVEL_4_RAW;
+        } else {
+            const idx = Math.min(SLOWDOWN_COSTS.length - 1, nextLevel - 1);
+            raw = SLOWDOWN_COSTS[idx] * Math.pow(10, Math.max(0, nextLevel - SLOWDOWN_COSTS.length));
+        }
         var m = computeAscensionGrantTotals().slowdownCostMult || 1;
         return Math.max(1, Math.floor(raw * m));
     }
@@ -5531,7 +5797,7 @@ import {
                 setUpgradeButtonProgress(ref.slowdownBtn, progress);
                 ref.slowdownBtn.classList.remove("upgrade-btn-maxed");
                 ref.slowdownBtn.classList.toggle("upgrade-btn--afford-pulse", canAfford);
-                setUpgradeTooltipText(ref.slowdownBtn, "Base level: " + level + "/" + cap + "\nBonus (clap): " + bonusLevel + "\nEffective: " + effectiveLevel + "\nBalance/Cost: " + formatCount(balance) + " / " + formatCount(cost) + "\nEffect next base: " + getSlowdownEffectText(nextLevel));
+                setUpgradeTooltipText(ref.slowdownBtn, "Base level: " + level + "/" + cap + "\nBonus (clap): " + bonusLevel + "\nEffective: " + effectiveLevel + "\nBalance/Cost: " + formatCount(balance) + " / " + formatCount(cost) + "\nEffect next base: " + getSlowdownEffectText(nextLevel) + formatUpgradeAffordEtaLine(balance, cost, i));
             }
         }
         updateHandUpgradeScrollHint();
@@ -5556,7 +5822,7 @@ import {
         // Reset speed upgrades so displayed speed/CPS state and progression align.
         speedLevel[handIndex] = 0;
         const handNum = handIndex + 1;
-        if (!opts?.silentLog) addToLog("Compaction purchased for Hand " + handNum + " (level " + nextLevel + "). Speed level reset.", "tip");
+        if (!opts?.silentLog) addToLog("Compaction purchased for Hand " + handNum + " (level " + nextLevel + "). Speed level reset.", "system");
         incrementalEl.textContent = formatCount(totalChanges);
         const targetHand = hands[handIndex];
         if (targetHand) targetHand.tickAccBig = 0n;
@@ -5678,6 +5944,68 @@ import {
     function getHandEffectiveCps(handIndex) {
         return clampFiniteNonNegative(getHandPerHandRawCps(handIndex) * getComboMultiplier() * getTurboCountMultiplier() * getNumber1BlackHoleProductionMult());
     }
+    /** Exponential smoothing of per-hand CPS for upgrade ETA (reduces turbo meter flicker in tooltips). */
+    let upgradeEtaSmoothPassId = 0;
+    let upgradeEtaSmoothedCpsByHand = [];
+    let upgradeEtaSmoothLastPassByHand = [];
+    const UPGRADE_ETA_CPS_SMOOTH_ALPHA = 0.08;
+    function bumpUpgradeEtaSmoothPass() {
+        upgradeEtaSmoothPassId++;
+    }
+    function getSmoothedHandCpsForUpgradeEta(handIndex) {
+        while (upgradeEtaSmoothLastPassByHand.length <= handIndex) {
+            upgradeEtaSmoothLastPassByHand.push(-1);
+            upgradeEtaSmoothedCpsByHand.push(0);
+        }
+        const pass = upgradeEtaSmoothPassId;
+        const instant = getHandEffectiveCps(handIndex);
+        if (upgradeEtaSmoothLastPassByHand[handIndex] !== pass) {
+            upgradeEtaSmoothLastPassByHand[handIndex] = pass;
+            const prev = upgradeEtaSmoothedCpsByHand[handIndex];
+            let next;
+            if (!(instant > 0)) {
+                next = prev > 0 ? Math.max(0, prev * (1 - UPGRADE_ETA_CPS_SMOOTH_ALPHA * 2.5)) : 0;
+            } else if (!(prev > 0)) {
+                next = instant;
+            } else {
+                next = prev + UPGRADE_ETA_CPS_SMOOTH_ALPHA * (instant - prev);
+            }
+            upgradeEtaSmoothedCpsByHand[handIndex] = next;
+        }
+        return upgradeEtaSmoothedCpsByHand[handIndex];
+    }
+    /** Human-readable duration for upgrade ETA: seconds if <60s, else whole minutes until multi-day/year. */
+    function formatUpgradeAffordEtaDuration(secRaw) {
+        if (!Number.isFinite(secRaw) || secRaw < 0) return "—";
+        if (secRaw > 1e15) return "very long at current rate";
+        if (secRaw < 60) {
+            const s = Math.max(1, Math.ceil(secRaw));
+            return "~" + s + "s at current rate";
+        }
+        if (secRaw < 86400 * 2) {
+            const min = Math.max(1, Math.round(secRaw / 60));
+            return "~" + min + " min at current rate";
+        }
+        if (secRaw < 86400 * 365) {
+            const d = Math.max(1, Math.round(secRaw / 86400));
+            return "~" + d + " d at current rate";
+        }
+        const y = secRaw / (86400 * 365);
+        return "~" + (y >= 100 ? Math.round(y) + " yr" : (Math.round(y * 10) / 10) + " yr") + " at current rate";
+    }
+    /** Line for upgrade button tooltips: ETA to cover cost shortfall at smoothed count/s for this hand. */
+    function formatUpgradeAffordEtaLine(balance, cost, handIndex) {
+        const c = Number(cost);
+        if (!Number.isFinite(c) || c <= 0) return "";
+        const bal = Number(balance) || 0;
+        const need = c - bal;
+        if (need <= 0) return "\nEst.: ready now";
+        const cps = getSmoothedHandCpsForUpgradeEta(handIndex);
+        if (!(cps > 0)) return "\nEst.: — (no count/s on this hand right now)";
+        const secRaw = need / cps;
+        if (!Number.isFinite(secRaw)) return "\nEst.: —";
+        return "\nEst.: " + formatUpgradeAffordEtaDuration(secRaw);
+    }
     /** Sum of per-hand raw tick CPS (before combo × turbo). */
     function getTotalRawCpsSum() {
         let sum = 0;
@@ -5697,7 +6025,9 @@ import {
         return Number.isFinite(s) && s >= 60 ? s : TIME_WARP_SECONDS_BONUS;
     }
     function getTimeWarpGrantForHand(handIndex, scale) {
-        const effectiveCps = getHandEffectiveCps(handIndex);
+        const effectiveCps = clampFiniteNonNegative(
+            getHandPerHandRawCps(handIndex) * getTimeWarpComboMultiplier() * getTurboCountMultiplier() * getNumber1BlackHoleProductionMult()
+        );
         const secBonus = getTimeWarpProductionSecondsBonus();
         return Math.max(1, Math.round(effectiveCps * secBonus * (scale || 1)));
     }
@@ -5809,7 +6139,7 @@ import {
             updateSlowdownUpgradeUI();
             updateRateDisplay();
             updateTimeWarpAuraUI();
-            addToLog("Warp auto buy assist: bought upgrades for Hand " + (handIndex + 1) + " after your manual Time Warp.", "tip");
+            addToLog("Warp auto buy assist: bought upgrades for Hand " + (handIndex + 1) + " after your manual Time Warp.", "system");
         }
     }
     function updateTimeWarpAuraUI() {
@@ -6005,10 +6335,9 @@ import {
         }
     }
     // Updates the "Count per second" UI:
-    // - Total line is rule-based (hands × upgrades × combo × turbo × black hole) via getInstantTotalCps — not wall-clock measured.
-    // - "base × bonus × turbo" breakdown uses the same factors; base is tick-rate sum adjusted only for how total bonus is displayed.
+    // - Total line is rule-based via getInstantTotalCps (raw × pattern catalog × bonus pattern mult × turbo × black hole).
+    // - Breakdown: base = sum of per-hand raw CPS; bonus = catalog × extra pattern bonus factor (see getComboMultiplier).
     // - Per-hand Hn lines are raw tick-rate CPS only (do not sum them and expect Total).
-    // - Bonus/Turbo lines are hidden until those features are unlocked.
     // - opts.throttleCpsHeadline: when true (batched game-loop UI), repaint the center rate text at most once per second.
     function updateRateDisplay(opts) {
         opts = opts || {};
@@ -6029,10 +6358,11 @@ import {
         const bonusUnlocked = unlockedHands >= 2;
         const turboUnlocked = turboBoostUnlocked;
         if (bonusMultiplierEl) {
-            const bonusDisplayMult = getDisplayedTotalComboBonus();
-            bonusMultiplierEl.textContent = "Total bonus: " + bonusDisplayMult.toFixed(2) + "×";
+            const catalogMult = getPatternCatalogMultiplier();
+            const ascPatMult = getAscensionComboPatternMult();
+            bonusMultiplierEl.textContent = "Patterns ×" + catalogMult.toFixed(2) + " · Bonus ×" + ascPatMult.toFixed(2);
             bonusMultiplierEl.style.display = bonusUnlocked ? "" : "none";
-            bonusMultiplierEl.title = "Full bonus from every pattern you have earned, all combo upgrades, and a full rhythm bar. Count/s total follows your current hands and upgrades (same factors as the breakdown).";
+            bonusMultiplierEl.title = "Count per second uses Patterns × Bonus (= ×" + comboMult.toFixed(2) + " combined) × turbo × black hole. Time Warp multiplies that by the index combo % on the burst.";
         }
         if (turboMultiplierDisplayEl) {
             turboMultiplierDisplayEl.textContent = "Turbo: " + turboDisplayMult.toFixed(2) + "×";
@@ -6041,7 +6371,7 @@ import {
         if (incrementalRateEl) {
             incrementalRateEl.classList.toggle("rate-turbo-active", turboBoostEnabled && turboMult > 1);
             incrementalRateEl.classList.toggle("incremental-rate-value--pre-bh-wrap", !blackHoleSectionActive && unlockedHands >= 2);
-            incrementalRateEl.title = "Total count per second from your current hands, Speed and Compaction levels, combo bonus, turbo, and black hole — same basis as hand tooltips. During play the center line repaints at most once per second so it stays easy to read; it also updates right away after purchases, turbo, and similar changes.";
+            incrementalRateEl.title = "Total count per second: raw hand rates × pattern catalog × ascension pattern mult × turbo × black hole. Hand tooltips use the same stack; center line repaints at most once per second during play.";
         }
         const nowPaint = Date.now();
         const mayPaintHeadline = !throttleCpsHeadline || (nowPaint - cpsHeadlineLastPaintMs >= CPS_HEADLINE_THROTTLE_MS);
@@ -6053,15 +6383,9 @@ import {
             } else
             if (unlockedHands >= 2) {
                 const totalFormatted = formatCount(cpsTotal < 1e6 ? Math.round(cpsTotal * 100) / 100 : cpsTotal);
-                const bonusDisplayMult = getDisplayedTotalComboBonus();
-                const appliedComboMult = comboMult;
-                let cpsRateDisplayBase = cpsTotalRaw;
-                if (bonusUnlocked && Number.isFinite(bonusDisplayMult) && bonusDisplayMult > 0) {
-                    cpsRateDisplayBase = (cpsTotalRaw * appliedComboMult) / bonusDisplayMult;
-                }
-                const baseFormatted = formatCount(cpsRateDisplayBase < 1e6 ? Math.round(cpsRateDisplayBase * 100) / 100 : cpsRateDisplayBase);
+                const baseFormatted = formatCount(cpsTotalRaw < 1e6 ? Math.round(cpsTotalRaw * 100) / 100 : cpsTotalRaw);
                 const calcParts = ["base " + baseFormatted];
-                if (bonusUnlocked) calcParts.push("bonus×" + formatCompactMultiplier(bonusDisplayMult));
+                if (bonusUnlocked) calcParts.push("bonus×" + formatCompactMultiplier(comboMult));
                 if (turboUnlocked) calcParts.push("turbo×" + formatCompactMultiplier(turboMult));
                 if (bhMult > 1.0005) {
                     const bhs = formatCompactMultiplier(bhMult);
@@ -6322,6 +6646,13 @@ import {
     const TURBO_DRAIN_FLOOR = 0.07;
     const TURBO_DRAIN_PIECE_EXP = 0.55;
     const TURBO_SCENSION_ACTIVATION_BASE_COST = 10000;
+    /** Burn/Tank/Mult/Fill row copy for upgrade-style detail tooltips (Turbo-scension panel). */
+    const TURBO_SCENSION_AXIS_TITLES = [
+        "Burn — Each level doubles how fast the meter drains while Turbo is on and strengthens how strongly burn drives boost toward your Mult ceiling. Higher burn empties the tank faster unless you refill with combos or Fill upgrades.",
+        "Tank — Each level doubles max meter capacity. Larger tanks hold more charge per fill and adjust peak boost when the gauge is full.",
+        "Mult — Each level doubles your Turbo boost ceiling (the × you can approach when burn, tank fullness, and meter align).",
+        "Fill — Each level doubles combo-driven meter gains and boosts passive meter regen from Ring while Turbo is on."
+    ];
     /** Point cost for first Turbo Leveler purchase; each completed purchase doubles this baseline for the next. */
     const TURBO_LEVELER_BASE_POINT_COST = 48;
     function getTurboScensionActivationCost() {
@@ -6433,7 +6764,7 @@ import {
             const axis = applyOneTurboScensionRandomLevel();
             const labels = ["Burn rate", "Boost tank", "Boost multiplier", "Meter fill"];
             const now = axis === 0 ? turboScensionBurnLevel : axis === 1 ? turboScensionTankLevel : axis === 2 ? turboScensionMultLevel : turboScensionFillLevel;
-            addToLog("Turbo Leveler: +1 " + labels[axis] + " (now level " + now + ").", "tip");
+            addToLog("Turbo Leveler: +1 " + labels[axis] + " (now level " + now + ").", "system");
             turboBoostMeter = Math.min(turboBoostMeter, getTurboMeterMax());
             any = true;
             nextCost = getTurboLevelerNextPointCost();
@@ -6576,6 +6907,21 @@ import {
         }
         return parts.length ? "Turbo-scension: " + parts.join("; ") + "." : "";
     }
+    /** Extra sentence(s) for Turbo-scension Upgrade detail tooltip: rough time to afford next purchase in activations. */
+    function getTurboScensionUpgradeActivationEtaHint() {
+        const cost = getTurboScensionActivationCost();
+        const need = cost - turboActivationCount;
+        if (need <= 0) return "";
+        const perSec = 1000 / GAME_LOOP_MS;
+        if (!turboBoostEnabled || turboBoostMeter <= 0) {
+            return " Turn Turbo ON with charge in the meter to earn activations (~" + Math.round(perSec) + "/s — one per " + (GAME_LOOP_MS / 1000) + "s tick — only while boost runs). Refill the gauge with combos if it is empty.";
+        }
+        const secApprox = need / perSec;
+        const dur = formatUpgradeAffordEtaDuration(secApprox).replace(/ at current rate/g, "").trim();
+        return " Roughly " + dur + " of Turbo runtime at full tick rate to afford this if the meter stays charged (drain slows near empty; an empty meter turns Turbo off).";
+    }
+    const TURBO_LEVELER_LINE_TOOLTIP =
+        "While Turbo is off, combo fill past a full meter banks here. With Turbo still off, meeting the point cost buys one random Burn/Tank/Mult/Fill level; that cost doubles each purchase.";
     /**
      * @param {object} [opts]
      * @param {boolean} [opts.skipLog] Omit tip log (autobuy).
@@ -6624,7 +6970,7 @@ import {
         if (!opts.skipAutosave) autosaveNow();
         if (!opts.skipLog) {
             const line = formatTurboScensionUpgradeTipLine(gainedBurn, gainedTank, gainedMult, gainedFill);
-            if (line) addToLog(line, "tip");
+            if (line) addToLog(line, "system");
         }
         return true;
     }
@@ -6642,21 +6988,45 @@ import {
             turboScensionLevelerLineEl.setAttribute("aria-hidden", "true");
         }
         if (showScisionPanel) {
-            if (turboScensionBurnLineEl) turboScensionBurnLineEl.textContent = "Burn " + Math.round(Number(turboScensionBurnLevel) || 0);
-            if (turboScensionTankLineEl) turboScensionTankLineEl.textContent = "Tank " + Math.round(Number(turboScensionTankLevel) || 0);
-            if (turboScensionMultLineEl) turboScensionMultLineEl.textContent = "Mult " + Math.round(Number(turboScensionMultLevel) || 0);
-            if (turboScensionFillLineEl) turboScensionFillLineEl.textContent = "Fill " + Math.round(Number(turboScensionFillLevel) || 0);
+            if (turboScensionBurnLineEl) {
+                const lab = turboScensionBurnLineEl.querySelector(".turbo-scension-level-line-label");
+                if (lab) lab.textContent = "Burn " + Math.round(Number(turboScensionBurnLevel) || 0);
+                setUpgradeTooltipText(turboScensionBurnLineEl, TURBO_SCENSION_AXIS_TITLES[0]);
+                turboScensionBurnLineEl.removeAttribute("title");
+            }
+            if (turboScensionTankLineEl) {
+                const lab = turboScensionTankLineEl.querySelector(".turbo-scension-level-line-label");
+                if (lab) lab.textContent = "Tank " + Math.round(Number(turboScensionTankLevel) || 0);
+                setUpgradeTooltipText(turboScensionTankLineEl, TURBO_SCENSION_AXIS_TITLES[1]);
+                turboScensionTankLineEl.removeAttribute("title");
+            }
+            if (turboScensionMultLineEl) {
+                const lab = turboScensionMultLineEl.querySelector(".turbo-scension-level-line-label");
+                if (lab) lab.textContent = "Mult " + Math.round(Number(turboScensionMultLevel) || 0);
+                setUpgradeTooltipText(turboScensionMultLineEl, TURBO_SCENSION_AXIS_TITLES[2]);
+                turboScensionMultLineEl.removeAttribute("title");
+            }
+            if (turboScensionFillLineEl) {
+                const lab = turboScensionFillLineEl.querySelector(".turbo-scension-level-line-label");
+                if (lab) lab.textContent = "Fill " + Math.round(Number(turboScensionFillLevel) || 0);
+                setUpgradeTooltipText(turboScensionFillLineEl, TURBO_SCENSION_AXIS_TITLES[3]);
+                turboScensionFillLineEl.removeAttribute("title");
+            }
             if (turboScensionUpgradeBtn) {
                 const actCost = getTurboScensionActivationCost();
                 const can = turboActivationCount >= actCost;
                 const rollN = getTurboScensionUpgradeRollCount();
                 const allAxes = !!computeAscensionGrantTotals().turboScensionAllAxesUpgrade;
                 turboScensionUpgradeBtn.disabled = !can;
-                turboScensionUpgradeBtn.title = can
+                const spendLine = can
                     ? (allAxes
-                        ? "Spend " + formatCount(actCost) + " activations for +" + rollN + " each on Burn, Tank, Mult, and Fill (no random)"
-                        : "Spend " + formatCount(actCost) + " activations for " + rollN + " independent random level" + (rollN === 1 ? "" : "s") + " on Burn, Tank, Mult, or Fill")
-                    : "Need " + formatCount(actCost) + " activations (have " + formatCount(turboActivationCount) + ")";
+                        ? "Spend " + formatCount(actCost) + " activations for +" + rollN + " level each on Burn, Tank, Mult, and Fill (all four, no random)."
+                        : "Spend " + formatCount(actCost) + " activations for " + rollN + " independent random level" + (rollN === 1 ? "" : "s") + " among Burn, Tank, Mult, or Fill (equal chance per roll).")
+                    : ("Need " + formatCount(actCost) + " activations (have " + formatCount(turboActivationCount) + ").");
+                const eta = getTurboScensionUpgradeActivationEtaHint();
+                const foot = "\n\nHover Burn, Tank, Mult, or Fill above to see what each upgrade type does.";
+                setUpgradeTooltipText(turboScensionUpgradeBtn, spendLine + eta + foot);
+                turboScensionUpgradeBtn.removeAttribute("title");
             }
             if (turboScensionLevelerLineEl) {
                 const tl = computeAscensionGrantTotals().turboLeveler === true;
@@ -6664,8 +7034,10 @@ import {
                     turboScensionLevelerLineEl.style.display = "";
                     turboScensionLevelerLineEl.setAttribute("aria-hidden", "false");
                     const next = getTurboLevelerNextPointCost();
-                    turboScensionLevelerLineEl.textContent = "Leveler " + formatTurboScensionLevelDisplay(turboLevelerBank) + " / " + formatTurboScensionLevelDisplay(next) + " pts";
-                    turboScensionLevelerLineEl.title = "While Turbo is off, combo fill past a full meter banks here. With Turbo still off, meeting the point cost buys one random Burn/Tank/Mult/Fill level; that cost doubles each purchase.";
+                    const lab = turboScensionLevelerLineEl.querySelector(".turbo-scension-level-line-label");
+                    if (lab) lab.textContent = "Leveler " + formatTurboScensionLevelDisplay(turboLevelerBank) + " / " + formatTurboScensionLevelDisplay(next) + " pts";
+                    setUpgradeTooltipText(turboScensionLevelerLineEl, TURBO_LEVELER_LINE_TOOLTIP);
+                    turboScensionLevelerLineEl.removeAttribute("title");
                 } else {
                     turboScensionLevelerLineEl.style.display = "none";
                     turboScensionLevelerLineEl.setAttribute("aria-hidden", "true");
@@ -6761,9 +7133,9 @@ import {
             earnedComboNames,
             comboActivationCounts,
             comboActivationEdgeVersion: COMBO_ACTIVATION_EDGE_SAVE_VERSION,
-            comboSustainPrimaryName,
-            comboSustainAccumulator,
-            comboRunBonusRampAccumulator,
+            comboDiscoveryMilestonePendingQueue,
+            comboDiscoveryMilestoneReadyAtMs,
+            comboDiscoveryMilestoneCooldownSpanMs,
             adaptiveLastProgressAtMs,
             adaptiveLastHintAtMs,
             previousTickActiveComboNames: Array.from(previousTickActiveComboNames),
@@ -6914,14 +7286,22 @@ import {
         } else {
             comboActivationCounts = {};
         }
-        comboSustainPrimaryName = typeof data.comboSustainPrimaryName === "string" && data.comboSustainPrimaryName.length > 0 ? data.comboSustainPrimaryName : null;
-        {
-            const acc = Number(data.comboSustainAccumulator);
-            comboSustainAccumulator = Number.isFinite(acc) && acc >= 0 ? Math.min(COMBO_SUSTAIN_ACC_MAX, acc) : 0;
+        if (Array.isArray(data.comboDiscoveryMilestonePendingQueue)) {
+            comboDiscoveryMilestonePendingQueue = data.comboDiscoveryMilestonePendingQueue.filter(nm => typeof nm === "string" && nm.length > 0);
+        } else {
+            comboDiscoveryMilestonePendingQueue = [];
         }
         {
-            const rra = Number(data.comboRunBonusRampAccumulator);
-            comboRunBonusRampAccumulator = Number.isFinite(rra) && rra >= 0 ? Math.min(COMBO_RUN_BONUS_RAMP_LOAD_CAP, rra) : 0;
+            const r = Number(data.comboDiscoveryMilestoneReadyAtMs);
+            comboDiscoveryMilestoneReadyAtMs = Number.isFinite(r) && r >= 0 ? r : 0;
+        }
+        {
+            const sp = Number(data.comboDiscoveryMilestoneCooldownSpanMs);
+            comboDiscoveryMilestoneCooldownSpanMs = Number.isFinite(sp) && sp > 0 ? Math.min(COMBO_DISCOVERY_MILESTONE_COOLDOWN_BASE_MS, Math.floor(sp)) : 0;
+        }
+        if (comboDiscoveryMilestoneCooldownSpanMs <= 0 && comboDiscoveryMilestonePendingQueue.length > 0 && comboDiscoveryMilestoneReadyAtMs > Date.now()) {
+            const rem = comboDiscoveryMilestoneReadyAtMs - Date.now();
+            comboDiscoveryMilestoneCooldownSpanMs = Math.max(COMBO_DISCOVERY_MILESTONE_COOLDOWN_MIN_MS, rem);
         }
         if (Array.isArray(data.previousTickActiveComboNames)) previousTickActiveComboNames = new Set(data.previousTickActiveComboNames);
         if (Array.isArray(data.objectivesAchieved)) objectives.forEach((o, i) => { o.achieved = !!data.objectivesAchieved[i]; });
@@ -7254,7 +7634,7 @@ import {
             order: 10,
             trigger: () => unlockedHands >= 10,
             title: "This is the sound of 10 hands counting!",
-            body: storyTotalCountLead(UNLOCK_THRESHOLDS[8]) + "you unlocked a tenth hand. It is quieter than I thought it would be. Wait did I not add an upgrade for 10 hands either? Not that can't be right, I feel like there is something here. Keep counting while I go look for the next upgrade.."
+            body: storyTotalCountLead(UNLOCK_THRESHOLDS[8]) + "you unlocked a tenth hand. It is quieter than I thought it would be. Wait did I not add an upgrade for 10 hands either? No, that can't be right, I feel like there is something here. Keep counting while I go look for the next upgrade.."
         },
         {
             id: "black-hole-mass-accumulator-intro",
@@ -7865,53 +8245,63 @@ import {
     }
     const earnedComboNames = [];
     let comboActivationCounts = {};
+    /** FIFO combo names waiting for catalog milestone (log/bubble); turbo fill ignores this queue. */
+    let comboDiscoveryMilestonePendingQueue = [];
+    /** Wall-clock ms until the next catalog milestone may fire; `0` = no cooldown lock. */
+    let comboDiscoveryMilestoneReadyAtMs = 0;
+    /** Duration (ms) of the active cooldown for accurate progress bar (persisted; legacy saves infer from remaining time). */
+    let comboDiscoveryMilestoneCooldownSpanMs = 0;
     let comboIndexStatusFilter = "all";
     let comboIndexHandsFilter = "all";
     let previousTickActiveComboNames = new Set();
-    let comboSustainPrimaryName = null;
-    let comboSustainAccumulator = 0;
-    let comboRunBonusRampAccumulator = 0;
+    function comboDiscoverySortCombos(a, b) {
+        if (b.minHands !== a.minHands) return b.minHands - a.minHands;
+        if (b.bonus !== a.bonus) return b.bonus - a.bonus;
+        return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
+    }
+    function enqueueComboDiscoveryMilestones(activeCombos) {
+        const pendingSet = new Set(comboDiscoveryMilestonePendingQueue);
+        activeCombos.filter(c => earnedComboNames.indexOf(c.name) === -1 && !pendingSet.has(c.name)).sort(comboDiscoverySortCombos).forEach(c => {
+            comboDiscoveryMilestonePendingQueue.push(c.name);
+        });
+    }
+    function tryProcessOneComboDiscoveryMilestone(nowMs) {
+        const now = nowMs || Date.now();
+        if (comboDiscoveryMilestonePendingQueue.length === 0) return;
+        if (comboDiscoveryMilestoneReadyAtMs !== 0 && now < comboDiscoveryMilestoneReadyAtMs) return;
+        while (comboDiscoveryMilestonePendingQueue.length > 0) {
+            const name = comboDiscoveryMilestonePendingQueue.shift();
+            if (earnedComboNames.indexOf(name) !== -1) continue;
+            const c = COMBOS.find(x => x.name === name);
+            if (!c) continue;
+            const catalogBefore = getPatternCatalogMultiplier();
+            earnedComboNames.push(c.name);
+            addToLog("Discovered combo: " + c.name + " (x" + c.bonus.toFixed(2) + ")", "milestone");
+            markMeaningfulProgress();
+            showComboBubble([c]);
+            pulseCombinationsPageButtonForNewBonus();
+            updateEarnedBonusesUI();
+            updateRateDisplay({ throttleCpsHeadline: false });
+            const catalogAfter = getPatternCatalogMultiplier();
+            requestAnimationFrame(() => {
+                ledgerBeamPlayBonus(catalogBefore, catalogAfter, c.name + " ×" + c.bonus.toFixed(2));
+            });
+            const span = getComboDiscoveryMilestoneCooldownMs();
+            comboDiscoveryMilestoneCooldownSpanMs = span;
+            comboDiscoveryMilestoneReadyAtMs = now + span;
+            return;
+        }
+    }
     function getCombosByMinHands() {
         return COMBOS_BY_MIN_HANDS;
     }
     /**
-     * Per hand-count tier (2…10): product of bonuses for earned combos that match current hands, including pulse log scaling.
-     * Null when no such pattern is active in that tier.
+     * Per tier: product of every earned combo in that tier (unlocked catalog only; activation counts do not scale this).
+     * Tier products sum for the pattern-catalog multiplier (CPS and warp base; activation counts do not scale this).
      */
-    function computeActiveEarnedComboTierProducts(totalsOpt) {
-        const earnedSet = new Set(earnedComboNames);
-        const v = getHandValues();
-        const byMinHands = getCombosByMinHands();
-        const totals = totalsOpt || computeAscensionGrantTotals();
-        const pulseCoeff = totals.comboActivationLogCoeff || 0;
-        const tier = {};
-        for (let n = 2; n <= 10; n++) {
-            const group = byMinHands[n] || [];
-            const earnedInGroup = group.filter(c => earnedSet.has(c.name) && comboMatchesActive(c, v));
-            if (earnedInGroup.length === 0) {
-                tier[n] = null;
-                continue;
-            }
-            tier[n] = earnedInGroup.reduce((m, c) => {
-                const edges = comboActivationCounts[c.name] || 0;
-                const logBonus = pulseCoeff > 0
-                    ? Math.min(COMBO_ACTIVATION_LOG_BONUS_CAP, pulseCoeff * Math.log1p(edges))
-                    : 0;
-                return m * c.bonus * (1 + logBonus);
-            }, 1);
-        }
-        return tier;
-    }
-    /**
-     * Per tier: product of every earned combo in that tier (no “matching hands” filter), optional pulse log from activation counts.
-     * Used only for the headline “Total bonus” display — not for ticks or CPS.
-     */
-    function computeEarnedCatalogComboTierProducts(includePulseLog, totalsOpt) {
+    function computeEarnedCatalogComboTierProducts() {
         const earnedSet = new Set(earnedComboNames);
         const byMinHands = getCombosByMinHands();
-        const totals = totalsOpt || computeAscensionGrantTotals();
-        const pulseCoeff = totals.comboActivationLogCoeff || 0;
-        const usePulse = !!includePulseLog && pulseCoeff > 0;
         const tier = {};
         for (let n = 2; n <= 10; n++) {
             if (unlockedHands < n) {
@@ -7924,104 +8314,43 @@ import {
                 tier[n] = null;
                 continue;
             }
-            tier[n] = earnedInGroup.reduce((m, c) => {
-                let factor = c.bonus;
-                if (usePulse) {
-                    const edges = comboActivationCounts[c.name] || 0;
-                    const logBonus = Math.min(COMBO_ACTIVATION_LOG_BONUS_CAP, pulseCoeff * Math.log1p(edges));
-                    factor *= 1 + logBonus;
-                }
-                return m * factor;
-            }, 1);
+            tier[n] = earnedInGroup.reduce((m, c) => m * c.bonus, 1);
         }
         return tier;
     }
-    /**
-     * Headline “Total bonus” for the top row and Combinations summary only.
-     * Same factor stack as production, but pattern base = full earned catalog (not “matching hands now”),
-     * and rhythm = full bar — so buying combo ascension upgrades never lowers this number while CPS can still rise from other sources.
-     * Count/s total CPS and ticks still use getComboMultiplier() (applied truth); the top-row rate breakdown rescales aggregate base CPS so base × this bonus × turbo matches that total.
-     */
-    function getDisplayedTotalComboBonus() {
-        const totals = computeAscensionGrantTotals();
-        const ascSustainMax = totals.comboSustainMaxMultAdd || 0;
-        const maxSustainAdd = Math.min(COMBO_SUSTAIN_MAX_MULT_ADD_CAP, COMBO_SUSTAIN_BASE_MAX_MULT_ADD + ascSustainMax);
-        const sustainDisplayMult = 1 + COMBO_SUSTAIN_ACC_MAX * maxSustainAdd;
-        const tier = computeEarnedCatalogComboTierProducts(true, totals);
+    /** Sum of tier products for unlocked patterns (minimum 1). Multiplies CPS together with {@link getAscensionComboPatternMult}. */
+    function getPatternCatalogMultiplier() {
+        if (unlockedHands < 2) return 1;
+        const tier = computeEarnedCatalogComboTierProducts();
         let sum = 0;
         for (let n = 2; n <= 10; n++) {
             const p = tier[n];
             if (p == null) continue;
             sum += p;
         }
-        const base = sum > 0 ? sum : 1;
-        const comboAdd = totals.comboMultAdd;
-        const runRamp = Math.max(0, comboRunBonusRampAccumulator);
-        const earnedPatternMult = totals.comboEarnedPatternMult > 1 ? totals.comboEarnedPatternMult : 1;
-        return base * (1 + comboAdd + runRamp) * earnedPatternMult * sustainDisplayMult;
+        return sum > 0 ? sum : 1;
+    }
+    /** Middle-finger ascension pattern mult only (capped). Does not include the unlocked catalog. */
+    function getAscensionComboPatternMult() {
+        if (unlockedHands < 2) return 1;
+        const t = computeAscensionGrantTotals();
+        return t.comboEarnedPatternMult > 1 ? Math.min(ASCENSION_COMBO_EARNED_PATTERN_MULT_CAP, t.comboEarnedPatternMult) : 1;
     }
     /**
-     * Applied combo multiplier for ticks, hand CPS, and the Count/s parenthetical (honest arithmetic with raw CPS).
-     *   base × (1 + comboMultAdd + runRamp) × comboEarnedPatternMult × sustainMult
-     * Base = sum over tiers of products for earned combos that match current hands (includes pulse log).
+     * Combo multiplier applied to Number 1 CPS (ticks, offline, hand tooltips): pattern catalog × middle-branch ascension pattern mult.
      */
-    function getComboBonusFactors() {
-        const totals = computeAscensionGrantTotals();
-        const ascSustainMax = totals.comboSustainMaxMultAdd || 0;
-        const maxSustainAdd = Math.min(COMBO_SUSTAIN_MAX_MULT_ADD_CAP, COMBO_SUSTAIN_BASE_MAX_MULT_ADD + ascSustainMax);
-        const sustainMult = 1 + comboSustainAccumulator * maxSustainAdd;
-        const tier = computeActiveEarnedComboTierProducts(totals);
-        let sum = 0;
-        for (let n = 2; n <= 10; n++) {
-            const p = tier[n];
-            if (p == null) continue;
-            sum += p;
-        }
-        const base = sum > 0 ? sum : 1;
-        const comboAdd = totals.comboMultAdd;
-        const runRamp = Math.max(0, comboRunBonusRampAccumulator);
-        const earnedPatternMult = totals.comboEarnedPatternMult > 1 ? totals.comboEarnedPatternMult : 1;
-        const comboFlatMult = 1 + comboAdd + runRamp;
-        return {
-            base,
-            comboFlatMult,
-            earnedPatternMult,
-            sustainMult,
-            total: base * comboFlatMult * earnedPatternMult * sustainMult
-        };
-    }
     function getComboMultiplier() {
-        return getComboBonusFactors().total;
+        if (unlockedHands < 2) return 1;
+        return getPatternCatalogMultiplier() * getAscensionComboPatternMult();
     }
-    function getPrimaryComboName(active) {
-        if (!active || active.length === 0) return null;
-        const sorted = active.slice().sort((a, b) => {
-            if (b.minHands !== a.minHands) return b.minHands - a.minHands;
-            if (b.bonus !== a.bonus) return b.bonus - a.bonus;
-            return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
-        });
-        return sorted[0].name;
-    }
-    function updateComboSustainState(active) {
-        const totals = computeAscensionGrantTotals();
-        const fillPerTick = COMBO_SUSTAIN_BASE_FILL_PER_TICK + (totals.comboSustainFillPerTick || 0);
-        const ascSustainMax = totals.comboSustainMaxMultAdd || 0;
-        const maxSustainAdd = Math.min(COMBO_SUSTAIN_MAX_MULT_ADD_CAP, COMBO_SUSTAIN_BASE_MAX_MULT_ADD + ascSustainMax);
-        if (active.length === 0) {
-            comboSustainAccumulator = 0;
-            comboSustainPrimaryName = null;
-            return;
-        }
-        const primary = getPrimaryComboName(active);
-        if (primary !== comboSustainPrimaryName) {
-            comboSustainPrimaryName = primary;
-            comboSustainAccumulator = 0;
-        }
-        if (maxSustainAdd <= 0) {
-            comboSustainAccumulator = 0;
-            return;
-        }
-        comboSustainAccumulator = Math.min(COMBO_SUSTAIN_ACC_MAX, comboSustainAccumulator + fillPerTick);
+    /**
+     * Combo stack for Time Warp grants: same CPS combo product × index comboMultAdd.
+     */
+    function getTimeWarpComboMultiplier() {
+        if (unlockedHands < 2) return 1;
+        const t = computeAscensionGrantTotals();
+        const flat = 1 + (t.comboMultAdd || 0);
+        return getComboMultiplier() * flat;
     }
     const comboBubbleContainerEl = document.getElementById("combo-bubble-container");
     const COMBO_BUBBLE_DURATION_MS = 3500;
@@ -8041,7 +8370,7 @@ import {
         if (!comboBubbleContainerEl || newlyEarned.length === 0) return;
         const tierProduct = newlyEarned.reduce((m, c) => m * c.bonus, 1);
         const text = newlyEarned.map(c => c.name + " ×" + c.bonus.toFixed(2)).join(" · ");
-        const totalText = "New this tick: ×" + tierProduct.toFixed(2) + " within tier(s) — hand-count tiers add for total Bonus (patterns still multiply inside each tier)";
+        const totalText = "New this tick: ×" + tierProduct.toFixed(2) + " within tier(s) — tiers add toward your unlocked catalog (patterns still multiply inside each tier)";
         const bubble = document.createElement("div");
         bubble.className = "combo-bubble";
         bubble.innerHTML = "<span class=\"combo-bubble-names\">" + text + "</span><span class=\"combo-bubble-total\">" + totalText + "</span>";
@@ -8050,8 +8379,52 @@ import {
         setTimeout(() => { if (bubble.parentNode) bubble.parentNode.removeChild(bubble); }, COMBO_BUBBLE_DURATION_MS);
     }
     /**
+     * Fingerprint of bonus-breakdown content; when unchanged, auto-refresh skips replacing #earned-bonuses-list (preserves scroll).
+     */
+    function computeEarnedBonusesUiDigest() {
+        if (unlockedHands < 2) {
+            return "u" + unlockedHands;
+        }
+        const earnedSet = new Set(earnedComboNames);
+        const byMinHands = getCombosByMinHands();
+        const totals = computeAscensionGrantTotals();
+        const catalogMult = getPatternCatalogMultiplier();
+        const flatAdd = 1 + (totals.comboMultAdd || 0);
+        const ascPatMult = getAscensionComboPatternMult();
+        const cpsComboMult = getComboMultiplier();
+        const warpComboMult = getTimeWarpComboMultiplier();
+        const head = [
+            catalogMult.toFixed(2),
+            cpsComboMult.toFixed(2),
+            warpComboMult.toFixed(2),
+            flatAdd.toFixed(2),
+            ascPatMult.toFixed(2),
+            earnedComboNames.join("\n"),
+            comboDiscoveryMilestonePendingQueue.join("\n")
+        ].join("#");
+        const pendingDiscovery = new Set(comboDiscoveryMilestonePendingQueue);
+        let tierPart = "";
+        for (let n = 2; n <= 10; n++) {
+            if (unlockedHands < n) continue;
+            const group = byMinHands[n] || [];
+            if (group.length === 0) continue;
+            const earnedInGroup = group.filter(c => earnedSet.has(c.name));
+            const allEarned = earnedInGroup.length === group.length;
+            if (allEarned) {
+                const totalMult = earnedInGroup.reduce((m, c) => m * c.bonus, 1);
+                tierPart += n + ":A:" + totalMult.toFixed(2) + "|";
+            } else {
+                tierPart += n + ":P:" + group.map(c => {
+                    const st = earnedSet.has(c.name) ? "1" : (pendingDiscovery.has(c.name) ? "q" : "0");
+                    return c.name + "_" + st;
+                }).join(",") + "|";
+            }
+        }
+        return head + "|" + tierPart;
+    }
+    /**
      * Rebuilds the Combinations panel "Bonus breakdown" list.
-     * @param {boolean} [forceRebuild=true] When false, skips work if called too soon from the panel auto-refresh path (game loop); all other call sites use default immediate rebuild.
+     * @param {boolean} [forceRebuild=true] When false (game-loop auto path), throttles and skips rebuild if the rendered content would be identical (keeps list scroll position).
      */
     function updateEarnedBonusesUI(forceRebuild) {
         const listEl = document.getElementById("earned-bonuses-list");
@@ -8061,6 +8434,12 @@ import {
         if (!force && listEl.childElementCount > 0 && now - lastEarnedBonusesUiRebuildAtMs < EARNED_BONUSES_UI_AUTO_MIN_MS) {
             return;
         }
+        if (!force) {
+            const digest = computeEarnedBonusesUiDigest();
+            if (digest === lastEarnedBonusesUiDigest) {
+                return;
+            }
+        }
         lastEarnedBonusesUiRebuildAtMs = now;
         listEl.innerHTML = "";
         if (unlockedHands < 2) {
@@ -8068,17 +8447,23 @@ import {
             placeLi.className = "earned-bonuses-placeholder";
             placeLi.textContent = "Unlock a second hand to discover pattern bonuses. Full achievement-style integration with the Achievements page — coming soon.";
             listEl.appendChild(placeLi);
+            lastEarnedBonusesUiDigest = computeEarnedBonusesUiDigest();
             return;
         }
         const earnedSet = new Set(earnedComboNames);
+        const pendingDiscovery = new Set(comboDiscoveryMilestonePendingQueue);
         const byMinHands = getCombosByMinHands();
         const totals = computeAscensionGrantTotals();
-        const tierLive = computeActiveEarnedComboTierProducts(totals);
-        const combinedMult = getDisplayedTotalComboBonus();
-        const appliedMult = getComboMultiplier();
+        const catalogMult = getPatternCatalogMultiplier();
+        const flatAdd = 1 + (totals.comboMultAdd || 0);
+        const ascPatMult = getAscensionComboPatternMult();
+        const cpsComboMult = getComboMultiplier();
+        const warpComboMult = getTimeWarpComboMultiplier();
         const combinedLi = document.createElement("li");
         combinedLi.className = "earned-bonuses-combined";
-        combinedLi.textContent = "Total bonus: " + combinedMult.toFixed(2) + "× (everything earned × combo upgrades × full rhythm; Count/s breakdown uses this factor; live production uses " + appliedMult.toFixed(2) + "× until all earned patterns match your hands and rhythm fills)";
+        combinedLi.id = "ledger-sink-catalog-combined";
+        combinedLi.setAttribute("data-ledger-sink", "catalog");
+        combinedLi.textContent = "Unlocked pattern catalog: ×" + catalogMult.toFixed(2) + " (tiers add). CPS uses ×" + cpsComboMult.toFixed(2) + " (= catalog ×" + catalogMult.toFixed(2) + " × middle ×" + ascPatMult.toFixed(2) + "). Time Warp uses ×" + warpComboMult.toFixed(2) + " (= CPS combo ×" + cpsComboMult.toFixed(2) + " × index ×" + flatAdd.toFixed(2) + ").";
         listEl.appendChild(combinedLi);
         for (let n = 2; n <= 10; n++) {
             if (unlockedHands < n) continue;
@@ -8088,24 +8473,28 @@ import {
             const allEarned = earnedInGroup.length === group.length;
             if (allEarned) {
                 const totalMult = earnedInGroup.reduce((m, c) => m * c.bonus, 1);
-                const ap = tierLive[n];
-                const activePart = ap == null
-                    ? "Matching your hands now: —"
-                    : "Matching your hands now: ×" + ap.toFixed(2);
                 const li = document.createElement("li");
                 li.className = "earned-bonuses-summary";
-                li.textContent = "All " + n + "-hand patterns discovered · reference ×" + totalMult.toFixed(2) + " (if all could apply at once) · " + activePart;
+                li.textContent = "All " + n + "-hand patterns discovered · tier product ×" + totalMult.toFixed(2);
                 listEl.appendChild(li);
             } else {
                 group.forEach(c => {
                     const li = document.createElement("li");
                     const isEarned = earnedSet.has(c.name);
-                    li.className = isEarned ? "earned-bonus-item-earned" : "earned-bonus-undiscovered";
-                    li.textContent = c.name + " (×" + c.bonus.toFixed(2) + ")" + (isEarned ? "" : " — undiscovered");
+                    const isQueued = !isEarned && pendingDiscovery.has(c.name);
+                    if (isEarned) li.className = "earned-bonus-item-earned";
+                    else if (isQueued) li.className = "earned-bonus-item-queued";
+                    else li.className = "earned-bonus-undiscovered";
+                    let suffix = "";
+                    if (isEarned) suffix = "";
+                    else if (isQueued) suffix = " — Queued";
+                    else suffix = " — undiscovered";
+                    li.textContent = c.name + " (×" + c.bonus.toFixed(2) + ")" + suffix;
                     listEl.appendChild(li);
                 });
             }
         }
+        lastEarnedBonusesUiDigest = computeEarnedBonusesUiDigest();
     }
 
     function refreshGlobalOverviewPanelIfOpen() {
@@ -8263,6 +8652,7 @@ import {
 
     function performNumber1Ascension() {
         if (!isNumber1AscensionReady()) return;
+        clearActionLogBacklogOnAscension();
         const gainInfo = computeNumber1AscensionGainBreakdown(totalChanges);
         const baseGain = gainInfo.baseGain;
         const bonusGain = gainInfo.pendingBonus;
@@ -8328,12 +8718,12 @@ import {
 
         earnedComboNames.length = 0;
         comboActivationCounts = {};
+        comboDiscoveryMilestonePendingQueue.length = 0;
+        comboDiscoveryMilestoneReadyAtMs = 0;
+        comboDiscoveryMilestoneCooldownSpanMs = 0;
         comboIndexStatusFilter = "all";
         comboIndexHandsFilter = "all";
         previousTickActiveComboNames = new Set();
-        comboSustainPrimaryName = null;
-        comboSustainAccumulator = 0;
-        comboRunBonusRampAccumulator = 0;
         objectives.forEach(o => { o.achieved = false; });
 
         const h0 = hands[0];
@@ -8409,33 +8799,6 @@ import {
         showAscensionConfirmDialog();
     }
 
-    function applyAscensionComboPulseProduction(active) {
-        const frac = computeAscensionGrantTotals().comboTriggerProductionFrac;
-        if (frac <= 0 || !active || active.length === 0) return;
-        const newlyPulsing = active.filter(c => !previousTickActiveComboNames.has(c.name));
-        if (newlyPulsing.length === 0) return;
-        const cpsPerHand = getRawCpsPerHand();
-        const rawCps = cpsPerHand.reduce((a, b) => a + b, 0);
-        if (rawCps <= 0) return;
-        const totalCps = rawCps * getComboMultiplier() * getTurboCountMultiplier() * getNumber1BlackHoleProductionMult();
-        const v = getHandValues();
-        let any = false;
-        newlyPulsing.forEach(combo => {
-            const idxs = getComboParticipatingHandIndices(combo, v);
-            const nPart = Math.max(1, idxs.length);
-            const per = (totalCps * frac) / nPart;
-            idxs.forEach(i => {
-                if (i < 0 || i >= unlockedHands) return;
-                handEarnings[i] = (handEarnings[i] || 0) + per;
-                any = true;
-            });
-        });
-        if (any) {
-            refreshTotalFromHandEarnings();
-            if (incrementalEl) incrementalEl.textContent = formatCount(totalChanges);
-        }
-    }
-
     function updateComboUI() {
         if (unlockedHands < 2) return;
         const active = getActiveCombos();
@@ -8444,27 +8807,9 @@ import {
             comboActivationCounts[c.name] = (comboActivationCounts[c.name] || 0) + 1;
         });
         if (newlyPulsingEdge.length > 0) applyAscensionComboTimeWarpDelayReduction(newlyPulsingEdge.length);
-        updateComboSustainState(active);
-        {
-            const rampTick = computeAscensionGrantTotals().comboRunBonusAddPerTick || 0;
-            if (active.length > 0 && rampTick > 0) {
-                comboRunBonusRampAccumulator += rampTick;
-            }
-        }
-        if (active.length > 0) applyAscensionComboPulseProduction(active);
-        const newlyEarned = active.filter(c => earnedComboNames.indexOf(c.name) === -1).sort((a, b) => {
-            if (b.minHands !== a.minHands) return b.minHands - a.minHands;
-            if (b.bonus !== a.bonus) return b.bonus - a.bonus;
-            return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
-        });
-        if (newlyEarned.length > 0) {
-            newlyEarned.forEach(c => earnedComboNames.push(c.name));
-            newlyEarned.forEach(c => addToLog("Discovered combo: " + c.name + " (x" + c.bonus.toFixed(2) + ")", "milestone"));
-            markMeaningfulProgress();
-            showComboBubble(newlyEarned);
-            pulseCombinationsPageButtonForNewBonus();
-            updateEarnedBonusesUI();
-        }
+        const nowCombo = Date.now();
+        enqueueComboDiscoveryMilestones(active);
+        tryProcessOneComboDiscoveryMilestone(nowCombo);
         if (turboBoostUnlocked && active.length > 0) {
             const activeNames = new Set(active.map(c => c.name));
             active.forEach(c => {
@@ -8560,7 +8905,7 @@ import {
             bonusB = true;
         }
         if (logIfNeitherMiss && !bonusA && !bonusB) {
-            addToLog("Clap! Hand " + (a + 1) + " and Hand " + (b + 1) + "—no bonus this time. Better luck next round.", "tip");
+            addToLog("Clap! Hand " + (a + 1) + " and Hand " + (b + 1) + "—no bonus this time. Better luck next round.", "system");
         }
     }
     function maybeComboClapChainFromAscension(a, b, staggerStartMs, bonusHandsOneIndexed) {
@@ -8615,6 +8960,7 @@ import {
     }
     function processClappingThisTick() {
         if (!isClappingUnlocked() || gameplaySimFrozen()) return;
+        const clapLedgerSnapBefore = snapshotHandLedgerBonusDisplays();
         const nowMs = Date.now();
         function handOffClapCooldown(handIndex) {
             const until = clapCooldownUntilMsByHand[handIndex] || 0;
@@ -8698,14 +9044,480 @@ import {
             if (essenceProcCountThisTick > 0) {
                 bits.push("essence multiplier proc ×" + essenceProcCountThisTick + " (now " + getNumber1AscensionClapEssenceMultiplier().toFixed(3) + "x)");
             }
-            addToLog("Clap! " + bits.join(" · ") + ".", "tip");
+            addToLog("Clap! " + bits.join(" · ") + ".", "system");
             updateSpeedUpgradeUI();
             updateCheapenUpgradeUI();
             updateSlowdownUpgradeUI();
             updateRateDisplay();
             updateMilestoneUI();
             refreshOverviewAndAscensionHubLiveIfOpen();
+            ledgerBeamAfterClapBonuses(clapLedgerSnapBefore);
         }
+    }
+
+    /* ---------------------------------------------------------
+       LEDGER BEAM VFX (Number 1: combo catalog milestones + clap upgrades)
+    --------------------------------------------------------- */
+    const LEDGER_BEAM_MAX_FULL_PER_SEC = 5;
+    const LEDGER_BEAM_TRAVEL_MS = 920;
+    const LEDGER_BEAM_HOLD_AT_SINK_MS = 220;
+    const LEDGER_BEAM_CLAP_STAGGER_MS = 90;
+    const LEDGER_BEAM_SINK_MAX_DRIFT_PX = 40;
+    const LEDGER_BEAM_NOISE_STEPS = 26;
+    let ledgerBeamFullEventTimesMs = [];
+    let ledgerBeamLayerEl = null;
+    function ensureLedgerBeamLayer() {
+        if (ledgerBeamLayerEl && ledgerBeamLayerEl.parentNode) return ledgerBeamLayerEl;
+        const el = document.createElement("div");
+        el.id = "ledger-beam-layer";
+        el.className = "ledger-beam-layer";
+        el.setAttribute("aria-hidden", "true");
+        document.body.appendChild(el);
+        ledgerBeamLayerEl = el;
+        return el;
+    }
+    function ledgerBeamAllowFullTravel() {
+        const now = Date.now();
+        ledgerBeamFullEventTimesMs = ledgerBeamFullEventTimesMs.filter(t => now - t < 1000);
+        if (ledgerBeamFullEventTimesMs.length >= LEDGER_BEAM_MAX_FULL_PER_SEC) return false;
+        ledgerBeamFullEventTimesMs.push(now);
+        return true;
+    }
+    function ledgerBeamPrefersReducedMotion() {
+        try {
+            return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        } catch (_) {
+            return false;
+        }
+    }
+    /**
+     * Hide ribbon travel for any full-screen page other than Combinations, settings / ascension confirm, or (clap) when
+     * not on Number 1. Catalog bonus travel may run on Number 2.
+     */
+    function ledgerBeamShouldHideTravel(forBonusCatalog) {
+        if (isSettingsPanelOpen()) return true;
+        if (ascensionConfirmOverlayEl && ascensionConfirmOverlayEl.style.display === "flex") return true;
+        if (isPagePanelOpen() && pagePanelEl && pagePanelEl.dataset.openPageId !== "combinations") return true;
+        if (!forBonusCatalog && typeof window.getCurrentNumberMode === "function" && window.getCurrentNumberMode() !== 1) return true;
+        return false;
+    }
+    /** When log rows have no layout, use the visible ticker strip / action-log chrome (player reads messages there). */
+    function ledgerBeamFallbackMessageSourceRect() {
+        if (ambientMessageTickerEl) {
+            const r = ambientMessageTickerEl.getBoundingClientRect();
+            if (r.width > 4 && r.height > 4) return r;
+        }
+        if (actionLogContainer) {
+            const r = actionLogContainer.getBoundingClientRect();
+            if (r.width > 4 && r.height > 4) return r;
+        }
+        const stage = document.getElementById("play-stage");
+        if (stage) {
+            const r = stage.getBoundingClientRect();
+            if (r.width > 4 && r.height > 4) return r;
+        }
+        return null;
+    }
+    /** @param {string} [logCategory] — match {@link data-log-category}; prefer the latest row when it matches (trigger line). */
+    function ledgerBeamGetSourceRectFromActionLog(logCategory) {
+        if (!actionLogEl) return ledgerBeamFallbackMessageSourceRect();
+        const lines = actionLogEl.querySelectorAll(".action-log-line");
+        if (lines && lines.length) {
+            const last = lines[lines.length - 1];
+            if (!logCategory || last.getAttribute("data-log-category") === logCategory) {
+                const rLast = last.getBoundingClientRect();
+                if (rLast.width > 2 && rLast.height > 2) return rLast;
+            }
+            for (let i = lines.length - 1; i >= 0; i--) {
+                const line = lines[i];
+                if (logCategory && line.getAttribute("data-log-category") !== logCategory) continue;
+                const r = line.getBoundingClientRect();
+                if (r.width > 2 && r.height > 2) return r;
+            }
+        }
+        const wrap = actionLogEl.getBoundingClientRect();
+        if (wrap.width > 2 && wrap.height > 2) return wrap;
+        return ledgerBeamFallbackMessageSourceRect();
+    }
+    function ledgerBeamGetBonusSinkElement() {
+        if (isPagePanelOpen() && pagePanelEl && pagePanelEl.dataset.openPageId === "combinations") {
+            const catalog = document.getElementById("ledger-sink-catalog-combined");
+            if (catalog) return catalog;
+        }
+        return incrementalRateEl;
+    }
+    function ledgerBeamSinkAnchorFromElement(el) {
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        if (r.width < 2 && r.height < 2) return null;
+        const ex = r.left + r.width * 0.72;
+        const ey = r.top + r.height * 0.5;
+        return { ex, ey, raw: r };
+    }
+    /** When the primary sink is hidden (e.g. Number 1 stage display:none on Number 2), land on a visible stage region. */
+    function ledgerBeamBonusSinkAnchorOrFallback(sinkEl) {
+        let a = ledgerBeamSinkAnchorFromElement(sinkEl);
+        if (a) return a;
+        const mode = typeof window.getCurrentNumberMode === "function" ? window.getCurrentNumberMode() : 1;
+        if (mode === 2) {
+            const n2 = document.getElementById("number2-stage");
+            if (n2 && n2.style.display !== "none") {
+                const r = n2.getBoundingClientRect();
+                if (r.width > 8 && r.height > 8) {
+                    const raw = r;
+                    return {
+                        ex: r.left + r.width * 0.5,
+                        ey: r.top + Math.min(140, r.height * 0.28),
+                        raw
+                    };
+                }
+            }
+        }
+        const stage = document.getElementById("play-stage");
+        if (stage) {
+            const r = stage.getBoundingClientRect();
+            if (r.width > 8 && r.height > 8) {
+                return { ex: r.left + r.width * 0.5, ey: r.top + Math.min(160, r.height * 0.22), raw: r };
+            }
+        }
+        const f = ledgerBeamFallbackSinkPoint();
+        return {
+            ex: f.x + 48,
+            ey: f.y,
+            raw: { left: f.x - 80, top: f.y - 14, width: 160, height: 28 }
+        };
+    }
+    function ledgerBeamFallbackSinkPoint() {
+        const seg = document.querySelector(".top-count-row__segment--center");
+        if (seg) {
+            const r = seg.getBoundingClientRect();
+            return { x: r.left + r.width * 0.5, y: r.top + r.height * 0.5 };
+        }
+        return { x: window.innerWidth * 0.5, y: 88 };
+    }
+    function ledgerBeamCurvePoint(t, ax, ay, bx, by, cx, cy) {
+        const u = 1 - t;
+        return { x: u * u * ax + 2 * u * t * bx + t * t * cx, y: u * u * ay + 2 * u * t * by + t * t * cy };
+    }
+    function ledgerBeamBuildGlyphListBonus(patternMultLabel, catalogAfterNum) {
+        const label = String(patternMultLabel || "").replace(/\s/g, "");
+        const multStr = (Number(catalogAfterNum) || 0).toFixed(2);
+        const pool = [];
+        for (let j = 0; j < label.length; j++) pool.push(label[j]);
+        for (let j = 0; j < multStr.length; j++) pool.push(multStr[j]);
+        pool.push("×", "·", "◆", "‣");
+        if (pool.length < 4) pool.push("×", "·", "◇", "◇");
+        const n = Math.min(24, Math.max(6, 6 + Math.floor(Math.random() * 9)));
+        const glyphs = [];
+        for (let i = 0; i < n; i++) {
+            glyphs.push({ ch: pool[i % pool.length], off: i / n, jitter: (Math.random() - 0.5) * 0.04 });
+        }
+        return glyphs;
+    }
+    function ledgerBeamBuildGlyphListClap(hand1Based, axis) {
+        const axCh = axis === "speed" ? "S" : axis === "cheapen" ? "C" : "P";
+        const handStr = String(hand1Based);
+        const pool = ["+", "1", axCh, "H", handStr, "·", "↑", "+", axCh];
+        const n = Math.min(24, Math.max(6, 6 + Math.floor(Math.random() * 9)));
+        const glyphs = [];
+        for (let i = 0; i < n; i++) {
+            glyphs.push({ ch: pool[i % pool.length], off: i / n, jitter: (Math.random() - 0.5) * 0.04 });
+        }
+        return glyphs;
+    }
+    function ledgerBeamPlayTravelCanvas(kind, sx, sy, lockedEx, lockedEy, onDone, travelOpts) {
+        const layer = ensureLedgerBeamLayer();
+        const watchEl = travelOpts && travelOpts.watchEl;
+        const glyphs = (travelOpts && travelOpts.glyphs) || ledgerBeamBuildGlyphListBonus("", 0);
+        const glyphEls = [];
+        for (let i = 0; i < glyphs.length; i++) {
+            const sp = document.createElement("span");
+            sp.className = "ledger-beam-micro" + (kind === "clap" ? " ledger-beam-micro--clap" : "");
+            sp.textContent = glyphs[i].ch;
+            layer.appendChild(sp);
+            glyphEls.push(sp);
+        }
+        const canvas = document.createElement("canvas");
+        canvas.className = "ledger-beam-canvas";
+        const dpr = Math.min(2, window.devicePixelRatio || 1);
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        canvas.style.width = w + "px";
+        canvas.style.height = h + "px";
+        canvas.width = Math.floor(w * dpr);
+        canvas.height = Math.floor(h * dpr);
+        layer.appendChild(canvas);
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+            for (const ge of glyphEls) {
+                if (ge && ge.parentNode) ge.parentNode.removeChild(ge);
+            }
+            layer.removeChild(canvas);
+            if (typeof onDone === "function") onDone();
+            return;
+        }
+        ctx.scale(dpr, dpr);
+        const isLight = document.documentElement.getAttribute("data-theme") === "light";
+        const colors = kind === "clap"
+            ? { outer: isLight ? "rgba(200,120,40,0.28)" : "rgba(255, 200, 120,0.55)", inner: isLight ? "rgba(255,180,90,0.65)" : "rgba(255, 230, 180,0.9)" }
+            : { outer: isLight ? "rgba(60,100,160,0.22)" : "rgba(54, 80, 120,0.35)", inner: isLight ? "rgba(90,130,200,0.55)" : "rgba(154, 180, 255,0.78)" };
+        const mx0 = (sx + lockedEx) * 0.5;
+        const my0 = (sy + lockedEy) * 0.5 - Math.min(120, Math.abs(lockedEx - sx) * 0.18 + 40);
+        const t0 = performance.now();
+        const noisePhase = Math.random() * Math.PI * 2;
+        let cancelled = false;
+        function cleanup() {
+            for (const ge of glyphEls) {
+                if (ge && ge.parentNode) ge.parentNode.removeChild(ge);
+            }
+            if (canvas.parentNode) canvas.parentNode.removeChild(canvas);
+        }
+        function finishDone() {
+            if (cancelled) return;
+            cancelled = true;
+            cleanup();
+            if (typeof onDone === "function") onDone();
+        }
+        function noisyPoint(tNorm, bx, by) {
+            const p = ledgerBeamCurvePoint(tNorm, sx, sy, bx, by, lockedEx, lockedEy);
+            if (tNorm <= 0.002 || tNorm >= 0.998) return p;
+            const delta = 0.018;
+            const p2 = ledgerBeamCurvePoint(Math.min(1, tNorm + delta), sx, sy, bx, by, lockedEx, lockedEy);
+            const dx = p2.x - p.x;
+            const dy = p2.y - p.y;
+            const len = Math.hypot(dx, dy) || 1;
+            const nx = -dy / len;
+            const ny = dx / len;
+            const noise = (Math.sin(tNorm * 21.7 + noisePhase) * 0.55 + Math.cos(tNorm * 11.3 - noisePhase * 0.4) * 0.45) * 3.8 * (1 - 0.38 * tNorm);
+            return { x: p.x + nx * noise, y: p.y + ny * noise };
+        }
+        const steps = LEDGER_BEAM_NOISE_STEPS;
+        function frame(now) {
+            if (cancelled) return;
+            const elapsed = now - t0;
+            const linearT = Math.min(1, elapsed / LEDGER_BEAM_TRAVEL_MS);
+            let travelShape = 1;
+            let holdFade = 1;
+            if (elapsed >= LEDGER_BEAM_TRAVEL_MS) {
+                const holdT = elapsed - LEDGER_BEAM_TRAVEL_MS;
+                if (holdT >= LEDGER_BEAM_HOLD_AT_SINK_MS) {
+                    finishDone();
+                    return;
+                }
+                holdFade = 1 - holdT / LEDGER_BEAM_HOLD_AT_SINK_MS;
+            } else {
+                travelShape = 0.5 - 0.5 * Math.cos(Math.PI * linearT);
+            }
+            if (watchEl) {
+                const na = ledgerBeamSinkAnchorFromElement(watchEl);
+                if (!na || Math.hypot(na.ex - lockedEx, na.ey - lockedEy) > LEDGER_BEAM_SINK_MAX_DRIFT_PX) {
+                    finishDone();
+                    return;
+                }
+            }
+            const wob = Math.sin(now * 0.012) * 4;
+            const bx = mx0 + wob;
+            const by = my0;
+            const tease = (1 - Math.pow(1 - travelShape, 2)) * holdFade;
+            ctx.clearRect(0, 0, w, h);
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            for (let pass = 0; pass < 3; pass++) {
+                const baseW = pass === 0 ? 20 : (pass === 1 ? 11 : 5.2);
+                for (let i = 1; i <= steps; i++) {
+                    const tA = ((i - 1) / steps) * tease;
+                    const tB = (i / steps) * tease;
+                    const mid = (tA + tB) * 0.5;
+                    const pA = noisyPoint(tA, bx, by);
+                    const pB = noisyPoint(tB, bx, by);
+                    const taper = 1 - 0.56 * mid;
+                    ctx.strokeStyle = pass === 2 ? colors.inner : colors.outer;
+                    const baseAlpha = pass === 0 ? 0.34 : (pass === 1 ? 0.5 : 0.86);
+                    ctx.globalAlpha = baseAlpha * holdFade;
+                    ctx.lineWidth = baseW * taper * (pass === 2 ? 0.42 : 1);
+                    ctx.beginPath();
+                    ctx.moveTo(pA.x, pA.y);
+                    ctx.lineTo(pB.x, pB.y);
+                    ctx.stroke();
+                }
+            }
+            ctx.globalAlpha = 1;
+            const ease = travelShape;
+            const glyphAlpha = Math.min(1, ease * 1.05) * holdFade;
+            for (let i = 0; i < glyphs.length; i++) {
+                const g = glyphs[i];
+                const gt = Math.max(0, Math.min(1, (ease - g.off * 0.85) / 0.35 + g.jitter));
+                const p = ledgerBeamCurvePoint(gt, sx, sy, bx, by, lockedEx, lockedEy);
+                const ge = glyphEls[i];
+                if (ge) {
+                    ge.style.left = p.x + "px";
+                    ge.style.top = p.y + "px";
+                    const vis = glyphAlpha * (gt > 0.02 && gt < 0.98 ? 0.88 : 0);
+                    ge.style.opacity = String(vis);
+                    ge.style.transform = "translate(-50%, -50%) scale(" + (0.7 + 0.35 * Math.sin(gt * Math.PI)) + ")";
+                }
+            }
+            requestAnimationFrame(frame);
+        }
+        requestAnimationFrame(frame);
+    }
+    function ledgerBeamPopOverlay(rect, kind, oldText, newText, popOpts) {
+        if (!rect) return;
+        popOpts = popOpts || {};
+        const layer = ensureLedgerBeamLayer();
+        const wrap = document.createElement("div");
+        wrap.className = "ledger-beam-pop-wrap" + (kind === "clap" ? " ledger-beam-pop-wrap--clap" : "");
+        const ghost = document.createElement("span");
+        ghost.className = "ledger-beam-pop-ghost";
+        ghost.textContent = oldText || "";
+        const neu = document.createElement("span");
+        neu.className = "ledger-beam-pop-new";
+        neu.textContent = newText || "";
+        wrap.appendChild(ghost);
+        wrap.appendChild(neu);
+        if (popOpts.deltaText && ledgerBeamPrefersReducedMotion()) {
+            const d = document.createElement("span");
+            d.className = "ledger-beam-pop-delta";
+            d.textContent = popOpts.deltaText;
+            wrap.appendChild(d);
+        }
+        const ax = popOpts.anchorX != null ? popOpts.anchorX : (rect.left + rect.width * 0.5);
+        const ay = popOpts.anchorY != null ? popOpts.anchorY : (rect.top + rect.height * 0.5);
+        wrap.style.left = ax + "px";
+        wrap.style.top = ay + "px";
+        layer.appendChild(wrap);
+        window.setTimeout(() => {
+            wrap.classList.add("ledger-beam-pop-wrap--run");
+        }, 10);
+        window.setTimeout(() => {
+            if (wrap.parentNode) wrap.parentNode.removeChild(wrap);
+        }, 420);
+    }
+    function ledgerBeamCreateClapFallbackChip(layer, ev) {
+        const chip = document.createElement("div");
+        chip.className = "ledger-beam-fallback-chip";
+        const axisLabel = ev.axis === "speed" ? "Speed" : ev.axis === "cheapen" ? "Cheapen" : "Compaction";
+        chip.textContent = "Hand " + ev.hand1Based + " · " + axisLabel + " +1";
+        layer.appendChild(chip);
+        return chip;
+    }
+    function ledgerBeamPulseSink(el, kind) {
+        if (!el) return;
+        const clap = kind === "clap";
+        el.classList.remove("ledger-beam-sink-flash", "ledger-beam-sink-flash--clap");
+        void el.offsetWidth;
+        el.classList.add(clap ? "ledger-beam-sink-flash--clap" : "ledger-beam-sink-flash");
+        window.setTimeout(() => {
+            el.classList.remove("ledger-beam-sink-flash", "ledger-beam-sink-flash--clap");
+        }, 400);
+    }
+    function ledgerBeamPlayBonus(catalogBefore, catalogAfter, patternMultLabel) {
+        const srcR = ledgerBeamGetSourceRectFromActionLog("milestone") || ledgerBeamFallbackMessageSourceRect();
+        if (!srcR) return;
+        const sinkEl = ledgerBeamGetBonusSinkElement();
+        const sinkAnchor = ledgerBeamBonusSinkAnchorOrFallback(sinkEl);
+        const primarySinkRect = ledgerBeamSinkAnchorFromElement(sinkEl);
+        const popOnly = ledgerBeamShouldHideTravel(true) || ledgerBeamPrefersReducedMotion() || !ledgerBeamAllowFullTravel();
+        const sx = srcR.left + srcR.width * 0.5;
+        const sy = srcR.top + srcR.height * 0.5;
+        const lockedEx = sinkAnchor.ex;
+        const lockedEy = sinkAnchor.ey;
+        const popRect = sinkAnchor.raw;
+        const anchorX = sinkAnchor.ex;
+        const anchorY = sinkAnchor.ey;
+        const bStr = (Number(catalogBefore) || 0).toFixed(2);
+        const aStr = (Number(catalogAfter) || 0).toFixed(2);
+        const oldShort = "Catalog ×" + bStr;
+        const newShort = "Catalog ×" + aStr + " · " + (patternMultLabel || "");
+        const catDelta = (Number(catalogAfter) || 0) - (Number(catalogBefore) || 0);
+        const deltaText = "Δ catalog " + (catDelta >= 0 ? "+" : "") + catDelta.toFixed(2);
+        const bGlyphs = ledgerBeamBuildGlyphListBonus(patternMultLabel, catalogAfter);
+        const finish = () => {
+            ledgerBeamPopOverlay(popRect, "bonus", oldShort, newShort, { anchorX, anchorY, deltaText });
+            if (sinkEl) ledgerBeamPulseSink(sinkEl, "bonus");
+        };
+        if (popOnly) {
+            finish();
+            return;
+        }
+        ledgerBeamPlayTravelCanvas("bonus", sx, sy, lockedEx, lockedEy, finish, { watchEl: primarySinkRect ? sinkEl : null, glyphs: bGlyphs });
+    }
+    function ledgerBeamPlayClapEvent(ev) {
+        if (!ev || !ev.sinkEl || ev.hand1Based == null || !ev.axis) return;
+        const srcR = ledgerBeamGetSourceRectFromActionLog("system") || ledgerBeamFallbackMessageSourceRect();
+        if (!srcR) return;
+        const layer = ensureLedgerBeamLayer();
+        let chipEl = null;
+        let anchor = ledgerBeamSinkAnchorFromElement(ev.sinkEl);
+        if (!anchor) {
+            chipEl = ledgerBeamCreateClapFallbackChip(layer, ev);
+            const cr = chipEl.getBoundingClientRect();
+            anchor = ledgerBeamSinkAnchorFromElement(chipEl) || { ex: cr.left + cr.width * 0.5, ey: cr.top + cr.height * 0.5, raw: cr };
+        }
+        const lockedEx = anchor.ex;
+        const lockedEy = anchor.ey;
+        const popRect = anchor.raw;
+        const anchorX = anchor.ex;
+        const anchorY = anchor.ey;
+        const popOnly = ledgerBeamShouldHideTravel(false) || ledgerBeamPrefersReducedMotion() || !ledgerBeamAllowFullTravel();
+        const sx = srcR.left + srcR.width * 0.5;
+        const sy = srcR.top + srcR.height * 0.5;
+        const axisShort = ev.axis === "speed" ? "Spd" : ev.axis === "cheapen" ? "Chp" : "Cmp";
+        const deltaText = "Δ H" + ev.hand1Based + " " + axisShort + " +1";
+        const cGlyphs = ledgerBeamBuildGlyphListClap(ev.hand1Based, ev.axis);
+        const finish = () => {
+            if (chipEl && chipEl.parentNode) chipEl.parentNode.removeChild(chipEl);
+            chipEl = null;
+            ledgerBeamPopOverlay(popRect, "clap", ev.oldText || "—", ev.newText || "—", { anchorX, anchorY, deltaText });
+            ledgerBeamPulseSink(ev.sinkEl, "clap");
+        };
+        if (popOnly) {
+            finish();
+            return;
+        }
+        ledgerBeamPlayTravelCanvas("clap", sx, sy, lockedEx, lockedEy, finish, { watchEl: chipEl || ev.sinkEl, glyphs: cGlyphs });
+    }
+    function snapshotHandLedgerBonusDisplays() {
+        const out = [];
+        for (let i = 0; i < unlockedHands; i++) {
+            const ref = speedRowRefs[i];
+            if (!ref) {
+                out.push({ speed: "", cheapen: "", slowdown: "" });
+                continue;
+            }
+            out.push({
+                speed: ref.speedLevelEl ? ref.speedLevelEl.textContent.replace(/\s+/g, " ").trim() : "",
+                cheapen: ref.cheapenLevelEl ? ref.cheapenLevelEl.textContent.replace(/\s+/g, " ").trim() : "",
+                slowdown: ref.slowdownLevelEl ? ref.slowdownLevelEl.textContent.replace(/\s+/g, " ").trim() : ""
+            });
+        }
+        return out;
+    }
+    function ledgerBeamAfterClapBonuses(beforeSnap) {
+        if (!beforeSnap) return;
+        if (typeof window.getCurrentNumberMode === "function" && window.getCurrentNumberMode() !== 1) return;
+        const events = [];
+        for (let i = 0; i < unlockedHands; i++) {
+            const ref = speedRowRefs[i];
+            if (!ref) continue;
+            const hand1 = i + 1;
+            const b = beforeSnap[i] || { speed: "", cheapen: "", slowdown: "" };
+            const sp = ref.speedLevelEl ? ref.speedLevelEl.textContent.replace(/\s+/g, " ").trim() : "";
+            const ch = ref.cheapenLevelEl ? ref.cheapenLevelEl.textContent.replace(/\s+/g, " ").trim() : "";
+            const sl = ref.slowdownLevelEl ? ref.slowdownLevelEl.textContent.replace(/\s+/g, " ").trim() : "";
+            if (sp !== b.speed && ref.speedLevelEl) {
+                events.push({ sinkEl: ref.speedLevelEl, oldText: b.speed, newText: sp, hand1Based: hand1, axis: "speed" });
+            }
+            if (ch !== b.cheapen && ref.cheapenLevelEl) {
+                events.push({ sinkEl: ref.cheapenLevelEl, oldText: b.cheapen, newText: ch, hand1Based: hand1, axis: "cheapen" });
+            }
+            if (sl !== b.slowdown && ref.slowdownLevelEl) {
+                events.push({ sinkEl: ref.slowdownLevelEl, oldText: b.slowdown, newText: sl, hand1Based: hand1, axis: "slowdown" });
+            }
+        }
+        events.forEach((ev, idx) => {
+            window.setTimeout(() => ledgerBeamPlayClapEvent(ev), idx * LEDGER_BEAM_CLAP_STAGGER_MS);
+        });
     }
 
     let lastSameSpeedHandAlignWallMs = Date.now();
@@ -8752,6 +9564,10 @@ import {
         const mode = typeof window.getCurrentNumberMode === "function" ? window.getCurrentNumberMode() : 1;
         if (mode === 2 && isNumber2Unlocked() && number2State.started) {
             number2.runGameLoopStep(dtSec);
+            /* Number 1 hand/combo UI is not stepped here, but catalog milestone cooldown still runs via wall clock — drain the queue so the main combo bubble + earn apply on time. */
+            if (unlockedHands >= 2) {
+                tryProcessOneComboDiscoveryMilestone(Date.now());
+            }
             return;
         }
         if (getBlackHolePhase() === 7) {
@@ -8943,7 +9759,7 @@ import {
             const btn = e.target.closest(".upgrade-btn");
             if (!btn) return;
             clearUpgradeTooltipHoverTimer(btn);
-            requestAnimationFrame(() => positionTooltipForButton(btn));
+            requestAnimationFrame(() => positionTooltipForHost(btn));
         });
         window.addEventListener("resize", onWindowScrollResizeForUpgrades);
         window.addEventListener("scroll", onWindowScrollResizeForUpgrades, true);
@@ -9074,6 +9890,14 @@ import {
             if (!cb) return;
             const i = parseInt(cb.getAttribute("data-hand-index"), 10);
             if (!isNaN(i) && i >= 0 && i < unlockedHands) autoBuyEnabledByHand[i] = cb.checked;
+        });
+    }
+    if (turboScensionPanelEl) {
+        turboScensionPanelEl.addEventListener("focusin", function(e) {
+            const host = e.target.closest(".turbo-scension-tooltip-host");
+            if (!host || !turboScensionPanelEl.contains(host)) return;
+            clearUpgradeTooltipHoverTimer(host);
+            requestAnimationFrame(() => positionTooltipForHost(host));
         });
     }
     document.addEventListener("click", function(e) {

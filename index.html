@@ -144,13 +144,28 @@
                     </div>
                     <div id="turbo-scension-panel" class="turbo-scension-panel" style="display: none;" aria-hidden="true">
                         <div class="turbo-scension-levels" id="turbo-scension-levels" aria-label="Turbo-scension levels">
-                            <div class="turbo-scension-level-line turbo-scension-level-line--burn" id="turbo-scension-burn-line">Burn 0</div>
-                            <div class="turbo-scension-level-line turbo-scension-level-line--tank" id="turbo-scension-tank-line">Tank 0</div>
-                            <div class="turbo-scension-level-line turbo-scension-level-line--mult" id="turbo-scension-mult-line">Mult 0</div>
-                            <div class="turbo-scension-level-line turbo-scension-level-line--fill" id="turbo-scension-fill-line">Fill 0</div>
-                            <div class="turbo-scension-level-line turbo-scension-level-line--leveler" id="turbo-scension-leveler-line" style="display:none;" aria-hidden="true"></div>
+                            <div class="turbo-scension-level-line turbo-scension-level-line--burn turbo-scension-tooltip-host" id="turbo-scension-burn-line" tabindex="0">
+                                <span class="turbo-scension-level-line-label"></span>
+                                <span class="upgrade-details-tooltip" role="tooltip"></span>
+                            </div>
+                            <div class="turbo-scension-level-line turbo-scension-level-line--tank turbo-scension-tooltip-host" id="turbo-scension-tank-line" tabindex="0">
+                                <span class="turbo-scension-level-line-label"></span>
+                                <span class="upgrade-details-tooltip" role="tooltip"></span>
+                            </div>
+                            <div class="turbo-scension-level-line turbo-scension-level-line--mult turbo-scension-tooltip-host" id="turbo-scension-mult-line" tabindex="0">
+                                <span class="turbo-scension-level-line-label"></span>
+                                <span class="upgrade-details-tooltip" role="tooltip"></span>
+                            </div>
+                            <div class="turbo-scension-level-line turbo-scension-level-line--fill turbo-scension-tooltip-host" id="turbo-scension-fill-line" tabindex="0">
+                                <span class="turbo-scension-level-line-label"></span>
+                                <span class="upgrade-details-tooltip" role="tooltip"></span>
+                            </div>
+                            <div class="turbo-scension-level-line turbo-scension-level-line--leveler turbo-scension-tooltip-host" id="turbo-scension-leveler-line" style="display:none;" aria-hidden="true" tabindex="0">
+                                <span class="turbo-scension-level-line-label"></span>
+                                <span class="upgrade-details-tooltip" role="tooltip"></span>
+                            </div>
                         </div>
-                        <button type="button" id="turbo-scension-upgrade-btn" class="turbo-scension-upgrade-btn">Upgrade</button>
+                        <button type="button" id="turbo-scension-upgrade-btn" class="turbo-scension-upgrade-btn turbo-scension-tooltip-host">Upgrade <span class="upgrade-details-tooltip" role="tooltip"></span></button>
                     </div>
                 </div>
             </div>

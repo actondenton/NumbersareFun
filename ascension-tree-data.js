@@ -5,7 +5,7 @@
 (function (global) {
     "use strict";
 
-    var VERSION = 13;
+    var VERSION = 15;
 
     var ROMAN = [
         "", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X",
@@ -65,22 +65,13 @@
         if (g.autoBuyDelayMult != null) parts.push("Speed autobuy delay \u00d7" + g.autoBuyDelayMult.toFixed(3));
         if (g.slowdownCostMult != null) parts.push("Compaction upgrades cost " + ((1 - g.slowdownCostMult) * 100).toFixed(1) + "% less (multiplicative)");
         if (g.comboMultAdd != null) {
-            parts.push("Adds +" + (g.comboMultAdd * 100).toFixed(2) + "% to your overall combo bonus on Number 1");
-        }
-        if (g.comboRunBonusAddPerTick != null && g.comboRunBonusAddPerTick > 0) {
-            parts.push("Increases bonus for this ascension run by +" + (g.comboRunBonusAddPerTick * 100).toFixed(2) + "% each tick while a combo bonus is active; never decreases until you Ascend");
+            parts.push("Adds +" + (g.comboMultAdd * 100).toFixed(2) + "% to the Index-finger combo stack that multiplies Time Warp bursts (stacks with other index nodes; does not multiply tick CPS)");
         }
         if (g.comboEarnedPatternMultAdd != null && g.comboEarnedPatternMultAdd > 0) {
-            parts.push("Makes discovered patterns on the Combo branch multiply your bonus a bit harder (+" + (g.comboEarnedPatternMultAdd * 100).toFixed(2) + "% this step; compounds across middle ranks as successive ×(1+step) with a branch cap — not as a sum of these %)");
+            parts.push("Increases the middle-finger ascension pattern mult that applies to tick CPS and to Time Warp (+" + (g.comboEarnedPatternMultAdd * 100).toFixed(2) + "% this step; compounds across middle ranks as successive ×(1+step) with a branch cap — not as a sum of these %)");
         }
-        if (g.comboSustainMaxMultAdd != null && g.comboSustainMaxMultAdd > 0) {
-            parts.push("Raises how high your rhythm bonus can climb when you keep the same main combo—about +" + (g.comboSustainMaxMultAdd * 100).toFixed(1) + "% more headroom (stacks with other middle ranks, within a cap)");
-        }
-        if (g.comboSustainFillPerTick != null && g.comboSustainFillPerTick > 0) {
-            parts.push("Your rhythm bonus builds a little faster while your main combo stays the same (+" + (g.comboSustainFillPerTick * 100).toFixed(2) + "% from this rank; stacks with other middle unlocks, within a cap)");
-        }
-        if (g.comboActivationLogCoeff != null && g.comboActivationLogCoeff > 0) {
-            parts.push("Each time a pattern comes back after a short gap, it gently strengthens that pattern’s slice of your bonus; repeats help more but taper off (+" + (g.comboActivationLogCoeff * 100).toFixed(2) + "% to that scaling this step; stacks with other middle ranks, within a cap)");
+        if (g.comboDiscoveryMilestoneCooldownMult != null && g.comboDiscoveryMilestoneCooldownMult > 0 && g.comboDiscoveryMilestoneCooldownMult <= 1) {
+            parts.push("Shortens the gap between pattern discovery milestones (catalog bonus / log): cooldown \u00d7" + g.comboDiscoveryMilestoneCooldownMult.toFixed(3) + " of the default 60s (middle nodes stack multiplicatively; floor 0.1s). Turbo meter from combos is unchanged.");
         }
         if (g.nearMissToleranceRank != null && g.nearMissToleranceRank >= 1 && g.nearMissToleranceRank <= 10) {
             var nn = g.nearMissToleranceRank;
@@ -88,9 +79,6 @@
             if (nn < 10) nearMissWays.push(nn + " on one hand and " + (nn + 1) + " on the other");
             if (nn > 1) nearMissWays.push((nn - 1) + " on one hand and " + nn + " on the other");
             parts.push("Pair of " + nn + "s gets easier: besides two " + nn + "s, your first two hands also count if they show " + nearMissWays.join(", or ") + " (only for this pair’s number; you can earn up to five different “almost there” ranks from the Combo branch)");
-        }
-        if (g.comboTriggerProductionFrac != null) {
-            parts.push("When a combo appears fresh, matching hands get a splash of extra count—about " + (g.comboTriggerProductionFrac * 100).toFixed(2) + "% of your total count per second, split across those hands");
         }
         if (g.turboScaling != null) parts.push("+25 turbo meter & \u00d71.25 turbo cap stack");
         if (g.turboTankSizeMultAdd != null && g.turboTankSizeMultAdd > 0) {
@@ -577,28 +565,28 @@
             { cost: 53, grants: { speedCostMult: 0.99, handUnlockStartingCount: "1000000000000000000000000000" } },
         ],
         middle: [
-            { cost: 5, grants: { comboSustainMaxMultAdd: 0.08, comboTriggerProductionFrac: 0.008, comboActivationLogCoeff: 0.016 } },
+            { cost: 5, grants: { comboDiscoveryMilestoneCooldownMult: 0.42 } },
             { cost: 5, grants: { comboMultAdd: 0.015 } },
-            { cost: 6, grants: { comboRunBonusAddPerTick: 0.001 } },
-            { cost: 6, grants: { comboEarnedPatternMultAdd: 0.46, nearMissToleranceRank: 2, comboSustainFillPerTick: 0.006 } },
+            { cost: 6, grants: { comboDiscoveryMilestoneCooldownMult: 0.45 } },
+            { cost: 6, grants: { comboEarnedPatternMultAdd: 0.46, nearMissToleranceRank: 2 } },
             { cost: 7, grants: { turboBoostComboFillAdd: 1 }, title: "Combo Fill Boost" },
             { cost: 8, grants: { comboTimeWarpDelayReduceSec: 0.25 } },
             { cost: 9, grants: { comboTimeWarpDelayReduceSec: 0.25 } },
             { cost: 9, grants: { comboMultAdd: 0.015, turboBoostComboFillAdd: 1 } },
-            { cost: 11, grants: { comboSustainMaxMultAdd: 0.08, comboTriggerProductionFrac: 0.008, comboActivationLogCoeff: 0.016 } },
-            { cost: 12, grants: { comboEarnedPatternMultAdd: 0.46, nearMissToleranceRank: 4, comboSustainFillPerTick: 0.006 } },
-            { cost: 13, grants: { comboRunBonusAddPerTick: 0.001, turboBoostComboFillAdd: 1 } },
+            { cost: 11, grants: { comboDiscoveryMilestoneCooldownMult: 0.48 } },
+            { cost: 12, grants: { comboEarnedPatternMultAdd: 0.46, nearMissToleranceRank: 4 } },
+            { cost: 13, grants: { turboBoostComboFillAdd: 1 } },
             { cost: 14, grants: { comboTimeWarpDelayReduceSec: 0.25 } },
             { cost: 16, grants: { comboTimeWarpDelayReduceSec: 0.25 } },
             { cost: 18, grants: { comboTimeWarpDelayReduceSec: 1 } },
-            { cost: 19, grants: { comboSustainMaxMultAdd: 0.08, comboTriggerProductionFrac: 0.008, comboActivationLogCoeff: 0.016 } },
-            { cost: 22, grants: { comboEarnedPatternMultAdd: 0.46, nearMissToleranceRank: 6, comboSustainFillPerTick: 0.006 } },
+            { cost: 19, grants: { comboDiscoveryMilestoneCooldownMult: 0.52 } },
+            { cost: 22, grants: { comboEarnedPatternMultAdd: 0.46, nearMissToleranceRank: 6 } },
             { cost: 24, grants: { comboMultAdd: 0.015 } },
             { cost: 26, grants: { comboTimeWarpDelayReduceMult: 3 } },
-            { cost: 29, grants: { comboRunBonusAddPerTick: 0.001 } },
+            { cost: 29, grants: { comboDiscoveryMilestoneCooldownMult: 0.56 } },
             { cost: 32, grants: { comboClapExtraRoll: true }, title: "Combo Clap" },
             { cost: 36, grants: { comboEarnedPatternMultAdd: 0.46, nearMissToleranceRank: 8 } },
-            { cost: 39, grants: { comboSustainMaxMultAdd: 0.08, comboTriggerProductionFrac: 0.008, comboActivationLogCoeff: 0.016 } },
+            { cost: 39, grants: { comboDiscoveryMilestoneCooldownMult: 0.60 } },
             { cost: 44, grants: { comboMultAdd: 0.015 } },
             { cost: 48, grants: { comboClapChainRolls: true }, title: "Combo Chain Clap" },
             { cost: 53, grants: { comboEarnedPatternMultAdd: 0.46, nearMissToleranceRank: 10 } },

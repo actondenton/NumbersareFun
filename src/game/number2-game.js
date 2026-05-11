@@ -479,7 +479,7 @@ export function createNumber2Controller(state, deps) {
             state.bustTokens -= bustNeed;
         }
         state.upgradeLevels[id] = L + 1;
-        addToLog("Number 2 upgrade: " + u.name + " → level " + (L + 1) + ".", "milestone");
+        addToLog("Number 2 upgrade: " + u.name + " → level " + (L + 1) + ".", "system");
         updateStageUI();
         autosaveNow();
         refreshOverviewAndAscensionHubLiveIfOpen();

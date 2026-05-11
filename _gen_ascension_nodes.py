@@ -33,7 +33,7 @@ def gc(i):
     if m == 0:
         return {"comboMultAdd": 0.004}
     if m == 1:
-        return {"comboTriggerProductionFrac": 0.004}
+        return {"comboEarnedPatternMultAdd": 0.05}
     return {"comboMultAdd": 0.003}
 
 
@@ -60,9 +60,11 @@ def eff(g):
     if "slowdownCostMult" in g:
         parts.append(f"Slowdown upgrades cost {(1 - g['slowdownCostMult']) * 100:.1f}% less (multiplicative)")
     if "comboMultAdd" in g:
-        parts.append(f"+{g['comboMultAdd'] * 100:.2f}% combo multiplier")
-    if "comboTriggerProductionFrac" in g:
-        parts.append(f"+{g['comboTriggerProductionFrac'] * 100:.2f}% of 1s global CPS on combo pulse (split)")
+        parts.append(f"+{g['comboMultAdd'] * 100:.2f}% index Time Warp combo stack")
+    if "comboEarnedPatternMultAdd" in g:
+        parts.append(
+            f"+{g['comboEarnedPatternMultAdd'] * 100:.2f}% middle ascension pattern mult step"
+        )
     if "turboScaling" in g:
         parts.append("+25 turbo meter & ×1.25 turbo cap stack")
     if "comboTurboPointsMult" in g:
