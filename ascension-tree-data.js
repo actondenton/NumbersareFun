@@ -68,10 +68,10 @@
             parts.push("Adds +" + (g.comboMultAdd * 100).toFixed(2) + "% to the Index-finger combo stack that multiplies Time Warp bursts (stacks with other index nodes; does not multiply tick CPS)");
         }
         if (g.comboEarnedPatternMultAdd != null && g.comboEarnedPatternMultAdd > 0) {
-            parts.push("Increases the middle-finger ascension pattern mult that applies to tick CPS and to Time Warp (+" + (g.comboEarnedPatternMultAdd * 100).toFixed(2) + "% this step; compounds across middle ranks as successive ×(1+step) with a branch cap — not as a sum of these %)");
+            parts.push("Increases Ascended Combo (middle-finger): applies to tick CPS and Time Warp (+" + (g.comboEarnedPatternMultAdd * 100).toFixed(2) + "% this step; compounds across middle ranks as successive ×(1+step) with a branch cap — not as a sum of these %)");
         }
         if (g.comboDiscoveryMilestoneCooldownMult != null && g.comboDiscoveryMilestoneCooldownMult > 0 && g.comboDiscoveryMilestoneCooldownMult <= 1) {
-            parts.push("Shortens the gap between pattern discovery milestones (catalog bonus / log): cooldown \u00d7" + g.comboDiscoveryMilestoneCooldownMult.toFixed(3) + " of the default 60s (middle nodes stack multiplicatively; floor 0.1s). Turbo meter from combos is unchanged.");
+            parts.push("Shortens the gap between Combo Catalog discovery milestones (log pulse): cooldown \u00d7" + g.comboDiscoveryMilestoneCooldownMult.toFixed(3) + " of the default 60s (middle nodes stack multiplicatively; floor 0.1s). Turbo meter from combos is unchanged.");
         }
         if (g.nearMissToleranceRank != null && g.nearMissToleranceRank >= 1 && g.nearMissToleranceRank <= 10) {
             var nn = g.nearMissToleranceRank;

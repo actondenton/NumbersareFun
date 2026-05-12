@@ -40,6 +40,11 @@ html[data-theme="light"] .pages-shell .page-btn {
 html[data-theme="light"] .pages-shell .page-btn:hover {
   background: #dbe2f4;
 }
+/* Sidebar Ascension nav: show "Ascension: …" when ready; slightly smaller type so layout stays one line like peers */
+.pages-shell .page-btn.page-btn--ascension-ready[data-page="ascension"] {
+  font-size: 0.74rem;
+  line-height: 1.22;
+}
 .pages-shell .page-btn.page-btn--ascension-ready {
   position: relative;
   overflow: visible;
@@ -140,10 +145,23 @@ html[data-theme="light"] .turbo-scension-upgrade-btn {
   background: rgba(255, 255, 255, 0.88);
   color: #2a3358;
 }
+html[data-theme="light"] .turbo-scension-upgrade-btn:hover:not(:disabled) {
+  background: rgba(238, 242, 255, 0.96);
+  border-color: rgba(80, 95, 180, 0.42);
+}
+html[data-theme="light"] .upgrade-btn.turbo-scension-upgrade-btn .upgrade-btn-fill {
+  background: linear-gradient(90deg, rgba(92, 107, 192, 0.34), rgba(129, 140, 248, 0.44));
+}
 html[data-theme="light"] .turbo-scension-upgrade-btn:disabled {
   color: rgba(42, 51, 88, 0.48);
   border-color: rgba(90, 104, 160, 0.22);
   background: rgba(232, 236, 248, 0.95);
+}
+html[data-theme="light"] .turbo-scension-upgrade-btn:disabled .upgrade-btn-fill {
+  opacity: 0.5;
+}
+html[data-theme="light"] .turbo-scension-upgrade-btn:disabled .upgrade-btn-label {
+  opacity: 0.65;
 }
 html[data-theme="light"] .turbo-scension-tooltip-host .upgrade-details-tooltip {
   background-color: #f4fbf7;
@@ -348,6 +366,10 @@ html[data-theme="dark"] .time-warp-aura-btn,
 html[data-theme="dark"] .speed-autobuy-wrap,
 html[data-theme="dark"] .speed-autobuy-message {
   color: #dce4ff;
+}
+html[data-theme="dark"] .speed-upgrade-row .speed-autobuy-stack .speed-autobuy-toast {
+  color: #9ef8d0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
 }
 html[data-theme="dark"] .time-warp-aura-btn--potency-2 {
   color: #fff8e8;
@@ -1180,10 +1202,7 @@ html[data-theme="light"] .n1-bh-visual__core {
   box-sizing: border-box;
   padding: 3px 5px;
   margin: 0;
-  font-size: 0.66rem;
   font-family: var(--font-gameplay);
-  font-weight: 700;
-  line-height: 1.1;
   border-radius: 4px;
   border: 1px solid rgba(140, 160, 255, 0.45);
   background: rgba(40, 48, 90, 0.85);
@@ -1191,6 +1210,24 @@ html[data-theme="light"] .n1-bh-visual__core {
   cursor: pointer;
   white-space: nowrap;
   text-align: center;
+  overflow: hidden;
+  transition: background 0.2s, border-color 0.2s;
+}
+.upgrade-btn.turbo-scension-upgrade-btn .upgrade-btn-label {
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.upgrade-btn.turbo-scension-upgrade-btn .upgrade-btn-body {
+  padding: 1px 0;
+  gap: 1px;
+}
+.upgrade-btn.turbo-scension-upgrade-btn .upgrade-btn-fill {
+  background: linear-gradient(90deg, rgba(100, 110, 220, 0.5), rgba(160, 175, 255, 0.58));
+}
+.turbo-scension-upgrade-btn:hover:not(:disabled) {
+  border-color: rgba(170, 190, 255, 0.65);
+  background: rgba(52, 60, 110, 0.92);
 }
 .turbo-scension-upgrade-btn:disabled {
   opacity: 1;
@@ -1198,6 +1235,12 @@ html[data-theme="light"] .n1-bh-visual__core {
   color: rgba(221, 228, 255, 0.5);
   border-color: rgba(140, 160, 255, 0.25);
   background: rgba(40, 48, 90, 0.5);
+}
+.turbo-scension-upgrade-btn:disabled .upgrade-btn-fill {
+  opacity: 0.55;
+}
+.turbo-scension-upgrade-btn:disabled .upgrade-btn-label {
+  opacity: 0.72;
 }
 
 .turbo-scension-levels {
@@ -2355,6 +2398,9 @@ html[data-theme="dark"] .slowdown-upgrade-btn .upgrade-btn-level {
 .upgrade-btn.slowdown-upgrade-btn.upgrade-btn--afford-pulse:not(:disabled) {
   animation-name: upgrade-afford-pulse-slowdown;
 }
+.upgrade-btn.turbo-scension-upgrade-btn.upgrade-btn--afford-pulse:not(:disabled) {
+  animation-name: upgrade-afford-pulse-turbo-scension;
+}
 html[data-theme="dark"] .upgrade-btn.speed-upgrade-btn.upgrade-btn--afford-pulse:not(:disabled) {
   animation-name: upgrade-afford-pulse-speed-dark;
 }
@@ -2363,6 +2409,9 @@ html[data-theme="dark"] .upgrade-btn.cheapen-upgrade-btn.upgrade-btn--afford-pul
 }
 html[data-theme="dark"] .upgrade-btn.slowdown-upgrade-btn.upgrade-btn--afford-pulse:not(:disabled) {
   animation-name: upgrade-afford-pulse-slowdown-dark;
+}
+html[data-theme="dark"] .upgrade-btn.turbo-scension-upgrade-btn.upgrade-btn--afford-pulse:not(:disabled) {
+  animation-name: upgrade-afford-pulse-turbo-scension-dark;
 }
 @keyframes upgrade-afford-pulse-speed {
   0%,
@@ -2418,6 +2467,28 @@ html[data-theme="dark"] .upgrade-btn.slowdown-upgrade-btn.upgrade-btn--afford-pu
     box-shadow: 0 0 0 3px rgba(255, 183, 77, 0.42), 0 0 18px rgba(255, 152, 0, 0.32);
   }
 }
+@keyframes upgrade-afford-pulse-turbo-scension {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(103, 58, 183, 0);
+  }
+  50% {
+    box-shadow:
+      0 0 0 3px rgba(126, 87, 194, 0.4),
+      0 0 18px rgba(92, 107, 192, 0.32);
+  }
+}
+@keyframes upgrade-afford-pulse-turbo-scension-dark {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(180, 170, 255, 0);
+  }
+  50% {
+    box-shadow:
+      0 0 0 3px rgba(180, 170, 255, 0.42),
+      0 0 20px rgba(120, 100, 220, 0.36);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .upgrade-btn.upgrade-btn--afford-pulse:not(:disabled) {
     animation: none;
@@ -2468,24 +2539,109 @@ html[data-theme="dark"] .upgrade-btn.slowdown-upgrade-btn.upgrade-btn--afford-pu
   align-self: center;
   min-height: 3.1rem;
   box-sizing: border-box;
+  min-width: 0;
 }
-.speed-upgrade-row .speed-autobuy-stack .speed-autobuy-wrap {
+.speed-upgrade-row .speed-autobuy-stack .speed-autobuy-head {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  align-self: flex-start;
+  gap: 8px;
+  min-height: 1.25rem;
+}
+.speed-upgrade-row .speed-autobuy-stack .speed-autobuy-head .speed-autobuy-wrap {
   justify-self: unset;
   margin-left: 0;
-  align-self: flex-start;
+  align-self: center;
+  flex-shrink: 0;
 }
-.speed-upgrade-row .speed-autobuy-stack .speed-autobuy-message {
+/* Toast overlays countdown / Unaffordable (same box) so it stays visible in tight rows */
+.speed-upgrade-row .speed-autobuy-stack .speed-autobuy-foot {
+  position: relative;
   align-self: flex-start;
   min-width: 4.5rem;
-  min-height: 1.2em;
+  width: 100%;
+  max-width: 100%;
+  min-height: 1.35em;
+}
+.speed-upgrade-row .speed-autobuy-stack .speed-autobuy-message {
+  position: relative;
+  z-index: 0;
+  display: block;
+  min-width: 4.5rem;
+  min-height: 1.35em;
   line-height: 1.2;
-  font-size: 0.78rem;
+  font-size: 0.86rem;
+  font-style: normal;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: #c5cbf5;
   letter-spacing: 0.02em;
 }
-html[data-theme="light"] .speed-upgrade-row .speed-autobuy-message {
+.speed-upgrade-row .speed-autobuy-stack .speed-autobuy-toast {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(12, 16, 32, 0.94);
+  border: 1px solid rgba(110, 220, 150, 0.5);
+  box-shadow:
+    0 0 20px rgba(60, 200, 120, 0.35),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  font-size: 0.8rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
+  color: #8ef5c4;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+  opacity: 0;
+  transform: translateY(4px) scale(0.98);
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.15;
+}
+html[data-theme="light"] .speed-upgrade-row .speed-autobuy-stack .speed-autobuy-toast {
+  color: #047857;
+  background: rgba(255, 255, 255, 0.97);
+  border-color: rgba(16, 120, 72, 0.5);
+  box-shadow:
+    0 2px 14px rgba(16, 120, 72, 0.22),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+  text-shadow: none;
+}
+.speed-upgrade-row .speed-autobuy-stack .speed-autobuy-toast.speed-autobuy-toast--flash {
+  animation: speed-autobuy-toast-flash 0.72s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+@keyframes speed-autobuy-toast-flash {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  16% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  72% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+html[data-theme="light"] .speed-upgrade-row .speed-autobuy-stack .speed-autobuy-message {
   color: #4a5080;
 }
 
@@ -2514,6 +2670,24 @@ html[data-theme="light"] .speed-autobuy-message.speed-autobuy-message--urgent {
     animation: none;
     opacity: 1;
     transform: none;
+  }
+  .speed-upgrade-row .speed-autobuy-stack .speed-autobuy-toast.speed-autobuy-toast--flash {
+    animation: speed-autobuy-toast-flash-reduced 0.72s ease-out forwards;
+    transform: none;
+  }
+}
+@keyframes speed-autobuy-toast-flash-reduced {
+  0% {
+    opacity: 0;
+  }
+  18% {
+    opacity: 1;
+  }
+  72% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
   }
 }
 .speed-autobuy-wrap {
@@ -4453,6 +4627,92 @@ html[data-theme="light"] .ascension-hub-glyph {
     line-height: 1.5;
     opacity: 0.9;
     max-width: 52rem;
+}
+.ascension-hub-sub--grants-intro {
+    margin-top: 0.15rem;
+    margin-bottom: 0.55rem;
+    font-size: 0.82rem;
+    line-height: 1.45;
+    opacity: 0.88;
+    max-width: 48rem;
+}
+html[data-theme="light"] .ascension-hub-sub--grants-intro {
+    opacity: 0.92;
+}
+.ascension-hub-below-map {
+    margin-top: 1rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid rgba(120, 130, 180, 0.28);
+    max-width: 100%;
+    box-sizing: border-box;
+}
+html[data-theme="light"] .ascension-hub-below-map {
+    border-top-color: rgba(100, 110, 170, 0.2);
+}
+.ascension-hub-below-map .ascension-hub-sub--grants-intro {
+    margin-top: 0;
+}
+.ascension-hub--mass-arc-active .ascension-hub-below-map {
+    margin-top: 0.65rem;
+    padding-top: 0.65rem;
+}
+.asc-hub-grants-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.asc-hub-grant-section {
+    margin: 0;
+    padding: 0.55rem 0.65rem 0.65rem;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.14);
+    border: 1px solid rgba(130, 140, 200, 0.22);
+    box-sizing: border-box;
+}
+html[data-theme="light"] .asc-hub-grant-section {
+    background: rgba(255, 255, 255, 0.72);
+    border-color: rgba(130, 140, 200, 0.32);
+}
+.asc-hub-grant-section-title {
+    margin: 0 0 0.42rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #b8c4ff;
+}
+html[data-theme="light"] .asc-hub-grant-section-title {
+    color: #4a5590;
+}
+.asc-hub-grant-list {
+    margin: 0;
+    padding: 0 0 0 1.1rem;
+    font-size: 0.82rem;
+    line-height: 1.48;
+    color: #e4e8ff;
+}
+html[data-theme="light"] .asc-hub-grant-list {
+    color: #2f3558;
+}
+.asc-hub-grant-item {
+    margin-bottom: 0.28rem;
+    padding-left: 0.15rem;
+}
+.asc-hub-grant-item:last-child {
+    margin-bottom: 0;
+}
+.asc-hub-grants-empty {
+    margin: 0.25rem 0 0;
+    font-size: 0.84rem;
+    line-height: 1.45;
+    opacity: 0.88;
+    max-width: 40rem;
+}
+.ascension-hub--mass-arc-active .asc-hub-grant-section {
+    padding: 0.45rem 0.55rem 0.55rem;
+}
+.ascension-hub--mass-arc-active .asc-hub-grants-inner {
+    gap: 0.55rem;
 }
 /* Post-map arc: no map/respec — tighter vertical rhythm */
 .ascension-hub--mass-arc-active {
@@ -8322,16 +8582,16 @@ html[data-theme="light"] .ledger-beam-fallback-chip {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2px;
+    gap: 4px;
     pointer-events: none;
     white-space: nowrap;
-    font-size: 0.78rem;
+    font-size: 1.56rem;
     font-weight: 700;
     line-height: 1.2;
     font-variant-numeric: tabular-nums;
 }
 .ledger-beam-pop-delta {
-    font-size: 0.68rem;
+    font-size: 1.36rem;
     font-weight: 800;
     letter-spacing: 0.04em;
     color: #a7f5c8;
@@ -8371,10 +8631,30 @@ html[data-theme="light"] .ledger-beam-pop-wrap:not(.ledger-beam-pop-wrap--clap) 
     opacity: 0;
 }
 .ledger-beam-pop-wrap--run .ledger-beam-pop-ghost {
-    animation: ledger-beam-pop-ghost 0.32s ease-out forwards;
+    animation: ledger-beam-pop-ghost 0.48s ease-out forwards;
 }
 .ledger-beam-pop-wrap--run .ledger-beam-pop-new {
     animation: ledger-beam-pop-new 0.38s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.ledger-beam-pop-wrap--exit {
+    /* Duration matches ~LEDGER_BEAM_POP_DISPLAY_MS in legacy-boot.js minus 10ms run tick. */
+    animation: ledger-beam-pop-wrap-exit 1670ms forwards;
+}
+@keyframes ledger-beam-pop-wrap-exit {
+    0% {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+        animation-timing-function: ease-out;
+    }
+    75% {
+        opacity: 1;
+        transform: translate(-50%, calc(-50% - 32px));
+        animation-timing-function: ease-out;
+    }
+    100% {
+        opacity: 0;
+        transform: translate(-50%, calc(-50% - 32px));
+    }
 }
 @keyframes ledger-beam-pop-ghost {
     0% { opacity: 0.95; transform: translateY(4px); }
@@ -8427,6 +8707,11 @@ html[data-theme="light"] .ledger-beam-sink-flash {
     }
 }
 @media (prefers-reduced-motion: reduce) {
+    .ledger-beam-pop-wrap--exit {
+        animation: none;
+        opacity: 1;
+        transform: translate(-50%, -50%);
+    }
     .ledger-beam-pop-wrap--run .ledger-beam-pop-ghost,
     .ledger-beam-pop-wrap--run .ledger-beam-pop-new {
         animation: none;
