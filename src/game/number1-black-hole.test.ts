@@ -3,6 +3,7 @@ import {
     BLACK_HOLE_DIGEST_BASE_MS,
     BLACK_HOLE_EVAPORATION_CAP,
     BLACK_HOLE_PHASE1_ESSENCE_TARGET,
+    BLACK_HOLE_PHASE1_RUN_CPS_MULT_MAX,
     BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER,
     BLACK_HOLE_PHASE2_MASS_CAP,
     clampBlackHolePhase,
@@ -75,7 +76,7 @@ describe("number1 black hole defaults", () => {
     });
 
     it("keeps core tuning constants stable", () => {
-        expect(BLACK_HOLE_PHASE1_ESSENCE_TARGET).toBe(350);
+        expect(BLACK_HOLE_PHASE1_ESSENCE_TARGET).toBe(35000);
         expect(BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER).toBe(3);
         expect(BLACK_HOLE_DIGEST_BASE_MS).toBe(24 * 3600 * 1000);
         expect(BLACK_HOLE_EVAPORATION_CAP).toBe(1e308);
@@ -172,16 +173,16 @@ describe("number1 black hole defaults", () => {
 
     it("computes Phase 1 fill bonuses and wave interval", () => {
         const state = createNumber1BlackHoleState();
-        state.phase1EssenceSpent = 175;
+        state.phase1EssenceSpent = Math.floor(BLACK_HOLE_PHASE1_ESSENCE_TARGET / 2);
         state.phase2Mass = 125;
 
         expect(getBlackHolePhase1FillRatio(state)).toBe(0.5);
-        expect(getBlackHolePhase1RunCpsMult(state)).toBe(1.625);
-        expect(getBlackHolePhase1AscensionEssenceMult(state)).toBe(1.3);
+        expect(getBlackHolePhase1RunCpsMult(state)).toBeCloseTo(Math.pow(BLACK_HOLE_PHASE1_RUN_CPS_MULT_MAX, 0.5));
+        expect(getBlackHolePhase1AscensionEssenceMult(state)).toBe(1.5);
         expect(getBlackHolePhase1SlowdownCapBonus(state)).toBe(3);
         expect(getBlackHoleWaveIntervalSec(state)).toBe(37.5);
 
-        state.phase1EssenceSpent = 999;
+        state.phase1EssenceSpent = BLACK_HOLE_PHASE1_ESSENCE_TARGET;
         state.phase2Mass = 999;
         expect(getBlackHolePhase1FillRatio(state)).toBe(1);
         expect(getBlackHoleWaveIntervalSec(state)).toBe(15);

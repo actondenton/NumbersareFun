@@ -140,7 +140,7 @@ describe("number2 controller", () => {
         expect(state.upgradeLevels.hot_streak).toBe(1);
         expect(state.boomTokens).toBe(1);
         expect(autosaveNow).toHaveBeenCalledOnce();
-        expect(addToLog).toHaveBeenCalledWith(expect.stringContaining("Hot Streak"), "milestone");
+        expect(addToLog).toHaveBeenCalledWith(expect.stringContaining("Hot Streak"), "system");
     });
 
     it("starts Number 2 once when switching to its mode", () => {
