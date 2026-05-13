@@ -4748,9 +4748,14 @@ html[data-theme="light"] .ascension-hub--mass-arc-active {
     gap: 0.3rem 0.4rem;
     margin-bottom: 0.28rem;
 }
-.ascension-hub--mass-arc-active .asc-black-hole {
-    margin-top: 0.1rem;
+/* BH panel stacks above map/grants for the whole post-map arc */
+.ascension-hub--bh-arc-first .asc-black-hole {
+    margin-top: 0.35rem;
+    margin-bottom: 0.75rem;
     padding: 0.55rem 0.72rem 0.72rem;
+}
+.ascension-hub--mass-arc-active.ascension-hub--bh-arc-first .asc-black-hole {
+    margin-bottom: 0.45rem;
 }
 .ascension-hub-stats {
     display: flex;
@@ -4915,6 +4920,7 @@ html[data-theme="light"] .asc-black-hole--phase1 .asc-black-hole__title {
     border-radius: 14px;
     overflow: hidden;
     border: 1px solid rgba(255, 210, 150, 0.22);
+    --asc-p1-mass-fill: 0;
     background:
         radial-gradient(circle at 50% 50%, rgba(255, 232, 174, 0.22) 0%, rgba(200, 145, 255, 0.12) 34%, transparent 64%),
         radial-gradient(ellipse 80% 54% at 50% 54%, rgba(20, 10, 36, 0.5) 0%, rgba(0, 0, 0, 0) 72%);
@@ -4949,11 +4955,18 @@ html[data-theme="light"] .asc-black-hole--phase1 .asc-black-hole__title {
     height: 5.9rem;
     transform: translate(-50%, -50%) rotate(-9deg) scale(0.96);
     opacity: 0.78;
+    --asc-p1-tesseract-stroke: rgba(255, 245, 220, 0.88);
     filter:
         drop-shadow(0 0 5px rgba(255, 255, 255, 0.55))
         drop-shadow(0 0 16px rgba(150, 190, 255, 0.28));
     animation: asc-mass-tesseract-orbit 340s linear infinite, asc-mass-tesseract-phase 15s ease-in-out infinite alternate;
     z-index: 2;
+}
+.asc-black-hole__tesseract-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
 }
 .asc-black-hole__tesseract span {
     position: absolute;
@@ -5081,6 +5094,9 @@ html[data-theme="light"] .asc-black-hole__mass-geometry {
     background:
         radial-gradient(circle at 50% 50%, rgba(255, 235, 190, 0.48) 0%, rgba(215, 200, 255, 0.28) 34%, transparent 68%),
         rgba(255, 255, 255, 0.38);
+}
+html[data-theme="light"] .asc-black-hole__tesseract {
+    --asc-p1-tesseract-stroke: rgba(72, 52, 88, 0.82);
 }
 html[data-theme="light"] .asc-black-hole__numeral-dust {
     color: rgba(120, 70, 30, 0.56);

@@ -5,7 +5,14 @@ export const BLACK_HOLE_MULT_PER_LEVEL = 1.035;
 export const BLACK_HOLE_COST_BASE = 400;
 export const BLACK_HOLE_COST_GROWTH = 1.38;
 export const BLACK_HOLE_MAX_LEVEL = 400;
-export const BLACK_HOLE_PHASE1_ESSENCE_TARGET = 350;
+export const BLACK_HOLE_PHASE1_ESSENCE_TARGET = 35000;
+/** Inertial CPS multiplier at full Phase 1 mass charge (empty bar → ×1). */
+export const BLACK_HOLE_PHASE1_RUN_CPS_MULT_MAX = 1e30;
+/**
+ * Bonus added to ascend-payout multiplier at full Phase 1 charge, scaling linearly with fill (empty → ×1, full → ×(1 + this)).
+ * Value 1 ⇒ 200% payout (×2) at full charge; same linear shape as before, steeper slope.
+ */
+export const BLACK_HOLE_PHASE1_ASCENSION_ESSENCE_BONUS_AT_FULL = 1;
 export const BLACK_HOLE_PHASE4_WAVE_BASE_SEC = 60;
 export const BLACK_HOLE_PHASE4_WAVE_MIN_SEC = 15;
 export const BLACK_HOLE_PHASE4_WAVE_BOOST_MULT = 100;
@@ -29,6 +36,8 @@ export function createNumber1BlackHoleState() {
     return {
         phase: 0,
         phase1EssenceSpent: 0,
+        /** 1 = post–35k-bar / ×1e30 CPS scaling; missing/0 on load triggers one-time save migration. */
+        phase1EssenceVersion: 1,
         phase2Mass: 0,
         /** Essence banked toward the next Phase 2 mass step (partial feeds). */
         phase2EssenceBank: 0,
@@ -104,6 +113,7 @@ export function createNumber1BlackHoleDevPhasePreset(phase, opts = {}) {
     const preset = {
         phase: p,
         phase1EssenceSpent: p >= 2 ? BLACK_HOLE_PHASE1_ESSENCE_TARGET : 0,
+        phase1EssenceVersion: 1,
         phase2CollapseMassTier: p >= 3 ? BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER : 0,
         phase2CollapsePhotonTier: p >= 3 ? BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER : 0,
         phase2CollapseErgosphereTier: p >= 3 ? BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER : 0,
@@ -183,6 +193,15 @@ export function normalizeNumber1BlackHoleStateFromSaveData(savedState, opts = {}
         : createNumber1BlackHoleState();
 
     if (hasSavedState) {
+        const phase1EssenceVersion = Math.floor(Number(state.phase1EssenceVersion) || 0);
+        if (phase1EssenceVersion < 1) {
+            const legacyCap = 350;
+            const s1 = Math.max(0, Math.floor(Number(state.phase1EssenceSpent) || 0));
+            if (s1 > 0 && s1 <= legacyCap) {
+                state.phase1EssenceSpent = Math.min(BLACK_HOLE_PHASE1_ESSENCE_TARGET, s1 * 100);
+            }
+            state.phase1EssenceVersion = 1;
+        }
         state.phase = clampBlackHolePhase(state.phase);
         state.phase2CollapseMassTier = clampBlackHolePhase2CollapseTier(state.phase2CollapseMassTier);
         state.phase2CollapsePhotonTier = clampBlackHolePhase2CollapseTier(state.phase2CollapsePhotonTier);
@@ -383,11 +402,12 @@ export function getBlackHolePhase1FillRatio(state) {
 }
 
 export function getBlackHolePhase1RunCpsMult(state) {
-    return 1 + 1.25 * getBlackHolePhase1FillRatio(state);
+    const r = getBlackHolePhase1FillRatio(state);
+    return Math.pow(BLACK_HOLE_PHASE1_RUN_CPS_MULT_MAX, r);
 }
 
 export function getBlackHolePhase1AscensionEssenceMult(state) {
-    return 1 + 0.6 * getBlackHolePhase1FillRatio(state);
+    return 1 + BLACK_HOLE_PHASE1_ASCENSION_ESSENCE_BONUS_AT_FULL * getBlackHolePhase1FillRatio(state);
 }
 
 export function getBlackHolePhase1SlowdownCapBonus(state) {

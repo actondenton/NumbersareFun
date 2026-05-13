@@ -58,167 +58,196 @@ import {
     createNumber2ModuleDefinition,
     createNumber2State
 } from "./number2-game.js";
+import { hands1 } from "./n1-hand-ascii.js";
+import {
+    formatCompactMultiplier,
+    formatCount,
+    formatSeconds,
+    formatTurboBoostMultiplierForDisplay,
+    formatTurboScensionLevelDisplay,
+    formatWithCommas
+} from "./n1-format.js";
+import {
+    getLogEntrySig,
+    getVisibleLogEntries,
+    isLogCategoryVisible as isLogCategoryVisibleForSettings,
+    logCategoryTag,
+    normalizeLogCategory as normalizeLogCategoryForLog,
+    renderMessageLogLineHtml as renderMessageLogLineHtmlForEntry,
+    renderMessageLogPageHtml as renderMessageLogPageHtmlForEntries
+} from "./n1-log.js";
+import {
+    HAND_BASE_SPEED,
+    UNLOCK_THRESHOLDS,
+    shouldUnlockNextHand,
+    storyTotalCountLead as getStoryTotalCountLead
+} from "./n1-hands.js";
+import { HandCounter } from "./n1-hand-counter.js";
+import {
+    GAME_LOOP_MS,
+    alignSameSpeedHandPhases,
+    calculateDetachedCpsProgress,
+    createNumber1LoopRuntime,
+    runNumber1GameLoopStep
+} from "./n1-game-loop.js";
+import {
+    BASE_MAX_CHEAPEN_LEVEL,
+    DEV_CHEAPEN_AUTOBUY_DELAY,
+    DEV_SLOWDOWN_AUTOBUY_DELAY,
+    MAX_SLOWDOWN_LEVEL,
+    SLOWDOWN_UNLOCK_COUNT,
+    getCheapenEffectTextForAchievedLevel,
+    getCheapenMultiplierForLevel,
+    getCheapenUpgradeCost as getCheapenUpgradeCostForLevel,
+    getEffectiveUpgradeLevel,
+    getSlowdownMultiplierForLevel,
+    getSlowdownUpgradeCost as getSlowdownUpgradeCostForLevel,
+    getSpeedMultiplierBigForLevel,
+    getSpeedMultiplierForLevel,
+    getSpeedUpgradeCost
+} from "./n1-upgrades.js";
+import {
+    TIME_WARP_MANUAL_CLICK_SCALE,
+    TIME_WARP_SECONDS_BONUS,
+    TIME_WARP_UNLOCK_COUNT,
+    WARP_POTENCY_TIER1_SEC,
+    WARP_POTENCY_TIER2_SEC,
+    WARP_POTENCY_TIER3_SEC,
+    applyTimeWarpDelayReductionCountdown,
+    getAscensionComboTimeWarpDelayReductionPerTriggerSecFromTotals,
+    getTimeWarpAuraSpawnSpanMaxSecFromTotals,
+    getTimeWarpOverflowRatioFromTotals,
+    getTimeWarpProductionSecondsBonusFromTotals,
+    getWarpPotencyMaxTiersFromTotals,
+    getWarpPotencyMultiplierForTier,
+    getWarpPotencyTier
+} from "./n1-time-warp.js";
+import {
+    clampFiniteNonNegative,
+    formatCpsForDisplay as formatCpsForDisplayWithFormatter,
+    getTickIntervalMsForMultiplier
+} from "./n1-rate.js";
+import {
+    getObjectiveProgress as getObjectiveProgressForTotal,
+    isObjectiveComplete as isObjectiveCompleteForTotal,
+    renderObjective as renderObjectiveForTotal
+} from "./n1-objectives.js";
+import {
+    ASCENSION_1_MIN_HANDS,
+    ASCENSION_1_REQUIRED_TOTAL,
+    computeNumber1AscensionBaseGain as computeNumber1AscensionBaseGainFromRules,
+    computeNumber1AscensionGainBreakdown as computeNumber1AscensionGainBreakdownFromRules,
+    computeNumber1AscensionGain as computeNumber1AscensionGainFromRules,
+    getNumber1AscensionClapEssenceMultiplier as getNumber1AscensionClapEssenceMultiplierFromValue,
+    getNumber1AscensionPendingBonusEssence as getNumber1AscensionPendingBonusEssenceFromValue,
+    getNumber1AscensionRequiredHands as getNumber1AscensionRequiredHandsFromPhase,
+    isNumber1AscensionReady as isNumber1AscensionReadyFromState
+} from "./n1-ascension.js";
+import {
+    createClosedStoryBannerRecord,
+    escapeHtml,
+    getNextPendingStoryBanner,
+    getStoryBannerById as getStoryBannerByIdFromList,
+    hasUnlockedStoryBanner as hasUnlockedStoryBannerFromState,
+    renderStoryArchiveHtml as renderStoryArchiveHtmlForState
+} from "./n1-story.js";
+import { createConfettiSprayer } from "./n1-vfx.js";
+import { createLedgerBeamVfx } from "./n1-ledger-beam.js";
+import {
+    COMBOS,
+    COMBOS_BY_MIN_HANDS,
+    comboDiscoverySortCombos,
+    computeComboUiInputDigest as computeComboUiInputDigestForValues,
+    computeEarnedBonusesUiDigestFromState,
+    computeEarnedCatalogComboTierProducts as computeEarnedCatalogComboTierProductsForState,
+    getActiveCombosForValues,
+    getComboIndexListContext as getComboIndexListContextForState,
+    getComboParticipatingHandIndicesForValues,
+    getNearMissToleranceRanksFromNodes,
+    getPatternCatalogMultiplierFromEarned
+} from "./n1-combos.js";
+import {
+    buildComboHandStatusCardsHtml as buildComboHandStatusCardsHtmlForRows,
+    buildComboIndexListItemsHtml,
+    buildComboIndexLiveSummaryText,
+    renderComboPagePerHandStatusSectionHtml as renderComboPagePerHandStatusSectionHtmlForRows
+} from "./n1-combo-ui.js";
+import {
+    TURBO_LEVELER_LINE_TOOLTIP,
+    TURBO_SCENSION_AXIS_TITLES,
+    TURBO_UNLOCK_COUNT,
+    getTurboBoostMultiplierFromState as getTurboBoostMultiplierFromTurboState,
+    getTurboBurnDrainForStep,
+    getTurboComboPointsForMinHands,
+    getTurboCountMultiplierMaxFromState,
+    getTurboLevelerNextPointCost as getTurboLevelerNextPointCostForPurchases,
+    getTurboMeterMaxFromState,
+    getTurboNominalBurnPerSecFromState,
+    getTurboScensionActivationCostFromTotals,
+    getTurboScensionFillMult as getTurboScensionFillMultForLevel,
+    getTurboScensionUpgradeRollCountFromTotals,
+    turboMeterCurveScaleFromTotals as turboMeterCurveScaleFromTotalsRule
+} from "./n1-turbo.js";
+import {
+    CLAP_ANIM_STAGGER_MS,
+    CLAP_BONUS_CHEAPEN_CHAIN_MAX_WAVES,
+    CLAP_BONUS_SLOWDOWN_CHAIN_MAX_WAVES,
+    CLAP_MAX_PAIRS_PER_TICK,
+    COMBO_CLAP_CHAIN_MAX_WAVES,
+    COMBO_CLAP_INSTANT_CHANCE,
+    getClapBonusChanceFromTotals,
+    getClapCheapenBonusChanceFromTotals,
+    getClapCooldownMsFromTotals,
+    getClapEssenceProcChanceFromTotals,
+    getClapEssenceProcMultiplierStepFromTotals,
+    getClapSlowdownBonusChanceFromTotals,
+    isClappingUnlockedForHands,
+    runChanceChain
+} from "./n1-clap.js";
+import {
+    AUTOSAVE_INTERVAL_MS,
+    COMBO_ACTIVATION_EDGE_SAVE_VERSION,
+    SAVE_KEY,
+    applyNumberModulesSaveState,
+    applyAchievementFlags,
+    collectNumberModulesSaveState,
+    createGameSaveState,
+    hasPositiveNumberEntry,
+    isSaveVersionAtLeast,
+    mergeNumber1AscensionEssenceSaveValue,
+    normalizeArrayPrefix,
+    normalizeArrayFromSave,
+    normalizeBooleanIfSaved,
+    normalizeComboActivationCounts,
+    normalizeNonNegativeInteger,
+    normalizeNonNegativeNumber,
+    normalizeNonNegativeTimestamp,
+    normalizeNumberAtLeast,
+    normalizeNumberInRange,
+    normalizeFixedArray,
+    normalizeFixedBooleanArray,
+    normalizeFutureTimestampArray,
+    normalizePositiveTimestamp,
+    normalizePositiveTimestampArray,
+    normalizeQueuedComboDiscoveryCooldownSpan,
+    normalizeSettingsFromSave,
+    normalizeStringArrayFromSave,
+    normalizeStringSetFromSave,
+    normalizeStringQueue,
+    replaceArrayContents,
+    readSaveData,
+    writeSaveData
+} from "./n1-save.js";
+import {
+    syncPhase1MassFillCssVarsInRoot,
+    syncPhase1TesseractCanvasesInRoot
+} from "./phase1-tesseract-canvas.js";
 
     /** Page-load epoch ms for dev tools fallback when `performance.now` is unavailable. */
     const devToolsLoadTimeMs = Date.now();
 
     /** Stoke won't compress digestion below ~this much remaining time (~8s, within typical 5–10s UX buffer). */
     const BLACK_HOLE_PHASE5_STOKE_MIN_REMAINING_MS = 8000;
-
-    /* ---------------------------------------------------------
-       ASCII HANDS (1–10)
-    --------------------------------------------------------- */
-    const hands1 = [
-
-`       _	
-      | |
-      | |
- _ _ _| |
-| | | | |  
-|       |_   
-|         \\ 
-|          \\
-|          |
- \\        /
-  |      /
-  |  1  |  
-`, // 1
-
-`     _  
-    | |_	
-    | | |
-    | | |
- _ _| | |
-| | | | |  
-|       |_   
-|         \\  
-|          \\
-|          |
- \\        /
-  |      /
-  |  2  | 
-  `, // 2
-
-`     _  
-   _| |_	
-  | | | |
-  | | | |
- _| | | |
-| | | | |  
-|       |_   
-|         \\ 
-|          |
-|          |
- \\        /
-  |      /
-  |  3  | 
-  `, // 3
-
-`     _  
-   _| |_	
- _| | | |
-| | | | |
-| | | | |
-| | | | |  
-|       |_  
-|         \\ 
-|          |
-|          |
- \\        /
-  |      /
-  |  4  |  
-  `, // 4
-
-`     _  
-   _| |_	
- _| | | |
-| | | | |
-| | | | |
-| | | | |    _
-|       |  /  /
-|        \\/  /
-|           /
-|          / 
- \\        /
-  |      /
-  |  5  |  
-  `, // 5
-
-`
-
- _    
-| |  
-| |_ _ _ 
-| | | | |   _
-|       |  /  /
-|        \\/  /
-|           /
-|          / 
- \\        /
-  |      /
-  |  6  |  
-  `, // 6 
-
-`
-   _  
- _| | 
-| | |
-| | |_ _ 
-| | | | |   _
-|       |  /  /
-|        \\/  /
-|           /
-|          / 
- \\        /
-  |      /
-  |  7  | 
-  `, // 7
-
-`     _ 
-   _| |
- _| | |
-| | | |
-| | | |_ 
-| | | | |    _
-|       |  /  /
-|        \\/  /
-|           /
-|          / 
- \\        /
-  |      /
-  |  8  |
-  `, // 8
-
-`
-
-        __
-       /   \\
- _ _ _/  /\\_\\
-| | | | |    _
-|       |   / /
-|        \\/  /
-|           /
-|          / 
- \\        /
-  |      /
-  |  9  | 
-  `, // 9 
-
-`
-
-
-
- _ _ _ _  
-| | | | |     
-|       |      
-|        \\_   
-|          | 
-|          / 
- \\        /
-  |      /
-  |  10 |  
-  ` // 10  
-    ];
 
 /* ---------------------------------------------------------
        GLOBAL STATE
@@ -281,6 +310,15 @@ import {
     const incrementalEl = document.getElementById("incremental-count");
     const incrementalCountLabelEl = document.getElementById("incremental-count-label");
     const incrementalRateEl = document.getElementById("incremental-rate");
+    /** Autobuy / warp-assist may stack many purchases; defer {@link refreshTotalFromHandEarnings} to once per batch. */
+    let autobuyDeferredTotalsFlush = false;
+    function flushAutobuyDeferredTotalsIfAny() {
+        if (!autobuyDeferredTotalsFlush) return;
+        autobuyDeferredTotalsFlush = false;
+        refreshTotalFromHandEarnings();
+        if (incrementalEl) incrementalEl.textContent = formatCount(totalChanges);
+    }
+
     const n1GravityCpsStripEl = document.getElementById("n1-gravity-cps-strip");
     const bonusMultiplierEl = document.getElementById("bonus-multiplier-display");
     const turboMultiplierDisplayEl = document.getElementById("turbo-multiplier-display");
@@ -411,8 +449,6 @@ import {
     let messageLogLastRenderedTailSig = "";
     const RECENT_RANDOM_LOG_COUNT = 3;
     const recentRandomLogMessages = [];
-    /** Typed message log: category drives GLaDOS-style color coding; humor filtered by settings. */
-    const LOG_CATEGORIES = ["tip", "fact", "milestone", "warning", "humor", "system"];
     const LOG_MESSAGE_ENTRIES = [
         { text: "Keep counting!", category: "tip" },
         { text: "How fast can you count?", category: "tip" },
@@ -434,10 +470,8 @@ import {
         { text: "If machines do all the counting what will we use our fingers for?", category: "humor" }
     ];
     const SETTINGS_KEY = "naf.settings.v1";
-    const SAVE_KEY = "naf.save.v2";
     /** When true, autosave is skipped (e.g. right before deleting save + reload). */
     let suppressAutosave = false;
-    const AUTOSAVE_INTERVAL_MS = 10000;
     const DEFAULT_SETTINGS = { theme: "light", adaptiveTipsEnabled: true, curtainEnabled: true, humorEnabled: true, showClapAnimation: true, offlineCapHours: 8 };
     let settings = { ...DEFAULT_SETTINGS };
     const ADAPTIVE_TIP_FIRST_STALL_MS = 360000;
@@ -512,20 +546,20 @@ import {
     function applyNumber1DetachedCpsProgress(dtSec) {
         if (!(dtSec > 0)) return 0;
         if (getBlackHolePhase() === 7) return 0;
-        const offlineBhMult = getBlackHoleOfflineProductionMult(dtSec);
-        const cpsPerHand = getRawCpsPerHand();
-        const rawCps = cpsPerHand.reduce((a, b) => a + b, 0);
-        if (rawCps <= 0) return 0;
-        const comboMult = getComboMultiplier();
-        const turboMult = getTurboCountMultiplier();
-        const gained = Math.round(dtSec * rawCps * comboMult * turboMult * offlineBhMult);
-        const totalWeight = cpsPerHand.reduce((a, b) => a + b, 0) || 1;
+        const progress = calculateDetachedCpsProgress({
+            dtSec,
+            cpsPerHand: getRawCpsPerHand(),
+            unlockedHands,
+            comboMultiplier: getComboMultiplier(),
+            turboMultiplier: getTurboCountMultiplier(),
+            blackHoleMultiplier: getBlackHoleOfflineProductionMult(dtSec)
+        });
+        if (progress.gained <= 0) return 0;
         for (let i = 0; i < unlockedHands; i++) {
-            const weight = cpsPerHand[i] || 0;
-            handEarnings[i] = (handEarnings[i] || 0) + Math.round((weight / totalWeight) * gained);
+            handEarnings[i] = (handEarnings[i] || 0) + (progress.gainsByHand[i] || 0);
         }
         refreshTotalFromHandEarnings();
-        return gained;
+        return progress.gained;
     }
     function tickNumber1BackgroundCps(dtSec) {
         applyNumber1DetachedCpsProgress(dtSec);
@@ -619,15 +653,10 @@ import {
     }
 
     function normalizeLogCategory(category) {
-        if (LOG_CATEGORIES.indexOf(category) !== -1) return category;
-        if (category === "action") return "milestone";
-        if (category === "message") return "fact";
-        return "fact";
+        return normalizeLogCategoryForLog(category);
     }
     function isLogCategoryVisible(category) {
-        const cat = normalizeLogCategory(category);
-        if (cat === "humor" && !settings.humorEnabled) return false;
-        return true;
+        return isLogCategoryVisibleForSettings(category, settings.humorEnabled);
     }
     function prefersReducedTickerMotion() {
         try {
@@ -768,7 +797,7 @@ import {
         const wasPinnedToBottom = (prevTop + actionLogEl.clientHeight) >= (prevHeight - 2);
         const wasPinnedToRight = (prevLeft + actionLogEl.clientWidth) >= (prevWidth - 2);
         const n = actionLogExpanded ? ACTION_LOG_EXPANDED : ACTION_LOG_VISIBLE;
-        const visible = actionLogEntries.filter(entry => isLogCategoryVisible(entry.category));
+        const visible = getVisibleLogEntries(actionLogEntries, settings.humorEnabled);
         const toShow = visible.slice(-n);
         actionLogEl.innerHTML = "";
         toShow.forEach(entry => {
@@ -806,52 +835,6 @@ import {
             if (actionLogContainer) actionLogContainer.classList.toggle("expanded", actionLogExpanded);
             renderActionLog();
         });
-    }
-
-    const NAMES = ["", "thousand", "million", "billion", "trillion", "quadrillion", "quintillion", "sextillion", "septillion", "octillion", "nonillion", "decillion"];
-    function formatWithCommas(n) {
-        if (n < 1000) return String(n);
-        const parts = String(n).split(".");
-        const withCommas = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-        return parts.length > 1 ? withCommas + "." + parts[1] : withCommas;
-    }
-    function formatCount(n) {
-        if (n < 1e6) return formatWithCommas(n);
-        const exp = Math.floor(Math.log10(n));
-        const tier = Math.floor(exp / 3);
-        const mantissa = (n / Math.pow(10, tier * 3)).toFixed(2);
-        const name = NAMES[tier] || "e" + (tier * 3);
-        return mantissa + " " + name;
-    }
-    function formatSeconds(sec) {
-        const s = Math.max(0, Math.floor(Number(sec) || 0));
-        const h = Math.floor(s / 3600);
-        const m = Math.floor((s % 3600) / 60);
-        const r = s % 60;
-        if (h > 0) return h + "h " + m + "m " + r + "s";
-        if (m > 0) return m + "m " + r + "s";
-        return r + "s";
-    }
-    /** Compact multiplier text to keep top-center CPS line readable. */
-    function formatCompactMultiplier(v) {
-        const n = Number(v) || 0;
-        if (!(n > 0)) return "0";
-        if (n >= 1e9) return n.toExponential(2);
-        if (n >= 1e6) return n.toExponential(2);
-        if (n >= 1e3) return n.toFixed(1);
-        if (n >= 10) return n.toFixed(2);
-        return n.toFixed(3);
-    }
-    /** Turbo-scension level lines: whole numbers only (internal bank/cost may be fractional). */
-    function formatTurboScensionLevelDisplay(n) {
-        const r = Math.round(Number(n) || 0);
-        if (!Number.isFinite(r) || r <= 0) return "0";
-        if (r < 1e6) return formatWithCommas(r);
-        const exp = Math.floor(Math.log10(r));
-        const tier = Math.floor(exp / 3);
-        const mantissa = Math.round(r / Math.pow(10, tier * 3));
-        const name = NAMES[tier] || "e" + (tier * 3);
-        return mantissa + " " + name;
     }
 
     /* ---------------------------------------------------------
@@ -921,108 +904,17 @@ import {
     ];
 
     function getObjectiveProgress(obj) {
-        if (!obj) return { pct: 100, label: "Complete" };
-        if (typeof obj.getProgress === "function") {
-            try {
-                const p = obj.getProgress() || {};
-                return {
-                    pct: Math.max(0, Math.min(100, Number(p.pct) || 0)),
-                    label: p.label || ""
-                };
-            } catch (_) {
-                return { pct: 0, label: "" };
-            }
-        }
-        if (Number.isFinite(obj.goal)) {
-            return {
-                pct: Math.max(0, Math.min(100, (totalChanges / obj.goal) * 100)),
-                label: formatCount(totalChanges) + " / " + formatCount(obj.goal)
-            };
-        }
-        return { pct: 0, label: "" };
+        return getObjectiveProgressForTotal(obj, totalChanges, formatCount);
     }
     function isObjectiveComplete(obj) {
-        if (!obj) return false;
-        if (typeof obj.isComplete === "function") {
-            try {
-                return !!obj.isComplete();
-            } catch (_) {
-                return false;
-            }
-        }
-        return Number.isFinite(obj.goal) && totalChanges >= obj.goal;
+        return isObjectiveCompleteForTotal(obj, totalChanges);
     }
-    function renderObjective(obj, totalChanges) {
-        const li = document.createElement("li");
-        const progress = getObjectiveProgress(obj);
-        const prefix = Number.isFinite(obj.goal) ? ("Reach " + formatCount(obj.goal) + " — ") : "";
-        li.textContent = prefix + obj.text + (progress.label ? " (" + progress.label + ")" : "");
-        if (isObjectiveComplete(obj)) obj.achieved = true;
-        if (obj.achieved) {
-            li.style.textDecoration = "line-through";
-            li.style.color = "#4CAF50";
-        }
-        return li;
+    function renderObjective(obj) {
+        return renderObjectiveForTotal(obj, totalChanges, formatCount);
     }
 
     const objectivesEl = document.getElementById("objectives");
-    const CONFETTI_COLORS = ["#4CAF50", "#9aa0ff", "#FFC107", "#E91E63", "#00BCD4", "#8BC34A", "#FF9800"];
-    const CONFETTI_HOLD_REMOVE_MS = 3200;
-    let holdRepeatConfettiContainer = null;
-    let holdRepeatConfettiRemoveTimer = 0;
-    function fillConfettiParticles(container, originEl) {
-        const el = originEl || objectivesEl;
-        if (!el || !container) return;
-        const rect = el.getBoundingClientRect();
-        const cx = rect.left + rect.width / 2;
-        const cy = rect.top + rect.height / 2;
-        const count = 18;
-        container.replaceChildren();
-        for (let i = 0; i < count; i++) {
-            const p = document.createElement("div");
-            p.className = "confetti-particle";
-            const size = 10 + Math.random() * 10;
-            const angle = (Math.PI * 2 * i) / count + Math.random() * 0.5;
-            const dist = 70 + Math.random() * 90;
-            const dx = Math.cos(angle) * dist * (Math.random() > 0.5 ? 1 : -1);
-            const dy = Math.sin(angle) * dist - 20;
-            p.style.left = (cx - size / 2) + "px";
-            p.style.top = (cy - size / 2) + "px";
-            p.style.width = size + "px";
-            p.style.height = size + "px";
-            p.style.background = CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)];
-            p.style.setProperty("--dx", dx + "px");
-            p.style.setProperty("--dy", dy + "px");
-            container.appendChild(p);
-        }
-    }
-    function sprayConfettiFrom(originEl, opts) {
-        const el = originEl || objectivesEl;
-        if (!el) return;
-        const holdRepeatCoalesce = !!(opts && opts.holdRepeatCoalesce);
-        if (holdRepeatCoalesce) {
-            if (!holdRepeatConfettiContainer || !holdRepeatConfettiContainer.parentNode) {
-                holdRepeatConfettiContainer = document.createElement("div");
-                holdRepeatConfettiContainer.className = "confetti-container";
-                holdRepeatConfettiContainer.style.pointerEvents = "none";
-                document.body.appendChild(holdRepeatConfettiContainer);
-            }
-            fillConfettiParticles(holdRepeatConfettiContainer, el);
-            if (holdRepeatConfettiRemoveTimer) clearTimeout(holdRepeatConfettiRemoveTimer);
-            holdRepeatConfettiRemoveTimer = setTimeout(function () {
-                holdRepeatConfettiRemoveTimer = 0;
-                if (holdRepeatConfettiContainer && holdRepeatConfettiContainer.parentNode) holdRepeatConfettiContainer.remove();
-                holdRepeatConfettiContainer = null;
-            }, CONFETTI_HOLD_REMOVE_MS);
-            return;
-        }
-        const container = document.createElement("div");
-        container.className = "confetti-container";
-        container.style.pointerEvents = "none";
-        fillConfettiParticles(container, el);
-        document.body.appendChild(container);
-        setTimeout(() => container.remove(), CONFETTI_HOLD_REMOVE_MS);
-    }
+    const sprayConfettiFrom = createConfettiSprayer({ defaultOriginEl: objectivesEl });
     function sprayShortTermConfetti() {
         sprayConfettiFrom(objectivesEl);
     }
@@ -1037,7 +929,7 @@ import {
         const shortTermToShow = [lastCompleted, nextUncompleted].filter(Boolean);
         objectiveList.innerHTML = "";
         shortTermToShow.forEach(obj => {
-            objectiveList.appendChild(renderObjective(obj, totalChanges));
+            objectiveList.appendChild(renderObjective(obj));
         });
         longTermObjectives.forEach(obj => { if (isObjectiveComplete(obj)) obj.achieved = true; });
         const longLastCompleted = longTermObjectives.filter(o => o.achieved).pop();
@@ -1045,7 +937,7 @@ import {
         const longTermToShow = [longLastCompleted, longNextUncompleted].filter(Boolean);
         longObjectiveList.innerHTML = "";
         longTermToShow.forEach(obj => {
-            longObjectiveList.appendChild(renderObjective(obj, totalChanges));
+            longObjectiveList.appendChild(renderObjective(obj));
         });
         updateMilestoneUI();
     }
@@ -1092,7 +984,7 @@ import {
                 const parts = ["base " + formatCount(gainInfo.baseGain)];
                 if (gainInfo.pendingBonus > 0) parts.push("warp bonus " + formatCount(gainInfo.pendingBonus));
                 if (gainInfo.blackHoleMultiplierBonus > 0) {
-                    parts.push("BH bonus +" + formatCount(gainInfo.blackHoleMultiplierBonus) + " (" + gainInfo.blackHolePhaseMult.toFixed(3) + "x)");
+                    parts.push(getArcEssenceMultiplierBonusPhraseTitle() + " +" + formatCount(gainInfo.blackHoleMultiplierBonus) + " (" + gainInfo.blackHolePhaseMult.toFixed(3) + "x)");
                 }
                 if (gainInfo.multiplierBonus > 0) {
                     parts.push("clap mult +" + formatCount(gainInfo.multiplierBonus) + " (" + gainInfo.clapMult.toFixed(3) + "x)");
@@ -1119,8 +1011,6 @@ import {
             }
         }
     }
-    const ASCENSION_1_MIN_HANDS = 10;
-    const ASCENSION_1_REQUIRED_TOTAL = 1e35;
     const NUMBER_MODULE_INTERFACE_METHODS = [
         "getLabel",
         "getRatePerSec",
@@ -1151,82 +1041,43 @@ import {
         return module;
     }
     function getNumber1AscensionPendingBonusEssence() {
-        const b = Math.floor(Number(number1AscensionPendingBonusEssence) || 0);
-        return b > 0 ? b : 0;
+        return getNumber1AscensionPendingBonusEssenceFromValue(number1AscensionPendingBonusEssence);
     }
     function getNumber1AscensionClapEssenceMultiplier() {
-        const m = Number(number1AscensionClapEssenceMultiplier);
-        return Number.isFinite(m) && m >= 1 ? m : 1;
+        return getNumber1AscensionClapEssenceMultiplierFromValue(number1AscensionClapEssenceMultiplier);
     }
-    /**
-     * Base ascension essence scaling on log10(total count).
-     * Use the peak run total from getNumber1AscensionEssenceFormulaTotal() so spending down hands does not shrink payout.
-     * Anchors: 1e35 -> ~35, 1e42 -> ~75, 1e100 -> ~1000.
-     * Two smooth power segments keep growth readable early and rewarding deep runs.
-     */
-    const ASC_ESSENCE_ANCHOR_X0 = 35;
-    const ASC_ESSENCE_ANCHOR_Y0 = 35;
-    const ASC_ESSENCE_ANCHOR_X1 = 42;
-    const ASC_ESSENCE_ANCHOR_Y1 = 75;
-    const ASC_ESSENCE_ANCHOR_X2 = 100;
-    const ASC_ESSENCE_ANCHOR_Y2 = 1000;
-    const ASC_ESSENCE_SEGMENT1_POWER = 1.08;
-    const ASC_ESSENCE_SEGMENT2_POWER = 1.22;
     function computeNumber1AscensionBaseGain(fromTotal) {
-        const t = Math.max(1, Number(fromTotal) || 1);
-        const x = Math.max(0, Math.log10(t));
-        let y;
-        if (x <= ASC_ESSENCE_ANCHOR_X0) {
-            // Keep pre-ascension-ramp behavior intuitive before deep scaling kicks in.
-            y = Math.max(1, x);
-        } else if (x <= ASC_ESSENCE_ANCHOR_X1) {
-            const u = (x - ASC_ESSENCE_ANCHOR_X0) / (ASC_ESSENCE_ANCHOR_X1 - ASC_ESSENCE_ANCHOR_X0);
-            y = ASC_ESSENCE_ANCHOR_Y0 + (ASC_ESSENCE_ANCHOR_Y1 - ASC_ESSENCE_ANCHOR_Y0) * Math.pow(Math.max(0, Math.min(1, u)), ASC_ESSENCE_SEGMENT1_POWER);
-        } else if (x <= ASC_ESSENCE_ANCHOR_X2) {
-            const u = (x - ASC_ESSENCE_ANCHOR_X1) / (ASC_ESSENCE_ANCHOR_X2 - ASC_ESSENCE_ANCHOR_X1);
-            y = ASC_ESSENCE_ANCHOR_Y1 + (ASC_ESSENCE_ANCHOR_Y2 - ASC_ESSENCE_ANCHOR_Y1) * Math.pow(Math.max(0, Math.min(1, u)), ASC_ESSENCE_SEGMENT2_POWER);
-        } else {
-            // Continue beyond 1e100 with diminishing relative gains.
-            const over = x - ASC_ESSENCE_ANCHOR_X2;
-            y = ASC_ESSENCE_ANCHOR_Y2 + 80 * Math.pow(over, 0.72);
-        }
-        return Math.max(1, Math.floor(y));
+        return computeNumber1AscensionBaseGainFromRules(fromTotal);
     }
     function computeNumber1AscensionGainBreakdown(fromTotal) {
-        const baseGain = computeNumber1AscensionBaseGain(fromTotal);
-        const pendingBonus = getNumber1AscensionPendingBonusEssence();
-        const blackHolePhase1Mult = getBlackHolePhase1AscensionEssenceMult();
-        const blackHoleParallelBonus = number1BlackHoleState.phase2ParallelBonusPool || 0;
-        const blackHoleFurnaceBonus = getBlackHoleFurnaceEssenceBonus();
-        const phaseMult = blackHolePhase1Mult + blackHoleParallelBonus + blackHoleFurnaceBonus;
-        const beforeMultRaw = (baseGain + pendingBonus) * Math.max(1, phaseMult);
-        const beforeMult = Math.max(baseGain + pendingBonus, Math.floor(beforeMultRaw));
-        const clapMult = getNumber1AscensionClapEssenceMultiplier();
-        const finalGain = Math.max(beforeMult, Math.floor(beforeMult * clapMult));
-        return {
-            baseGain,
-            pendingBonus,
-            blackHolePhase1Mult,
-            blackHoleParallelBonus,
-            blackHoleFurnaceBonus,
-            blackHolePhaseMult: phaseMult,
-            blackHoleMultiplierBonus: Math.max(0, beforeMult - (baseGain + pendingBonus)),
-            beforeMult,
-            clapMult,
-            multiplierBonus: Math.max(0, finalGain - beforeMult),
-            finalGain
-        };
+        return computeNumber1AscensionGainBreakdownFromRules(fromTotal, {
+            pendingBonus: getNumber1AscensionPendingBonusEssence(),
+            blackHolePhase1Mult: getBlackHolePhase1AscensionEssenceMult(),
+            blackHoleParallelBonus: number1BlackHoleState.phase2ParallelBonusPool || 0,
+            blackHoleFurnaceBonus: getBlackHoleFurnaceEssenceBonus(),
+            clapMult: getNumber1AscensionClapEssenceMultiplier()
+        });
     }
     function computeNumber1AscensionGain(fromTotal) {
-        return computeNumber1AscensionGainBreakdown(fromTotal).finalGain;
+        return computeNumber1AscensionGainFromRules(fromTotal, {
+            pendingBonus: getNumber1AscensionPendingBonusEssence(),
+            blackHolePhase1Mult: getBlackHolePhase1AscensionEssenceMult(),
+            blackHoleParallelBonus: number1BlackHoleState.phase2ParallelBonusPool || 0,
+            blackHoleFurnaceBonus: getBlackHoleFurnaceEssenceBonus(),
+            clapMult: getNumber1AscensionClapEssenceMultiplier()
+        });
     }
     function getNumber1AscensionRequiredHands() {
-        const phase = getBlackHolePhase();
-        return phase >= 5 && phase < 7 ? 1 : ASCENSION_1_MIN_HANDS;
+        return getNumber1AscensionRequiredHandsFromPhase(getBlackHolePhase(), ASCENSION_1_MIN_HANDS);
     }
     function isNumber1AscensionReady() {
-        if (getBlackHolePhase() === 7) return false;
-        return unlockedHands >= getNumber1AscensionRequiredHands() && totalChanges >= ASCENSION_1_REQUIRED_TOTAL;
+        return isNumber1AscensionReadyFromState({
+            phase: getBlackHolePhase(),
+            unlockedHands,
+            totalChanges,
+            minHands: ASCENSION_1_MIN_HANDS,
+            requiredTotal: ASCENSION_1_REQUIRED_TOTAL
+        });
     }
     const ASCENSION_TREE_EXPORT = window.ASCENSION_TREE_EXPORT;
     const ASCENSION_TREE_VERSION = ASCENSION_TREE_EXPORT.VERSION;
@@ -1266,6 +1117,24 @@ import {
     function getBlackHolePhase() {
         return clampBlackHolePhaseRule(number1BlackHoleState.phase);
     }
+    /** Phase 1 is Numerical Mass only; use "black hole" in UI from Phase 2 onward (post-collapse). */
+    function useBlackHolePlayerTerminology() {
+        return getBlackHolePhase() >= 2;
+    }
+    function getArcEssenceMultiplierBonusPhraseLower() {
+        return useBlackHolePlayerTerminology() ? "black hole bonus" : "numerical mass bonus";
+    }
+    function getArcEssenceMultiplierBonusPhraseTitle() {
+        return useBlackHolePlayerTerminology() ? "Black hole bonus" : "Numerical mass bonus";
+    }
+    function getTotalProductionMultLabelForPanel() {
+        return useBlackHolePlayerTerminology() ? "Current total black hole multiplier" : "Current total run multiplier";
+    }
+    /** Tooltip / rate copy: how the arc multiplies CPS in player-facing terms. */
+    function getGravityStackTooltipPhrase() {
+        if (!isBlackHoleArcUnlocked()) return "post-map multiplier (unlocks when the skill map is complete)";
+        return getBlackHolePhase() <= 1 ? "numerical mass" : "black hole";
+    }
     function isBlackHoleArcUnlocked() {
         return number1HasAscended && isNumber1AscensionTreeFullyPurchased();
     }
@@ -1273,12 +1142,12 @@ import {
         if (!isBlackHoleArcUnlocked()) return;
         if (getBlackHolePhase() > 0) return;
         number1BlackHoleState.phase = 1;
-        addToLog("Numerical Mass Accumulator online — pour Ascension Essence until critical mass (350).", "milestone");
+        addToLog("Numerical Mass Accumulator online — pour Ascension Essence until critical mass (" + formatCount(BLACK_HOLE_PHASE1_ESSENCE_TARGET) + ").", "milestone");
     }
     function tryStartNumber1BlackHoleArc() {
         if (!number1HasAscended) return;
         if (!isBlackHoleArcUnlocked()) {
-            addToLog("Black Hole is locked. Buy every ascension map node first.", "warning");
+            addToLog("Complete every ascension map node first.", "warning");
             return;
         }
         ensureBlackHoleArcStarted();
@@ -1396,8 +1265,20 @@ import {
     function getBlackHolePhase1FillRatio() {
         return getBlackHolePhase1FillRatioRule(number1BlackHoleState);
     }
+    /** 0–1 on `.asc-black-hole__mass-geometry` for Phase 1 tesseract spin (read by canvas). */
+    function syncPhase1MassFillCssVars() {
+        syncPhase1MassFillCssVarsInRoot(document, getBlackHolePhase1FillRatio());
+    }
     function getBlackHolePhase1RunCpsMult() {
         return getBlackHolePhase1RunCpsMultRule(number1BlackHoleState);
+    }
+    /** Phase 1 inertial mult can reach 1e30; use scientific notation when huge. */
+    function formatBlackHolePhase1CpsMultForUi(m) {
+        const x = Number(m);
+        if (!Number.isFinite(x) || x < 1) return "1";
+        if (x >= 1e4) return x.toExponential(2);
+        if (x >= 10) return x.toFixed(2);
+        return x.toFixed(3);
     }
     function getBlackHolePhase1AscensionEssenceMult() {
         return getBlackHolePhase1AscensionEssenceMultRule(number1BlackHoleState);
@@ -1469,7 +1350,41 @@ import {
         const bEff = B + frac;
         return 1 + 3 * (1 + 0.15 * bEff);
     }
-    function getBlackHoleTotalMult() {
+    /** Memoize full BH production stack: same wall-clock ms + same state ⇒ same product (avoids repeated Math.pow / rule walks per tick). */
+    let blackHoleTotalMultCacheFp = null;
+    let blackHoleTotalMultCacheVal = 1;
+    function computeBlackHoleProductionMultFingerprint() {
+        const now = Date.now();
+        const p = getBlackHolePhase();
+        const s = number1BlackHoleState;
+        return [
+            p,
+            now,
+            Number(s.phase1EssenceSpent) || 0,
+            Number(s.phase2Mass) || 0,
+            Number(s.phase2EssenceBank) || 0,
+            Number(s.phase2CollapseMassTier) || 0,
+            Number(s.phase2CollapsePhotonTier) || 0,
+            Number(s.phase2CollapseErgosphereTier) || 0,
+            Number(s.phase3HawkingActiveUntilMs) || 0,
+            Number(s.phase3EssenceBank) || 0,
+            getBlackHolePhase3TrackLevel("luminosity"),
+            getBlackHolePhase3TrackLevel("viscous"),
+            getBlackHolePhase3TrackLevel("coronal"),
+            Number(s.phase4WaveActiveUntilMs) || 0,
+            Number(s.phase5FurnaceLevel) || 0,
+            Number(s.phase5MutationHotterCore) || 0,
+            Number(s.phase5MutationEssenceRefinery) || 0,
+            Number(s.phase5MutationShorterOrbit) || 0,
+            Number(s.phase5DigestStartedAtMs) || 0,
+            Number(s.phase5DigestEndsAtMs) || 0,
+            Number(s.phase5DigestDurationMs) || 0,
+            s.phase6JetActive ? 1 : 0,
+            Number(s.phase6EssenceBank) || 0,
+            Number(s.phase6JetBoostLevel) || 0,
+        ].join("|");
+    }
+    function recomputeBlackHoleTotalMult() {
         if (!isBlackHoleArcUnlocked()) return 1;
         return (
             getBlackHolePhase2MassMult() *
@@ -1480,6 +1395,17 @@ import {
             getBlackHoleFurnaceMult() *
             getBlackHoleJetMult()
         );
+    }
+    function getBlackHoleTotalMult() {
+        if (!isBlackHoleArcUnlocked()) {
+            blackHoleTotalMultCacheFp = null;
+            return 1;
+        }
+        const fp = computeBlackHoleProductionMultFingerprint();
+        if (fp === blackHoleTotalMultCacheFp) return blackHoleTotalMultCacheVal;
+        blackHoleTotalMultCacheFp = fp;
+        blackHoleTotalMultCacheVal = recomputeBlackHoleTotalMult();
+        return blackHoleTotalMultCacheVal;
     }
     function getBlackHolePersistentMultForOffline() {
         if (!isBlackHoleArcUnlocked()) return 1;
@@ -1525,11 +1451,18 @@ import {
     let blackHoleLensingAutoTickTimerId = 0;
     let blackHoleLensRippleCssLastMs = 0;
     let blackHoleLensRippleLastIv = 0;
+    /** Throttle expensive stage VFX DOM sync (tesseract mount scan, global mass-fill CSS). Class toggles run only when digest changes. */
+    let blackHoleStageVfxClassDigest = "";
+    let blackHoleStageVfxHeavyLastMs = 0;
+    let blackHoleStageVfxLastPhaseForLabel = null;
+    let blackHoleStageVfxHtmlAttrDone = false;
+    const BLACK_HOLE_STAGE_VFX_HEAVY_INTERVAL_MS = 100;
     function queueBlackHoleUiRefresh() {
         if (blackHoleUiRefreshQueued) return;
         blackHoleUiRefreshQueued = true;
         requestAnimationFrame(function () {
             blackHoleUiRefreshQueued = false;
+            syncPhase1MassFillCssVars();
             refreshGlobalOverviewPanelIfOpen();
             refreshBlackHolePanelLiveDomIfOpen();
         });
@@ -1692,7 +1625,10 @@ import {
     }
     function syncBlackHolePhase1Vfx() {
         if (!number1StageRootEl) {
-            document.documentElement.setAttribute("data-n1-bh-vfx-synced", "");
+            if (!blackHoleStageVfxHtmlAttrDone) {
+                document.documentElement.setAttribute("data-n1-bh-vfx-synced", "");
+                blackHoleStageVfxHtmlAttrDone = true;
+            }
             return;
         }
         const arc = isBlackHoleArcUnlocked();
@@ -1703,27 +1639,47 @@ import {
         const singularityMood = arc && p >= 2 && p <= 6;
         const hawkingActive = arc && p >= 3 && p < 6 && now <= (number1BlackHoleState.phase3HawkingActiveUntilMs || 0);
         const waveActive = arc && p >= 4 && p < 6 && now <= (number1BlackHoleState.phase4WaveActiveUntilMs || 0);
-        if (incrementalCountLabelEl) {
+        const jetActive = arc && p === 6 && !!number1BlackHoleState.phase6JetActive;
+        const digestParts = [arc ? 1 : 0, p, massMood ? 1 : 0, collapseMood ? 1 : 0, singularityMood ? 1 : 0, hawkingActive ? 1 : 0, waveActive ? 1 : 0, jetActive ? 1 : 0];
+        const digest = digestParts.join("|");
+        const digestChanged = digest !== blackHoleStageVfxClassDigest;
+        if (digestChanged) blackHoleStageVfxClassDigest = digest;
+        const heavyDue =
+            digestChanged || now - blackHoleStageVfxHeavyLastMs >= BLACK_HOLE_STAGE_VFX_HEAVY_INTERVAL_MS;
+        if (heavyDue) blackHoleStageVfxHeavyLastMs = now;
+
+        if (incrementalCountLabelEl && blackHoleStageVfxLastPhaseForLabel !== p) {
+            blackHoleStageVfxLastPhaseForLabel = p;
             incrementalCountLabelEl.textContent = p === 7 ? "Epilogue Count" : "Total Count";
         }
-        if (!massMood) {
-            if (blackHolePhase1SurgeTimerId) {
-                clearTimeout(blackHolePhase1SurgeTimerId);
-                blackHolePhase1SurgeTimerId = 0;
+
+        if (digestChanged) {
+            if (!massMood) {
+                if (blackHolePhase1SurgeTimerId) {
+                    clearTimeout(blackHolePhase1SurgeTimerId);
+                    blackHolePhase1SurgeTimerId = 0;
+                }
+                number1StageRootEl.classList.remove("bh-phase1-unlock-surge");
             }
-            number1StageRootEl.classList.remove("bh-phase1-unlock-surge");
+            number1StageRootEl.classList.toggle("bh-phase1-vfx", massMood);
+            number1StageRootEl.classList.toggle("bh-phase2-collapse-vfx", collapseMood);
+            number1StageRootEl.classList.toggle("bh-singularity-vfx", singularityMood);
+            number1StageRootEl.classList.toggle("bh-singularity-deep", singularityMood);
+            number1StageRootEl.classList.toggle("bh-phase3-accretion-disk", arc && p === 3);
+            number1StageRootEl.classList.toggle("bh-phase3-hawking-active", hawkingActive);
+            number1StageRootEl.classList.toggle("bh-phase4-wave-active", waveActive);
+            number1StageRootEl.classList.toggle("bh-phase5-magnetic-furnace", arc && p === 5);
+            number1StageRootEl.classList.toggle("bh-phase6-jet-beam", arc && p === 6);
+            number1StageRootEl.classList.toggle("bh-phase6-jet-active", jetActive);
+            number1StageRootEl.classList.toggle("bh-phase7-stillness", arc && p === 7);
+            syncBlackHolePhase4LensingRipples();
         }
-        number1StageRootEl.classList.toggle("bh-phase1-vfx", massMood);
-        number1StageRootEl.classList.toggle("bh-phase2-collapse-vfx", collapseMood);
-        number1StageRootEl.classList.toggle("bh-singularity-vfx", singularityMood);
-        number1StageRootEl.classList.toggle("bh-singularity-deep", singularityMood);
-        number1StageRootEl.classList.toggle("bh-phase3-accretion-disk", arc && p === 3);
-        number1StageRootEl.classList.toggle("bh-phase3-hawking-active", hawkingActive);
-        number1StageRootEl.classList.toggle("bh-phase4-wave-active", waveActive);
-        number1StageRootEl.classList.toggle("bh-phase5-magnetic-furnace", arc && p === 5);
-        number1StageRootEl.classList.toggle("bh-phase6-jet-beam", arc && p === 6);
-        number1StageRootEl.classList.toggle("bh-phase6-jet-active", arc && p === 6 && !!number1BlackHoleState.phase6JetActive);
-        number1StageRootEl.classList.toggle("bh-phase7-stillness", arc && p === 7);
+
+        if (heavyDue) {
+            syncPhase1TesseractCanvasesInRoot(number1StageRootEl);
+            syncPhase1MassFillCssVars();
+        }
+
         if (massMood && !number1BlackHoleState.phase1VisualUnlockDone) {
             number1BlackHoleState.phase1VisualUnlockDone = true;
             let allowSurge = true;
@@ -1740,9 +1696,14 @@ import {
             }
             autosaveNow();
         }
-        syncBlackHolePhase4LensingRipples();
-        syncBlackHolePhase5ThermalTheme(now);
-        document.documentElement.setAttribute("data-n1-bh-vfx-synced", "");
+
+        if (arc && p === 5) syncBlackHolePhase5ThermalTheme(now);
+        else if (digestChanged) syncBlackHolePhase5ThermalTheme(now);
+
+        if (!blackHoleStageVfxHtmlAttrDone) {
+            document.documentElement.setAttribute("data-n1-bh-vfx-synced", "");
+            blackHoleStageVfxHtmlAttrDone = true;
+        }
     }
     function triggerBlackHolePhase1CollapseVfx() {
         if (!number1StageRootEl || blackHolePhase1CollapsePulseQueued) return;
@@ -1772,11 +1733,11 @@ import {
         const meterFill = bhEl.querySelector(".asc-black-hole__mass-meter-fill");
         if (meterFill) meterFill.style.width = fillPct + "%";
         const stats = Array.from(bhEl.querySelectorAll(".asc-black-hole__stats"));
-        const multStat = stats.find(el => el.textContent.indexOf("Current total BH mult") >= 0);
+        const multStat = bhEl.querySelector(".asc-black-hole__total-mult");
         if (multStat) {
             const mult = getNumber1BlackHoleProductionMult();
             const multStr = mult >= 10 ? mult.toFixed(2) : mult.toFixed(3);
-            multStat.innerHTML = "Current total BH mult: <strong>×" + multStr + "</strong>";
+            multStat.innerHTML = getTotalProductionMultLabelForPanel() + ": <strong>×" + multStr + "</strong>";
         }
         const purse = bhEl.querySelector(".asc-black-hole__purse");
         if (purse) purse.innerHTML = "You hold <strong>" + formatCount(have) + "</strong> Ascension Essence · next pour: <strong>" + formatCount(pour) + "</strong> into mass";
@@ -1785,6 +1746,21 @@ import {
             btn.disabled = !can;
             btn.textContent = "Pour in all Essence (" + formatCount(pour) + ")";
         }
+        let inertialVal = bhEl.querySelector(".asc-black-hole__effect-val[data-asc-p1-effect=\"inertial\"]");
+        let essenceVal = bhEl.querySelector(".asc-black-hole__effect-val[data-asc-p1-effect=\"essence\"]");
+        let dragVal = bhEl.querySelector(".asc-black-hole__effect-val[data-asc-p1-effect=\"drag\"]");
+        if (!inertialVal || !essenceVal || !dragVal) {
+            const legacyVals = bhEl.querySelectorAll(".asc-black-hole__effect-list > li > .asc-black-hole__effect-val");
+            if (legacyVals.length >= 3) {
+                if (!inertialVal) inertialVal = legacyVals[0];
+                if (!essenceVal) essenceVal = legacyVals[1];
+                if (!dragVal) dragVal = legacyVals[2];
+            }
+        }
+        if (inertialVal) inertialVal.textContent = "run CPS ×" + formatBlackHolePhase1CpsMultForUi(getBlackHolePhase1RunCpsMult());
+        if (essenceVal) essenceVal.textContent = "Ascend payout ×" + getBlackHolePhase1AscensionEssenceMult().toFixed(2);
+        if (dragVal) dragVal.textContent = "Compaction cap " + getMaxSlowdownLevelCap();
+        syncPhase1MassFillCssVars();
         return true;
     }
     function patchBlackHolePhase2PanelLiveDom(bhEl) {
@@ -1823,9 +1799,9 @@ import {
         if (dataKey === patchBlackHolePhase3LastDataKey) return true;
         patchBlackHolePhase3LastDataKey = dataKey;
         const statsBlocks = Array.from(bhEl.querySelectorAll(".asc-black-hole__stats"));
-        const multStat = statsBlocks.find(el => el.textContent.indexOf("Current total BH mult") >= 0);
+        const multStat = statsBlocks.find(el => el.classList && el.classList.contains("asc-black-hole__total-mult")) || bhEl.querySelector(".asc-black-hole__total-mult");
         if (multStat) {
-            multStat.innerHTML = "Current total BH mult: <strong>×" + multStr + "</strong>";
+            multStat.innerHTML = getTotalProductionMultLabelForPanel() + ": <strong>×" + multStr + "</strong>";
         }
         const phaseStat = bhEl.querySelector("[data-asc-bh-disk-phase-stats]");
         if (phaseStat) {
@@ -1870,6 +1846,7 @@ import {
             refreshAscensionPanelIfOpen();
         }
         patchAscensionHubStatsPillsDomIfChanged();
+        syncPhase1TesseractCanvasesInRoot(pagePanelBodyEl);
     }
     function completeBlackHolePhaseTransition(nextPhase, message) {
         const from = getBlackHolePhase();
@@ -1935,7 +1912,7 @@ import {
     function tryBuyBlackHolePhase2CollapseUpgrade(track) {
         if (!number1HasAscended) return;
         if (!isBlackHoleArcUnlocked()) {
-            addToLog("Black Hole is locked. Buy every ascension map node first.", "warning");
+            addToLog("Complete every ascension map node first.", "warning");
             return;
         }
         if (getBlackHolePhase() !== 2) return;
@@ -2039,7 +2016,7 @@ import {
     function tryBuyNumber1BlackHole() {
         if (!number1HasAscended) return;
         if (!isBlackHoleArcUnlocked()) {
-            addToLog("Black Hole is locked. Buy every ascension map node first.", "warning");
+            addToLog("Complete every ascension map node first.", "warning");
             return;
         }
         ensureBlackHoleArcStarted();
@@ -2347,7 +2324,7 @@ import {
         updateCheapenUpgradeUI();
         updateSlowdownUpgradeUI();
         updateComboUI();
-        updateTurboBoostUI();
+        updateTurboBoostUI({ force: true });
         return true;
     }
     function sacrificeNextHandToFurnace() {
@@ -2651,8 +2628,6 @@ import {
     const ASCENSION_TURBO_BURN_EFFICIENCY_MAX_REDUCE = 0.99;
     /** Middle-finger only: `comboEarnedPatternMultAdd` multiplies as Π(1 + x) over purchased middle nodes; product capped. */
     const ASCENSION_COMBO_EARNED_PATTERN_MULT_CAP = 10;
-    /** Save/load: activation counts are edge-based (combo appears after being absent); version ≠ this clears counts on load. */
-    const COMBO_ACTIVATION_EDGE_SAVE_VERSION = 2;
     /** Default gap between catalog “Discovered combo” milestones; reduced by middle `comboDiscoveryMilestoneCooldownMult` (× each, min 0.1s). */
     const COMBO_DISCOVERY_MILESTONE_COOLDOWN_BASE_MS = 60000;
     const COMBO_DISCOVERY_MILESTONE_COOLDOWN_MIN_MS = 100;
@@ -2871,33 +2846,24 @@ import {
         return BASE_MAX_CHEAPEN_LEVEL + getAscensionCheapenCapBonusFromTree();
     }
     function turboMeterCurveScaleFromTotals(t) {
-        return Math.max(1, TURBO_BOOST_METER_BASE_MAX + (t.turboScaling || 0) * 25);
+        return turboMeterCurveScaleFromTotalsRule(t);
     }
     /** Base meter capacity for the turbo mult curve (not multiplied by tank size). */
     function getTurboMeterCurveScale() {
         return turboMeterCurveScaleFromTotals(computeAscensionGrantTotals());
     }
     function getTurboMeterMax() {
-        const t = computeAscensionGrantTotals();
-        return turboMeterCurveScaleFromTotals(t) * (t.turboTankSizeMult || 1) * Math.pow(2, Math.max(0, turboScensionTankLevel));
+        return getTurboMeterMaxFromState(computeAscensionGrantTotals(), turboScensionTankLevel);
     }
     function getTurboCountMultiplierMax() {
-        const base = TURBO_COUNT_MULTIPLIER_BASE_MAX * Math.pow(1.25, getAscensionTurboScalingBonusFromTree());
-        return base * Math.pow(2, Math.max(0, turboScensionMultLevel));
-    }
-    function getTimeWarpOverflowRatioFromTotals(t) {
-        const w = Number(t && t.warpOverflow) || 0;
-        let r = Math.min(0.9, TIME_WARP_OVERFLOW_BASE_RATIO + w * 0.05);
-        if (t && t.warpFactor36AllHandsOverflow) r *= 0.75;
-        return r;
+        return getTurboCountMultiplierMaxFromState(getAscensionTurboScalingBonusFromTree(), turboScensionMultLevel);
     }
     function getTimeWarpOverflowRatio() {
         return getTimeWarpOverflowRatioFromTotals(computeAscensionGrantTotals());
     }
     /** Max seconds until next aura roll (uniform 0…max); ascension shortens span, floor 1s. */
     function getTimeWarpAuraSpawnSpanMaxSec() {
-        const m = computeAscensionGrantTotals().warpSpawnIntervalMult || 1;
-        return Math.max(1, 60 * m);
+        return getTimeWarpAuraSpawnSpanMaxSecFromTotals(computeAscensionGrantTotals());
     }
     function getAscensionNodePurchaseCost(id) {
         const def = ASCENSION_MAP_NODE_BY_ID[id];
@@ -2993,7 +2959,7 @@ import {
             for (let i = 0; i < unlockedHands; i++) autoBuyEnabledByHand[i] = true;
         }
         updateCheapenUpgradeUI();
-        updateTurboBoostUI();
+        updateTurboBoostUI({ force: true });
         updateRateDisplay();
         updateTimeWarpAuraUI();
         if (!number1BlackHoleState.phase1MapCollapseSeen && isNumber1AscensionTreeFullyPurchased()) {
@@ -3015,7 +2981,18 @@ import {
         ascensionMapCollapsePending = true;
         addToLog("Final ascension node owned. Confirm the story modal to collapse the map.", "milestone");
         if (!storyBannerOverlayEl || storyBannerOverlayEl.style.display !== "flex") {
-            showStoryBannerById("ascension-map-collapse-ready");
+            ensureBlackHoleArcStarted();
+            const gravityBanner = getStoryBannerById("black-hole-mass-accumulator-intro");
+            const collapseBanner = getStoryBannerById("ascension-map-collapse-ready");
+            if (gravityBanner && collapseBanner) {
+                showStoryBanner(gravityBanner, {
+                    onClose: function () {
+                        showStoryBanner(collapseBanner);
+                    }
+                });
+            } else if (collapseBanner) {
+                showStoryBanner(collapseBanner);
+            }
         }
     }
     function startAscensionMapCollapseTransition() {
@@ -3041,7 +3018,7 @@ import {
     function respecNumber1AscensionSkillTrees() {
         if (!number1HasAscended || number1AscensionNodeIds.length === 0) return;
         if (hasBlackHoleProgressLockingRespec()) {
-            addToLog("Ascension respec is blocked while Black Hole progression is active.", "warning");
+            addToLog("Ascension respec is blocked once you've spent Essence on post-map progression.", "warning");
             return;
         }
         let refund = 0;
@@ -3056,7 +3033,7 @@ import {
         turboLevelerPurchases = 0;
         addToLog("Ascension trees reset — " + formatCount(refund) + " Essence refunded (free respec).", "milestone");
         updateCheapenUpgradeUI();
-        updateTurboBoostUI();
+        updateTurboBoostUI({ force: true });
         updateRateDisplay();
         updateTimeWarpAuraUI();
         refreshOverviewAndAscensionPanelsIfOpen();
@@ -3078,7 +3055,7 @@ import {
     function respecNumber1AscensionFinger(finger) {
         if (!number1HasAscended) return;
         if (hasBlackHoleProgressLockingRespec()) {
-            addToLog("Ascension respec is blocked while Black Hole progression is active.", "warning");
+            addToLog("Ascension respec is blocked once you've spent Essence on post-map progression.", "warning");
             return;
         }
         if (ASCENSION_FINGER_KEYS.indexOf(finger) < 0) return;
@@ -3100,7 +3077,7 @@ import {
         number1AscensionEssence += refund;
         addToLog((ASCENSION_FINGER_RESPEC_LABELS[finger] || finger) + " reset — " + formatCount(refund) + " Essence refunded.", "milestone");
         updateCheapenUpgradeUI();
-        updateTurboBoostUI();
+        updateTurboBoostUI({ force: true });
         updateRateDisplay();
         refreshOverviewAndAscensionPanelsIfOpen();
         autosaveNow();
@@ -3702,13 +3679,13 @@ import {
         const bhParallel = Math.max(0, Number(number1BlackHoleState.phase2ParallelBonusPool) || 0);
         const blackHolePill = (isBlackHoleArcUnlocked() || bhPhase > 0)
             ? (bhPhase === 1
-                ? "<span class=\"asc-stat-pill asc-stat-pill--wide asc-stat-pill--mass\"><span class=\"asc-stat-pill-k\">Mass accumulator</span> <span class=\"asc-stat-pill-v\">charge " + p1Spent + " / " + BLACK_HOLE_PHASE1_ESSENCE_TARGET + " · inertial ×" + getBlackHolePhase1RunCpsMult().toFixed(2) + "</span></span>"
+                ? "<span class=\"asc-stat-pill asc-stat-pill--wide asc-stat-pill--mass\"><span class=\"asc-stat-pill-k\">Mass accumulator</span> <span class=\"asc-stat-pill-v\">charge " + p1Spent + " / " + BLACK_HOLE_PHASE1_ESSENCE_TARGET + " · inertial ×" + formatBlackHolePhase1CpsMultForUi(getBlackHolePhase1RunCpsMult()) + "</span></span>"
                 : bhPhase === 7
                     ? "<span class=\"asc-stat-pill asc-stat-pill--wide asc-stat-pill--epilogue\"><span class=\"asc-stat-pill-k\">Evaporation</span> <span class=\"asc-stat-pill-v\">P7 · epilogue</span></span>"
                     : "<span class=\"asc-stat-pill asc-stat-pill--wide asc-stat-pill--void\"><span class=\"asc-stat-pill-k\">Black hole</span> <span class=\"asc-stat-pill-v\">P" + bhPhase + " · ×" + (bhMultStat >= 10 ? bhMultStat.toFixed(2) : bhMultStat.toFixed(3)) + " · mass " + Math.floor(Number(number1BlackHoleState.phase2Mass) || 0) + "</span></span>")
             : "";
         const blackHoleParallelPill = bhParallel > 0
-            ? "<span class=\"asc-stat-pill asc-stat-pill--bh-parallel\"><span class=\"asc-stat-pill-k\">BH parallel</span> <span class=\"asc-stat-pill-v\">+" + (bhParallel * 100).toFixed(1) + "% Essence</span></span>"
+            ? "<span class=\"asc-stat-pill asc-stat-pill--bh-parallel\"><span class=\"asc-stat-pill-k\">Parallel pool</span> <span class=\"asc-stat-pill-v\">+" + (bhParallel * 100).toFixed(1) + "% Essence</span></span>"
             : "";
         return (
             "<span class=\"asc-stat-pill asc-stat-pill--wide\"><span class=\"asc-stat-pill-k\">Gems</span> <span class=\"asc-stat-pill-v\">" + ownedCount + " / " + totalNodes + "</span></span>" +
@@ -3838,15 +3815,11 @@ import {
             const can = rem > 0 && have > 0;
             const fillPct = Math.round(getBlackHolePhase1FillRatio() * 100);
             const slowdownCap = getMaxSlowdownLevelCap();
-            const cpsM = getBlackHolePhase1RunCpsMult().toFixed(2);
+            const cpsM = formatBlackHolePhase1CpsMultForUi(getBlackHolePhase1RunCpsMult());
             const ascM = getBlackHolePhase1AscensionEssenceMult().toFixed(2);
             body =
                 "<div class=\"asc-black-hole__mass-geometry\" aria-hidden=\"true\">" +
-                "<div class=\"asc-black-hole__tesseract\">" +
-                "<span class=\"asc-black-hole__tesseract-frame asc-black-hole__tesseract-frame--outer\"></span><span class=\"asc-black-hole__tesseract-frame asc-black-hole__tesseract-frame--mid\"></span><span class=\"asc-black-hole__tesseract-frame asc-black-hole__tesseract-frame--inner\"></span><span class=\"asc-black-hole__tesseract-frame asc-black-hole__tesseract-frame--core\"></span>" +
-                "<span class=\"asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--a\"></span><span class=\"asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--b\"></span><span class=\"asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--c\"></span><span class=\"asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--d\"></span><span class=\"asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--e\"></span><span class=\"asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--f\"></span><span class=\"asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--g\"></span><span class=\"asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--h\"></span><span class=\"asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--i\"></span><span class=\"asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--j\"></span><span class=\"asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--k\"></span><span class=\"asc-black-hole__tesseract-edge asc-black-hole__tesseract-edge--l\"></span>" +
-                "<span class=\"asc-black-hole__tesseract-node asc-black-hole__tesseract-node--a\"></span><span class=\"asc-black-hole__tesseract-node asc-black-hole__tesseract-node--b\"></span><span class=\"asc-black-hole__tesseract-node asc-black-hole__tesseract-node--c\"></span><span class=\"asc-black-hole__tesseract-node asc-black-hole__tesseract-node--d\"></span><span class=\"asc-black-hole__tesseract-node asc-black-hole__tesseract-node--e\"></span><span class=\"asc-black-hole__tesseract-node asc-black-hole__tesseract-node--f\"></span><span class=\"asc-black-hole__tesseract-node asc-black-hole__tesseract-node--g\"></span><span class=\"asc-black-hole__tesseract-node asc-black-hole__tesseract-node--h\"></span>" +
-                "</div>" +
+                "<div class=\"asc-black-hole__tesseract\"></div>" +
                 "<div class=\"asc-black-hole__numeral-dust\"><span>1</span><span>1</span><span>1</span><span>1</span><span>1</span><span>1</span><span>1</span><span>1</span></div>" +
                 "</div>" +
                 "<p class=\"asc-black-hole__kicker\">Phase 1 · toward critical mass</p>" +
@@ -3856,9 +3829,9 @@ import {
                 "<div class=\"asc-black-hole__mass-meter-track\" role=\"progressbar\" aria-valuenow=\"" + spent + "\" aria-valuemin=\"0\" aria-valuemax=\"" + BLACK_HOLE_PHASE1_ESSENCE_TARGET + "\" aria-label=\"Essence poured into numerical mass\"><div class=\"asc-black-hole__mass-meter-fill\" style=\"width:" + fillPct + "%\"></div></div>" +
                 "</div>" +
                 "<ul class=\"asc-black-hole__effect-list\" aria-label=\"Mass effects on this run\">" +
-                "<li><span class=\"asc-black-hole__effect-name\">Inertial counting</span><span class=\"asc-black-hole__effect-val\">run CPS ×" + esc(cpsM) + "</span><span class=\"asc-black-hole__effect-hint\">ticks feel heavier as the bar fills</span></li>" +
-                "<li><span class=\"asc-black-hole__effect-name\">Essence coupling</span><span class=\"asc-black-hole__effect-val\">Ascend payout ×" + esc(ascM) + "</span><span class=\"asc-black-hole__effect-hint\">next Number 1 ascend earns more Essence</span></li>" +
-                "<li><span class=\"asc-black-hole__effect-name\">Drag ceiling</span><span class=\"asc-black-hole__effect-val\">Compaction cap " + slowdownCap + "</span><span class=\"asc-black-hole__effect-hint\">room to lean on Compaction upgrades</span></li>" +
+                "<li><span class=\"asc-black-hole__effect-name\">Inertial counting</span><span class=\"asc-black-hole__effect-val\" data-asc-p1-effect=\"inertial\">run CPS ×" + esc(cpsM) + "</span><span class=\"asc-black-hole__effect-hint\">ticks feel heavier as the bar fills</span></li>" +
+                "<li><span class=\"asc-black-hole__effect-name\">Essence coupling</span><span class=\"asc-black-hole__effect-val\" data-asc-p1-effect=\"essence\">Ascend payout ×" + esc(ascM) + "</span><span class=\"asc-black-hole__effect-hint\">next Number 1 ascend earns more Essence</span></li>" +
+                "<li><span class=\"asc-black-hole__effect-name\">Drag ceiling</span><span class=\"asc-black-hole__effect-val\" data-asc-p1-effect=\"drag\">Compaction cap " + slowdownCap + "</span><span class=\"asc-black-hole__effect-hint\">room to lean on Compaction upgrades</span></li>" +
                 "</ul>";
             note = "<p class=\"asc-black-hole__stats asc-black-hole__purse\">You hold <strong>" + esc(formatCount(have)) + "</strong> Ascension Essence · next pour: <strong>" + esc(formatCount(pour)) + "</strong> into mass</p>";
             if (!can && rem > 0) {
@@ -3925,10 +3898,10 @@ import {
                 "<span class=\"asc-black-hole__collapse-shard asc-black-hole__collapse-shard--a\"></span><span class=\"asc-black-hole__collapse-shard asc-black-hole__collapse-shard--b\"></span><span class=\"asc-black-hole__collapse-shard asc-black-hole__collapse-shard--c\"></span><span class=\"asc-black-hole__collapse-shard asc-black-hole__collapse-shard--d\"></span><span class=\"asc-black-hole__collapse-shard asc-black-hole__collapse-shard--e\"></span><span class=\"asc-black-hole__collapse-shard asc-black-hole__collapse-shard--f\"></span><span class=\"asc-black-hole__collapse-shard asc-black-hole__collapse-shard--g\"></span><span class=\"asc-black-hole__collapse-shard asc-black-hole__collapse-shard--h\"></span><span class=\"asc-black-hole__collapse-shard asc-black-hole__collapse-shard--i\"></span><span class=\"asc-black-hole__collapse-shard asc-black-hole__collapse-shard--j\"></span>" +
                 "</div>" +
                 "<p class=\"asc-black-hole__kicker\">Phase 2 · collapse upgrades</p>" +
-                "<p class=\"asc-black-hole__body\">Before the singularity accepts raw mass, stabilize three channels with Ascension Essence. Each track has <strong>" + BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER + "</strong> tiers. Every Phase 2 spend also charges the distinct <strong>BH parallel</strong> Essence bonus for future ascends.</p>" +
-                "<div class=\"asc-black-hole__parallel-meter-wrap\" role=\"group\" aria-label=\"Black hole parallel Essence bonus\">" +
-                "<div class=\"asc-black-hole__mass-meter-label\"><span>BH parallel pool</span><span class=\"asc-black-hole__mass-meter-nums\"><strong>+" + esc((parallel * 100).toFixed(1)) + "%</strong> / +150.0% Essence</span></div>" +
-                "<div class=\"asc-black-hole__mass-meter-track asc-black-hole__parallel-meter-track\" role=\"progressbar\" aria-valuenow=\"" + esc((parallel * 100).toFixed(1)) + "\" aria-valuemin=\"0\" aria-valuemax=\"150\" aria-label=\"Black hole parallel Essence bonus\"><div class=\"asc-black-hole__mass-meter-fill asc-black-hole__parallel-meter-fill\" style=\"width:" + parallelPct + "%\"></div></div>" +
+                "<p class=\"asc-black-hole__body\">Before the singularity accepts raw mass, stabilize three channels with Ascension Essence. Each track has <strong>" + BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER + "</strong> tiers. Every Phase 2 spend also charges a distinct <strong>parallel Essence bonus</strong> for future ascends.</p>" +
+                "<div class=\"asc-black-hole__parallel-meter-wrap\" role=\"group\" aria-label=\"Parallel Essence bonus for future ascends\">" +
+                "<div class=\"asc-black-hole__mass-meter-label\"><span>Parallel pool</span><span class=\"asc-black-hole__mass-meter-nums\"><strong>+" + esc((parallel * 100).toFixed(1)) + "%</strong> / +150.0% Essence</span></div>" +
+                "<div class=\"asc-black-hole__mass-meter-track asc-black-hole__parallel-meter-track\" role=\"progressbar\" aria-valuenow=\"" + esc((parallel * 100).toFixed(1)) + "\" aria-valuemin=\"0\" aria-valuemax=\"150\" aria-label=\"Parallel Essence bonus\"><div class=\"asc-black-hole__mass-meter-fill asc-black-hole__parallel-meter-fill\" style=\"width:" + parallelPct + "%\"></div></div>" +
                 "</div>" +
                 "<div class=\"asc-black-hole__p2-list\" role=\"group\" aria-label=\"Collapse upgrades\">" +
                 p2Row("mass", "Essence–mass coupling", tm, massEffectHtml, cMass, canMassUp) +
@@ -4160,11 +4133,13 @@ import {
             body = "<p class=\"asc-black-hole__body\">Phase 7 — Evaporation: one hand, one counter, one beat. Upgrades are silent. Counting continues for closure.</p>";
             note = "<p class=\"asc-black-hole__stats\">Phase: <strong>7</strong> · Epilogue counter: <strong>" + esc(formatCount(Math.floor(number1BlackHoleState.phase7EpilogueCounter || 0))) + "</strong></p>";
         }
+        const totalMultLine =
+            "<p class=\"asc-black-hole__stats asc-black-hole__total-mult\">" + esc(getTotalProductionMultLabelForPanel()) + ": <strong>×" + esc(multStr) + "</strong></p>";
         return (
             "<section class=\"asc-black-hole" + panelExtraClass + "\" aria-label=\"" + esc(panelAria) + "\">" +
             "<h4 class=\"asc-black-hole__title\">" + esc(panelTitle) + "</h4>" +
             body +
-            "<p class=\"asc-black-hole__stats\">Current total BH mult: <strong>×" + esc(multStr) + "</strong></p>" +
+            totalMultLine +
             note +
             actions +
             "</section>"
@@ -4203,7 +4178,7 @@ import {
         const gainFormulaText = gainInfo
             ? " Formula: base " + formatCount(gainInfo.baseGain) +
                 (gainInfo.pendingBonus > 0 ? " + warp bonus " + formatCount(gainInfo.pendingBonus) : "") +
-                (gainInfo.blackHoleMultiplierBonus > 0 ? " + BH bonus " + formatCount(gainInfo.blackHoleMultiplierBonus) + " (" + gainInfo.blackHolePhaseMult.toFixed(3) + "x)" : "") +
+                (gainInfo.blackHoleMultiplierBonus > 0 ? " + " + getArcEssenceMultiplierBonusPhraseLower() + " " + formatCount(gainInfo.blackHoleMultiplierBonus) + " (" + gainInfo.blackHolePhaseMult.toFixed(3) + "x)" : "") +
                 (gainInfo.multiplierBonus > 0 ? " + clap mult " + formatCount(gainInfo.multiplierBonus) + " (" + gainInfo.clapMult.toFixed(3) + "x)" : "") +
                 " = " + gainText + "."
             : "";
@@ -4286,20 +4261,36 @@ import {
                 "<div class=\"ascension-map-nodes-layer\">" + nodeDots + "</div>" +
                 "</div></div></div>" + legend;
         }
-        const hubClass = hideAscensionSkillMap
-            ? "ascension-hub ascension-hub--mass-arc-active"
-            : ("ascension-hub" + (collapseActive ? " ascension-hub--collapse-active" : ""));
+        const hubClass =
+            "ascension-hub" +
+            (hideAscensionSkillMap ? " ascension-hub--mass-arc-active" : "") +
+            (!hideAscensionSkillMap && collapseActive ? " ascension-hub--collapse-active" : "") +
+            (isBlackHoleArcUnlocked() ? " ascension-hub--bh-arc-first" : "");
         const hubAria = hideAscensionSkillMap
-            ? "Number 1 ascension — skill map complete; mass accumulator and black hole"
+            ? (getBlackHolePhase() <= 1
+                ? "Number 1 ascension — skill map complete; numerical mass accumulator"
+                : "Number 1 ascension — skill map complete; black hole progression")
             : "Number 1 ascension skill map";
         const hubTitle = hideAscensionSkillMap
             ? "<h4 class=\"ascension-hub-title\"><span class=\"ascension-hub-glyph\" aria-hidden=\"true\">◇</span> Ascension — map complete</h4>"
             : "<h4 class=\"ascension-hub-title\"><span class=\"ascension-hub-glyph\" aria-hidden=\"true\">◇</span> Ascension map</h4>";
         const hubSub = hideAscensionSkillMap
-            ? "<p class=\"ascension-hub-sub\">Every skill gem is owned. Spend Essence in the <strong>Numerical Mass Accumulator</strong> and later black-hole phases below — the gem map is done.</p>"
+            ? (getBlackHolePhase() <= 1
+                ? "<p class=\"ascension-hub-sub\">Every skill gem is owned. Spend Essence in the <strong>Numerical Mass Accumulator</strong> below — the gem map is done.</p>"
+                : "<p class=\"ascension-hub-sub\">Every skill gem is owned. Continue below with <strong>black hole</strong> progression — the gem map is done.</p>")
             : (collapseActive
                 ? "<p class=\"ascension-hub-sub\">Every branch is complete. Watch the constellation collapse into the singularity.</p>"
                 : "<p class=\"ascension-hub-sub\">Five columns — pinky through thumb — lower branch tier at the bottom of each column, rising toward the top. Combo pulse production is split across <strong>hands that satisfy that pattern</strong>. <strong>Respec is free</strong>. <strong>Hover or click a gem</strong> for details; <strong>click</strong> also attempts purchase.</p>");
+        const belowMapBlock =
+            "<div class=\"ascension-hub-below-map\">" +
+            "<p class=\"ascension-hub-sub ascension-hub-sub--grants-intro\">Owned-gem benefits are summarized in grouped lists below the map (complete for every aggregate grant). Gem tooltips remain the source of truth for exact wording.</p>" +
+            "<div class=\"ascension-hub-stats\" id=\"ascension-hub-stats\">" + renderAscensionHubStatsPillsHtml() + "</div>" +
+            "<div class=\"ascension-hub-grants\" id=\"ascension-hub-grants\" role=\"region\" aria-label=\"Purchased ascension benefits\">" + renderAscensionHubGrantsHtml() + "</div>" +
+            "</div>";
+        const bhPanel = renderNumber1BlackHolePanelHtml();
+        const hubBodyMain = isBlackHoleArcUnlocked()
+            ? (bhPanel + mapAndLegend + belowMapBlock)
+            : (mapAndLegend + belowMapBlock + bhPanel);
         return (
             "<section class=\"" + hubClass + "\" aria-label=\"" + esc(hubAria) + "\">" +
             "<header class=\"ascension-hub-header\">" +
@@ -4307,13 +4298,7 @@ import {
             hubSub +
             respecRow +
             "</header>" +
-            mapAndLegend +
-            "<div class=\"ascension-hub-below-map\">" +
-            "<p class=\"ascension-hub-sub ascension-hub-sub--grants-intro\">Owned-gem benefits are summarized in grouped lists below the map (complete for every aggregate grant). Gem tooltips remain the source of truth for exact wording.</p>" +
-            "<div class=\"ascension-hub-stats\" id=\"ascension-hub-stats\">" + renderAscensionHubStatsPillsHtml() + "</div>" +
-            "<div class=\"ascension-hub-grants\" id=\"ascension-hub-grants\" role=\"region\" aria-label=\"Purchased ascension benefits\">" + renderAscensionHubGrantsHtml() + "</div>" +
-            "</div>" +
-            renderNumber1BlackHolePanelHtml() +
+            hubBodyMain +
             "</section>"
         );
     }
@@ -4365,7 +4350,12 @@ import {
                 let s = "Essence: " + formatCount(number1AscensionEssence);
                 if (getBlackHolePhase() > 0) {
                     const m = getNumber1BlackHoleProductionMult();
-                    s += " · Black hole P" + getBlackHolePhase() + " ×" + (m >= 10 ? m.toFixed(2) : m.toFixed(3)) + " (mass " + Math.floor(number1BlackHoleState.phase2Mass || 0) + ")";
+                    const ph = getBlackHolePhase();
+                    if (ph === 1) {
+                        s += " · Numerical mass · ×" + (m >= 10 ? m.toFixed(2) : m.toFixed(3)) + " total run mult";
+                    } else {
+                        s += " · Black hole P" + ph + " ×" + (m >= 10 ? m.toFixed(2) : m.toFixed(3)) + " (mass " + Math.floor(number1BlackHoleState.phase2Mass || 0) + ")";
+                    }
                 }
                 return s;
             }
@@ -4404,7 +4394,7 @@ import {
             if (entry.number === 1 && ascReady) {
                 ascPart += " · Next gain: " + formatCount(gainPreview);
                 if (gainPreviewInfo && gainPreviewInfo.blackHoleMultiplierBonus > 0) {
-                    ascPart += " (BH bonus +" + formatCount(gainPreviewInfo.blackHoleMultiplierBonus) + ")";
+                    ascPart += " (" + getArcEssenceMultiplierBonusPhraseTitle() + " +" + formatCount(gainPreviewInfo.blackHoleMultiplierBonus) + ")";
                 }
                 if (gainPreviewInfo && gainPreviewInfo.multiplierBonus > 0) {
                     ascPart += " (clap mult +" + formatCount(gainPreviewInfo.multiplierBonus) + ")";
@@ -4459,65 +4449,24 @@ import {
         const base = rows.join("") || "<div class=\"overview-empty\">No unlocked numbers on this save. Additional number modules — <span class=\"coming-soon-inline\">coming soon</span>.</div>";
         return base;
     }
-    function logCategoryTag(category) {
-        const c = normalizeLogCategory(category);
-        if (c === "tip") return "TIP";
-        if (c === "fact") return "FACT";
-        if (c === "milestone") return "MILESTONE";
-        if (c === "warning") return "WARN";
-        if (c === "humor") return "JOKE";
-        if (c === "system") return "SYSTEM";
-        return "LOG";
-    }
     function renderMessageLogLineHtml(entry) {
-        return "<div class=\"message-log-line message-log-cat-" + entry.category + "\" data-log-category=\"" + entry.category + "\">" +
-            "<span class=\"message-log-tag\">[" + logCategoryTag(entry.category) + "]</span>" +
-            "<span class=\"message-log-text\">" + escapeHtml(entry.text) + "</span></div>";
+        return renderMessageLogLineHtmlForEntry(entry, escapeHtml);
     }
     function renderMessageLogPageHtml() {
-        const visible = actionLogEntries.filter(entry => isLogCategoryVisible(entry.category));
+        const visible = getVisibleLogEntries(actionLogEntries, settings.humorEnabled);
         if (visible.length === 0) {
             messageLogLastRenderedVisibleCount = 0;
             messageLogLastRenderedHeadSig = "";
             messageLogLastRenderedTailSig = "";
-            return "<div class=\"message-log-terminal message-log-terminal--empty\" role=\"log\" aria-relevant=\"additions\">" +
-                "<div class=\"message-log-terminal-header\" id=\"message-log-terminal-header\">message_feed // 0 line(s) visible</div>" +
-                "<div class=\"message-log-terminal-body message-log-terminal-body--empty\" id=\"message-log-terminal-body\">" +
-                "<p class=\"message-log-empty\">No messages yet. Tips, facts, milestones, and system notices will appear here as you play. Humor lines respect Settings → Humor messages.</p>" +
-                "<p class=\"coming-soon-note coming-soon-note--compact\">Filters, search, and save export for this log — <span class=\"coming-soon-inline\">coming soon</span>.</p>" +
-                "</div></div>" +
-                "<p class=\"message-log-footnote\">Bottom ticker shows the latest lines; this panel is the full scrollback (oldest → newest).</p>";
+            return renderMessageLogPageHtmlForEntries(visible, escapeHtml);
         }
         messageLogLastRenderedVisibleCount = visible.length;
-        messageLogLastRenderedHeadSig = visible[0].category + "\n" + visible[0].text;
-        messageLogLastRenderedTailSig = visible[visible.length - 1].category + "\n" + visible[visible.length - 1].text;
-        const lines = visible.map(renderMessageLogLineHtml).join("");
-        return "<div class=\"message-log-terminal\" role=\"log\" aria-relevant=\"additions\">" +
-            "<div class=\"message-log-terminal-header\" id=\"message-log-terminal-header\">message_feed // " + visible.length + " line(s) visible</div>" +
-            "<div class=\"message-log-terminal-body\" id=\"message-log-terminal-body\">" + lines + "</div></div>" +
-            "<p class=\"message-log-footnote\">Bottom ticker shows the latest lines; this panel is the full scrollback (oldest → newest).</p>";
+        messageLogLastRenderedHeadSig = getLogEntrySig(visible[0]);
+        messageLogLastRenderedTailSig = getLogEntrySig(visible[visible.length - 1]);
+        return renderMessageLogPageHtmlForEntries(visible, escapeHtml);
     }
     function renderStoryArchiveHtml() {
-        const canonicalIds = new Set(STORY_BANNERS.map(b => b.id));
-        const legacyClosed = closedBanners.filter(b => b && b.id && !canonicalIds.has(b.id));
-        const chapters = [...STORY_BANNERS, ...legacyClosed].sort((a, b) => a.order - b.order);
-        const unlockedCount = chapters.filter(b => hasUnlockedStoryBanner(b.id)).length;
-        let html = "<section class=\"story-log-section\" aria-label=\"Story Archive\">" +
-            "<h4 class=\"story-log-heading\">Story Archive</h4>" +
-            "<p class=\"story-review-summary\">" + unlockedCount + " / " + chapters.length + " transmissions recovered.</p>" +
-            "<div class=\"story-review-list story-review-list--embedded\">";
-        chapters.forEach((b, index) => {
-            const unlocked = hasUnlockedStoryBanner(b.id);
-            html += "<div class=\"story-review-item" + (unlocked ? " story-review-item--unlocked" : " story-review-item--locked") + "\">";
-            if (unlocked) {
-                html += "<div class=\"story-review-item-head\"><span class=\"story-review-item-kicker\">Transmission " + (index + 1) + "</span><button type=\"button\" class=\"story-review-replay\" data-story-replay-id=\"" + escapeHtml(b.id) + "\">Replay</button></div><strong class=\"story-review-item-title\">" + escapeHtml(b.title) + "</strong><p class=\"story-review-item-body\">" + escapeHtml(b.body) + "</p>";
-            } else {
-                html += "<div class=\"story-review-item-head\"><span class=\"story-review-item-kicker\">Transmission " + (index + 1) + "</span><span class=\"story-review-locked-tag\">Locked</span></div><strong class=\"story-review-item-title\">???</strong><p class=\"story-review-item-body\">Signal not yet recovered. Keep counting to unlock this story beat.</p>";
-            }
-            html += "</div>";
-        });
-        html += "</div></section>";
-        return html;
+        return renderStoryArchiveHtmlForState(STORY_BANNERS, closedBanners, shownBannerIds);
     }
     function renderMessageAndStoryLogPageHtml() {
         return "<section class=\"message-log-section\" aria-label=\"Message Log\">" +
@@ -4551,11 +4500,11 @@ import {
     function refreshMessageLogPanelIfOpen() {
         if (!pagePanelEl || pagePanelEl.style.display === "none" || !pagePanelBodyEl || !pagePanelTitleEl) return;
         if (pagePanelEl.dataset.openPageId !== "messages") return;
-        const visible = actionLogEntries.filter(entry => isLogCategoryVisible(entry.category));
+        const visible = getVisibleLogEntries(actionLogEntries, settings.humorEnabled);
         const prevBody = document.getElementById("message-log-terminal-body");
         const prevHeader = document.getElementById("message-log-terminal-header");
-        const headSig = visible.length > 0 ? (visible[0].category + "\n" + visible[0].text) : "";
-        const tailSig = visible.length > 0 ? (visible[visible.length - 1].category + "\n" + visible[visible.length - 1].text) : "";
+        const headSig = getLogEntrySig(visible[0]);
+        const tailSig = getLogEntrySig(visible[visible.length - 1]);
         if (
             prevBody &&
             prevHeader &&
@@ -4639,28 +4588,20 @@ import {
     }
     /** Shared context for Combination Index summary + list (filters applied). */
     function getComboIndexListContext() {
-        const discovered = new Set(earnedComboNames);
-        const activeNow = new Set(getActiveCombos().map(c => c.name));
-        const available = COMBOS.filter(c => unlockedHands >= c.minHands);
-        let rows = available.slice();
-        if (comboIndexStatusFilter === "discovered") rows = rows.filter(c => discovered.has(c.name));
-        if (comboIndexStatusFilter === "undiscovered") rows = rows.filter(c => !discovered.has(c.name));
-        if (comboIndexHandsFilter !== "all") rows = rows.filter(c => String(c.minHands) === comboIndexHandsFilter);
-        const discoveredCount = available.filter(c => discovered.has(c.name)).length;
-        return { discovered, activeNow, available, rows, discoveredCount };
-    }
-    function buildComboIndexLiveSummaryText(ctx) {
-        return "Discovered " + ctx.discoveredCount + " / " + ctx.available.length + ". Currently active: " + (ctx.activeNow.size > 0 ? Array.from(ctx.activeNow).join(", ") : "None") + ".";
+        return getComboIndexListContextForState({
+            combos: COMBOS,
+            unlockedHands,
+            earnedComboNames,
+            activeComboNames: getActiveCombos().map(c => c.name),
+            statusFilter: comboIndexStatusFilter,
+            handsFilter: comboIndexHandsFilter
+        });
     }
     function buildComboIndexListItemsInnerHtml(ctx) {
-        const listItems = ctx.rows.map(c => {
-            const found = ctx.discovered.has(c.name);
-            const css = found ? "earned-bonus-item-earned" : "earned-bonus-undiscovered";
-            const activeBadge = ctx.activeNow.has(c.name) ? " <span class=\"overview-card-badge overview-card-badge--live\">Active</span>" : "";
-            const pulseEdges = comboActivationCounts[c.name] || 0;
-            return "<li class=\"" + css + "\"><strong>" + c.name + "</strong>" + activeBadge + "<div>Hands: " + c.minHands + " · Effect: x" + c.bonus.toFixed(2) + " · Pulse count (edges): " + formatCount(pulseEdges) + "</div></li>";
-        }).join("");
-        return listItems || "<li class=\"earned-bonuses-placeholder\">No combinations match the current filters.</li>";
+        return buildComboIndexListItemsHtml({
+            ...ctx,
+            comboActivationCounts
+        }, formatCount);
     }
     /** Updates index summary + list only; keeps #earned-bonuses-list and modal scroll stable. */
     function patchCombinationsPageLiveDom() {
@@ -4836,6 +4777,10 @@ import {
         }
         pagePanelTitleEl.textContent = title;
         pagePanelBodyEl.innerHTML = bodyHtml;
+        if (pageId === "ascension") {
+            syncPhase1MassFillCssVars();
+            syncPhase1TesseractCanvasesInRoot(pagePanelBodyEl);
+        }
         if (pageModalEl) pageModalEl.classList.toggle("page-modal--wide", pageId === "overview" || pageId === "combinations" || pageId === "ascension");
         syncMessageLogScrollContainerMode(pageId);
         pagePanelEl.dataset.openPageId = pageId;
@@ -4899,21 +4844,11 @@ import {
             }
         }, SPEED_AUTOBUY_TOAST_MS);
     }
-    function getSpeedMultiplierForLevel(level) {
-        if (level === 0) return 1;
-        return Math.pow(2, level); 
-    }
     function getEffectiveSpeedLevel(handIndex) {
-        return Math.max(0, (speedLevel[handIndex] ?? 0) + (speedBonusLevel[handIndex] ?? 0));
+        return getEffectiveUpgradeLevel(speedLevel[handIndex], speedBonusLevel[handIndex]);
     }
     function getSpeedMultiplier(handIndex) {
         return getSpeedMultiplierForLevel(getEffectiveSpeedLevel(handIndex));
-    }
-    /** Exact 2^level for tick math (float Math.pow loses integers past ~2^53). */
-    function getSpeedMultiplierBigForLevel(level) {
-        const lv = level | 0;
-        if (lv <= 0) return 1n;
-        return 1n << BigInt(lv);
     }
     /** Stable integer key: same effective speed → same bucket (avoids `Math.pow(2, level)` float collisions at high levels). */
     function getHandSpeedSyncBucketKey(handIndex) {
@@ -4921,9 +4856,8 @@ import {
         return String(getEffectiveSpeedLevel(handIndex));
     }
     function getUpgradeCost(handIndex, nextLevel) {
-        const baseCost = 10 + Math.floor(Math.pow(4, nextLevel));
         const ascSpeed = computeAscensionGrantTotals().speedMult;
-        return Math.max(1, Math.floor(baseCost * getCheapenMultiplier(handIndex) * ascSpeed));
+        return getSpeedUpgradeCost(nextLevel, getCheapenMultiplier(handIndex), ascSpeed);
     }
     const upgradeContainer = document.getElementById("upgrade-container");
     const speedUpgradesContainerEl = document.getElementById("speed-upgrades-container");
@@ -5634,13 +5568,14 @@ import {
         if (balance < cost) return;
         handEarnings[handIndex] = balance - cost;
         markMeaningfulProgress();
-        refreshTotalFromHandEarnings();
+        if (opts?.skipUpgradeDom) autobuyDeferredTotalsFlush = true;
+        else refreshTotalFromHandEarnings();
         speedLevel[handIndex]++;
         const handNum = handIndex + 1;
         const upgradedHand = hands[handIndex];
         if (upgradedHand) upgradedHand.tickAccBig = 0n;
         if (!opts?.silentLog) addToLog("Speed upgrade purchased for Hand " + handNum + " (level " + speedLevel[handIndex] + ")", "system");
-        incrementalEl.textContent = formatCount(totalChanges);
+        if (!opts?.skipUpgradeDom) incrementalEl.textContent = formatCount(totalChanges);
         hands.forEach(h => h.restartTimer());
         if (autoBuyUnlocked) {
             const nextCost = getUpgradeCost(handIndex, speedLevel[handIndex] + 1);
@@ -5663,68 +5598,23 @@ import {
     /* ---------------------------------------------------------
        CHEAPEN SPEED UPGRADE (per-hand), max 10 per hand (base; ascension adds). 99%, 99.9%, ...
     --------------------------------------------------------- */
-    const BASE_MAX_CHEAPEN_LEVEL = 10;
     let cheapenLevel = Array(maxHands).fill(0);
     let cheapenBonusLevel = Array(maxHands).fill(0);
     function getEffectiveCheapenLevel(handIndex) {
-        return Math.max(0, (cheapenLevel[handIndex] ?? 0) + (cheapenBonusLevel[handIndex] ?? 0));
+        return getEffectiveUpgradeLevel(cheapenLevel[handIndex], cheapenBonusLevel[handIndex]);
     }
     function getCheapenMultiplier(handIndex) {
-        const level = getEffectiveCheapenLevel(handIndex);
-        return level === 0 ? 1 : Math.pow(10, -(level + 1));
+        return getCheapenMultiplierForLevel(getEffectiveCheapenLevel(handIndex));
     }
-    /** Levels 1–6: legacy exponential. Level 7–9 = 1e9 × 1000^(n−7). Level 10 = 1.5×10^24. Levels 11+ use CHEAPEN_COST_RAW_BY_NEXT_LEVEL below (then ×1000 per tier if cap ever exceeds 16). */
-    const CHEAPEN_EXTENDED_COST_BASE = 1e9;
-    const CHEAPEN_LEGACY_MAX_NEXT_LEVEL = 6;
-    const CHEAPEN_EXTENDED_START_NEXT_LEVEL = 7;
-    /** Raw hand count to buy cheapen level 10 (nextLevel === 10). */
-    const CHEAPEN_COST_LEVEL_10_RAW = 1.5e24;
-    /**
-     * Raw costs for nextLevel 11 … 16 (max 10 base cheapen + 6 ascension cheapenCap).
-     * Each step ×1000 on previous; level 11+ > level 10.
-     */
-    const CHEAPEN_COST_RAW_BY_NEXT_LEVEL = [
-        1.5e27, // 11 — 1.5 octillion (short scale)
-        1.5e30, // 12 — 1.5 nonillion
-        1.5e33, // 13 — 1.5 decillion
-        1.5e36, // 14 — 1.5 undecillion
-        1.5e39, // 15 — 1.5 duodecillion
-        1.5e42  // 16 — 1.5 tredecillion
-    ];
     function getCheapenUpgradeCost(handIndex, nextLevel) {
-        const n = Math.max(1, Math.floor(Number(nextLevel) || 1));
-        if (n <= CHEAPEN_LEGACY_MAX_NEXT_LEVEL) {
-            return 1000 * Math.pow(10, n - 1);
-        }
-        if (n === 10) {
-            return Math.floor(CHEAPEN_COST_LEVEL_10_RAW);
-        }
-        if (n > 10) {
-            const idx = n - 11;
-            if (idx >= 0 && idx < CHEAPEN_COST_RAW_BY_NEXT_LEVEL.length) {
-                return Math.floor(CHEAPEN_COST_RAW_BY_NEXT_LEVEL[idx]);
-            }
-            const last = CHEAPEN_COST_RAW_BY_NEXT_LEVEL[CHEAPEN_COST_RAW_BY_NEXT_LEVEL.length - 1];
-            const extraTiers = idx - CHEAPEN_COST_RAW_BY_NEXT_LEVEL.length + 1;
-            return Math.floor(last * Math.pow(1000, extraTiers));
-        }
-        return Math.floor(CHEAPEN_EXTENDED_COST_BASE * Math.pow(1000, n - CHEAPEN_EXTENDED_START_NEXT_LEVEL));
+        return getCheapenUpgradeCostForLevel(nextLevel);
     }
     let cheapenSectionUnlocked = false;
     let devCheapenAutobuyOn = false;
     let cheapenAutoBuyCountdownByHand = [];
-    const DEV_CHEAPEN_AUTOBUY_DELAY = 0.1;
     let devSlowdownAutobuyOn = false;
     let slowdownAutoBuyCountdownByHand = [];
-    const DEV_SLOWDOWN_AUTOBUY_DELAY = 0.1;
 
-    /** Discount / wording for a given achieved Cheapen level (1…cap). */
-    function getCheapenEffectTextForAchievedLevel(level) {
-        if (level <= 0) return "";
-        if (level === 1) return "99% off speed upgrade cost";
-        const decimals = level - 1;
-        return "99." + "9".repeat(decimals) + "% off speed upgrade cost";
-    }
     /** Effect after purchasing the next tier (same as achieved level once bought). */
     function getCheapenEffectText(nextLevel) {
         return getCheapenEffectTextForAchievedLevel(nextLevel);
@@ -5804,11 +5694,12 @@ import {
         if (balance < cost) return;
         handEarnings[handIndex] = balance - cost;
         markMeaningfulProgress();
-        refreshTotalFromHandEarnings();
+        if (opts?.skipUpgradeDom) autobuyDeferredTotalsFlush = true;
+        else refreshTotalFromHandEarnings();
         cheapenLevel[handIndex] = level + 1;
         const handNum = handIndex + 1;
         if (!opts?.silentLog) addToLog("Speed cheapen purchased for Hand " + handNum + " (level " + cheapenLevel[handIndex] + ")", "system");
-        incrementalEl.textContent = formatCount(totalChanges);
+        if (!opts?.skipUpgradeDom) incrementalEl.textContent = formatCount(totalChanges);
         const origin = confettiOriginEl || speedRowRefs[handIndex]?.cheapenBtn?.closest(".speed-upgrade-row");
         if (origin && !opts?.fromAutobuy) sprayConfettiFrom(origin, opts?.confettiHoldRepeatCoalesce ? { holdRepeatCoalesce: true } : undefined);
         if (opts?.skipUpgradeDom) {
@@ -5901,17 +5792,11 @@ import {
        Purchase resets Speed to 0; each level multiplies tick value by 10^level.
        Digit animation cadence follows Speed upgrades again (same interval math as without Compaction).
     --------------------------------------------------------- */
-    const SLOWDOWN_UNLOCK_COUNT = 1e15;
-    const MAX_SLOWDOWN_LEVEL = 4;
-    /* Level 1 unchanged; each further level is 1,000× the prior (before ascension Compaction cost mult). */
-    const SLOWDOWN_COSTS = [1e16, 1e19, 1e22];
-    /** Raw count for base level 4 (nextLevel === 4): 10 septillion (10×10^24). */
-    const SLOWDOWN_COST_LEVEL_4_RAW = 10e24;
     let slowdownLevel = Array(maxHands).fill(0);
     let slowdownBonusLevel = Array(maxHands).fill(0);
     let slowdownUnlockLogged = false;
     function getEffectiveSlowdownLevel(handIndex) {
-        return Math.max(0, (slowdownLevel[handIndex] ?? 0) + (slowdownBonusLevel[handIndex] ?? 0));
+        return getEffectiveUpgradeLevel(slowdownLevel[handIndex], slowdownBonusLevel[handIndex]);
     }
 
     function getSlowdownMultiplier(handIndex) {
@@ -5920,16 +5805,8 @@ import {
     }
     function getSlowdownUpgradeCost(nextLevel) {
         const cap = getMaxSlowdownLevelCap();
-        if (nextLevel <= 0 || nextLevel > cap) return null;
-        var raw;
-        if (nextLevel === 4) {
-            raw = SLOWDOWN_COST_LEVEL_4_RAW;
-        } else {
-            const idx = Math.min(SLOWDOWN_COSTS.length - 1, nextLevel - 1);
-            raw = SLOWDOWN_COSTS[idx] * Math.pow(10, Math.max(0, nextLevel - SLOWDOWN_COSTS.length));
-        }
         var m = computeAscensionGrantTotals().slowdownCostMult || 1;
-        return Math.max(1, Math.floor(raw * m));
+        return getSlowdownUpgradeCostForLevel(nextLevel, cap, m);
     }
     function isSlowdownUnlocked() {
         return slowdownCompactionUnlockedLatched;
@@ -5937,10 +5814,6 @@ import {
     function getSlowdownEffectText(level) {
         if (level <= 0) return "No Compaction";
         return "+" + formatCount(getSlowdownMultiplierForLevel(level)) + "× tick value; digit speed scales with Speed upgrades";
-    }
-    function getSlowdownMultiplierForLevel(level) {
-        if (level <= 0) return 1;
-        return Math.pow(10, level);
     }
     function updateSlowdownUpgradeUI() {
         const unlocked = isSlowdownUnlocked();
@@ -6014,14 +5887,15 @@ import {
         if (balance < cost) return;
         handEarnings[handIndex] = balance - cost;
         markMeaningfulProgress();
-        refreshTotalFromHandEarnings();
+        if (opts?.skipUpgradeDom) autobuyDeferredTotalsFlush = true;
+        else refreshTotalFromHandEarnings();
         slowdownLevel[handIndex] = nextLevel;
         // Compaction: deliberate tempo reset for this hand.
         // Reset speed upgrades so displayed speed/CPS state and progression align.
         speedLevel[handIndex] = 0;
         const handNum = handIndex + 1;
         if (!opts?.silentLog) addToLog("Compaction purchased for Hand " + handNum + " (level " + nextLevel + "). Speed level reset.", "system");
-        incrementalEl.textContent = formatCount(totalChanges);
+        if (!opts?.skipUpgradeDom) incrementalEl.textContent = formatCount(totalChanges);
         const targetHand = hands[handIndex];
         if (targetHand) targetHand.tickAccBig = 0n;
         const origin = originEl || speedRowRefs[handIndex]?.slowdownBtn?.closest(".speed-upgrade-row");
@@ -6041,15 +5915,6 @@ import {
        Random aura every 0–60s span (see spawn mult). Manual click grants 10× (60s or ascension-boosted seconds) of that hand's effective rate; Pinky Warp Potency can multiply manual clicks when the aura idles (overflow unchanged).
        If all hands already have aura, auto-grant 25% value to a random hand.
     --------------------------------------------------------- */
-    const TIME_WARP_UNLOCK_COUNT = 1e18;
-    const TIME_WARP_SECONDS_BONUS = 60;
-    /** Multiplier when the player clicks an active aura (overflow random grants use a separate ratio). */
-    const TIME_WARP_MANUAL_CLICK_SCALE = 10;
-    const TIME_WARP_OVERFLOW_BASE_RATIO = 0.25;
-    /** Idle time (manual aura only) before potency doubles the click grant. */
-    const WARP_POTENCY_TIER1_SEC = 10;
-    const WARP_POTENCY_TIER2_SEC = 100;
-    const WARP_POTENCY_TIER3_SEC = 1000;
     let timeWarpAuraActiveByHand = [];
     /** Wall-clock ms when each hand’s aura appeared (0 if inactive); used for Warp Potency (manual only). */
     let timeWarpAuraAppearedAtMsByHand = [];
@@ -6077,8 +5942,7 @@ import {
     }
     /** Capped potency steps (10s → ×2, 100s → ×4, 1000s → ×8); overflow warps ignore this. */
     function getWarpPotencyMaxTiersEffective() {
-        const raw = Math.floor(Number(computeAscensionGrantTotals().warpPotencyMaxTiers) || 0);
-        return Math.max(0, Math.min(3, raw));
+        return getWarpPotencyMaxTiersFromTotals(computeAscensionGrantTotals());
     }
     /** 0 = base, 1 = ×2 eligible, 2 = ×4 eligible, 3 = ×8 eligible (manual aura, by idle time). */
     function getWarpPotencyTierForHandNow(handIndex, nowMs) {
@@ -6090,25 +5954,16 @@ import {
         const t0 = timeWarpAuraAppearedAtMsByHand[handIndex];
         if (!(t0 > 0)) return 0;
         const elapsedSec = (nowMs - t0) / 1000;
-        if (cap >= 3 && elapsedSec >= WARP_POTENCY_TIER3_SEC) return 3;
-        if (cap >= 2 && elapsedSec >= WARP_POTENCY_TIER2_SEC) return 2;
-        if (cap >= 1 && elapsedSec >= WARP_POTENCY_TIER1_SEC) return 1;
-        return 0;
+        return getWarpPotencyTier(elapsedSec, cap);
     }
     function getWarpPotencyMultiplierForHandNow(handIndex, nowMs) {
-        return Math.pow(2, getWarpPotencyTierForHandNow(handIndex, nowMs));
+        return getWarpPotencyMultiplierForTier(getWarpPotencyTierForHandNow(handIndex, nowMs));
     }
     function scheduleNextTimeWarpSpawn() {
         timeWarpNextSpawnInSec = Math.random() * getTimeWarpAuraSpawnSpanMaxSec();
     }
     function formatCpsForDisplay(cps) {
-        if (!isFinite(cps) || cps <= 0) return "0/s";
-        const rounded = cps < 1e6 ? Math.round(cps * 100) / 100 : cps;
-        return formatCount(rounded) + "/s";
-    }
-    function clampFiniteNonNegative(value) {
-        const n = Number(value);
-        return Number.isFinite(n) && n > 0 ? n : 0;
+        return formatCpsForDisplayWithFormatter(cps, formatCount);
     }
     /**
      * Per-hand count/s from that hand before combo/turbo (matches gameLoopTick weighting).
@@ -6219,8 +6074,7 @@ import {
     let cpsHeadlineLastPaintMs = 0;
     const CPS_HEADLINE_THROTTLE_MS = 1000;
     function getTimeWarpProductionSecondsBonus() {
-        const s = computeAscensionGrantTotals().warpManualGrantSeconds;
-        return Number.isFinite(s) && s >= 60 ? s : TIME_WARP_SECONDS_BONUS;
+        return getTimeWarpProductionSecondsBonusFromTotals(computeAscensionGrantTotals());
     }
     function getTimeWarpGrantForHand(handIndex, scale) {
         const effectiveCps = clampFiniteNonNegative(
@@ -6329,6 +6183,7 @@ import {
             }
             if (!progressed) break;
         }
+        flushAutobuyDeferredTotalsIfAny();
         const any = (speedLevel[handIndex] ?? 0) !== sl0 || (cheapenLevel[handIndex] ?? 0) !== ch0 || (slowdownLevel[handIndex] ?? 0) !== sd0;
         if (any) {
             batchedUpgradeUiFlush = false;
@@ -6461,29 +6316,20 @@ import {
     }
     /** Middle-branch: each combo that newly appears this tick trims the Time Warp aura countdown (per trigger). */
     function getAscensionComboTimeWarpDelayReductionPerTriggerSec() {
-        const t = computeAscensionGrantTotals();
-        const base = Number(t.comboTimeWarpDelayReduceSec) || 0;
-        const mult = Number(t.comboTimeWarpDelayReduceMult) || 1;
-        if (base <= 0 || mult <= 0) return 0;
-        return base * mult;
+        return getAscensionComboTimeWarpDelayReductionPerTriggerSecFromTotals(computeAscensionGrantTotals());
     }
     function applyAscensionComboTimeWarpDelayReduction(newComboTriggerCount) {
         if (newComboTriggerCount <= 0 || !isTimeWarpUnlocked()) return;
         const per = getAscensionComboTimeWarpDelayReductionPerTriggerSec();
         if (per <= 0) return;
-        const total = per * newComboTriggerCount;
-        if (!(timeWarpNextSpawnInSec > 0)) return;
-        const minLeft = 1e-4;
-        timeWarpNextSpawnInSec = Math.max(minLeft, timeWarpNextSpawnInSec - total);
+        timeWarpNextSpawnInSec = applyTimeWarpDelayReductionCountdown(timeWarpNextSpawnInSec, newComboTriggerCount, per);
     }
 
     /* ---------------------------------------------------------
        RATE DISPLAY and TICK INTERVAL (per-hand; total CPS = sum of hand CPS)
     --------------------------------------------------------- */
     function getTickIntervalMs(baseSpeed, handIndex) {
-        const mult = getSpeedMultiplier(handIndex);
-        if (!Number.isFinite(mult) || mult <= 0) return 0;
-        return baseSpeed / mult;
+        return getTickIntervalMsForMultiplier(baseSpeed, getSpeedMultiplier(handIndex));
     }
     /** Count/s row: shows Numerical mass (Phase 1) vs Black hole (Phases 2–6) only after post-map arc unlock. Hidden in Phase 7 (stillness). */
     function updateN1GravityCpsStrip() {
@@ -6499,7 +6345,7 @@ import {
         if (p === 1) {
             const spent = Math.floor(number1BlackHoleState.phase1EssenceSpent || 0);
             const m = getBlackHolePhase1RunCpsMult();
-            const ms = m.toFixed(2);
+            const ms = formatBlackHolePhase1CpsMultForUi(m);
             n1GravityCpsStripEl.className = "n1-gravity-cps-strip n1-gravity-cps-strip--mass";
             n1GravityCpsStripEl.innerHTML =
                 "<div class=\"n1-gravity-cps-strip__inner\" role=\"status\">" +
@@ -6557,21 +6403,22 @@ import {
         const cpsTotal = getInstantTotalCps();
         const bonusUnlocked = unlockedHands >= 2;
         const turboUnlocked = turboBoostUnlocked;
+        const gStack = getGravityStackTooltipPhrase();
         if (bonusMultiplierEl) {
             bonusMultiplierEl.textContent =
                 "Combo Catalog ×" + catalogMultRate.toFixed(2) + " · Ascended Combo ×" + ascComboMultRate.toFixed(2);
             bonusMultiplierEl.style.display = bonusUnlocked ? "" : "none";
             bonusMultiplierEl.title =
-                "Count per second uses Combo Catalog × Ascended Combo (= ×" + comboMult.toFixed(2) + " combined) × turbo × black hole. Time Warp uses that stack × index-finger combo bonus × the bursting hand's share.";
+                "Count per second uses Combo Catalog × Ascended Combo (= ×" + comboMult.toFixed(2) + " combined) × turbo × " + gStack + ". Time Warp uses that stack × index-finger combo bonus × the bursting hand's share.";
         }
         if (turboMultiplierDisplayEl) {
-            turboMultiplierDisplayEl.textContent = "Turbo: " + turboDisplayMult.toFixed(2) + "×";
+            turboMultiplierDisplayEl.textContent = "Turbo: " + formatTurboBoostMultiplierForDisplay(turboDisplayMult);
             turboMultiplierDisplayEl.style.display = turboUnlocked ? "" : "none";
         }
         if (incrementalRateEl) {
             incrementalRateEl.classList.toggle("rate-turbo-active", turboBoostEnabled && turboMult > 1);
             incrementalRateEl.classList.toggle("incremental-rate-value--pre-bh-wrap", !blackHoleSectionActive && unlockedHands >= 2);
-            incrementalRateEl.title = "Total count per second: raw hand rates × Combo Catalog × Ascended Combo × turbo × black hole. Hand tooltips use the same stack; center line repaints at most once per second during play.";
+            incrementalRateEl.title = "Total count per second: raw hand rates × Combo Catalog × Ascended Combo × turbo × " + gStack + ". Hand tooltips use the same stack; center line repaints at most once per second during play.";
         }
         const nowPaint = Date.now();
         const mayPaintHeadline = !throttleCpsHeadline || (nowPaint - cpsHeadlineLastPaintMs >= CPS_HEADLINE_THROTTLE_MS);
@@ -6769,38 +6616,33 @@ import {
             ref.statusCompactEl.textContent = "Hand " + (i + 1) + ": " + formatCount(bal) + " · " + formatCpsForDisplay(rawHand) + " → " + formatCpsForDisplay(eff);
         }
     }
-    function buildComboHandStatusCardsHtml() {
-        if (unlockedHands < 1) return "<li class=\"combo-hand-status-empty\">No hands.</li>";
-        const cards = [];
+    function getComboHandStatusRows() {
+        const rows = [];
         for (let i = 0; i < unlockedHands; i++) {
-            const baseCps = getHandBaseCpsBeforeSlowdownMult(i);
-            const slowF = getHandSlowdownFactorForDisplay(i);
-            const comboF = getHandComboFactorForDisplay();
-            const turboF = getHandTurboFactorForDisplay();
-            const rawHand = getHandPerHandRawCps(i);
-            const eff = getHandEffectiveCps(i);
-            const bal = handEarnings[i] || 0;
-            const n = i + 1;
-            const formula = "base × combo × turbo × Compaction: " + formatCpsForDisplay(baseCps) + " × " +
-                comboF.toFixed(2) + " × " + turboF.toFixed(2) + " × " + slowF.toFixed(2) + " = " + formatCpsForDisplay(eff);
-            cards.push(
-                "<li class=\"combo-hand-status-card\" data-hand-index=\"" + i + "\">" +
-                "<div class=\"combo-hand-status-card-title\">Hand " + n + "</div>" +
-                "<div class=\"combo-hand-status-line\"><span class=\"hand-status-k\">Count</span> <span class=\"hand-status-v\">" + formatCount(bal) + "</span></div>" +
-                "<div class=\"combo-hand-status-line\"><span class=\"hand-status-k\">Base CPS</span> <span class=\"hand-status-v\">" + formatCpsForDisplay(baseCps) + "</span></div>" +
-                "<div class=\"combo-hand-status-line\"><span class=\"hand-status-k\">Effective CPS</span> <span class=\"hand-status-v\">" + formatCpsForDisplay(eff) + "</span></div>" +
-                "<div class=\"combo-hand-status-formula\">" + formula + "</div>" +
-                "<div class=\"combo-hand-status-compact\">Hand " + n + ": " + formatCount(bal) + " · " + formatCpsForDisplay(rawHand) + " → " + formatCpsForDisplay(eff) + "</div>" +
-                "</li>"
-            );
+            rows.push({
+                handIndex: i,
+                balance: handEarnings[i] || 0,
+                baseCps: getHandBaseCpsBeforeSlowdownMult(i),
+                rawCps: getHandPerHandRawCps(i),
+                effectiveCps: getHandEffectiveCps(i),
+                comboFactor: getHandComboFactorForDisplay(),
+                turboFactor: getHandTurboFactorForDisplay(),
+                slowdownFactor: getHandSlowdownFactorForDisplay(i)
+            });
         }
-        return cards.join("");
+        return rows;
+    }
+    function buildComboHandStatusCardsHtml() {
+        return buildComboHandStatusCardsHtmlForRows(getComboHandStatusRows(), {
+            formatCount,
+            formatCps: formatCpsForDisplay
+        });
     }
     function renderComboPagePerHandStatusSectionHtml() {
-        return "<div class=\"combo-per-hand-status\" role=\"region\" aria-label=\"Per-hand production\">" +
-            "<p class=\"combo-per-hand-status-title\">Per-hand production</p>" +
-            "<p class=\"combo-per-hand-status-note\">These values use the same throttled refresh as the main hand rows (typically a few times per second) so the tab stays responsive.</p>" +
-            "<ul id=\"combo-per-hand-status-list\" class=\"combo-hand-status-grid\">" + buildComboHandStatusCardsHtml() + "</ul></div>";
+        return renderComboPagePerHandStatusSectionHtmlForRows(getComboHandStatusRows(), {
+            formatCount,
+            formatCps: formatCpsForDisplay
+        });
     }
     function refreshCombinationsHandStatusIfOpen() {
         if (!pagePanelEl || pagePanelEl.style.display === "none" || !pagePanelTitleEl) return;
@@ -6832,39 +6674,12 @@ import {
        - Piecewise drain floor / exponent (`TURBO_DRAIN_*`), Burn Efficiency ascension
        - Ring sustain: extra combo→meter mult, drain mult, Off-only fill mult, passive meter/sec while On (Fill scales passive regen too)
     --------------------------------------------------------- */
-    const TURBO_UNLOCK_COUNT = 1e12;
-    const TURBO_BOOST_METER_BASE_MAX = 100;
-    // Combo size → boost points: 2 hands = 1, 6 hands = 16, 10 hands = 256 (2^(minHands-2))
-    const TURBO_COMBO_POINTS_BASE = 2;
-    const TURBO_COMBO_POINTS_EXP_OFFSET = 2;   // points = TURBO_COMBO_POINTS_BASE^(minHands - TURBO_COMBO_POINTS_EXP_OFFSET)
-    const TURBO_COUNT_MULTIPLIER_BASE_MAX = 100;    // ceiling from Ring scaling before Turbo-scension Mult (×2 per Mult level)
-    const TURBO_MULTIPLIER_CURVE_EXPONENT = 2; // applied to burn intensity ratio (shape of burn → boost)
-    const TURBO_BURN_RATE_PER_SEC = 3;         // base meter drain per second (doubled per Turbo-scension Burn level)
-    /** Maps nominal burn to [0,1); higher Burn upgrades → stronger boost (asymptotic). */
-    const TURBO_BURN_INTENSITY_K = 8;
-    /** Extra boost when the tank is large and full: peak mult scales by 1 + WEIGHT * (min(ratio, MAX) - 1). */
-    const TURBO_TANK_PEAK_MAX_RATIO = 16;
-    const TURBO_TANK_PEAK_WEIGHT = 0.06;
-    /** Near-empty drain: rate multiplier from u = meter/max; u→0 approaches FLOOR; u=1 is full speed. */
-    const TURBO_DRAIN_FLOOR = 0.07;
-    const TURBO_DRAIN_PIECE_EXP = 0.55;
-    const TURBO_SCENSION_ACTIVATION_BASE_COST = 10000;
-    /** Burn/Tank/Mult/Fill row copy for upgrade-style detail tooltips (Turbo-scension panel). */
-    const TURBO_SCENSION_AXIS_TITLES = [
-        "Burn — Each level doubles how fast the meter drains while Turbo is on and strengthens how strongly burn drives boost toward your Mult ceiling. Higher burn empties the tank faster unless you refill with combos or Fill upgrades.",
-        "Tank — Each level doubles max meter capacity. Larger tanks hold more charge per fill and adjust peak boost when the gauge is full.",
-        "Mult — Each level doubles your Turbo boost ceiling (the × you can approach when burn, tank fullness, and meter align).",
-        "Fill — Each level doubles combo-driven meter gains and boosts passive meter regen from Ring while Turbo is on."
-    ];
-    /** Point cost for first Turbo Leveler purchase; each completed purchase doubles this baseline for the next. */
-    const TURBO_LEVELER_BASE_POINT_COST = 48;
     function getTurboScensionActivationCost() {
-        const m = computeAscensionGrantTotals().turboScensionActivationCostMult || 1;
-        return Math.max(1, Math.floor(TURBO_SCENSION_ACTIVATION_BASE_COST * m));
+        return getTurboScensionActivationCostFromTotals(computeAscensionGrantTotals());
     }
     /** Independent random Burn/Tank/Mult/Fill rolls per Upgrade click (1 base + ascension extras). */
     function getTurboScensionUpgradeRollCount() {
-        return 1 + (computeAscensionGrantTotals().turboScensionExtraUpgradeRolls || 0);
+        return getTurboScensionUpgradeRollCountFromTotals(computeAscensionGrantTotals());
     }
 
     let turboBoostMeter = 0;
@@ -6878,40 +6693,24 @@ import {
     // Converts combo size (minHands) into meter points.
     // Current mapping uses an exponential curve: points = base^(minHands-offset)
     function getTurboScensionFillMult() {
-        return Math.pow(2, Math.max(0, turboScensionFillLevel));
+        return getTurboScensionFillMultForLevel(turboScensionFillLevel);
     }
     function getTurboComboPoints(minHands) {
-        if (minHands < 2) return 0;
-        let pts = Math.pow(TURBO_COMBO_POINTS_BASE, minHands - TURBO_COMBO_POINTS_EXP_OFFSET);
-        const totals = computeAscensionGrantTotals();
-        const mult = totals.comboTurboPointsMult || 1;
-        const flat = totals.turboBoostComboFillAdd || 0;
-        const meterExtra = totals.turboMeterFromComboMult || 1;
-        return (pts * mult + flat) * meterExtra * getTurboScensionFillMult();
+        return getTurboComboPointsForMinHands(minHands, computeAscensionGrantTotals(), turboScensionFillLevel);
     }
 
     function getTurboNominalBurnPerSec() {
-        const ascBurn = computeAscensionGrantTotals().turboBurnRateMult || 1;
-        return TURBO_BURN_RATE_PER_SEC * Math.pow(2, Math.max(0, turboScensionBurnLevel)) * ascBurn;
-    }
-    /** 0..~1 from current Burn tier (not reduced by Burn Efficiency — that only affects drain). */
-    function getTurboBurnIntensityRatio() {
-        const nominal = getTurboNominalBurnPerSec();
-        return nominal / (nominal + TURBO_BURN_INTENSITY_K);
-    }
-    function getTurboTankPeakMult(meterMax, curveScale) {
-        const tr = Math.min(TURBO_TANK_PEAK_MAX_RATIO, meterMax / Math.max(1e-9, curveScale));
-        return 1 + TURBO_TANK_PEAK_WEIGHT * (tr - 1);
+        return getTurboNominalBurnPerSecFromState(computeAscensionGrantTotals(), turboScensionBurnLevel);
     }
     /** Burn-driven boost, scaled by tank fullness and (when full) larger tanks hit harder. */
     function getTurboBoostMultiplierFromState() {
-        const curveScale = getTurboMeterCurveScale();
-        const meterMax = getTurboMeterMax();
-        const fullness = Math.min(1, turboBoostMeter / Math.max(1e-9, meterMax));
-        const burnCurve = Math.pow(getTurboBurnIntensityRatio(), TURBO_MULTIPLIER_CURVE_EXPONENT);
-        const tankPeakMult = getTurboTankPeakMult(meterMax, curveScale);
-        const multCap = getTurboCountMultiplierMax();
-        return 1 + burnCurve * (multCap - 1) * fullness * tankPeakMult;
+        return getTurboBoostMultiplierFromTurboState({
+            meter: turboBoostMeter,
+            meterMax: getTurboMeterMax(),
+            curveScale: getTurboMeterCurveScale(),
+            nominalBurnPerSec: getTurboNominalBurnPerSec(),
+            multiplierMax: getTurboCountMultiplierMax()
+        });
     }
     // Applied turbo multiplier. If turbo is toggled Off, this returns 1× (no effect).
     function getTurboCountMultiplier() {
@@ -6953,7 +6752,7 @@ import {
         return turboBoostUnlocked && isTurboScensionUnlocked() && !!computeAscensionGrantTotals().turboLeveler && !turboBoostEnabled;
     }
     function getTurboLevelerNextPointCost() {
-        return TURBO_LEVELER_BASE_POINT_COST * Math.pow(2, turboLevelerPurchases);
+        return getTurboLevelerNextPointCostForPurchases(turboLevelerPurchases);
     }
     /** Spend bank on random Burn/Tank/Mult/Fill while Turbo is off (Turbo Leveler grant). */
     function tryTurboLevelerPurchases() {
@@ -6974,7 +6773,7 @@ import {
         }
         if (any) {
             markMeaningfulProgress();
-            updateTurboBoostUI();
+            updateTurboBoostUI({ force: true });
             updateRateDisplay();
             autosaveNow();
         }
@@ -7010,7 +6809,7 @@ import {
             turboBoostFillEl.classList.add("turbo-boost-fill-gain");
             setTimeout(() => turboBoostFillEl.classList.remove("turbo-boost-fill-gain"), 400);
         }
-        updateTurboBoostUI();
+        updateTurboBoostUI({ force: true });
     }
 
     // Burns meter while turbo is actively applying a multiplier (toggle On).
@@ -7018,13 +6817,13 @@ import {
     function updateTurboBurn(dtSec) {
         if (!turboBoostUnlocked || !turboBoostEnabled || turboBoostMeter <= 0) return;
         const meterMax = getTurboMeterMax();
-        const u = Math.max(0, Math.min(1, turboBoostMeter / Math.max(1e-9, meterMax)));
-        const piecewise = TURBO_DRAIN_FLOOR + (1 - TURBO_DRAIN_FLOOR) * Math.pow(u, TURBO_DRAIN_PIECE_EXP);
-        const reduce = computeAscensionGrantTotals().turboBurnEfficiencyReduceSum || 0;
-        const effMult = Math.max(0, 1 - reduce);
-        const drainM = computeAscensionGrantTotals().turboMeterDrainMult || 1;
-        const burnRate = getTurboNominalBurnPerSec() * effMult * piecewise * drainM;
-        const drain = dtSec * burnRate;
+        const totals = computeAscensionGrantTotals();
+        const drain = getTurboBurnDrainForStep(dtSec, {
+            meter: turboBoostMeter,
+            meterMax,
+            nominalBurnPerSec: getTurboNominalBurnPerSecFromState(totals, turboScensionBurnLevel),
+            totals
+        });
         turboBoostMeter = Math.max(0, turboBoostMeter - drain);
         if (turboBoostMeter <= 0) {
             turboBoostEnabled = false;
@@ -7038,7 +6837,7 @@ import {
             turboBoostGaugeEl.classList.add("turbo-boost-gauge-burning");
             setTimeout(() => turboBoostGaugeEl.classList.remove("turbo-boost-gauge-burning"), 250);
         }
-        updateTurboBoostUI();
+        updateTurboBoostUI({ force: true });
     }
 
     /** Flat meter per second while Turbo On and meter has charge (Ring sustain nodes). */
@@ -7123,8 +6922,6 @@ import {
         const dur = formatUpgradeAffordEtaDuration(secApprox).replace(/ at current rate/g, "").trim();
         return " Roughly " + dur + " of Turbo runtime at full tick rate to afford this if the meter stays charged (drain slows near empty; an empty meter turns Turbo off).";
     }
-    const TURBO_LEVELER_LINE_TOOLTIP =
-        "While Turbo is off, combo fill past a full meter banks here. With Turbo still off, meeting the point cost buys one random Burn/Tank/Mult/Fill level; that cost doubles each purchase.";
     /**
      * @param {object} [opts]
      * @param {boolean} [opts.skipLog] Omit tip log (autobuy).
@@ -7167,7 +6964,7 @@ import {
         turboBoostMeter = Math.min(turboBoostMeter, getTurboMeterMax());
         markMeaningfulProgress();
         if (!opts.skipUIUpdate) {
-            updateTurboBoostUI();
+            updateTurboBoostUI({ force: true });
             updateRateDisplay();
         }
         if (!opts.skipAutosave) autosaveNow();
@@ -7177,9 +6974,38 @@ import {
         }
         return true;
     }
-    // Syncs the turbo UI (unlock visibility, gauge fill, and displayed multiplier).
-    function updateTurboBoostUI() {
-        tryUnlockTurboIfEligible();
+    let turboBoostUiFullLastMs = 0;
+    let turboBoostUiFullDigest = "";
+    const TURBO_BOOST_UI_FULL_MIN_MS = 120;
+    let turboBoostUiStripLastMeterRounded = NaN;
+    let turboBoostUiStripLastMeterMaxRounded = NaN;
+    let turboBoostUiStripLastMultStr = "";
+    let turboBoostUiStripLastActCount = NaN;
+    let turboBoostUiStripLastEnabled = null;
+    function computeTurboBoostUiFullDigest() {
+        const u = turboBoostUnlocked ? 1 : 0;
+        if (!u) return "u0";
+        const s = isTurboScensionUnlocked() ? 1 : 0;
+        if (!s) return "u1|s0|" + Math.round(getTurboMeterMax());
+        const actCost = getTurboScensionActivationCost();
+        const grants = computeAscensionGrantTotals();
+        return [
+            "u1|s1",
+            Math.round(Number(turboScensionBurnLevel) || 0),
+            Math.round(Number(turboScensionTankLevel) || 0),
+            Math.round(Number(turboScensionMultLevel) || 0),
+            Math.round(Number(turboScensionFillLevel) || 0),
+            actCost,
+            turboActivationCount,
+            getTurboScensionUpgradeRollCount(),
+            grants.turboScensionAllAxesUpgrade ? 1 : 0,
+            grants.turboLeveler ? 1 : 0,
+            grants.turboLeveler ? turboLevelerBank : 0,
+            grants.turboLeveler ? getTurboLevelerNextPointCost() : 0,
+            Math.round(getTurboMeterMax()),
+        ].join("|");
+    }
+    function paintTurboBoostScisionFull() {
         const showScisionPanel = isTurboScensionUnlocked() && turboBoostUnlocked;
         if (turboScensionPanelEl) {
             turboScensionPanelEl.style.display = showScisionPanel ? "" : "none";
@@ -7250,17 +7076,56 @@ import {
                 }
             }
         }
+    }
+    function paintTurboBoostMeterStrip() {
         if (!turboBoostWrapEl || !turboBoostUnlocked) return;
-        if (turboBoostEnabledCheckbox) turboBoostEnabledCheckbox.checked = !!turboBoostEnabled;
-        if (turboBoostToggleLabelEl) turboBoostToggleLabelEl.textContent = turboBoostEnabled ? "On" : "Off";
+        const en = !!turboBoostEnabled;
+        if (turboBoostUiStripLastEnabled !== en) {
+            turboBoostUiStripLastEnabled = en;
+            if (turboBoostEnabledCheckbox) turboBoostEnabledCheckbox.checked = en;
+            if (turboBoostToggleLabelEl) turboBoostToggleLabelEl.textContent = en ? "On" : "Off";
+        }
         const meterMax = getTurboMeterMax();
         const pct = Math.min(100, (turboBoostMeter / meterMax) * 100);
         if (turboBoostFillEl) turboBoostFillEl.style.width = pct + "%";
-        if (turboBoostGaugeEl) turboBoostGaugeEl.setAttribute("aria-valuenow", Math.round(turboBoostMeter));
-        if (turboBoostGaugeEl) turboBoostGaugeEl.setAttribute("aria-valuemax", Math.round(meterMax));
-        const displayMult = getTurboCountMultiplierFromMeter();
-        if (turboBoostMultiplierEl) turboBoostMultiplierEl.textContent = displayMult.toFixed(2) + "×";
-        if (turboBoostActivationsEl) turboBoostActivationsEl.textContent = "Activations: " + formatCount(turboActivationCount);
+        const mr = Math.round(turboBoostMeter);
+        const mmx = Math.round(meterMax);
+        if (turboBoostGaugeEl) {
+            if (mr !== turboBoostUiStripLastMeterRounded) {
+                turboBoostUiStripLastMeterRounded = mr;
+                turboBoostGaugeEl.setAttribute("aria-valuenow", mr);
+            }
+            if (mmx !== turboBoostUiStripLastMeterMaxRounded) {
+                turboBoostUiStripLastMeterMaxRounded = mmx;
+                turboBoostGaugeEl.setAttribute("aria-valuemax", mmx);
+            }
+        }
+        const multStr = formatTurboBoostMultiplierForDisplay(getTurboCountMultiplierFromMeter());
+        if (turboBoostMultiplierEl && multStr !== turboBoostUiStripLastMultStr) {
+            turboBoostUiStripLastMultStr = multStr;
+            turboBoostMultiplierEl.textContent = multStr;
+        }
+        if (turboBoostActivationsEl && turboActivationCount !== turboBoostUiStripLastActCount) {
+            turboBoostUiStripLastActCount = turboActivationCount;
+            turboBoostActivationsEl.textContent = "Activations: " + formatCount(turboActivationCount);
+        }
+    }
+    /**
+     * @param {{ force?: boolean }} [opts] force: immediate Turbo-scision pass (purchases, toggle, load).
+     */
+    function updateTurboBoostUI(opts) {
+        opts = opts || {};
+        const force = opts.force === true;
+        tryUnlockTurboIfEligible();
+        const now = Date.now();
+        const digest = computeTurboBoostUiFullDigest();
+        const paintFull = force || digest !== turboBoostUiFullDigest || now - turboBoostUiFullLastMs >= TURBO_BOOST_UI_FULL_MIN_MS;
+        if (paintFull) {
+            turboBoostUiFullDigest = digest;
+            turboBoostUiFullLastMs = now;
+            paintTurboBoostScisionFull();
+        }
+        paintTurboBoostMeterStrip();
     }
 
     if (turboScensionUpgradeBtn) {
@@ -7271,7 +7136,7 @@ import {
             turboBoostEnabled = turboBoostEnabledCheckbox.checked;
             if (turboBoostToggleLabelEl) turboBoostToggleLabelEl.textContent = turboBoostEnabled ? "On" : "Off";
             if (!turboBoostEnabled) tryTurboLevelerPurchases();
-            updateTurboBoostUI();
+            updateTurboBoostUI({ force: true });
             updateRateDisplay();
         });
     }
@@ -7304,13 +7169,7 @@ import {
     }
 
     function getSaveState(savedAt) {
-        const numberModulesState = {};
-        Object.keys(NUMBER_MODULES).forEach(k => {
-            const m = NUMBER_MODULES[k];
-            numberModulesState[k] = m.getSaveData();
-        });
-        return {
-            savedAt: savedAt || Date.now(),
+        return createGameSaveState(savedAt, {
             handEarnings,
             unlockedHands,
             speedLevel,
@@ -7340,7 +7199,6 @@ import {
             turboLevelerPurchases,
             earnedComboNames,
             comboActivationCounts,
-            comboActivationEdgeVersion: COMBO_ACTIVATION_EDGE_SAVE_VERSION,
             comboDiscoveryMilestonePendingQueue,
             comboDiscoveryMilestoneReadyAtMs,
             comboDiscoveryMilestoneCooldownSpanMs,
@@ -7352,7 +7210,7 @@ import {
             shownBannerIds: Array.from(shownBannerIds),
             closedBanners,
             settings,
-            numberModulesState,
+            numberModulesState: collectNumberModulesSaveState(NUMBER_MODULES),
             number1RunPeakTotalCount,
             number1AscensionEssence,
             number1AscensionPendingBonusEssence,
@@ -7366,98 +7224,69 @@ import {
             ascensionNumber1IntroSeen,
             ascensionTreeVersion: ASCENSION_TREE_VERSION,
             clapCooldownUntilMsByHand,
-            totalPlayTimeMs: saveTotalPlayTimeMs
-        };
+            totalPlayTimeMs: number1LoopRuntime.getTotalPlayTimeMs()
+        });
     }
     function autosaveNow() {
         if (suppressAutosave) return;
-        try { localStorage.setItem(SAVE_KEY, JSON.stringify(getSaveState(Date.now()))); } catch (_) {}
-    }
-    /** Non-null only for valid non-negative saved essence (Number 1); avoids losing essence to parse quirks. */
-    function parseNumber1AscensionEssenceFromSaveValue(v) {
-        if (v == null) return null;
-        if (typeof v === "bigint") {
-            if (v < 0n) return null;
-            const n = Number(v);
-            return Number.isFinite(n) ? Math.min(Number.MAX_SAFE_INTEGER, Math.floor(n)) : Number.MAX_SAFE_INTEGER;
-        }
-        let n;
-        if (typeof v === "string") {
-            const t = v.trim();
-            if (!/^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(t)) return null;
-            n = Number(t);
-        } else {
-            n = Number(v);
-        }
-        if (!Number.isFinite(n) || n < 0) return null;
-        return Math.min(Number.MAX_SAFE_INTEGER, Math.floor(n));
+        writeSaveData(localStorage, getSaveState(Date.now()));
     }
     /** Essence is stored top-level and under numberModulesState[1]; use max so 0 in one field cannot wipe the other. */
     function mergeNumber1AscensionEssenceFromSaveData(data) {
         if (!data || typeof data !== "object") return;
-        const candidates = [];
-        const add = (v) => {
-            const p = parseNumber1AscensionEssenceFromSaveValue(v);
-            if (p !== null) candidates.push(p);
-        };
-        add(data.number1AscensionEssence);
-        if (data.numberModulesState && typeof data.numberModulesState === "object") {
-            const n1 = data.numberModulesState["1"];
-            if (n1 && typeof n1 === "object" && n1.ascensionEssence != null) add(n1.ascensionEssence);
-        }
-        if (candidates.length === 0) return;
-        number1AscensionEssence = Math.max(number1AscensionEssence, Math.min(Number.MAX_SAFE_INTEGER, Math.max(...candidates)));
+        number1AscensionEssence = mergeNumber1AscensionEssenceSaveValue(data, number1AscensionEssence);
     }
     function applyLoadedState(data) {
         if (!data || typeof data !== "object") return;
+        number1LoopRuntime.setTotalPlayTimeMs(data.totalPlayTimeMs);
+        number1LoopRuntime.resetSavePlayWallClock();
         {
-            const t = Number(data.totalPlayTimeMs);
-            saveTotalPlayTimeMs = Number.isFinite(t) && t >= 0 ? Math.min(Number.MAX_SAFE_INTEGER, Math.floor(t)) : 0;
+            const savedHandEarnings = normalizeFixedArray(data.handEarnings, maxHands, 0);
+            if (savedHandEarnings) handEarnings = savedHandEarnings;
         }
-        lastSavePlayWallMs = null;
-        if (Array.isArray(data.handEarnings)) handEarnings = data.handEarnings.slice(0, maxHands).concat(Array(Math.max(0, maxHands - data.handEarnings.length)).fill(0));
-        if (Array.isArray(data.speedLevel)) speedLevel = data.speedLevel.slice(0, maxHands).concat(Array(Math.max(0, maxHands - data.speedLevel.length)).fill(0));
-        if (Array.isArray(data.speedBonusLevel)) speedBonusLevel = data.speedBonusLevel.slice(0, maxHands).concat(Array(Math.max(0, maxHands - data.speedBonusLevel.length)).fill(0));
-        else speedBonusLevel = Array(maxHands).fill(0);
+        {
+            const savedSpeedLevel = normalizeFixedArray(data.speedLevel, maxHands, 0);
+            if (savedSpeedLevel) speedLevel = savedSpeedLevel;
+        }
+        {
+            const savedSpeedBonusLevel = normalizeFixedArray(data.speedBonusLevel, maxHands, 0);
+            if (savedSpeedBonusLevel) speedBonusLevel = savedSpeedBonusLevel;
+            else speedBonusLevel = Array(maxHands).fill(0);
+        }
         clapDigitPrevious = Array(maxHands).fill(-1);
-        clapCooldownUntilMsByHand = Array(maxHands).fill(0);
-        if (Array.isArray(data.clapCooldownUntilMsByHand)) {
-            const src = data.clapCooldownUntilMsByHand;
-            const now = Date.now();
-            for (let i = 0; i < maxHands && i < src.length; i++) {
-                const t = Number(src[i]);
-                clapCooldownUntilMsByHand[i] = Number.isFinite(t) && t > now ? t : 0;
-            }
+        clapCooldownUntilMsByHand = normalizeFutureTimestampArray(data.clapCooldownUntilMsByHand, maxHands, Date.now()) || Array(maxHands).fill(0);
+        {
+            const savedCheapenLevel = normalizeFixedArray(data.cheapenLevel, maxHands, 0);
+            if (savedCheapenLevel) cheapenLevel = savedCheapenLevel;
         }
-        if (Array.isArray(data.cheapenLevel)) cheapenLevel = data.cheapenLevel.slice(0, maxHands).concat(Array(Math.max(0, maxHands - data.cheapenLevel.length)).fill(0));
-        if (Array.isArray(data.cheapenBonusLevel)) cheapenBonusLevel = data.cheapenBonusLevel.slice(0, maxHands).concat(Array(Math.max(0, maxHands - data.cheapenBonusLevel.length)).fill(0));
-        else cheapenBonusLevel = Array(maxHands).fill(0);
-        if (Array.isArray(data.slowdownLevel)) slowdownLevel = data.slowdownLevel.slice(0, maxHands).concat(Array(Math.max(0, maxHands - data.slowdownLevel.length)).fill(0));
-        if (Array.isArray(data.slowdownBonusLevel)) slowdownBonusLevel = data.slowdownBonusLevel.slice(0, maxHands).concat(Array(Math.max(0, maxHands - data.slowdownBonusLevel.length)).fill(0));
-        else slowdownBonusLevel = Array(maxHands).fill(0);
+        {
+            const savedCheapenBonusLevel = normalizeFixedArray(data.cheapenBonusLevel, maxHands, 0);
+            if (savedCheapenBonusLevel) cheapenBonusLevel = savedCheapenBonusLevel;
+            else cheapenBonusLevel = Array(maxHands).fill(0);
+        }
+        {
+            const savedSlowdownLevel = normalizeFixedArray(data.slowdownLevel, maxHands, 0);
+            if (savedSlowdownLevel) slowdownLevel = savedSlowdownLevel;
+        }
+        {
+            const savedSlowdownBonusLevel = normalizeFixedArray(data.slowdownBonusLevel, maxHands, 0);
+            if (savedSlowdownBonusLevel) slowdownBonusLevel = savedSlowdownBonusLevel;
+            else slowdownBonusLevel = Array(maxHands).fill(0);
+        }
         slowdownUnlockLogged = !!data.slowdownUnlockLogged;
         slowdownCompactionUnlockedLatched = !!data.slowdownCompactionUnlockedLatched;
-        if (!slowdownCompactionUnlockedLatched && Array.isArray(data.slowdownLevel)) {
-            for (let si = 0; si < data.slowdownLevel.length; si++) {
-                if ((Number(data.slowdownLevel[si]) || 0) > 0) {
-                    slowdownCompactionUnlockedLatched = true;
-                    break;
-                }
-            }
+        if (!slowdownCompactionUnlockedLatched && hasPositiveNumberEntry(data.slowdownLevel)) {
+            slowdownCompactionUnlockedLatched = true;
         }
-        if (Array.isArray(data.timeWarpAuraActiveByHand)) timeWarpAuraActiveByHand = data.timeWarpAuraActiveByHand.slice(0, maxHands).map(v => !!v).concat(Array(Math.max(0, maxHands - data.timeWarpAuraActiveByHand.length)).fill(false));
-        if (Array.isArray(data.timeWarpAuraAppearedAtMsByHand)) {
-            timeWarpAuraAppearedAtMsByHand = data.timeWarpAuraAppearedAtMsByHand.slice(0, maxHands).map(v => {
-                const t = Number(v);
-                return Number.isFinite(t) && t > 0 ? t : 0;
-            }).concat(Array(Math.max(0, maxHands - data.timeWarpAuraAppearedAtMsByHand.length)).fill(0));
-        } else {
-            timeWarpAuraAppearedAtMsByHand = [];
+        {
+            const savedTimeWarpAuraActive = normalizeFixedBooleanArray(data.timeWarpAuraActiveByHand, maxHands, false);
+            if (savedTimeWarpAuraActive) timeWarpAuraActiveByHand = savedTimeWarpAuraActive;
         }
-        timeWarpNextSpawnInSec = Number.isFinite(data.timeWarpNextSpawnInSec) && data.timeWarpNextSpawnInSec >= 0 ? data.timeWarpNextSpawnInSec : 0;
+        timeWarpAuraAppearedAtMsByHand = normalizePositiveTimestampArray(data.timeWarpAuraAppearedAtMsByHand, maxHands, 0) || [];
+        timeWarpNextSpawnInSec = normalizeNonNegativeNumber(data.timeWarpNextSpawnInSec);
         timeWarpUnlockLogged = !!data.timeWarpUnlockLogged;
-        unlockedHandsCap = Math.max(1, Math.min(maxHands, Number(data.unlockedHandsCap) || maxHands));
-        unlockedHands = Math.max(1, Math.min(unlockedHandsCap, Number(data.unlockedHands) || 1));
+        unlockedHandsCap = normalizeNumberInRange(Number(data.unlockedHandsCap) || maxHands, 1, maxHands, maxHands);
+        unlockedHands = normalizeNumberInRange(Number(data.unlockedHands) || 1, 1, unlockedHandsCap, 1);
         for (let i = unlockedHands; i < maxHands; i++) handEarnings[i] = 0;
         while (timeWarpAuraAppearedAtMsByHand.length < maxHands) timeWarpAuraAppearedAtMsByHand.push(0);
         for (let i = 0; i < unlockedHands; i++) {
@@ -7472,104 +7301,64 @@ import {
             hands.push(new HandCounter(handNum, HAND_BASE_SPEED, slot));
         }
         autoBuyUnlocked = !!data.autoBuyUnlocked;
-        if (Array.isArray(data.autoBuyEnabledByHand)) autoBuyEnabledByHand = data.autoBuyEnabledByHand.slice(0, maxHands);
-        if (Array.isArray(data.autoBuyCountdownSecondsByHand)) autoBuyCountdownSecondsByHand = data.autoBuyCountdownSecondsByHand.slice(0, maxHands);
+        autoBuyEnabledByHand = normalizeArrayPrefix(data.autoBuyEnabledByHand, maxHands) || autoBuyEnabledByHand;
+        autoBuyCountdownSecondsByHand = normalizeArrayPrefix(data.autoBuyCountdownSecondsByHand, maxHands) || autoBuyCountdownSecondsByHand;
         turboBoostMeter = Number(data.turboBoostMeter) || 0;
         turboBoostUnlocked = !!data.turboBoostUnlocked;
         turboBoostEnabled = data.turboBoostEnabled !== false;
-        turboActivationCount = Number.isFinite(data.turboActivationCount) && data.turboActivationCount >= 0 ? Math.floor(data.turboActivationCount) : 0;
-        turboScensionBurnLevel = Number.isFinite(data.turboScensionBurnLevel) && data.turboScensionBurnLevel >= 0 ? Math.floor(data.turboScensionBurnLevel) : 0;
-        turboScensionTankLevel = Number.isFinite(data.turboScensionTankLevel) && data.turboScensionTankLevel >= 0 ? Math.floor(data.turboScensionTankLevel) : 0;
-        turboScensionMultLevel = Number.isFinite(data.turboScensionMultLevel) && data.turboScensionMultLevel >= 0 ? Math.floor(data.turboScensionMultLevel) : 0;
-        turboScensionFillLevel = Number.isFinite(data.turboScensionFillLevel) && data.turboScensionFillLevel >= 0 ? Math.floor(data.turboScensionFillLevel) : 0;
+        turboActivationCount = normalizeNonNegativeInteger(data.turboActivationCount);
+        turboScensionBurnLevel = normalizeNonNegativeInteger(data.turboScensionBurnLevel);
+        turboScensionTankLevel = normalizeNonNegativeInteger(data.turboScensionTankLevel);
+        turboScensionMultLevel = normalizeNonNegativeInteger(data.turboScensionMultLevel);
+        turboScensionFillLevel = normalizeNonNegativeInteger(data.turboScensionFillLevel);
         {
             const b = Number(data.turboLevelerBank);
             turboLevelerBank = Number.isFinite(b) && b >= 0 ? Math.min(Number.MAX_SAFE_INTEGER, b) : 0;
         }
-        turboLevelerPurchases = Number.isFinite(data.turboLevelerPurchases) && data.turboLevelerPurchases >= 0 ? Math.floor(data.turboLevelerPurchases) : 0;
+        turboLevelerPurchases = normalizeNonNegativeInteger(data.turboLevelerPurchases);
         if (!turboBoostEnabled) tryTurboLevelerPurchases();
-        adaptiveLastProgressAtMs = Number.isFinite(data.adaptiveLastProgressAtMs) && data.adaptiveLastProgressAtMs > 0 ? data.adaptiveLastProgressAtMs : Date.now();
-        adaptiveLastHintAtMs = Number.isFinite(data.adaptiveLastHintAtMs) && data.adaptiveLastHintAtMs > 0 ? data.adaptiveLastHintAtMs : 0;
-        if (Array.isArray(data.earnedComboNames)) {
-            earnedComboNames.length = 0;
-            data.earnedComboNames.forEach(n => earnedComboNames.push(n));
-        }
-        const loadedActivationEdgeVer = Number(data.comboActivationEdgeVersion);
-        if (loadedActivationEdgeVer === COMBO_ACTIVATION_EDGE_SAVE_VERSION && data.comboActivationCounts && typeof data.comboActivationCounts === "object") {
-            comboActivationCounts = {};
-            Object.keys(data.comboActivationCounts).forEach(k => {
-                const v = Number(data.comboActivationCounts[k]);
-                comboActivationCounts[k] = Number.isFinite(v) && v >= 0 ? Math.floor(v) : 0;
-            });
-        } else {
-            comboActivationCounts = {};
-        }
-        if (Array.isArray(data.comboDiscoveryMilestonePendingQueue)) {
-            comboDiscoveryMilestonePendingQueue = data.comboDiscoveryMilestonePendingQueue.filter(nm => typeof nm === "string" && nm.length > 0);
-        } else {
-            comboDiscoveryMilestonePendingQueue = [];
-        }
+        adaptiveLastProgressAtMs = normalizePositiveTimestamp(data.adaptiveLastProgressAtMs, Date.now());
+        adaptiveLastHintAtMs = normalizePositiveTimestamp(data.adaptiveLastHintAtMs, 0);
+        replaceArrayContents(earnedComboNames, normalizeArrayFromSave(data.earnedComboNames));
+        comboActivationCounts = normalizeComboActivationCounts(data.comboActivationEdgeVersion, data.comboActivationCounts, COMBO_ACTIVATION_EDGE_SAVE_VERSION);
+        comboDiscoveryMilestonePendingQueue = normalizeStringQueue(data.comboDiscoveryMilestonePendingQueue);
+        comboDiscoveryMilestoneReadyAtMs = normalizeNonNegativeTimestamp(data.comboDiscoveryMilestoneReadyAtMs);
+        comboDiscoveryMilestoneCooldownSpanMs = normalizeQueuedComboDiscoveryCooldownSpan(
+            data.comboDiscoveryMilestoneCooldownSpanMs,
+            comboDiscoveryMilestonePendingQueue,
+            comboDiscoveryMilestoneReadyAtMs,
+            Date.now(),
+            COMBO_DISCOVERY_MILESTONE_COOLDOWN_BASE_MS,
+            COMBO_DISCOVERY_MILESTONE_COOLDOWN_MIN_MS
+        );
+        previousTickActiveComboNames = normalizeStringSetFromSave(data.previousTickActiveComboNames) || previousTickActiveComboNames;
+        applyAchievementFlags(objectives, data.objectivesAchieved);
+        applyAchievementFlags(longTermObjectives, data.longTermObjectivesAchieved);
         {
-            const r = Number(data.comboDiscoveryMilestoneReadyAtMs);
-            comboDiscoveryMilestoneReadyAtMs = Number.isFinite(r) && r >= 0 ? r : 0;
+            const savedShownBannerIds = normalizeStringSetFromSave(data.shownBannerIds);
+            if (savedShownBannerIds) {
+                shownBannerIds.clear();
+                savedShownBannerIds.forEach(id => shownBannerIds.add(id));
+            }
         }
-        {
-            const sp = Number(data.comboDiscoveryMilestoneCooldownSpanMs);
-            comboDiscoveryMilestoneCooldownSpanMs = Number.isFinite(sp) && sp > 0 ? Math.min(COMBO_DISCOVERY_MILESTONE_COOLDOWN_BASE_MS, Math.floor(sp)) : 0;
-        }
-        if (comboDiscoveryMilestoneCooldownSpanMs <= 0 && comboDiscoveryMilestonePendingQueue.length > 0 && comboDiscoveryMilestoneReadyAtMs > Date.now()) {
-            const rem = comboDiscoveryMilestoneReadyAtMs - Date.now();
-            comboDiscoveryMilestoneCooldownSpanMs = Math.max(COMBO_DISCOVERY_MILESTONE_COOLDOWN_MIN_MS, rem);
-        }
-        if (Array.isArray(data.previousTickActiveComboNames)) previousTickActiveComboNames = new Set(data.previousTickActiveComboNames);
-        if (Array.isArray(data.objectivesAchieved)) objectives.forEach((o, i) => { o.achieved = !!data.objectivesAchieved[i]; });
-        if (Array.isArray(data.longTermObjectivesAchieved)) longTermObjectives.forEach((o, i) => { o.achieved = !!data.longTermObjectivesAchieved[i]; });
-        if (Array.isArray(data.shownBannerIds)) { shownBannerIds.clear(); data.shownBannerIds.forEach(id => shownBannerIds.add(id)); }
-        if (Array.isArray(data.closedBanners)) { closedBanners.length = 0; data.closedBanners.forEach(b => closedBanners.push(b)); }
-        if (data.settings) {
-            settings = {
-                theme: data.settings.theme === "dark" ? "dark" : "light",
-                adaptiveTipsEnabled: data.settings.adaptiveTipsEnabled !== false,
-                curtainEnabled: data.settings.curtainEnabled !== false,
-                humorEnabled: data.settings.humorEnabled !== false,
-                showClapAnimation: data.settings.showClapAnimation !== false,
-                offlineCapHours: Number.isFinite(data.settings.offlineCapHours) && data.settings.offlineCapHours >= 0 ? data.settings.offlineCapHours : settings.offlineCapHours
-            };
-        }
-        if (data.numberModulesState && typeof data.numberModulesState === "object") {
-            Object.keys(data.numberModulesState).forEach(k => {
-                const m = NUMBER_MODULES[k];
-                if (m) m.applySaveData(data.numberModulesState[k]);
-            });
-        }
+        replaceArrayContents(closedBanners, normalizeArrayFromSave(data.closedBanners));
+        settings = normalizeSettingsFromSave(data.settings, settings) || settings;
+        applyNumberModulesSaveState(NUMBER_MODULES, data.numberModulesState);
         mergeNumber1AscensionEssenceFromSaveData(data);
-        number1AscensionPendingBonusEssence = Number.isFinite(data.number1AscensionPendingBonusEssence) && data.number1AscensionPendingBonusEssence >= 0
-            ? Math.floor(data.number1AscensionPendingBonusEssence)
-            : 0;
-        number1AscensionClapEssenceMultiplier = Number.isFinite(data.number1AscensionClapEssenceMultiplier) && data.number1AscensionClapEssenceMultiplier >= 1
-            ? data.number1AscensionClapEssenceMultiplier
-            : 1;
-        number1AscensionClapEssenceProcCount = Number.isFinite(data.number1AscensionClapEssenceProcCount) && data.number1AscensionClapEssenceProcCount >= 0
-            ? Math.floor(data.number1AscensionClapEssenceProcCount)
-            : 0;
+        number1AscensionPendingBonusEssence = normalizeNonNegativeInteger(data.number1AscensionPendingBonusEssence);
+        number1AscensionClapEssenceMultiplier = normalizeNumberAtLeast(data.number1AscensionClapEssenceMultiplier, 1, 1);
+        number1AscensionClapEssenceProcCount = normalizeNonNegativeInteger(data.number1AscensionClapEssenceProcCount);
         number1HasAscended = !!data.number1HasAscended;
         reconcileNumber2LockState();
         updateNumber2SidebarUnlockUI();
         number1AscensionNodeIds = [];
-        const savedAscTreeVer = Number(data.ascensionTreeVersion);
-        const ascTreeOk = Number.isFinite(savedAscTreeVer) && savedAscTreeVer >= ASCENSION_TREE_VERSION;
-        if (ascTreeOk && Array.isArray(data.number1AscensionNodeIds)) {
-            data.number1AscensionNodeIds.forEach(id => {
-                if (typeof id === "string") number1AscensionNodeIds.push(id);
-            });
+        if (isSaveVersionAtLeast(data.ascensionTreeVersion, ASCENSION_TREE_VERSION)) {
+            normalizeStringArrayFromSave(data.number1AscensionNodeIds).forEach(id => number1AscensionNodeIds.push(id));
             normalizeAscensionNodeIds();
         }
-        if (typeof data.ascensionNumber1IntroSeen === "boolean") {
-            ascensionNumber1IntroSeen = data.ascensionNumber1IntroSeen;
-        }
+        ascensionNumber1IntroSeen = normalizeBooleanIfSaved(data.ascensionNumber1IntroSeen, ascensionNumber1IntroSeen);
         {
-            const bh = Number(data.number1AscensionBlackHoleLevel);
-            number1AscensionBlackHoleLevel = Number.isFinite(bh) && bh >= 0 ? Math.min(BLACK_HOLE_MAX_LEVEL, Math.floor(bh)) : 0;
+            number1AscensionBlackHoleLevel = normalizeNonNegativeInteger(data.number1AscensionBlackHoleLevel, 0, BLACK_HOLE_MAX_LEVEL);
         }
         number1BlackHoleState = normalizeNumber1BlackHoleStateFromSaveData(data.number1BlackHoleState, {
             legacyBlackHoleLevel: number1AscensionBlackHoleLevel,
@@ -7581,9 +7370,7 @@ import {
         }
         if (turboBoostUnlocked) turboBoostMeter = Math.min(turboBoostMeter, getTurboMeterMax());
         {
-            const p = Number(data.number1RunPeakTotalCount);
-            number1RunPeakTotalCount =
-                Number.isFinite(p) && p >= 0 ? Math.min(BLACK_HOLE_EVAPORATION_CAP, Math.floor(p)) : 0;
+            number1RunPeakTotalCount = normalizeNonNegativeInteger(data.number1RunPeakTotalCount, 0, BLACK_HOLE_EVAPORATION_CAP);
         }
         refreshTotalFromHandEarnings();
         syncBlackHolePhase1Vfx();
@@ -7623,83 +7410,39 @@ import {
     /* ---------------------------------------------------------
        HAND CLASS
     --------------------------------------------------------- */
-    const GAME_LOOP_MS = 50;
     /** Wall-clock timing: each step advances the sim by exactly GAME_LOOP_MS so hand/combo logic stays stable. */
-    let lastGameLoopPerfMs = null;
-    let simLagMs = 0;
-    const GAME_LOOP_MAX_ELAPSED_MS = 60000;
-    const GAME_LOOP_MAX_LAG_MS = 120000;
-    const GAME_LOOP_MAX_CATCHUP_STEPS = 240;
-    let gameLoopTimer = null;
-    let hiddenStartedAtMs = null;
+    const number1LoopRuntime = createNumber1LoopRuntime({
+        isGameplayFrozen: () => gameplaySimFrozen(),
+        isDocumentHidden: () => typeof document !== "undefined" && document.hidden,
+        shouldRunHiddenFixedStep: () => {
+            const mode = typeof window.getCurrentNumberMode === "function" ? window.getCurrentNumberMode() : 1;
+            return mode === 2 && isNumber2Unlocked() && number2State.started;
+        },
+        runGameLoopStep: opts => runGameLoopStep(opts),
+        applyOfflineProgress: (offlineMs, opts) => applyOfflineProgress(offlineMs, opts),
+        patchOverviewIfNeeded: nowOverview => {
+            if (
+                typeof document !== "undefined" &&
+                !document.hidden &&
+                nowOverview - lastOverviewUpdateMs >= OVERVIEW_PANEL_LIVE_PATCH_MS &&
+                pagePanelEl &&
+                pagePanelEl.style.display !== "none" &&
+                pagePanelBodyEl
+            ) {
+                lastOverviewUpdateMs = nowOverview;
+                const openPageId = pagePanelEl.dataset.openPageId || "";
+                if (openPageId === "overview") patchGlobalOverviewLiveDom();
+                else if (openPageId === "ascension") patchAscensionPanelLiveDom();
+            }
+        }
+    });
 
     function beginHiddenOfflineTracking() {
-        // If gameplay is intentionally paused by a modal/overlay, do not accrue offline gains.
-        if (gameplaySimFrozen()) {
-            hiddenStartedAtMs = null;
-            lastGameLoopPerfMs = null;
-            simLagMs = 0;
-            return;
-        }
-        if (hiddenStartedAtMs == null) hiddenStartedAtMs = Date.now();
-        // Prevent the fixed-step loop from attempting to catch up on return.
-        lastGameLoopPerfMs = null;
-        simLagMs = 0;
+        number1LoopRuntime.beginHiddenOfflineTracking();
     }
 
     function endHiddenOfflineTracking() {
-        const hiddenAt = hiddenStartedAtMs;
-        hiddenStartedAtMs = null;
-        if (hiddenAt == null) {
-            lastGameLoopPerfMs = null;
-            simLagMs = 0;
-            return;
-        }
-        const offlineMs = Math.max(0, Date.now() - hiddenAt);
-        if (!gameplaySimFrozen() && offlineMs > 0) {
-            applyOfflineProgress(offlineMs, { showSummary: false });
-        }
-        lastGameLoopPerfMs = null;
-        simLagMs = 0;
-    }
-
-    class HandCounter {
-        constructor(id, speed, parentEl) {
-            this.id = id;
-            this.count = 1;
-            this.baseSpeed = speed;
-            /** Exact sub-tick carry: floor(total ms × mult / 1000) via (acc += dt×mult) / 1000. */
-            this.tickAccBig = 0n;
-
-            this.el = document.createElement("div");
-            this.el.className = "hand curtain-reveal";
-            this.el.style.whiteSpace = "pre";
-
-            (parentEl || handsContainer).appendChild(this.el);
-
-            this.render();
-
-            setTimeout(() => {
-                this.el.classList.add("visible");
-            }, 300);
-        }
-
-        restartTimer() { /* speed applied in game loop */ }
-
-        applyTicks(n) {
-            if (n <= 0) return;
-            const nb = typeof n === "bigint" ? n : BigInt(Math.floor(Number(n)));
-            if (nb <= 0n) return;
-            const tMod = Number(nb % 10n);
-            this.count = ((this.count - 1 + tMod) % 10 + 10) % 10 + 1;
-            this.render();
-        }
-
-        render() {
-            if (this._lastRenderedCount === this.count) return;
-            this._lastRenderedCount = this.count;
-            this.el.textContent = hands1[this.count - 1];
-        }
+        number1LoopRuntime.endHiddenOfflineTracking();
     }
 
     /* ---------------------------------------------------------
@@ -7708,30 +7451,12 @@ import {
        6: 1e21, 7: 1e24, 8: 1e27, 9: 1e30, 10: 1e33
     --------------------------------------------------------- */
     const hands = [];
-    const UNLOCK_THRESHOLDS = [
-        1e9,   // hand 2: 1 billion
-        1e12,  // hand 3: 1 trillion
-        1e15,  // hand 4: 1 quadrillion
-        1e18,  // hand 5: 1 quintillion
-        1e21,  // hand 6: 1 sextillion
-        1e24,  // hand 7: 1 septillion
-        1e27,  // hand 8: 1 octillion
-        1e30,  // hand 9: 1 nonillion
-        1e33   // hand 10: 1 decillion
-    ];
-
-    const HAND_BASE_SPEED = 1000; // ms per tick; same for all hands
-
     let gamePaused = false;
     /** Dev-tools freeze: skips simulation without touching overlay `gamePaused` (story, ascension dialogs, …). */
     let devFreezeGame = false;
     function gameplaySimFrozen() {
         return gamePaused || devFreezeGame;
     }
-
-    /** Wall-clock ms accumulated while this save was active (sim not frozen); persisted as totalPlayTimeMs. */
-    let saveTotalPlayTimeMs = 0;
-    let lastSavePlayWallMs = null;
 
     const deleteSaveOverlayEl = document.getElementById("delete-save-overlay");
     const deleteSaveNoBtn = document.getElementById("delete-save-no");
@@ -7770,8 +7495,7 @@ import {
     }
 
     function checkUnlockHands() {
-        const cap = Math.max(1, Math.min(maxHands, unlockedHandsCap | 0));
-        while (unlockedHands < cap && unlockedHands - 1 < UNLOCK_THRESHOLDS.length && totalChanges >= UNLOCK_THRESHOLDS[unlockedHands - 1]) {
+        while (shouldUnlockNextHand(unlockedHands, unlockedHandsCap, totalChanges, maxHands)) {
             unlockHand();
         }
     }
@@ -7787,7 +7511,7 @@ import {
        Milestone text matches UNLOCK_THRESHOLDS / TURBO_UNLOCK_COUNT (same as long-term objectives).
     --------------------------------------------------------- */
     function storyTotalCountLead(threshold) {
-        return "At " + formatCount(threshold) + " total count on your counter, ";
+        return getStoryTotalCountLead(threshold, formatCount);
     }
     const STORY_BANNERS = [
         {
@@ -7943,20 +7667,18 @@ import {
     const storyReviewCloseBtn = document.getElementById("story-review-close");
 
     function getStoryBannerById(id) {
-        return STORY_BANNERS.find(b => b.id === id) || null;
+        return getStoryBannerByIdFromList(STORY_BANNERS, id);
     }
     function showStoryBannerById(id) {
         const banner = getStoryBannerById(id);
         if (banner) showStoryBanner(banner);
     }
     function hasUnlockedStoryBanner(id) {
-        return shownBannerIds.has(id) || closedBanners.some(b => b && b.id === id);
+        return hasUnlockedStoryBannerFromState(id, shownBannerIds, closedBanners);
     }
     function checkStoryBanners() {
         if (gameplaySimFrozen()) return;
-        const pending = STORY_BANNERS.filter(b => !shownBannerIds.has(b.id) && b.trigger());
-        pending.sort((a, b) => a.order - b.order);
-        const toShow = pending[0];
+        const toShow = getNextPendingStoryBanner(STORY_BANNERS, shownBannerIds);
         if (toShow) showStoryBanner(toShow);
     }
 
@@ -7980,17 +7702,18 @@ import {
         if (!storyBannerOverlayEl || storyBannerOverlayEl.style.display !== "flex") return;
         const wasReplay = currentStoryBannerIsReplay;
         const onClose = currentStoryBannerOnClose;
+        const closedBannerId = currentStoryBanner ? currentStoryBanner.id : null;
         if (currentStoryBanner) {
             if (!wasReplay) {
                 shownBannerIds.add(currentStoryBanner.id);
-                closedBanners.push({ id: currentStoryBanner.id, order: currentStoryBanner.order, title: currentStoryBanner.title, body: currentStoryBanner.body, closedAt: Date.now() });
+                closedBanners.push(createClosedStoryBannerRecord(currentStoryBanner, Date.now()));
             }
             currentStoryBanner = null;
         }
         currentStoryBannerIsReplay = false;
         currentStoryBannerOnClose = null;
         storyBannerOverlayEl.style.display = "none";
-        if (!wasReplay && ascensionMapCollapsePending && !number1BlackHoleState.phase1MapCollapseSeen) {
+        if (!wasReplay && ascensionMapCollapsePending && !number1BlackHoleState.phase1MapCollapseSeen && closedBannerId === "ascension-map-collapse-ready") {
             startAscensionMapCollapseTransition();
         }
         gamePaused = wasReplay ? replayStoryBannerPreviousPaused : false;
@@ -8004,11 +7727,6 @@ import {
     function renderStoryReviewList() {
         if (!storyReviewListEl) return;
         storyReviewListEl.innerHTML = renderStoryArchiveHtml();
-    }
-    function escapeHtml(s) {
-        const div = document.createElement("div");
-        div.textContent = s;
-        return div.innerHTML;
     }
 
     if (storyBannerCloseBtn) storyBannerCloseBtn.addEventListener("click", closeStoryBanner);
@@ -8187,6 +7905,8 @@ import {
                     ascensionPageActiveNumber = t;
                     if (wasTab1 && t !== 1) teardownAscensionMapPanZoom();
                     pagePanelBodyEl.innerHTML = renderAscensionPageHtml();
+                    syncPhase1MassFillCssVars();
+                    syncPhase1TesseractCanvasesInRoot(pagePanelBodyEl);
                     if (t === 1 && number1HasAscended) {
                         requestAnimationFrame(() => initAscensionMapPanZoom());
                     }
@@ -8337,135 +8057,20 @@ import {
     function getHandValues() {
         return hands.map(h => h.count);
     }
-    function countValues(v) {
-        const c = {};
-        for (let i = 1; i <= 10; i++) c[i] = 0;
-        v.forEach(x => {
-            const key = Number(x);
-            if (key >= 1 && key <= 10) c[key] = (c[key] || 0) + 1;
-        });
-        return c;
-    }
-    const BONUS_BY_COUNT = { 2: 1.10, 3: 1.20, 4: 1.35, 5: 1.40, 6: 1.45, 7: 1.50, 8: 1.55, 9: 1.60, 10: 1.65 };
-    const COUNT_NAMES = ["", "", "Pair of", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten"];
-    const COMBOS = [];
-    for (let n = 1; n <= 10; n++) {
-        for (let k = 2; k <= 10; k++) {
-            const name = (k === 2 ? "Pair of " + n + "s" : COUNT_NAMES[k] + " " + n + "s");
-            let check;
-            if (k === 2) (function(nn) { check = v => v[0] === nn && v[1] === nn; })(n);
-            else if (k === 3) (function(nn) { check = v => v[0] === nn && v[1] === nn && v[2] === nn; })(n);
-            else (function(nn, kk) { check = v => countValues(v)[nn] >= kk; })(n, k);
-            COMBOS.push({ name, minHands: k, check, bonus: BONUS_BY_COUNT[k] });
-        }
-    }
-    COMBOS.push(
-        { name: "Two Pair", minHands: 4, check: v => { const c = countValues(v); let nRanksWithPair = 0; for (let r = 1; r <= 10; r++) { if (c[r] >= 2) nRanksWithPair++; } return nRanksWithPair >= 2; }, bonus: 1.15 },
-        { name: "Full House", minHands: 5, check: v => { const c = countValues(v); const counts = Object.values(c).filter(n => n > 0).sort((a, b) => b - a); return counts[0] >= 3 && counts[1] >= 2; }, bonus: 1.30 }
-    );
-    const COMBOS_BY_MIN_HANDS = (function () {
-        const byMinHands = {};
-        COMBOS.forEach(c => {
-            if (!byMinHands[c.minHands]) byMinHands[c.minHands] = [];
-            byMinHands[c.minHands].push(c);
-        });
-        return byMinHands;
-    })();
-    /** Max distinct near-miss tolerance ranks from middle ascension (see near-miss-combo.spec.md). */
-    const NEAR_MISS_TOLERANCE_RANK_MAX = 5;
     /**
      * Distinct digit ranks 1–10 from purchased middle-finger nodes with `nearMissToleranceRank`.
      * Capped at NEAR_MISS_TOLERANCE_RANK_MAX; order = ascending node id, first-seen wins per rank.
      */
     function getNearMissToleranceRanks() {
-        const seen = new Set();
-        const out = [];
-        const ids = number1AscensionNodeIds.slice().sort();
-        for (let i = 0; i < ids.length; i++) {
-            const def = ASCENSION_MAP_NODE_BY_ID[ids[i]];
-            if (!def || def.finger !== "middle" || !def.grants) continue;
-            const r = def.grants.nearMissToleranceRank;
-            if (typeof r !== "number" || !Number.isInteger(r) || r < 1 || r > 10) continue;
-            if (seen.has(r)) continue;
-            seen.add(r);
-            out.push(r);
-            if (out.length >= NEAR_MISS_TOLERANCE_RANK_MAX) break;
-        }
-        return out;
-    }
-    /** Pair of n on first two hands: strict (n,n) or relaxed neighbor multisets per near-miss-combo.spec.md. */
-    function pairOfNMatchesStrictOrRelaxed(n, v) {
-        if (!v || v.length < 2) return false;
-        const a = v[0];
-        const b = v[1];
-        if (a === n && b === n) return true;
-        const ranks = getNearMissToleranceRanks();
-        if (!ranks.includes(n)) return false;
-        const opts = [[n, n]];
-        if (n < 10) opts.push([n, n + 1]);
-        if (n > 1) opts.push([n - 1, n]);
-        for (let oi = 0; oi < opts.length; oi++) {
-            const x = opts[oi][0];
-            const y = opts[oi][1];
-            if ((a === x && b === y) || (a === y && b === x)) return true;
-        }
-        return false;
-    }
-    function comboMatchesActive(c, v) {
-        if (!v || v.length < (c.minHands || 0)) return false;
-        const pairOf = c.name.match(/^Pair of (\d+)s$/);
-        if (pairOf && c.minHands === 2) {
-            const n = parseInt(pairOf[1], 10);
-            return pairOfNMatchesStrictOrRelaxed(n, v);
-        }
-        return c.check(v);
+        return getNearMissToleranceRanksFromNodes(number1AscensionNodeIds, ASCENSION_MAP_NODE_BY_ID);
     }
     function getActiveCombos() {
         const v = getHandValues();
-        return COMBOS.filter(c => v.length >= c.minHands && comboMatchesActive(c, v));
+        return getActiveCombosForValues(v, getNearMissToleranceRanks());
     }
     /** Hand indices that participate in an active combo (for ascension pulse split). */
     function getComboParticipatingHandIndices(c, v) {
-        const uh = Math.min(v.length, unlockedHands);
-        if (uh <= 0) return [];
-        const all = () => Array.from({ length: uh }, (_, i) => i);
-        if (c.name === "Two Pair") {
-            const cv = countValues(v);
-            const ranks = [];
-            for (let r = 1; r <= 10; r++) if (cv[r] >= 2) ranks.push(r);
-            const out = [];
-            for (let i = 0; i < uh; i++) if (ranks.indexOf(v[i]) >= 0) out.push(i);
-            return out.length ? out : all();
-        }
-        if (c.name === "Full House") {
-            const cv = countValues(v);
-            let tri = 0;
-            let pair = 0;
-            for (let r = 1; r <= 10; r++) if (cv[r] >= 3) { tri = r; break; }
-            for (let r = 1; r <= 10; r++) if (cv[r] >= 2 && r !== tri) { pair = r; break; }
-            if (!tri) return all();
-            const out = [];
-            for (let i = 0; i < uh; i++) if (v[i] === tri || v[i] === pair) out.push(i);
-            return out.length ? out : all();
-        }
-        const pairOf = c.name.match(/^Pair of (\d+)s$/);
-        if (pairOf) {
-            const d = parseInt(pairOf[1], 10);
-            if (uh >= 2 && pairOfNMatchesStrictOrRelaxed(d, v)) {
-                return [0, 1];
-            }
-            const out = [];
-            for (let i = 0; i < uh; i++) if (v[i] === d) out.push(i);
-            return out.length ? out : all();
-        }
-        const nk = c.name.match(/^(?:Three|Four|Five|Six|Seven|Eight|Nine|Ten) (\d+)s$/);
-        if (nk) {
-            const d = parseInt(nk[1], 10);
-            const out = [];
-            for (let i = 0; i < uh; i++) if (v[i] === d) out.push(i);
-            return out.length ? out : all();
-        }
-        return all().slice(0, Math.min(c.minHands || uh, uh));
+        return getComboParticipatingHandIndicesForValues(c, v, unlockedHands, getNearMissToleranceRanks());
     }
     const earnedComboNames = [];
     let comboActivationCounts = {};
@@ -8478,11 +8083,14 @@ import {
     let comboIndexStatusFilter = "all";
     let comboIndexHandsFilter = "all";
     let previousTickActiveComboNames = new Set();
-    function comboDiscoverySortCombos(a, b) {
-        if (b.minHands !== a.minHands) return b.minHands - a.minHands;
-        if (b.bonus !== a.bonus) return b.bonus - a.bonus;
-        return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
+    /** When unchanged vs last game loop, combo detection can skip `getActiveCombos()` if Combinations is closed. */
+    let lastComboUiInputDigest = "";
+
+    /** Drives combo matching: unlocked hand digits + ascension-owned nodes (near-miss ranks derive from the latter). */
+    function computeComboUiInputDigest() {
+        return computeComboUiInputDigestForValues(getHandValues(), unlockedHands, number1AscensionNodeIds);
     }
+
     function enqueueComboDiscoveryMilestones(activeCombos) {
         const pendingSet = new Set(comboDiscoveryMilestonePendingQueue);
         activeCombos.filter(c => earnedComboNames.indexOf(c.name) === -1 && !pendingSet.has(c.name)).sort(comboDiscoverySortCombos).forEach(c => {
@@ -8524,35 +8132,11 @@ import {
      * Tier products sum for the pattern-catalog multiplier (CPS and warp base; activation counts do not scale this).
      */
     function computeEarnedCatalogComboTierProducts() {
-        const earnedSet = new Set(earnedComboNames);
-        const byMinHands = getCombosByMinHands();
-        const tier = {};
-        for (let n = 2; n <= 10; n++) {
-            if (unlockedHands < n) {
-                tier[n] = null;
-                continue;
-            }
-            const group = byMinHands[n] || [];
-            const earnedInGroup = group.filter(c => earnedSet.has(c.name));
-            if (earnedInGroup.length === 0) {
-                tier[n] = null;
-                continue;
-            }
-            tier[n] = earnedInGroup.reduce((m, c) => m * c.bonus, 1);
-        }
-        return tier;
+        return computeEarnedCatalogComboTierProductsForState(earnedComboNames, unlockedHands);
     }
     /** Sum of tier products for unlocked patterns (minimum 1). Multiplies CPS together with {@link getAscensionComboPatternMult}. */
     function getPatternCatalogMultiplier() {
-        if (unlockedHands < 2) return 1;
-        const tier = computeEarnedCatalogComboTierProducts();
-        let sum = 0;
-        for (let n = 2; n <= 10; n++) {
-            const p = tier[n];
-            if (p == null) continue;
-            sum += p;
-        }
-        return sum > 0 ? sum : 1;
+        return getPatternCatalogMultiplierFromEarned(earnedComboNames, unlockedHands);
     }
     /** Middle-finger ascension pattern mult only (capped). Does not include the unlocked catalog. */
     function getAscensionComboPatternMult() {
@@ -8609,45 +8193,17 @@ import {
      * Fingerprint of bonus-breakdown content; when unchanged, auto-refresh skips replacing #earned-bonuses-list (preserves scroll).
      */
     function computeEarnedBonusesUiDigest() {
-        if (unlockedHands < 2) {
-            return "u" + unlockedHands;
-        }
-        const earnedSet = new Set(earnedComboNames);
-        const byMinHands = getCombosByMinHands();
         const totals = computeAscensionGrantTotals();
-        const catalogMult = getPatternCatalogMultiplier();
-        const flatAdd = 1 + (totals.comboMultAdd || 0);
-        const ascPatMult = getAscensionComboPatternMult();
-        const cpsComboMult = getComboMultiplier();
-        const warpComboMult = getTimeWarpComboMultiplier();
-        const head = [
-            catalogMult.toFixed(2),
-            cpsComboMult.toFixed(2),
-            warpComboMult.toFixed(2),
-            flatAdd.toFixed(2),
-            ascPatMult.toFixed(2),
-            earnedComboNames.join("\n"),
-            comboDiscoveryMilestonePendingQueue.join("\n")
-        ].join("#");
-        const pendingDiscovery = new Set(comboDiscoveryMilestonePendingQueue);
-        let tierPart = "";
-        for (let n = 2; n <= 10; n++) {
-            if (unlockedHands < n) continue;
-            const group = byMinHands[n] || [];
-            if (group.length === 0) continue;
-            const earnedInGroup = group.filter(c => earnedSet.has(c.name));
-            const allEarned = earnedInGroup.length === group.length;
-            if (allEarned) {
-                const totalMult = earnedInGroup.reduce((m, c) => m * c.bonus, 1);
-                tierPart += n + ":A:" + totalMult.toFixed(2) + "|";
-            } else {
-                tierPart += n + ":P:" + group.map(c => {
-                    const st = earnedSet.has(c.name) ? "1" : (pendingDiscovery.has(c.name) ? "q" : "0");
-                    return c.name + "_" + st;
-                }).join(",") + "|";
-            }
-        }
-        return head + "|" + tierPart;
+        return computeEarnedBonusesUiDigestFromState({
+            unlockedHands,
+            earnedComboNames,
+            pendingComboNames: comboDiscoveryMilestonePendingQueue,
+            totals,
+            catalogMult: getPatternCatalogMultiplier(),
+            ascPatternMult: getAscensionComboPatternMult(),
+            cpsComboMult: getComboMultiplier(),
+            warpComboMult: getTimeWarpComboMultiplier()
+        });
     }
     /**
      * Rebuilds the Combinations panel "Bonus breakdown" list.
@@ -8760,6 +8316,8 @@ import {
             const bhEl = pagePanelBodyEl.querySelector(".asc-black-hole");
             if (bhEl && (patchBlackHolePhase1PanelLiveDom(bhEl) || patchBlackHolePhase2PanelLiveDom(bhEl))) {
                 patchAscensionHubStatsPillsDomIfChanged();
+                syncPhase1MassFillCssVars();
+                syncPhase1TesseractCanvasesInRoot(pagePanelBodyEl);
                 return;
             }
         }
@@ -8768,6 +8326,8 @@ import {
         if (ascensionPageActiveNumber === 1 && number1HasAscended) {
             requestAnimationFrame(() => initAscensionMapPanZoom());
         }
+        syncPhase1MassFillCssVars();
+        syncPhase1TesseractCanvasesInRoot(pagePanelBodyEl);
     }
     function refreshOverviewAndAscensionPanelsIfOpen() {
         refreshGlobalOverviewPanelIfOpen();
@@ -8841,7 +8401,7 @@ import {
                     if (ascReady) {
                         ascPart += " · Next gain: " + formatCount(gainPreview);
                         if (gainPreviewInfo && gainPreviewInfo.blackHoleMultiplierBonus > 0) {
-                            ascPart += " (BH bonus +" + formatCount(gainPreviewInfo.blackHoleMultiplierBonus) + ")";
+                            ascPart += " (" + getArcEssenceMultiplierBonusPhraseTitle() + " +" + formatCount(gainPreviewInfo.blackHoleMultiplierBonus) + ")";
                         }
                         if (gainPreviewInfo && gainPreviewInfo.multiplierBonus > 0) {
                             ascPart += " (clap mult +" + formatCount(gainPreviewInfo.multiplierBonus) + ")";
@@ -8992,7 +8552,7 @@ import {
         updateSlowdownUpgradeUI();
         updateTimeWarpAuraUI();
         updateRateDisplay();
-        updateTurboBoostUI();
+        updateTurboBoostUI({ force: true });
         updateComboUI();
         updateEarnedBonusesUI();
         updatePageButtonUnlocks();
@@ -9000,7 +8560,7 @@ import {
         const gainParts = bonusGain > 0
             ? (formatCount(baseGain) + " base + " + formatCount(bonusGain) + " bonus")
             : (formatCount(baseGain) + " base");
-        const bhPart = blackHoleBonusGain > 0 ? (" + " + formatCount(blackHoleBonusGain) + " BH bonus") : "";
+        const bhPart = blackHoleBonusGain > 0 ? (" + " + formatCount(blackHoleBonusGain) + " " + getArcEssenceMultiplierBonusPhraseTitle()) : "";
         const multPart = multBonusGain > 0 ? (" + " + formatCount(multBonusGain) + " clap multiplier") : "";
         addToLog("Ascended Number 1 — +" + formatCount(gain) + " Ascension Essence (" + gainParts + bhPart + multPart + "; total " + formatCount(number1AscensionEssence) + ")", "milestone");
         markMeaningfulProgress();
@@ -9018,7 +8578,7 @@ import {
         const nextTotal = number1AscensionEssence + gain;
         const gainBits = ["base " + formatCount(baseGain)];
         if (bonusGain > 0) gainBits.push("warp bonus " + formatCount(bonusGain));
-        if (blackHoleBonusGain > 0) gainBits.push("BH bonus +" + formatCount(blackHoleBonusGain) + " (" + gainInfo.blackHolePhaseMult.toFixed(3) + "x)");
+        if (blackHoleBonusGain > 0) gainBits.push(getArcEssenceMultiplierBonusPhraseTitle() + " +" + formatCount(blackHoleBonusGain) + " (" + gainInfo.blackHolePhaseMult.toFixed(3) + "x)");
             if (gainInfo.blackHoleFurnaceBonus > 0) gainBits.push("furnace +" + gainInfo.blackHoleFurnaceBonus.toFixed(2) + "x");
         if (multBonusGain > 0) gainBits.push("clap mult +" + formatCount(multBonusGain) + " (" + gainInfo.clapMult.toFixed(3) + "x)");
         const bonusLine = gainBits.length > 1 ? (" (" + gainBits.join(" + ") + ")") : "";
@@ -9044,7 +8604,22 @@ import {
     }
 
     function updateComboUI() {
-        if (unlockedHands < 2) return;
+        if (unlockedHands < 2) {
+            lastComboUiInputDigest = "";
+            return;
+        }
+        const digestNow = computeComboUiInputDigest();
+        const combinationsPageOpen =
+            pagePanelEl &&
+            pagePanelEl.style.display !== "none" &&
+            pagePanelTitleEl &&
+            pagePanelTitleEl.textContent === "Combinations";
+        if (!combinationsPageOpen && digestNow === lastComboUiInputDigest) {
+            tryProcessOneComboDiscoveryMilestone(Date.now());
+            return;
+        }
+        lastComboUiInputDigest = digestNow;
+
         const active = getActiveCombos();
         const newlyPulsingEdge = active.filter(c => !previousTickActiveComboNames.has(c.name));
         newlyPulsingEdge.forEach(c => {
@@ -9068,48 +8643,29 @@ import {
         refreshCombinationsPanelIfOpen();
     }
 
-    const CLAP_UNLOCK_HANDS = 8;
-    const CLAP_BONUS_CHANCE = 0.1;
-    const CLAP_MAX_PAIRS_PER_TICK = 2;
-    const CLAP_ANIM_STAGGER_MS = 220;
-    const CLAP_COOLDOWN_MS = 10000;
-    /** Middle-branch Combo Claps: fixed 10% per roll (ascension nodes gate which rolls exist). */
-    const COMBO_CLAP_INSTANT_CHANCE = 0.1;
-    const COMBO_CLAP_CHAIN_MAX_WAVES = 64;
-    const CLAP_BONUS_CHEAPEN_CHAIN_MAX_WAVES = 64;
-    const CLAP_BONUS_SLOWDOWN_CHAIN_MAX_WAVES = 64;
     function getClapCooldownMs() {
-        const m = computeAscensionGrantTotals().clapCooldownMult || 1;
-        return Math.max(2500, Math.floor(CLAP_COOLDOWN_MS * m));
+        return getClapCooldownMsFromTotals(computeAscensionGrantTotals());
     }
     function getClapBonusChance() {
-        return Math.min(0.95, CLAP_BONUS_CHANCE + (computeAscensionGrantTotals().clapBonusChanceAdd || 0));
+        return getClapBonusChanceFromTotals(computeAscensionGrantTotals());
     }
     function isClappingUnlocked() {
-        return unlockedHands >= CLAP_UNLOCK_HANDS;
+        return isClappingUnlockedForHands(unlockedHands);
     }
     function getClapCheapenBonusChance() {
-        return Math.min(0.95, Math.max(0, computeAscensionGrantTotals().clapCheapenBonusChanceAdd || 0));
+        return getClapCheapenBonusChanceFromTotals(computeAscensionGrantTotals());
     }
     function getClapSlowdownBonusChance() {
-        return Math.min(0.95, Math.max(0, computeAscensionGrantTotals().clapSlowdownBonusChanceAdd || 0));
+        return getClapSlowdownBonusChanceFromTotals(computeAscensionGrantTotals());
     }
     function getClapEssenceProcChance() {
-        return Math.min(0.95, Math.max(0, computeAscensionGrantTotals().clapEssenceProcChanceAdd || 0));
+        return getClapEssenceProcChanceFromTotals(computeAscensionGrantTotals());
     }
     function getClapEssenceProcMultiplierStep() {
-        const step = Number(computeAscensionGrantTotals().clapEssenceMultiplierStepAdd) || 0;
-        return Math.max(0, step);
+        return getClapEssenceProcMultiplierStepFromTotals(computeAscensionGrantTotals());
     }
     function maybeRunThumbClapChain(extraUnlocked, chainUnlocked, maxWaves, onWave) {
-        if (!extraUnlocked || typeof onWave !== "function") return;
-        if (Math.random() >= COMBO_CLAP_INSTANT_CHANCE) return;
-        let waves = 0;
-        while (waves < maxWaves) {
-            onWave();
-            waves++;
-            if (!chainUnlocked || Math.random() >= COMBO_CLAP_INSTANT_CHANCE) break;
-        }
+        runChanceChain(extraUnlocked, chainUnlocked, maxWaves, onWave);
     }
     function grantClapBonusCheapenLevelForHand(handIndex) {
         if (handIndex < 0 || handIndex >= unlockedHands) return;
@@ -9299,474 +8855,29 @@ import {
         }
     }
 
-    /* ---------------------------------------------------------
-       LEDGER BEAM VFX (Number 1: combo catalog milestones + clap upgrades)
-    --------------------------------------------------------- */
-    const LEDGER_BEAM_MAX_FULL_PER_SEC = 5;
-    const LEDGER_BEAM_TRAVEL_MS = 920;
-    const LEDGER_BEAM_HOLD_AT_SINK_MS = 220;
-    /** Ledger pop at sink: total time on screen before removal (float-up + fade span this whole window). */
-    const LEDGER_BEAM_POP_DISPLAY_MS = 1680;
-    const LEDGER_BEAM_CLAP_STAGGER_MS = 90;
-    const LEDGER_BEAM_SINK_MAX_DRIFT_PX = 40;
-    const LEDGER_BEAM_NOISE_STEPS = 26;
-    let ledgerBeamFullEventTimesMs = [];
-    let ledgerBeamLayerEl = null;
-    function ensureLedgerBeamLayer() {
-        if (ledgerBeamLayerEl && ledgerBeamLayerEl.parentNode) return ledgerBeamLayerEl;
-        const el = document.createElement("div");
-        el.id = "ledger-beam-layer";
-        el.className = "ledger-beam-layer";
-        el.setAttribute("aria-hidden", "true");
-        document.body.appendChild(el);
-        ledgerBeamLayerEl = el;
-        return el;
-    }
-    function ledgerBeamAllowFullTravel() {
-        const now = Date.now();
-        ledgerBeamFullEventTimesMs = ledgerBeamFullEventTimesMs.filter(t => now - t < 1000);
-        if (ledgerBeamFullEventTimesMs.length >= LEDGER_BEAM_MAX_FULL_PER_SEC) return false;
-        ledgerBeamFullEventTimesMs.push(now);
-        return true;
-    }
-    function ledgerBeamPrefersReducedMotion() {
-        try {
-            return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        } catch (_) {
-            return false;
-        }
-    }
-    /**
-     * Hide ribbon travel for any full-screen page other than Combinations, settings / ascension confirm, or (clap) when
-     * not on Number 1. Catalog bonus travel may run on Number 2.
-     */
-    function ledgerBeamShouldHideTravel(forBonusCatalog) {
-        if (isSettingsPanelOpen()) return true;
-        if (ascensionConfirmOverlayEl && ascensionConfirmOverlayEl.style.display === "flex") return true;
-        if (isPagePanelOpen() && pagePanelEl && pagePanelEl.dataset.openPageId !== "combinations") return true;
-        if (!forBonusCatalog && typeof window.getCurrentNumberMode === "function" && window.getCurrentNumberMode() !== 1) return true;
-        return false;
-    }
-    /** When log rows have no layout, use the visible ticker strip / action-log chrome (player reads messages there). */
-    function ledgerBeamFallbackMessageSourceRect() {
-        if (ambientMessageTickerEl) {
-            const r = ambientMessageTickerEl.getBoundingClientRect();
-            if (r.width > 4 && r.height > 4) return r;
-        }
-        if (actionLogContainer) {
-            const r = actionLogContainer.getBoundingClientRect();
-            if (r.width > 4 && r.height > 4) return r;
-        }
-        const stage = document.getElementById("play-stage");
-        if (stage) {
-            const r = stage.getBoundingClientRect();
-            if (r.width > 4 && r.height > 4) return r;
-        }
-        return null;
-    }
-    /** @param {string} [logCategory] — match {@link data-log-category}; prefer the latest row when it matches (trigger line). */
-    function ledgerBeamGetSourceRectFromActionLog(logCategory) {
-        if (!actionLogEl) return ledgerBeamFallbackMessageSourceRect();
-        const lines = actionLogEl.querySelectorAll(".action-log-line");
-        if (lines && lines.length) {
-            const last = lines[lines.length - 1];
-            if (!logCategory || last.getAttribute("data-log-category") === logCategory) {
-                const rLast = last.getBoundingClientRect();
-                if (rLast.width > 2 && rLast.height > 2) return rLast;
-            }
-            for (let i = lines.length - 1; i >= 0; i--) {
-                const line = lines[i];
-                if (logCategory && line.getAttribute("data-log-category") !== logCategory) continue;
-                const r = line.getBoundingClientRect();
-                if (r.width > 2 && r.height > 2) return r;
-            }
-        }
-        const wrap = actionLogEl.getBoundingClientRect();
-        if (wrap.width > 2 && wrap.height > 2) return wrap;
-        return ledgerBeamFallbackMessageSourceRect();
-    }
-    function ledgerBeamGetBonusSinkElement() {
-        if (isPagePanelOpen() && pagePanelEl && pagePanelEl.dataset.openPageId === "combinations") {
-            const catalog = document.getElementById("ledger-sink-catalog-combined");
-            if (catalog) return catalog;
-        }
-        return incrementalRateEl;
-    }
-    function ledgerBeamSinkAnchorFromElement(el) {
-        if (!el) return null;
-        const r = el.getBoundingClientRect();
-        if (r.width < 2 && r.height < 2) return null;
-        const ex = r.left + r.width * 0.72;
-        const ey = r.top + r.height * 0.5;
-        return { ex, ey, raw: r };
-    }
-    /** When the primary sink is hidden (e.g. Number 1 stage display:none on Number 2), land on a visible stage region. */
-    function ledgerBeamBonusSinkAnchorOrFallback(sinkEl) {
-        let a = ledgerBeamSinkAnchorFromElement(sinkEl);
-        if (a) return a;
-        const mode = typeof window.getCurrentNumberMode === "function" ? window.getCurrentNumberMode() : 1;
-        if (mode === 2) {
-            const n2 = document.getElementById("number2-stage");
-            if (n2 && n2.style.display !== "none") {
-                const r = n2.getBoundingClientRect();
-                if (r.width > 8 && r.height > 8) {
-                    const raw = r;
-                    return {
-                        ex: r.left + r.width * 0.5,
-                        ey: r.top + Math.min(140, r.height * 0.28),
-                        raw
-                    };
-                }
-            }
-        }
-        const stage = document.getElementById("play-stage");
-        if (stage) {
-            const r = stage.getBoundingClientRect();
-            if (r.width > 8 && r.height > 8) {
-                return { ex: r.left + r.width * 0.5, ey: r.top + Math.min(160, r.height * 0.22), raw: r };
-            }
-        }
-        const f = ledgerBeamFallbackSinkPoint();
-        return {
-            ex: f.x + 48,
-            ey: f.y,
-            raw: { left: f.x - 80, top: f.y - 14, width: 160, height: 28 }
-        };
-    }
-    function ledgerBeamFallbackSinkPoint() {
-        const seg = document.querySelector(".top-count-row__segment--center");
-        if (seg) {
-            const r = seg.getBoundingClientRect();
-            return { x: r.left + r.width * 0.5, y: r.top + r.height * 0.5 };
-        }
-        return { x: window.innerWidth * 0.5, y: 88 };
-    }
-    function ledgerBeamCurvePoint(t, ax, ay, bx, by, cx, cy) {
-        const u = 1 - t;
-        return { x: u * u * ax + 2 * u * t * bx + t * t * cx, y: u * u * ay + 2 * u * t * by + t * t * cy };
-    }
-    function ledgerBeamBuildGlyphListBonus(patternMultLabel, catalogAfterNum) {
-        const label = String(patternMultLabel || "").replace(/\s/g, "");
-        const multStr = (Number(catalogAfterNum) || 0).toFixed(2);
-        const pool = [];
-        for (let j = 0; j < label.length; j++) pool.push(label[j]);
-        for (let j = 0; j < multStr.length; j++) pool.push(multStr[j]);
-        pool.push("×", "·", "◆", "‣");
-        if (pool.length < 4) pool.push("×", "·", "◇", "◇");
-        const n = Math.min(24, Math.max(6, 6 + Math.floor(Math.random() * 9)));
-        const glyphs = [];
-        for (let i = 0; i < n; i++) {
-            glyphs.push({ ch: pool[i % pool.length], off: i / n, jitter: (Math.random() - 0.5) * 0.04 });
-        }
-        return glyphs;
-    }
-    function ledgerBeamBuildGlyphListClap(hand1Based, axis) {
-        const axCh = axis === "speed" ? "S" : axis === "cheapen" ? "C" : "P";
-        const handStr = String(hand1Based);
-        const pool = ["+", "1", axCh, "H", handStr, "·", "↑", "+", axCh];
-        const n = Math.min(24, Math.max(6, 6 + Math.floor(Math.random() * 9)));
-        const glyphs = [];
-        for (let i = 0; i < n; i++) {
-            glyphs.push({ ch: pool[i % pool.length], off: i / n, jitter: (Math.random() - 0.5) * 0.04 });
-        }
-        return glyphs;
-    }
-    function ledgerBeamPlayTravelCanvas(kind, sx, sy, lockedEx, lockedEy, onDone, travelOpts) {
-        const layer = ensureLedgerBeamLayer();
-        const watchEl = travelOpts && travelOpts.watchEl;
-        const glyphs = (travelOpts && travelOpts.glyphs) || ledgerBeamBuildGlyphListBonus("", 0);
-        const glyphEls = [];
-        for (let i = 0; i < glyphs.length; i++) {
-            const sp = document.createElement("span");
-            sp.className = "ledger-beam-micro" + (kind === "clap" ? " ledger-beam-micro--clap" : "");
-            sp.textContent = glyphs[i].ch;
-            layer.appendChild(sp);
-            glyphEls.push(sp);
-        }
-        const canvas = document.createElement("canvas");
-        canvas.className = "ledger-beam-canvas";
-        const dpr = Math.min(2, window.devicePixelRatio || 1);
-        const w = window.innerWidth;
-        const h = window.innerHeight;
-        canvas.style.width = w + "px";
-        canvas.style.height = h + "px";
-        canvas.width = Math.floor(w * dpr);
-        canvas.height = Math.floor(h * dpr);
-        layer.appendChild(canvas);
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-            for (const ge of glyphEls) {
-                if (ge && ge.parentNode) ge.parentNode.removeChild(ge);
-            }
-            layer.removeChild(canvas);
-            if (typeof onDone === "function") onDone();
-            return;
-        }
-        ctx.scale(dpr, dpr);
-        const isLight = document.documentElement.getAttribute("data-theme") === "light";
-        const colors = kind === "clap"
-            ? { outer: isLight ? "rgba(200,120,40,0.28)" : "rgba(255, 200, 120,0.55)", inner: isLight ? "rgba(255,180,90,0.65)" : "rgba(255, 230, 180,0.9)" }
-            : { outer: isLight ? "rgba(60,100,160,0.22)" : "rgba(54, 80, 120,0.35)", inner: isLight ? "rgba(90,130,200,0.55)" : "rgba(154, 180, 255,0.78)" };
-        const mx0 = (sx + lockedEx) * 0.5;
-        const my0 = (sy + lockedEy) * 0.5 - Math.min(120, Math.abs(lockedEx - sx) * 0.18 + 40);
-        const t0 = performance.now();
-        const noisePhase = Math.random() * Math.PI * 2;
-        let cancelled = false;
-        function cleanup() {
-            for (const ge of glyphEls) {
-                if (ge && ge.parentNode) ge.parentNode.removeChild(ge);
-            }
-            if (canvas.parentNode) canvas.parentNode.removeChild(canvas);
-        }
-        function finishDone() {
-            if (cancelled) return;
-            cancelled = true;
-            cleanup();
-            if (typeof onDone === "function") onDone();
-        }
-        function noisyPoint(tNorm, bx, by) {
-            const p = ledgerBeamCurvePoint(tNorm, sx, sy, bx, by, lockedEx, lockedEy);
-            if (tNorm <= 0.002 || tNorm >= 0.998) return p;
-            const delta = 0.018;
-            const p2 = ledgerBeamCurvePoint(Math.min(1, tNorm + delta), sx, sy, bx, by, lockedEx, lockedEy);
-            const dx = p2.x - p.x;
-            const dy = p2.y - p.y;
-            const len = Math.hypot(dx, dy) || 1;
-            const nx = -dy / len;
-            const ny = dx / len;
-            const noise = (Math.sin(tNorm * 21.7 + noisePhase) * 0.55 + Math.cos(tNorm * 11.3 - noisePhase * 0.4) * 0.45) * 3.8 * (1 - 0.38 * tNorm);
-            return { x: p.x + nx * noise, y: p.y + ny * noise };
-        }
-        const steps = LEDGER_BEAM_NOISE_STEPS;
-        function frame(now) {
-            if (cancelled) return;
-            const elapsed = now - t0;
-            const linearT = Math.min(1, elapsed / LEDGER_BEAM_TRAVEL_MS);
-            let travelShape = 1;
-            let holdFade = 1;
-            if (elapsed >= LEDGER_BEAM_TRAVEL_MS) {
-                const holdT = elapsed - LEDGER_BEAM_TRAVEL_MS;
-                if (holdT >= LEDGER_BEAM_HOLD_AT_SINK_MS) {
-                    finishDone();
-                    return;
-                }
-                holdFade = 1 - holdT / LEDGER_BEAM_HOLD_AT_SINK_MS;
-            } else {
-                travelShape = 0.5 - 0.5 * Math.cos(Math.PI * linearT);
-            }
-            if (watchEl) {
-                const na = ledgerBeamSinkAnchorFromElement(watchEl);
-                if (!na || Math.hypot(na.ex - lockedEx, na.ey - lockedEy) > LEDGER_BEAM_SINK_MAX_DRIFT_PX) {
-                    finishDone();
-                    return;
-                }
-            }
-            const wob = Math.sin(now * 0.012) * 4;
-            const bx = mx0 + wob;
-            const by = my0;
-            const tease = (1 - Math.pow(1 - travelShape, 2)) * holdFade;
-            ctx.clearRect(0, 0, w, h);
-            ctx.lineCap = "round";
-            ctx.lineJoin = "round";
-            for (let pass = 0; pass < 3; pass++) {
-                const baseW = pass === 0 ? 20 : (pass === 1 ? 11 : 5.2);
-                for (let i = 1; i <= steps; i++) {
-                    const tA = ((i - 1) / steps) * tease;
-                    const tB = (i / steps) * tease;
-                    const mid = (tA + tB) * 0.5;
-                    const pA = noisyPoint(tA, bx, by);
-                    const pB = noisyPoint(tB, bx, by);
-                    const taper = 1 - 0.56 * mid;
-                    ctx.strokeStyle = pass === 2 ? colors.inner : colors.outer;
-                    const baseAlpha = pass === 0 ? 0.34 : (pass === 1 ? 0.5 : 0.86);
-                    ctx.globalAlpha = baseAlpha * holdFade;
-                    ctx.lineWidth = baseW * taper * (pass === 2 ? 0.42 : 1);
-                    ctx.beginPath();
-                    ctx.moveTo(pA.x, pA.y);
-                    ctx.lineTo(pB.x, pB.y);
-                    ctx.stroke();
-                }
-            }
-            ctx.globalAlpha = 1;
-            const ease = travelShape;
-            const glyphAlpha = Math.min(1, ease * 1.05) * holdFade;
-            for (let i = 0; i < glyphs.length; i++) {
-                const g = glyphs[i];
-                const gt = Math.max(0, Math.min(1, (ease - g.off * 0.85) / 0.35 + g.jitter));
-                const p = ledgerBeamCurvePoint(gt, sx, sy, bx, by, lockedEx, lockedEy);
-                const ge = glyphEls[i];
-                if (ge) {
-                    ge.style.left = p.x + "px";
-                    ge.style.top = p.y + "px";
-                    const vis = glyphAlpha * (gt > 0.02 && gt < 0.98 ? 0.88 : 0);
-                    ge.style.opacity = String(vis);
-                    ge.style.transform = "translate(-50%, -50%) scale(" + (0.7 + 0.35 * Math.sin(gt * Math.PI)) + ")";
-                }
-            }
-            requestAnimationFrame(frame);
-        }
-        requestAnimationFrame(frame);
-    }
-    function ledgerBeamPopOverlay(rect, kind, oldText, newText, popOpts) {
-        if (!rect) return;
-        popOpts = popOpts || {};
-        const layer = ensureLedgerBeamLayer();
-        const wrap = document.createElement("div");
-        wrap.className = "ledger-beam-pop-wrap" + (kind === "clap" ? " ledger-beam-pop-wrap--clap" : "");
-        const ghost = document.createElement("span");
-        ghost.className = "ledger-beam-pop-ghost";
-        ghost.textContent = oldText || "";
-        const neu = document.createElement("span");
-        neu.className = "ledger-beam-pop-new";
-        neu.textContent = newText || "";
-        wrap.appendChild(ghost);
-        wrap.appendChild(neu);
-        if (popOpts.deltaText && ledgerBeamPrefersReducedMotion()) {
-            const d = document.createElement("span");
-            d.className = "ledger-beam-pop-delta";
-            d.textContent = popOpts.deltaText;
-            wrap.appendChild(d);
-        }
-        const ax = popOpts.anchorX != null ? popOpts.anchorX : (rect.left + rect.width * 0.5);
-        const ay = popOpts.anchorY != null ? popOpts.anchorY : (rect.top + rect.height * 0.5);
-        wrap.style.left = ax + "px";
-        wrap.style.top = ay + "px";
-        layer.appendChild(wrap);
-        window.setTimeout(() => {
-            wrap.classList.add("ledger-beam-pop-wrap--run");
-            if (!ledgerBeamPrefersReducedMotion()) {
-                wrap.classList.add("ledger-beam-pop-wrap--exit");
-            }
-        }, 10);
-        window.setTimeout(() => {
-            if (wrap.parentNode) wrap.parentNode.removeChild(wrap);
-        }, LEDGER_BEAM_POP_DISPLAY_MS);
-    }
-    function ledgerBeamCreateClapFallbackChip(layer, ev) {
-        const chip = document.createElement("div");
-        chip.className = "ledger-beam-fallback-chip";
-        const axisLabel = ev.axis === "speed" ? "Speed" : ev.axis === "cheapen" ? "Cheapen" : "Compaction";
-        chip.textContent = "Hand " + ev.hand1Based + " · " + axisLabel + " +1";
-        layer.appendChild(chip);
-        return chip;
-    }
-    function ledgerBeamPulseSink(el, kind) {
-        if (!el) return;
-        const clap = kind === "clap";
-        el.classList.remove("ledger-beam-sink-flash", "ledger-beam-sink-flash--clap");
-        void el.offsetWidth;
-        el.classList.add(clap ? "ledger-beam-sink-flash--clap" : "ledger-beam-sink-flash");
-        window.setTimeout(() => {
-            el.classList.remove("ledger-beam-sink-flash", "ledger-beam-sink-flash--clap");
-        }, 400);
-    }
+    const ledgerBeamVfx = createLedgerBeamVfx({
+        window,
+        document,
+        isSettingsPanelOpen,
+        isPagePanelOpen,
+        getCurrentNumberMode: () => typeof window.getCurrentNumberMode === "function" ? window.getCurrentNumberMode() : 1,
+        getUnlockedHands: () => unlockedHands,
+        getSpeedRowRefs: () => speedRowRefs,
+        ascensionConfirmOverlayEl,
+        pagePanelEl,
+        ambientMessageTickerEl,
+        actionLogEl,
+        actionLogContainer,
+        incrementalRateEl
+    });
     function ledgerBeamPlayBonus(catalogBefore, catalogAfter, patternMultLabel) {
-        const srcR = ledgerBeamGetSourceRectFromActionLog("milestone") || ledgerBeamFallbackMessageSourceRect();
-        if (!srcR) return;
-        const sinkEl = ledgerBeamGetBonusSinkElement();
-        const sinkAnchor = ledgerBeamBonusSinkAnchorOrFallback(sinkEl);
-        const primarySinkRect = ledgerBeamSinkAnchorFromElement(sinkEl);
-        const popOnly = ledgerBeamShouldHideTravel(true) || ledgerBeamPrefersReducedMotion() || !ledgerBeamAllowFullTravel();
-        const sx = srcR.left + srcR.width * 0.5;
-        const sy = srcR.top + srcR.height * 0.5;
-        const lockedEx = sinkAnchor.ex;
-        const lockedEy = sinkAnchor.ey;
-        const popRect = sinkAnchor.raw;
-        const anchorX = sinkAnchor.ex;
-        const anchorY = sinkAnchor.ey;
-        const bStr = (Number(catalogBefore) || 0).toFixed(2);
-        const aStr = (Number(catalogAfter) || 0).toFixed(2);
-        const oldShort = "Combo Catalog ×" + bStr;
-        const newShort = "Combo Catalog ×" + aStr + " · " + (patternMultLabel || "");
-        const catDelta = (Number(catalogAfter) || 0) - (Number(catalogBefore) || 0);
-        const deltaText = "Δ Combo Catalog " + (catDelta >= 0 ? "+" : "") + catDelta.toFixed(2);
-        const bGlyphs = ledgerBeamBuildGlyphListBonus(patternMultLabel, catalogAfter);
-        const finish = () => {
-            ledgerBeamPopOverlay(popRect, "bonus", oldShort, newShort, { anchorX, anchorY, deltaText });
-            if (sinkEl) ledgerBeamPulseSink(sinkEl, "bonus");
-        };
-        if (popOnly) {
-            finish();
-            return;
-        }
-        ledgerBeamPlayTravelCanvas("bonus", sx, sy, lockedEx, lockedEy, finish, { watchEl: primarySinkRect ? sinkEl : null, glyphs: bGlyphs });
-    }
-    function ledgerBeamPlayClapEvent(ev) {
-        if (!ev || !ev.sinkEl || ev.hand1Based == null || !ev.axis) return;
-        const srcR = ledgerBeamGetSourceRectFromActionLog("system") || ledgerBeamFallbackMessageSourceRect();
-        if (!srcR) return;
-        const layer = ensureLedgerBeamLayer();
-        let chipEl = null;
-        let anchor = ledgerBeamSinkAnchorFromElement(ev.sinkEl);
-        if (!anchor) {
-            chipEl = ledgerBeamCreateClapFallbackChip(layer, ev);
-            const cr = chipEl.getBoundingClientRect();
-            anchor = ledgerBeamSinkAnchorFromElement(chipEl) || { ex: cr.left + cr.width * 0.5, ey: cr.top + cr.height * 0.5, raw: cr };
-        }
-        const lockedEx = anchor.ex;
-        const lockedEy = anchor.ey;
-        const popRect = anchor.raw;
-        const anchorX = anchor.ex;
-        const anchorY = anchor.ey;
-        const popOnly = ledgerBeamShouldHideTravel(false) || ledgerBeamPrefersReducedMotion() || !ledgerBeamAllowFullTravel();
-        const sx = srcR.left + srcR.width * 0.5;
-        const sy = srcR.top + srcR.height * 0.5;
-        const axisShort = ev.axis === "speed" ? "Spd" : ev.axis === "cheapen" ? "Chp" : "Cmp";
-        const deltaText = "Δ H" + ev.hand1Based + " " + axisShort + " +1";
-        const cGlyphs = ledgerBeamBuildGlyphListClap(ev.hand1Based, ev.axis);
-        const finish = () => {
-            if (chipEl && chipEl.parentNode) chipEl.parentNode.removeChild(chipEl);
-            chipEl = null;
-            ledgerBeamPopOverlay(popRect, "clap", ev.oldText || "—", ev.newText || "—", { anchorX, anchorY, deltaText });
-            ledgerBeamPulseSink(ev.sinkEl, "clap");
-        };
-        if (popOnly) {
-            finish();
-            return;
-        }
-        ledgerBeamPlayTravelCanvas("clap", sx, sy, lockedEx, lockedEy, finish, { watchEl: chipEl || ev.sinkEl, glyphs: cGlyphs });
+        ledgerBeamVfx.playBonus(catalogBefore, catalogAfter, patternMultLabel);
     }
     function snapshotHandLedgerBonusDisplays() {
-        const out = [];
-        for (let i = 0; i < unlockedHands; i++) {
-            const ref = speedRowRefs[i];
-            if (!ref) {
-                out.push({ speed: "", cheapen: "", slowdown: "" });
-                continue;
-            }
-            out.push({
-                speed: ref.speedLevelEl ? ref.speedLevelEl.textContent.replace(/\s+/g, " ").trim() : "",
-                cheapen: ref.cheapenLevelEl ? ref.cheapenLevelEl.textContent.replace(/\s+/g, " ").trim() : "",
-                slowdown: ref.slowdownLevelEl ? ref.slowdownLevelEl.textContent.replace(/\s+/g, " ").trim() : ""
-            });
-        }
-        return out;
+        return ledgerBeamVfx.snapshotHandLedgerBonusDisplays();
     }
     function ledgerBeamAfterClapBonuses(beforeSnap) {
-        if (!beforeSnap) return;
-        if (typeof window.getCurrentNumberMode === "function" && window.getCurrentNumberMode() !== 1) return;
-        const events = [];
-        for (let i = 0; i < unlockedHands; i++) {
-            const ref = speedRowRefs[i];
-            if (!ref) continue;
-            const hand1 = i + 1;
-            const b = beforeSnap[i] || { speed: "", cheapen: "", slowdown: "" };
-            const sp = ref.speedLevelEl ? ref.speedLevelEl.textContent.replace(/\s+/g, " ").trim() : "";
-            const ch = ref.cheapenLevelEl ? ref.cheapenLevelEl.textContent.replace(/\s+/g, " ").trim() : "";
-            const sl = ref.slowdownLevelEl ? ref.slowdownLevelEl.textContent.replace(/\s+/g, " ").trim() : "";
-            if (sp !== b.speed && ref.speedLevelEl) {
-                events.push({ sinkEl: ref.speedLevelEl, oldText: b.speed, newText: sp, hand1Based: hand1, axis: "speed" });
-            }
-            if (ch !== b.cheapen && ref.cheapenLevelEl) {
-                events.push({ sinkEl: ref.cheapenLevelEl, oldText: b.cheapen, newText: ch, hand1Based: hand1, axis: "cheapen" });
-            }
-            if (sl !== b.slowdown && ref.slowdownLevelEl) {
-                events.push({ sinkEl: ref.slowdownLevelEl, oldText: b.slowdown, newText: sl, hand1Based: hand1, axis: "slowdown" });
-            }
-        }
-        events.forEach((ev, idx) => {
-            window.setTimeout(() => ledgerBeamPlayClapEvent(ev), idx * LEDGER_BEAM_CLAP_STAGGER_MS);
-        });
+        ledgerBeamVfx.afterClapBonuses(beforeSnap);
     }
 
     let lastSameSpeedHandAlignWallMs = Date.now();
@@ -9777,107 +8888,50 @@ import {
         const now = Date.now();
         if (now - lastSameSpeedHandAlignWallMs < SAME_SPEED_HAND_ALIGN_INTERVAL_MS) return;
         lastSameSpeedHandAlignWallMs = now;
-        const buckets = new Map();
-        hands.forEach(h => {
-            const handIndex = h.id - 1;
-            if (handIndex < 0 || handIndex >= unlockedHands) return;
-            const baseSpeed = (Number.isFinite(h.baseSpeed) && h.baseSpeed > 0) ? h.baseSpeed : HAND_BASE_SPEED;
-            const intervalMs = getTickIntervalMs(baseSpeed, handIndex);
-            if (intervalMs <= 0) return;
-            const bucketKey = getHandSpeedSyncBucketKey(handIndex);
-            if (bucketKey == null) return;
-            if (!buckets.has(bucketKey)) buckets.set(bucketKey, []);
-            buckets.get(bucketKey).push(h);
-        });
-        buckets.forEach(groupHands => {
-            if (groupHands.length < 2) return;
-            groupHands.sort((a, b) => a.id - b.id);
-            const leader = groupHands[0];
-            const acc = leader.tickAccBig != null ? leader.tickAccBig : 0n;
-            const cnt = leader.count;
-            groupHands.forEach(h => {
-                if (h.count === cnt && h.tickAccBig === acc) return;
-                h.count = cnt;
-                h.tickAccBig = acc;
-                h.render();
-            });
+        alignSameSpeedHandPhases({
+            hands,
+            unlockedHands,
+            handBaseSpeed: HAND_BASE_SPEED,
+            getTickIntervalMs,
+            getHandSpeedSyncBucketKey
         });
     }
 
-    function runGameLoopStep() {
-        const dt = GAME_LOOP_MS;
-        const dtSec = GAME_LOOP_MS / 1000;
-        tickBackgroundNumberModules(dtSec);
-        updateBlackHolePhaseStep(dtSec);
-        syncBlackHolePhase1Vfx();
-        const mode = typeof window.getCurrentNumberMode === "function" ? window.getCurrentNumberMode() : 1;
-        if (mode === 2 && isNumber2Unlocked() && number2State.started) {
-            number2.runGameLoopStep(dtSec);
-            /* Number 1 hand/combo UI is not stepped here, but catalog milestone cooldown still runs via wall clock — drain the queue so the main combo bubble + earn apply on time. */
-            if (unlockedHands >= 2) {
-                tryProcessOneComboDiscoveryMilestone(Date.now());
-            }
-            return;
-        }
-        if (getBlackHolePhase() === 7) {
+    const number1GameLoopStepDeps = {
+        handBaseSpeed: HAND_BASE_SPEED,
+        tickCap: BLACK_HOLE_EVAPORATION_CAP,
+        tickBackgroundNumberModules,
+        updateBlackHolePhaseStep,
+        syncBlackHolePhase1Vfx,
+        getCurrentNumberMode: () => typeof window.getCurrentNumberMode === "function" ? window.getCurrentNumberMode() : 1,
+        shouldRunNumber2Foreground: mode => mode === 2 && isNumber2Unlocked() && number2State.started,
+        runNumber2GameLoopStep: dtSec => number2.runGameLoopStep(dtSec),
+        processComboDiscoveryMilestoneIfUnlocked: () => {
+            if (unlockedHands >= 2) tryProcessOneComboDiscoveryMilestone(Date.now());
+        },
+        getBlackHolePhase,
+        runBlackHolePhase7Step: backgroundTab => {
             totalChanges = Math.floor(number1BlackHoleState.phase7EpilogueCounter || 0);
             handEarnings[0] = totalChanges;
             if (totalChanges > number1RunPeakTotalCount) number1RunPeakTotalCount = totalChanges;
-            if (incrementalCountLabelEl) incrementalCountLabelEl.textContent = "Epilogue Count";
-            if (incrementalEl) incrementalEl.textContent = formatCount(totalChanges);
-            updateRateDisplay();
-            updateMilestoneUI();
-            return;
-        }
-        updateTimeWarpSystem(dtSec);
-        maybeAlignSameSpeedHandPhasesFromWallClock();
-        const ticksPerHand = Array(unlockedHands).fill(0);
-        // Hands with the same speed multiplier share one tick phase and the same 1–10 digit
-        // so pair-style combos stay achievable (stable bucket key: effective speed level).
-        // Compaction only scales tick *value* per hand (see effectiveTicksPerHand); cadence follows Speed.
-        const buckets = new Map();
-        hands.forEach(h => {
-            const handIndex = h.id - 1;
-            if (handIndex < 0 || handIndex >= unlockedHands) return;
-            const baseSpeed = (Number.isFinite(h.baseSpeed) && h.baseSpeed > 0) ? h.baseSpeed : HAND_BASE_SPEED;
-            const intervalMs = getTickIntervalMs(baseSpeed, handIndex);
-            if (intervalMs <= 0) return;
-            const bucketKey = getHandSpeedSyncBucketKey(handIndex);
-            if (bucketKey == null) return;
-            if (!buckets.has(bucketKey)) buckets.set(bucketKey, []);
-            buckets.get(bucketKey).push(h);
-        });
-        buckets.forEach((groupHands) => {
-            groupHands.sort((a, b) => a.id - b.id);
-            const leader = groupHands[0];
-            const handIndexLeader = leader.id - 1;
-            const levelEff = getEffectiveSpeedLevel(handIndexLeader);
-            const multBig = getSpeedMultiplierBigForLevel(levelEff);
-            const baseSpeed = (Number.isFinite(leader.baseSpeed) && leader.baseSpeed > 0) ? leader.baseSpeed : HAND_BASE_SPEED;
-            const intervalMs = getTickIntervalMs(baseSpeed, handIndexLeader);
-            if (intervalMs <= 0) return;
-            const alignedCount = leader.count;
-            let acc = leader.tickAccBig != null ? leader.tickAccBig : 0n;
-            acc += BigInt(dt) * multBig;
-            const ticksBig = acc / 1000n;
-            acc %= 1000n;
-            const ticksFloat = Number(ticksBig);
-            const ticksNum = Number.isFinite(ticksFloat) ? ticksFloat : BLACK_HOLE_EVAPORATION_CAP;
-            let targetCount = alignedCount;
-            if (ticksBig > 0n) {
-                const tMod = Number(ticksBig % 10n);
-                targetCount = ((alignedCount - 1 + tMod) % 10 + 10) % 10 + 1;
+            if (!backgroundTab) {
+                if (incrementalCountLabelEl) incrementalCountLabelEl.textContent = "Epilogue Count";
+                if (incrementalEl) incrementalEl.textContent = formatCount(totalChanges);
+                updateRateDisplay();
+                updateMilestoneUI();
             }
-            groupHands.forEach(h => {
-                h.count = targetCount;
-                h.tickAccBig = acc;
-                ticksPerHand[h.id - 1] = ticksNum;
-                h.render();
-            });
-        });
-        processClappingThisTick();
-        const totalTicks = ticksPerHand.reduce((a, b) => a + b, 0);
-        if (totalChanges >= TURBO_UNLOCK_COUNT) {
+        },
+        updateTimeWarpSystem,
+        maybeAlignSameSpeedHandPhasesFromWallClock,
+        getUnlockedHands: () => unlockedHands,
+        getHands: () => hands,
+        getTickIntervalMs,
+        getHandSpeedSyncBucketKey,
+        getEffectiveSpeedLevel,
+        getSpeedMultiplierBigForLevel,
+        processClappingThisTick,
+        updateTurboStep: (dtSec, backgroundTab) => {
+            if (totalChanges < TURBO_UNLOCK_COUNT) return;
             let turboScensionAutobuyDidUpgrade = false;
             if (turboBoostUnlocked) {
                 if (turboBoostEnabled && turboBoostMeter > 0) turboActivationCount++;
@@ -9890,33 +8944,42 @@ import {
                 }
                 if (turboScensionAutobuyDidUpgrade) autosaveNow();
             }
-            updateTurboBoostUI();
-            if (turboScensionAutobuyDidUpgrade) updateRateDisplay();
-        }
-        updateComboUI();
-        if (totalTicks > 0) {
-            const comboMult = getComboMultiplier();
-            const turboMult = getTurboCountMultiplier();
-            const effectiveTicksPerHand = ticksPerHand.map((t, i) => t * getSlowdownMultiplier(i));
-            const totalEffectiveTicks = effectiveTicksPerHand.reduce((a, b) => a + b, 0);
-            if (totalEffectiveTicks > 0) {
-                const bhMult = getNumber1BlackHoleProductionMult();
-                const rawBonusTicks = totalEffectiveTicks * comboMult * turboMult * bhMult;
-                const bonusTicks = Number.isFinite(rawBonusTicks) ? Math.max(0, Math.min(BLACK_HOLE_EVAPORATION_CAP, Math.round(rawBonusTicks))) : BLACK_HOLE_EVAPORATION_CAP;
-                for (let i = 0; i < unlockedHands; i++) {
-                    handEarnings[i] += Math.round((effectiveTicksPerHand[i] / totalEffectiveTicks) * bonusTicks);
-                }
+            if (!backgroundTab) {
+                updateTurboBoostUI();
+                if (turboScensionAutobuyDidUpgrade) updateRateDisplay();
+            }
+        },
+        updateComboStep: backgroundTab => {
+            if (backgroundTab) {
+                if (unlockedHands >= 2) tryProcessOneComboDiscoveryMilestone(Date.now());
+            } else {
+                updateComboUI();
+            }
+        },
+        getComboMultiplier,
+        getTurboCountMultiplier,
+        getNumber1BlackHoleProductionMult,
+        getSlowdownMultiplier,
+        applyTickGains: (tickGains, backgroundTab) => {
+            for (let i = 0; i < unlockedHands; i++) {
+                handEarnings[i] += tickGains[i] || 0;
             }
             refreshTotalFromHandEarnings();
-            incrementalEl.textContent = formatCount(totalChanges);
-            updateObjectives();
-            maybeShowFirstAscensionIntroOnUnlock();
-        }
-        /* Autobuy uses wall-clock dt via GAME_LOOP_MS; must run every step — not only when a hand tick fires (speed 0 = rare ticks, countdown would barely move). */
-        maybeAutoBuySpeedUpgrade();
-        maybeAutoBuyCheapen();
-        maybeAutoBuySlowdown();
-        if (totalTicks > 0 || batchedUpgradeUiFlush) {
+            if (!backgroundTab) {
+                if (incrementalEl) incrementalEl.textContent = formatCount(totalChanges);
+                updateObjectives();
+                maybeShowFirstAscensionIntroOnUnlock();
+            }
+        },
+        runAutobuyStep: () => {
+            /* Autobuy uses wall-clock dt via GAME_LOOP_MS; must run every step — not only when a hand tick fires (speed 0 = rare ticks, countdown would barely move). */
+            maybeAutoBuySpeedUpgrade();
+            maybeAutoBuyCheapen();
+            maybeAutoBuySlowdown();
+        },
+        flushAutobuyDeferredTotalsIfAny,
+        flushLoopUi: (totalTicks, backgroundTab) => {
+            if (backgroundTab || (totalTicks <= 0 && !batchedUpgradeUiFlush)) return;
             const now = Date.now();
             if (now - lastUIUpdateMs >= UI_UPDATE_THROTTLE_MS || batchedUpgradeUiFlush) {
                 if (now - lastUIUpdateMs >= UI_UPDATE_THROTTLE_MS) lastUIUpdateMs = now;
@@ -9928,6 +8991,9 @@ import {
                 updateRateDisplay({ throttleCpsHeadline: true });
             }
         }
+    };
+    function runGameLoopStep(opts) {
+        runNumber1GameLoopStep(number1GameLoopStepDeps, opts);
     }
 
     let lastUIUpdateMs = 0;
@@ -9937,51 +9003,7 @@ import {
     /** When autobuy / warp-assist skips per-purchase upgrade DOM, flush once this step (or with the normal throttle). */
     let batchedUpgradeUiFlush = false;
 
-    function gameLoopTick() {
-        const wallNow = Date.now();
-        if (gameplaySimFrozen()) {
-            lastGameLoopPerfMs = null;
-            simLagMs = 0;
-            lastSavePlayWallMs = null;
-            return;
-        }
-        if (lastSavePlayWallMs != null) {
-            let d = wallNow - lastSavePlayWallMs;
-            if (d > 0) {
-                if (d > GAME_LOOP_MAX_ELAPSED_MS) d = GAME_LOOP_MAX_ELAPSED_MS;
-                saveTotalPlayTimeMs = Math.min(Number.MAX_SAFE_INTEGER, saveTotalPlayTimeMs + d);
-            }
-        }
-        lastSavePlayWallMs = wallNow;
-        const perfNow = performance.now();
-        let elapsed = lastGameLoopPerfMs != null ? perfNow - lastGameLoopPerfMs : GAME_LOOP_MS;
-        lastGameLoopPerfMs = perfNow;
-        if (!Number.isFinite(elapsed) || elapsed < 0) elapsed = GAME_LOOP_MS;
-        elapsed = Math.min(elapsed, GAME_LOOP_MAX_ELAPSED_MS);
-        simLagMs += elapsed;
-        if (simLagMs > GAME_LOOP_MAX_LAG_MS) simLagMs = GAME_LOOP_MAX_LAG_MS;
-        let catchUpSteps = 0;
-        while (simLagMs >= GAME_LOOP_MS && catchUpSteps < GAME_LOOP_MAX_CATCHUP_STEPS) {
-            runGameLoopStep();
-            simLagMs -= GAME_LOOP_MS;
-            catchUpSteps++;
-        }
-        const nowOverview = Date.now();
-        if (
-            typeof document !== "undefined" &&
-            !document.hidden &&
-            nowOverview - lastOverviewUpdateMs >= OVERVIEW_PANEL_LIVE_PATCH_MS &&
-            pagePanelEl &&
-            pagePanelEl.style.display !== "none" &&
-            pagePanelBodyEl
-        ) {
-            lastOverviewUpdateMs = nowOverview;
-            const openPageId = pagePanelEl.dataset.openPageId || "";
-            if (openPageId === "overview") patchGlobalOverviewLiveDom();
-            else if (openPageId === "ascension") patchAscensionPanelLiveDom();
-        }
-    }
-    if (!gameLoopTimer) gameLoopTimer = setInterval(gameLoopTick, GAME_LOOP_MS);
+    number1LoopRuntime.start();
     document.addEventListener("visibilitychange", () => {
         if (document.hidden) beginHiddenOfflineTracking();
         else endHiddenOfflineTracking();
@@ -10174,15 +9196,12 @@ import {
     loadSettings();
     applyTheme();
     applySettingsToUI();
-    try {
-        const rawSave = localStorage.getItem(SAVE_KEY);
-        if (rawSave) {
-            const data = JSON.parse(rawSave);
-            applyLoadedState(data);
-            const savedAt = Number(data.savedAt) || Date.now();
-            applyOfflineProgress(Date.now() - savedAt, { showSummary: true });
-        }
-    } catch (_) {}
+    const savedGameData = readSaveData(localStorage);
+    if (savedGameData) {
+        applyLoadedState(savedGameData);
+        const savedAt = Number(savedGameData.savedAt) || Date.now();
+        applyOfflineProgress(Date.now() - savedAt, { showSummary: true });
+    }
     syncPlayStageForNumberMode(typeof window.getCurrentNumberMode === "function" ? window.getCurrentNumberMode() : 1);
     try {
         number2.bindUI();
@@ -10236,11 +9255,7 @@ import {
             devSecondsElapsed.textContent = String(Math.round(elapsedMs / 1000));
         }
         if (devSaveTotalSecondsEl) {
-            let displayMs = saveTotalPlayTimeMs;
-            if (!gameplaySimFrozen() && lastSavePlayWallMs != null) {
-                const extra = Math.min(GAME_LOOP_MAX_ELAPSED_MS, Math.max(0, Date.now() - lastSavePlayWallMs));
-                displayMs = Math.min(Number.MAX_SAFE_INTEGER, displayMs + extra);
-            }
+            const displayMs = number1LoopRuntime.getDisplayTotalPlayTimeMs();
             devSaveTotalSecondsEl.textContent = String(Math.round(displayMs / 1000));
         }
     }
@@ -10317,7 +9332,7 @@ import {
         updateCheapenUpgradeUI();
         updateSlowdownUpgradeUI();
         updateTimeWarpAuraUI();
-        updateTurboBoostUI();
+        updateTurboBoostUI({ force: true });
         updateRateDisplay();
         updateMilestoneUI();
         updateEarnedBonusesUI();
@@ -10460,7 +9475,7 @@ import {
 
     updateObjectives();
     updateMilestoneUI();
-    updateTurboBoostUI();
+    updateTurboBoostUI({ force: true });
     updateRateDisplay();
     updateSlowdownUpgradeUI();
     updateTimeWarpAuraUI();
@@ -10468,6 +9483,8 @@ import {
     updatePageButtonUnlocks();
     updateNumber2SidebarUnlockUI();
     maybeShowFirstAscensionIntroOnUnlock();
+    syncPhase1MassFillCssVars();
+    syncPhase1TesseractCanvasesInRoot(document.body);
     setInterval(autosaveNow, AUTOSAVE_INTERVAL_MS);
     window.addEventListener("beforeunload", autosaveNow);
 
