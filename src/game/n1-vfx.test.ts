@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createConfettiSprayer, fillConfettiParticles } from "./n1-vfx.js";
+import { createConfettiSprayer, fillConfettiParticles } from "./modules/number1/vfx.js";
 
 function createFakeDocument() {
     const body = createFakeElement();

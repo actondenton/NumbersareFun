@@ -1,5 +1,5 @@
 import { BLACK_HOLE_PHASE1_ESSENCE_TARGET } from "./number1-black-hole.js";
-import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js";
+import { syncPhase1TesseractCanvasesInRoot } from "./modules/number1/tesseract-canvas.js";
 
 /**
  * Stage VFX, lensing, thermal theme, BH panel patching.
@@ -218,10 +218,7 @@ export function createNumber1BlackHoleUi(deps) {
         const number1StageRootEl = deps.getStageRoot();
         const number1BlackHoleState = deps.getBlackHoleState();
         if (!number1StageRootEl) {
-            if (!blackHoleStageVfxHtmlAttrDone) {
-                document.documentElement.setAttribute("data-n1-bh-vfx-synced", "");
-                blackHoleStageVfxHtmlAttrDone = true;
-            }
+            /* Keep `html:not([data-n1-bh-vfx-synced])` FOUC guard until we can toggle phase classes on a real root; setting the attr here would reveal every layer at once. */
             return;
         }
         const arc = deps.isBlackHoleArcUnlocked();

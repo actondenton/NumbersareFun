@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createNumber1ComboNearMissAccess } from "./n1-combo-near-miss-access.js";
+import { createNumber1ComboNearMissAccess } from "./modules/number1/combo-near-miss-access.js";
 
 describe("createNumber1ComboNearMissAccess", () => {
     it("delegates to ascension node ownership + map", () => {

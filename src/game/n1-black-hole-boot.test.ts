@@ -1,17 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createNumber1BlackHoleBoot } from "./n1-black-hole-boot.js";
-
-vi.mock("./n1-black-hole-controller.js", () => ({
-    createNumber1BlackHoleController: () => ({
-        getBlackHolePhase: () => 1,
-        getBlackHolePhase1FillRatio: () => 0.5,
-        getBlackHolePhase1SlowdownCapBonus: () => 2,
-        completeBlackHolePhaseTransition: vi.fn(),
-        tryBuyBlackHolePhase2CollapseUpgrade: vi.fn(),
-        updateBlackHolePhaseStep: vi.fn()
-    })
-}));
+import { blackHoleControllerCreate, createNumber1BlackHoleBoot } from "./n1-black-hole-boot.js";
 
 vi.mock("./n1-black-hole-ui.js", () => ({
     createNumber1BlackHoleUi: () => ({
@@ -20,8 +9,21 @@ vi.mock("./n1-black-hole-ui.js", () => ({
     })
 }));
 
+afterEach(() => {
+    vi.restoreAllMocks();
+});
+
 describe("createNumber1BlackHoleBoot", () => {
     it("wires controller + UI bridge and exposes aligned slowdown cap + phase readout", () => {
+        vi.spyOn(blackHoleControllerCreate, "create").mockReturnValue({
+            getBlackHolePhase: () => 1,
+            getBlackHolePhase1FillRatio: () => 0.5,
+            getBlackHolePhase1SlowdownCapBonus: () => 2,
+            completeBlackHolePhaseTransition: vi.fn(),
+            tryBuyBlackHolePhase2CollapseUpgrade: vi.fn(),
+            updateBlackHolePhaseStep: vi.fn()
+        } as any);
+
         const boot = createNumber1BlackHoleBoot({
             maxSlowdownLevelBase: 100,
             rootDocument: null,

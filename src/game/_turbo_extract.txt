@@ -1,0 +1,479 @@
+    /* ---------------------------------------------------------
+       TURBO BOOST (unlocks at 1T; gauge to right of total count)
+
+       Design goals:
+       - Meter is fueled by repeatable hand combos (after unlock).
+       - Turbo can be toggled On/Off. Off: meter can grow, but no bonus and no burn.
+       - On: count multiplier is burn-driven (Turbo-scension Burn + base rate); tank fullness and size
+         scale how much of that ceiling you get; a larger full tank runs hotter for longer. Drain uses a
+         piecewise curve so burn slows as the meter nears empty.
+
+       Balance knobs:
+       - Combo → meter points (`getTurboComboPoints`; Turbo-scension Fill doubles this and passive sustain feed per level)
+       - Nominal burn rate → boost shape (`getTurboBurnIntensityRatio`, exponent)
+       - Ring Mult cap (`getTurboCountMultiplierMax`), tank fullness × tank-size peak (`TURBO_TANK_PEAK_*`)
+       - Piecewise drain floor / exponent (`TURBO_DRAIN_*`), Burn Efficiency ascension
+       - Ring sustain: extra combo→meter mult, drain mult, Off-only fill mult, passive meter/sec while On (Fill scales passive regen too)
+    --------------------------------------------------------- */
+    function getTurboScensionActivationCost() {
+        return getTurboScensionActivationCostFromTotals(computeAscensionGrantTotals());
+    }
+    /** Independent random Burn/Tank/Mult/Fill rolls per Upgrade click (1 base + ascension extras). */
+    function getTurboScensionUpgradeRollCount() {
+        return getTurboScensionUpgradeRollCountFromTotals(computeAscensionGrantTotals());
+    }
+
+    let turboBoostMeter = 0;
+    let turboBoostUnlocked = false;
+    let turboBoostEnabled = false;
+    let turboActivationCount = 0;
+    /** Turbo Leveler (Ring): overflow combo fill while Turbo off + full meter → bank; spend for random scension levels. */
+    let turboLevelerBank = 0;
+    let turboLevelerPurchases = 0;
+    /** Patched after {@link createNumber1TurboBoot}; stubs keep earlier handlers valid. */
+    let tryUnlockTurboIfEligible = () => {};
+    /** Patched after turbo boot — sync gauge toggle when simulation forces Turbo Off (empty meter). */
+    let syncTurboBoostToggleDomFromBoot = () => {};
+
+    // Converts combo size (minHands) into meter points.
+    // Current mapping uses an exponential curve: points = base^(minHands-offset)
+    function getTurboScensionFillMult() {
+        return getTurboScensionFillMultForLevel(turboScensionFillLevel);
+    }
+    function getTurboComboPoints(minHands) {
+        return getTurboComboPointsForMinHands(minHands, computeAscensionGrantTotals(), turboScensionFillLevel);
+    }
+
+    function getTurboNominalBurnPerSec() {
+        return getTurboNominalBurnPerSecFromState(computeAscensionGrantTotals(), turboScensionBurnLevel);
+    }
+    /** Burn-driven boost, scaled by tank fullness and (when full) larger tanks hit harder. */
+    function getTurboBoostMultiplierFromState() {
+        return getTurboBoostMultiplierFromTurboState({
+            meter: turboBoostMeter,
+            meterMax: getTurboMeterMax(),
+            curveScale: getTurboMeterCurveScale(),
+            nominalBurnPerSec: getTurboNominalBurnPerSec(),
+            multiplierMax: getTurboCountMultiplierMax()
+        });
+    }
+    // Applied turbo multiplier. If turbo is toggled Off, this returns 1× (no effect).
+    function getTurboCountMultiplier() {
+        if (!turboBoostUnlocked || !turboBoostEnabled || turboBoostMeter <= 0) return 1;
+        return getTurboBoostMultiplierFromState();
+    }
+    // Display-only: potential multiplier from current meter (even if toggle Off).
+    function getTurboCountMultiplierFromMeter() {
+        if (!turboBoostUnlocked || turboBoostMeter <= 0) return 1;
+        return getTurboBoostMultiplierFromState();
+    }
+
+    const TURBO_GAIN_POPUP_DURATION_MS = 1000;
+
+    // Small, short-lived "+N" popup near the turbo gauge when meter increases.
+    // Positioned with slight randomness so multiple gains don't overlap perfectly.
+    function showTurboGainPopup(points) {
+        const container = document.getElementById("turbo-gain-popup-container");
+        const gaugeEl = turboBoostGaugeEl;
+        const wrapEl = turboBoostWrapEl;
+        if (!container || !gaugeEl || !wrapEl || points <= 0) return;
+        const popup = document.createElement("div");
+        popup.className = "turbo-gain-popup";
+        popup.textContent = "+" + points;
+        const gaugeRect = gaugeEl.getBoundingClientRect();
+        const wrapRect = wrapEl.getBoundingClientRect();
+        const offsetX = (Math.random() - 0.5) * 56;
+        const offsetY = (Math.random() - 0.5) * 20;
+        popup.style.left = (gaugeRect.left - wrapRect.left + offsetX) + "px";
+        popup.style.top = (gaugeRect.top - wrapRect.top + offsetY) + "px";
+        container.appendChild(popup);
+        setTimeout(() => {
+            popup.classList.add("turbo-gain-popup-gone");
+            setTimeout(() => { if (popup.parentNode) popup.parentNode.removeChild(popup); }, 350);
+        }, TURBO_GAIN_POPUP_DURATION_MS);
+    }
+
+    function isTurboLevelerMode() {
+        return turboBoostUnlocked && isTurboScensionUnlocked() && !!computeAscensionGrantTotals().turboLeveler && !turboBoostEnabled;
+    }
+    function getTurboLevelerNextPointCost() {
+        return getTurboLevelerNextPointCostForPurchases(turboLevelerPurchases);
+    }
+    /** Spend bank on random Burn/Tank/Mult/Fill while Turbo is off (Turbo Leveler grant). */
+    function tryTurboLevelerPurchases() {
+        if (!turboBoostUnlocked || !isTurboScensionUnlocked() || !computeAscensionGrantTotals().turboLeveler) return;
+        if (turboBoostEnabled) return;
+        let any = false;
+        let nextCost = getTurboLevelerNextPointCost();
+        while (turboLevelerBank >= nextCost) {
+            turboLevelerBank -= nextCost;
+            turboLevelerPurchases++;
+            const axis = applyOneTurboScensionRandomLevel();
+            const labels = ["Burn rate", "Boost tank", "Boost multiplier", "Meter fill"];
+            const now = axis === 0 ? turboScensionBurnLevel : axis === 1 ? turboScensionTankLevel : axis === 2 ? turboScensionMultLevel : turboScensionFillLevel;
+            addToLog("Turbo Leveler: +1 " + labels[axis] + " (now level " + now + ").", "system");
+            turboBoostMeter = Math.min(turboBoostMeter, getTurboMeterMax());
+            any = true;
+            nextCost = getTurboLevelerNextPointCost();
+        }
+        if (any) {
+            markMeaningfulProgress();
+            updateTurboBoostUI({ force: true });
+            updateRateDisplay();
+            autosaveNow();
+        }
+    }
+    // Adds meter charge (clamped). This does NOT care whether turbo is toggled On;
+    // players can still build meter while turbo is Off.
+    function addTurboBoostMeter(points) {
+        if (!turboBoostUnlocked || points <= 0) return;
+        const totals = computeAscensionGrantTotals();
+        if (!turboBoostEnabled) {
+            points *= (totals.turboOffMeterFillMult || 1);
+        }
+        const maxM = getTurboMeterMax();
+        const prev = turboBoostMeter;
+        let popupPts = points;
+        if (isTurboLevelerMode()) {
+            const space = Math.max(0, maxM - turboBoostMeter);
+            const toMeter = Math.min(points, space);
+            if (toMeter > 0) turboBoostMeter = Math.min(maxM, turboBoostMeter + toMeter);
+            popupPts = toMeter;
+            const overflow = points - toMeter;
+            if (overflow > 0 && turboBoostMeter >= maxM - 1e-12) {
+                turboLevelerBank += overflow;
+                tryTurboLevelerPurchases();
+            }
+        } else {
+            turboBoostMeter = Math.min(maxM, turboBoostMeter + points);
+        }
+        if (turboBoostMeter > prev && turboBoostFillEl) {
+            showTurboGainPopup(popupPts > 0 ? popupPts : points);
+            turboBoostFillEl.classList.remove("turbo-boost-fill-gain");
+            void turboBoostFillEl.offsetWidth;
+            turboBoostFillEl.classList.add("turbo-boost-fill-gain");
+            setTimeout(() => turboBoostFillEl.classList.remove("turbo-boost-fill-gain"), 400);
+        }
+        updateTurboBoostUI({ force: true });
+    }
+
+    // Burns meter while turbo is actively applying a multiplier (toggle On).
+    // Also auto-switches the toggle Off when the meter hits 0.
+    function updateTurboBurn(dtSec) {
+        if (!turboBoostUnlocked || !turboBoostEnabled || turboBoostMeter <= 0) return;
+        const meterMax = getTurboMeterMax();
+        const totals = computeAscensionGrantTotals();
+        const drain = getTurboBurnDrainForStep(dtSec, {
+            meter: turboBoostMeter,
+            meterMax,
+            nominalBurnPerSec: getTurboNominalBurnPerSecFromState(totals, turboScensionBurnLevel),
+            totals
+        });
+        turboBoostMeter = Math.max(0, turboBoostMeter - drain);
+        if (turboBoostMeter <= 0) {
+            turboBoostEnabled = false;
+            syncTurboBoostToggleDomFromBoot(false);
+            updateRateDisplay();
+        }
+        if (drain > 0 && turboBoostGaugeEl) {
+            turboBoostGaugeEl.classList.remove("turbo-boost-gauge-burning");
+            void turboBoostGaugeEl.offsetWidth;
+            turboBoostGaugeEl.classList.add("turbo-boost-gauge-burning");
+            setTimeout(() => turboBoostGaugeEl.classList.remove("turbo-boost-gauge-burning"), 250);
+        }
+        updateTurboBoostUI({ force: true });
+    }
+
+    /** Flat meter per second while Turbo On and meter has charge (Ring sustain nodes). */
+    function applyTurboPassiveMeterRegen(dtSec) {
+        if (!turboBoostUnlocked || !turboBoostEnabled || turboBoostMeter <= 0) return;
+        const rate = computeAscensionGrantTotals().turboPassiveMeterPerSec || 0;
+        if (!(rate > 0) || !(dtSec > 0)) return;
+        const maxM = getTurboMeterMax();
+        if (turboBoostMeter >= maxM) return;
+        turboBoostMeter = Math.min(maxM, turboBoostMeter + rate * dtSec * getTurboScensionFillMult());
+    }
+
+    /** Run whenever `totalChanges` changes so milestone gates cannot desync (load, offline, dev tools, etc.). */
+    function syncUnlocksWithTotalCount() {
+        checkUnlockHands();
+        tryUnlockTurboIfEligible();
+        if (totalChanges >= 100) autoBuyUnlocked = true;
+        if (totalChanges >= 10 && upgradeContainer) upgradeContainer.classList.add("show-upgrade-content");
+        if ((handEarnings[0] || 0) >= 1000 && !cheapenSectionUnlocked) {
+            cheapenSectionUnlocked = true;
+            ensureSpeedRows();
+            updateCheapenUpgradeUI();
+        }
+        if (isSlowdownUnlocked() && !slowdownUnlockLogged) {
+            slowdownUnlockLogged = true;
+            addToLog("Compaction unlocked (all hands).", "milestone");
+        }
+        if (isTimeWarpUnlocked() && !timeWarpUnlockLogged) {
+            timeWarpUnlockLogged = true;
+            addToLog("Time Warp system unlocked (auras can now appear).", "milestone");
+        }
+    }
+
+    /** @returns {0|1|2|3} axis: 0 burn, 1 tank, 2 mult, 3 fill */
+    function applyOneTurboScensionRandomLevel() {
+        const pick = Math.floor(Math.random() * 4);
+        if (pick === 0) turboScensionBurnLevel++;
+        else if (pick === 1) turboScensionTankLevel++;
+        else if (pick === 2) turboScensionMultLevel++;
+        else turboScensionFillLevel++;
+        return pick;
+    }
+    function formatTurboScensionUpgradeTipLine(gainedBurn, gainedTank, gainedMult, gainedFill) {
+        const labels = ["Burn rate", "Boost tank", "Boost multiplier", "Meter fill"];
+        const gained = [gainedBurn, gainedTank, gainedMult, gainedFill || 0];
+        const parts = [];
+        for (let i = 0; i < 4; i++) {
+            const n = gained[i];
+            if (n <= 0) continue;
+            const now = i === 0 ? turboScensionBurnLevel : i === 1 ? turboScensionTankLevel : i === 2 ? turboScensionMultLevel : turboScensionFillLevel;
+            parts.push("+" + n + " " + labels[i] + " (now level " + now + ")");
+        }
+        return parts.length ? "Turbo-scension: " + parts.join("; ") + "." : "";
+    }
+    /** Extra sentence(s) for Turbo-scension Upgrade detail tooltip: rough time to afford next purchase in activations. */
+    function getTurboScensionUpgradeActivationEtaHint() {
+        const cost = getTurboScensionActivationCost();
+        const need = cost - turboActivationCount;
+        if (need <= 0) return "";
+        const perSec = 1000 / GAME_LOOP_MS;
+        if (!turboBoostEnabled || turboBoostMeter <= 0) {
+            return " Turn Turbo ON with charge in the meter to earn activations (~" + Math.round(perSec) + "/s — one per " + (GAME_LOOP_MS / 1000) + "s tick — only while boost runs). Refill the gauge with combos if it is empty.";
+        }
+        const secApprox = need / perSec;
+        const dur = formatUpgradeAffordEtaDuration(secApprox).replace(/ at current rate/g, "").trim();
+        return " Roughly " + dur + " of Turbo runtime at full tick rate to afford this if the meter stays charged (drain slows near empty; an empty meter turns Turbo off).";
+    }
+    /**
+     * @param {object} [opts]
+     * @param {boolean} [opts.skipLog] Omit tip log (autobuy).
+     * @param {boolean} [opts.skipAutosave] Batch autobuy: caller saves once.
+     * @param {boolean} [opts.skipUIUpdate] Batch autobuy: caller refreshes UI once.
+     * @returns {boolean} true if a level was purchased
+     */
+    function tryTurboScensionActivationUpgrade(opts) {
+        opts = opts || {};
+        if (!isTurboScensionUnlocked() || !turboBoostUnlocked || gameplaySimFrozen()) return false;
+        const cost = getTurboScensionActivationCost();
+        if (turboActivationCount < cost) return false;
+        turboActivationCount -= cost;
+        const rolls = getTurboScensionUpgradeRollCount();
+        const allAxes = !!computeAscensionGrantTotals().turboScensionAllAxesUpgrade;
+        let gainedBurn = 0;
+        let gainedTank = 0;
+        let gainedMult = 0;
+        let gainedFill = 0;
+        if (allAxes) {
+            for (let r = 0; r < rolls; r++) {
+                turboScensionBurnLevel++;
+                turboScensionTankLevel++;
+                turboScensionMultLevel++;
+                turboScensionFillLevel++;
+                gainedBurn++;
+                gainedTank++;
+                gainedMult++;
+                gainedFill++;
+            }
+        } else {
+            for (let r = 0; r < rolls; r++) {
+                const axis = applyOneTurboScensionRandomLevel();
+                if (axis === 0) gainedBurn++;
+                else if (axis === 1) gainedTank++;
+                else if (axis === 2) gainedMult++;
+                else gainedFill++;
+            }
+        }
+        turboBoostMeter = Math.min(turboBoostMeter, getTurboMeterMax());
+        markMeaningfulProgress();
+        if (!opts.skipUIUpdate) {
+            updateTurboBoostUI({ force: true });
+            updateRateDisplay();
+        }
+        if (!opts.skipAutosave) autosaveNow();
+        if (!opts.skipLog) {
+            const line = formatTurboScensionUpgradeTipLine(gainedBurn, gainedTank, gainedMult, gainedFill);
+            if (line) addToLog(line, "system");
+        }
+        return true;
+    }
+    let turboBoostUiFullLastMs = 0;
+    let turboBoostUiFullDigest = "";
+    const TURBO_BOOST_UI_FULL_MIN_MS = 120;
+    let turboBoostUiStripLastMeterRounded = NaN;
+    let turboBoostUiStripLastMeterMaxRounded = NaN;
+    let turboBoostUiStripLastMultStr = "";
+    let turboBoostUiStripLastActCount = NaN;
+    let turboBoostUiStripLastEnabled = null;
+    function computeTurboBoostUiFullDigest() {
+        const u = turboBoostUnlocked ? 1 : 0;
+        if (!u) return "u0";
+        const s = isTurboScensionUnlocked() ? 1 : 0;
+        if (!s) return "u1|s0|" + Math.round(getTurboMeterMax());
+        const actCost = getTurboScensionActivationCost();
+        const grants = computeAscensionGrantTotals();
+        return [
+            "u1|s1",
+            Math.round(Number(turboScensionBurnLevel) || 0),
+            Math.round(Number(turboScensionTankLevel) || 0),
+            Math.round(Number(turboScensionMultLevel) || 0),
+            Math.round(Number(turboScensionFillLevel) || 0),
+            actCost,
+            turboActivationCount,
+            getTurboScensionUpgradeRollCount(),
+            grants.turboScensionAllAxesUpgrade ? 1 : 0,
+            grants.turboLeveler ? 1 : 0,
+            grants.turboLeveler ? turboLevelerBank : 0,
+            grants.turboLeveler ? getTurboLevelerNextPointCost() : 0,
+            Math.round(getTurboMeterMax()),
+        ].join("|");
+    }
+    function paintTurboBoostScisionFull() {
+        const showScisionPanel = isTurboScensionUnlocked() && turboBoostUnlocked;
+        if (turboScensionPanelEl) {
+            turboScensionPanelEl.style.display = showScisionPanel ? "" : "none";
+            turboScensionPanelEl.setAttribute("aria-hidden", showScisionPanel ? "false" : "true");
+        }
+        if (turboRightClusterEl) turboRightClusterEl.classList.toggle("turbo-right-cluster--scision", showScisionPanel);
+        if (!showScisionPanel && turboScensionLevelerLineEl) {
+            turboScensionLevelerLineEl.style.display = "none";
+            turboScensionLevelerLineEl.setAttribute("aria-hidden", "true");
+        }
+        if (showScisionPanel) {
+            if (turboScensionBurnLineEl) {
+                const lab = turboScensionBurnLineEl.querySelector(".turbo-scension-level-line-label");
+                if (lab) lab.textContent = "Burn " + Math.round(Number(turboScensionBurnLevel) || 0);
+                setUpgradeTooltipText(turboScensionBurnLineEl, TURBO_SCENSION_AXIS_TITLES[0]);
+                turboScensionBurnLineEl.removeAttribute("title");
+            }
+            if (turboScensionTankLineEl) {
+                const lab = turboScensionTankLineEl.querySelector(".turbo-scension-level-line-label");
+                if (lab) lab.textContent = "Tank " + Math.round(Number(turboScensionTankLevel) || 0);
+                setUpgradeTooltipText(turboScensionTankLineEl, TURBO_SCENSION_AXIS_TITLES[1]);
+                turboScensionTankLineEl.removeAttribute("title");
+            }
+            if (turboScensionMultLineEl) {
+                const lab = turboScensionMultLineEl.querySelector(".turbo-scension-level-line-label");
+                if (lab) lab.textContent = "Mult " + Math.round(Number(turboScensionMultLevel) || 0);
+                setUpgradeTooltipText(turboScensionMultLineEl, TURBO_SCENSION_AXIS_TITLES[2]);
+                turboScensionMultLineEl.removeAttribute("title");
+            }
+            if (turboScensionFillLineEl) {
+                const lab = turboScensionFillLineEl.querySelector(".turbo-scension-level-line-label");
+                if (lab) lab.textContent = "Fill " + Math.round(Number(turboScensionFillLevel) || 0);
+                setUpgradeTooltipText(turboScensionFillLineEl, TURBO_SCENSION_AXIS_TITLES[3]);
+                turboScensionFillLineEl.removeAttribute("title");
+            }
+            if (turboScensionUpgradeBtn) {
+                const actCost = getTurboScensionActivationCost();
+                const can = turboActivationCount >= actCost;
+                const rollN = getTurboScensionUpgradeRollCount();
+                const allAxes = !!computeAscensionGrantTotals().turboScensionAllAxesUpgrade;
+                turboScensionUpgradeBtn.disabled = !can;
+                const progress = actCost > 0 ? Math.max(0, Math.min(1, turboActivationCount / actCost)) : 1;
+                setUpgradeButtonProgress(turboScensionUpgradeBtn, progress);
+                turboScensionUpgradeBtn.classList.toggle("upgrade-btn--afford-pulse", can);
+                const spendLine = can
+                    ? (allAxes
+                        ? "Spend " + formatCount(actCost) + " activations for +" + rollN + " level each on Burn, Tank, Mult, and Fill (all four, no random)."
+                        : "Spend " + formatCount(actCost) + " activations for " + rollN + " independent random level" + (rollN === 1 ? "" : "s") + " among Burn, Tank, Mult, or Fill (equal chance per roll).")
+                    : ("Need " + formatCount(actCost) + " activations (have " + formatCount(turboActivationCount) + ").");
+                const eta = getTurboScensionUpgradeActivationEtaHint();
+                const foot = "\n\nHover Burn, Tank, Mult, or Fill above to see what each upgrade type does.";
+                setUpgradeTooltipText(turboScensionUpgradeBtn, spendLine + eta + foot);
+                turboScensionUpgradeBtn.removeAttribute("title");
+            }
+            if (turboScensionLevelerLineEl) {
+                const tl = computeAscensionGrantTotals().turboLeveler === true;
+                if (tl) {
+                    turboScensionLevelerLineEl.style.display = "";
+                    turboScensionLevelerLineEl.setAttribute("aria-hidden", "false");
+                    const next = getTurboLevelerNextPointCost();
+                    const lab = turboScensionLevelerLineEl.querySelector(".turbo-scension-level-line-label");
+                    if (lab) lab.textContent = "Leveler " + formatTurboScensionLevelDisplay(turboLevelerBank) + " / " + formatTurboScensionLevelDisplay(next) + " pts";
+                    setUpgradeTooltipText(turboScensionLevelerLineEl, TURBO_LEVELER_LINE_TOOLTIP);
+                    turboScensionLevelerLineEl.removeAttribute("title");
+                } else {
+                    turboScensionLevelerLineEl.style.display = "none";
+                    turboScensionLevelerLineEl.setAttribute("aria-hidden", "true");
+                }
+            }
+        }
+    }
+    function paintTurboBoostMeterStrip() {
+        if (!turboBoostWrapEl || !turboBoostUnlocked) return;
+        const en = !!turboBoostEnabled;
+        if (turboBoostUiStripLastEnabled !== en) {
+            turboBoostUiStripLastEnabled = en;
+            if (turboBoostEnabledCheckbox) turboBoostEnabledCheckbox.checked = en;
+            if (turboBoostToggleLabelEl) turboBoostToggleLabelEl.textContent = en ? "On" : "Off";
+        }
+        const meterMax = getTurboMeterMax();
+        const pct = Math.min(100, (turboBoostMeter / meterMax) * 100);
+        if (turboBoostFillEl) turboBoostFillEl.style.width = pct + "%";
+        const mr = Math.round(turboBoostMeter);
+        const mmx = Math.round(meterMax);
+        if (turboBoostGaugeEl) {
+            if (mr !== turboBoostUiStripLastMeterRounded) {
+                turboBoostUiStripLastMeterRounded = mr;
+                turboBoostGaugeEl.setAttribute("aria-valuenow", mr);
+            }
+            if (mmx !== turboBoostUiStripLastMeterMaxRounded) {
+                turboBoostUiStripLastMeterMaxRounded = mmx;
+                turboBoostGaugeEl.setAttribute("aria-valuemax", mmx);
+            }
+        }
+        const multStr = formatTurboBoostMultiplierForDisplay(getTurboCountMultiplierFromMeter());
+        if (turboBoostMultiplierEl && multStr !== turboBoostUiStripLastMultStr) {
+            turboBoostUiStripLastMultStr = multStr;
+            turboBoostMultiplierEl.textContent = multStr;
+        }
+        if (turboBoostActivationsEl && turboActivationCount !== turboBoostUiStripLastActCount) {
+            turboBoostUiStripLastActCount = turboActivationCount;
+            turboBoostActivationsEl.textContent = "Activations: " + formatCount(turboActivationCount);
+        }
+    }
+    /**
+     * @param {{ force?: boolean }} [opts] force: immediate Turbo-scision pass (purchases, toggle, load).
+     */
+    function updateTurboBoostUI(opts) {
+        opts = opts || {};
+        const force = opts.force === true;
+        tryUnlockTurboIfEligible();
+        const now = Date.now();
+        const digest = computeTurboBoostUiFullDigest();
+        const paintFull = force || digest !== turboBoostUiFullDigest || now - turboBoostUiFullLastMs >= TURBO_BOOST_UI_FULL_MIN_MS;
+        if (paintFull) {
+            turboBoostUiFullDigest = digest;
+            turboBoostUiFullLastMs = now;
+            paintTurboBoostScisionFull();
+        }
+        paintTurboBoostMeterStrip();
+    }
+
+    const number1TurboBoot = createNumber1TurboBoot({
+        turboScensionUpgradeBtn,
+        turboBoostEnabledCheckbox,
+        turboBoostToggleLabelEl,
+        setTurboBoostEnabled: v => { turboBoostEnabled = v; },
+        tryTurboLevelerPurchases,
+        updateTurboBoostUI,
+        updateRateDisplay,
+        tryTurboScensionActivationUpgrade,
+        getTotalChanges: () => totalChanges,
+        getTurboBoostUnlocked: () => turboBoostUnlocked,
+        onTurboSystemFirstUnlock: () => {
+            turboBoostUnlocked = true;
+            turboBoostEnabled = false;
+        },
+        turboBoostWrapEl,
+        addToLog,
+        formatCount,
+        checkStoryBanners: () => forwardCheckStoryBanners()
+    });
+    tryUnlockTurboIfEligible = number1TurboBoot.tryUnlockTurboIfEligible;
+    syncTurboBoostToggleDomFromBoot = number1TurboBoot.syncTurboBoostToggleDom;

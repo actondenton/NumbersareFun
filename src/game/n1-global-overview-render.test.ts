@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { renderNumber1GlobalOverviewHtml } from "./n1-global-overview-render.js";
+import { renderNumber1GlobalOverviewHtml } from "./modules/number1/global-overview-render.js";
 
 const fmt = (n: number) => `§${n}`;
 

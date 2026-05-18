@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { syncPhase1MassFillCssVarsInRoot } from "./phase1-tesseract-canvas.js";
+import { syncPhase1MassFillCssVarsInRoot } from "./modules/number1/tesseract-canvas.js";
 
 function createFakeElement() {
     const props = new Map<string, string>();

@@ -6,7 +6,7 @@ import {
     formatTurboBoostMultiplierForDisplay,
     formatTurboScensionLevelDisplay,
     formatWithCommas
-} from "./n1-format.js";
+} from "./modules/number1/format.js";
 
 describe("Number 1 format helpers", () => {
     it("formats counts with commas below one million", () => {

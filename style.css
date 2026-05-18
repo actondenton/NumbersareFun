@@ -1494,7 +1494,8 @@ html[data-theme="light"] .n1-bh-visual__core {
 .speed-upgrades-container > .hand-upgrade-row {
   flex: 0 1 auto;
   max-width: 100%;
-  min-width: 0;
+  /* Avoid flex-shrink collapsing the hand column (min-width: 0 made rows shrink to 0 on tight layouts). */
+  min-width: min(var(--hand-slot-display-width, 130px), 100%);
 }
 .upgrade-container.show-upgrade-content .speed-upgrades-container > .hand-upgrade-row {
   flex: 0 1 var(--hand-upgrade-row-total-w);
@@ -3188,6 +3189,13 @@ html[data-theme="light"] .page-btn.page-btn--new-bonus-pulse {
 @keyframes curtainDrop {
     from { clip-path: inset(0 0 100% 0); }
     to   { clip-path: inset(0 0 0 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hand.curtain-reveal {
+    clip-path: none;
+    animation: none;
+  }
 }
 
 
