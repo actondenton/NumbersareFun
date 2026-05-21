@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatComboDiscoveryMilestoneCountdown } from "./n1-combo-discovery-milestone-ui.js";
+import { formatComboDiscoveryMilestoneCountdown } from "./modules/number1/combo-discovery.js";
 
 describe("n1-combo-discovery-milestone-ui", () => {
     it("formats countdown as m:ss with zero padding", () => {

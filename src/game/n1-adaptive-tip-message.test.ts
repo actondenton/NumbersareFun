@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { TIME_WARP_MANUAL_CLICK_SCALE } from "./n1-time-warp.js";
-import { computeNumber1AdaptiveTipMessage } from "./n1-adaptive-tip-message.js";
+import { TIME_WARP_MANUAL_CLICK_SCALE } from "./modules/number1/time-warp.js";
+import { computeNumber1AdaptiveTipMessage } from "./modules/number1/adaptive-tip-message.js";
 
 const defaultInputs = {
     totalChanges: 100,

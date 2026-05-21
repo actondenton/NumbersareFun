@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { COMBOS } from "./n1-combos.js";
-import { createComboDiscoveryUiLoop } from "./n1-combo-discovery-ui-loop.js";
+import { COMBOS } from "./modules/number1/combo.js";
+import { createComboDiscoveryUiLoop } from "./modules/number1/combo-discovery.js";
 
 function findCombo(name: string) {
     const c = COMBOS.find(x => x.name === name);

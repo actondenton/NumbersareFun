@@ -3,10 +3,11 @@ import {
     formatCompactMultiplier,
     formatCount,
     formatSeconds,
+    formatSignedCountGain,
     formatTurboBoostMultiplierForDisplay,
     formatTurboScensionLevelDisplay,
     formatWithCommas
-} from "./n1-format.js";
+} from "./modules/number1/format.js";
 
 describe("Number 1 format helpers", () => {
     it("formats counts with commas below one million", () => {
@@ -17,6 +18,12 @@ describe("Number 1 format helpers", () => {
     it("formats large counts with magnitude names", () => {
         expect(formatCount(1_500_000)).toBe("1.50 million");
         expect(formatCount(1e36)).toBe("1.00 e36");
+        expect(formatCount(1e50)).toBe("100.00 e48");
+    });
+
+    it("formats signed gains without raw float strings", () => {
+        expect(formatSignedCountGain(1_250_000)).toBe("+1.25 million");
+        expect(formatSignedCountGain(1e50)).toBe("+100.00 e48");
     });
 
     it("formats durations as compact hours, minutes, and seconds", () => {
@@ -28,6 +35,7 @@ describe("Number 1 format helpers", () => {
     it("keeps multiplier displays compact", () => {
         expect(formatCompactMultiplier(2.3456)).toBe("2.346");
         expect(formatCompactMultiplier(1234)).toBe("1234.0");
+        expect(formatCompactMultiplier(1e12)).toBe("1.00 trillion");
         expect(formatTurboBoostMultiplierForDisplay(99.96)).toBe("100×");
         expect(formatTurboBoostMultiplierForDisplay(1_250_000)).toBe("1.3 million×");
     });

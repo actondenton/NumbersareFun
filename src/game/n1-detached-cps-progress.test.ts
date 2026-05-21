@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { accumulateNumber1DetachedCps } from "./n1-detached-cps-progress.js";
+import { accumulateNumber1DetachedCps } from "./modules/number1/detached-cps-progress.js";
 
 describe("accumulateNumber1DetachedCps", () => {
     it("returns 0 for non-positive dt or phase 7", () => {

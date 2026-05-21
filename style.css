@@ -1494,7 +1494,8 @@ html[data-theme="light"] .n1-bh-visual__core {
 .speed-upgrades-container > .hand-upgrade-row {
   flex: 0 1 auto;
   max-width: 100%;
-  min-width: 0;
+  /* Avoid flex-shrink collapsing the hand column (min-width: 0 made rows shrink to 0 on tight layouts). */
+  min-width: min(var(--hand-slot-display-width, 130px), 100%);
 }
 .upgrade-container.show-upgrade-content .speed-upgrades-container > .hand-upgrade-row {
   flex: 0 1 var(--hand-upgrade-row-total-w);
@@ -1788,7 +1789,7 @@ html[data-theme="light"] .hand-slot-main .hand-slot-hand-label {
     margin-top: 0;
   }
   .hand-slot.hand-status-tooltip-hover-show .hand-status-block,
-  .hand-slot:focus-within .hand-status-block {
+  .hand-slot:focus-visible .hand-status-block {
     display: block;
   }
 }
@@ -3190,6 +3191,13 @@ html[data-theme="light"] .page-btn.page-btn--new-bonus-pulse {
     to   { clip-path: inset(0 0 0 0); }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .hand.curtain-reveal {
+    clip-path: none;
+    animation: none;
+  }
+}
+
 
 /* =========================
    Dev tools (toggle on/off)
@@ -4493,6 +4501,7 @@ html[data-theme="light"] .ascension-number-tab--active {
 }
 .ascension-run-action {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
@@ -4501,6 +4510,55 @@ html[data-theme="light"] .ascension-number-tab--active {
     border-radius: 12px;
     background: linear-gradient(135deg, rgba(35, 40, 65, 0.72), rgba(45, 38, 80, 0.58));
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+.ascension-run-time-banner {
+    flex: 1 0 100%;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.35rem 1rem;
+    padding: 0.45rem 0.55rem;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.22);
+    border: 1px solid rgba(120, 130, 190, 0.28);
+    font-size: 0.8rem;
+    line-height: 1.35;
+}
+.ascension-run-time-banner__timer,
+.ascension-run-time-banner__mult {
+    font-variant-numeric: tabular-nums;
+}
+.ascension-run-time-banner__hint {
+    flex: 1 0 100%;
+    opacity: 0.82;
+    font-size: 0.74rem;
+}
+.ascension-run-time-banner--warning {
+    border-color: rgba(255, 90, 90, 0.55);
+    background: rgba(80, 20, 20, 0.35);
+    color: rgba(255, 210, 210, 0.98);
+    animation: ascension-run-time-warning-pulse 1.15s ease-in-out infinite;
+}
+.ascension-run-time-banner--warning .ascension-run-time-banner__mult strong {
+    color: rgba(255, 140, 140, 1);
+}
+@keyframes ascension-run-time-warning-pulse {
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(255, 80, 80, 0.15);
+    }
+    50% {
+        box-shadow: 0 0 0 3px rgba(255, 80, 80, 0.28);
+    }
+}
+html[data-theme="light"] .ascension-run-time-banner {
+    background: rgba(255, 255, 255, 0.55);
+    border-color: rgba(140, 130, 190, 0.35);
+}
+html[data-theme="light"] .ascension-run-time-banner--warning {
+    background: rgba(255, 235, 235, 0.95);
+    border-color: rgba(200, 60, 60, 0.45);
+    color: rgba(120, 20, 20, 0.95);
 }
 .ascension-run-action--ready {
     border-color: rgba(255, 213, 79, 0.62);
@@ -6199,6 +6257,118 @@ html[data-theme="light"] .asc-black-hole__effect-val {
     opacity: 0.72;
     font-weight: 400;
 }
+.asc-black-hole--phase1 .asc-black-hole__effect-list li:not(.asc-black-hole__effect-li--ascend) .asc-black-hole__effect-hint {
+    min-height: 1.35em;
+    max-height: 1.35em;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+.asc-black-hole--pour-preview .asc-black-hole__effect-list li:not(.asc-black-hole__effect-li--ascend) .asc-black-hole__effect-hint {
+    opacity: 1;
+}
+.asc-black-hole--pour-preview .asc-black-hole__effect-list li {
+    border-color: rgba(255, 200, 120, 0.45);
+    box-shadow: 0 0 0 1px rgba(255, 180, 90, 0.12);
+}
+.asc-black-hole--pour-preview .asc-black-hole__effect-val {
+    color: rgba(255, 210, 140, 1);
+}
+.asc-black-hole--pour-preview .asc-black-hole__effect-li--ascend .asc-black-hole__effect-val {
+    color: inherit;
+}
+.asc-black-hole--pour-preview .asc-black-hole__effect-li--ascend {
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: none;
+}
+.asc-black-hole__p1-pour-hover-zone {
+    display: block;
+}
+.asc-black-hole__p1-pour-hover-zone .asc-black-hole__buy .page-btn--mass-pour:disabled {
+    pointer-events: none;
+}
+.asc-black-hole__mass-meter-wrap--preview .asc-black-hole__mass-meter-fill {
+    filter: saturate(1.15) brightness(1.08);
+}
+.asc-black-hole__mass-meter-wrap--preview .asc-black-hole__mass-meter-nums {
+    color: rgba(255, 210, 140, 0.98);
+}
+.asc-black-hole__mass-meter-wrap--hypothetical .asc-black-hole__mass-meter-nums strong {
+    text-decoration: underline dotted rgba(255, 210, 140, 0.45);
+    text-underline-offset: 0.12em;
+}
+.asc-black-hole__buy {
+    display: inline-block;
+}
+.asc-black-hole__buy .page-btn--mass-pour:disabled {
+    pointer-events: none;
+}
+.asc-black-hole__pour-preview-note {
+    margin: 0.35rem 0 0;
+    font-size: 0.78rem;
+    line-height: 1.4;
+    opacity: 0.78;
+}
+.asc-black-hole__effect-li--ascend {
+    border-color: rgba(140, 160, 220, 0.35);
+}
+.asc-black-hole__effect-hint--compare {
+    display: inline;
+}
+.asc-black-hole__preview-now {
+    color: rgba(180, 200, 255, 0.95);
+}
+.asc-black-hole__preview-after {
+    color: rgba(255, 210, 140, 1);
+}
+.asc-black-hole__preview-arrow {
+    opacity: 0.65;
+}
+.asc-black-hole__preview-extra {
+    opacity: 0.78;
+}
+.asc-black-hole--pour-preview .asc-black-hole__effect-hint--compare .asc-black-hole__preview-now,
+.asc-black-hole--pour-preview .asc-black-hole__effect-hint--compare .asc-black-hole__preview-after {
+    animation: asc-bh-preview-compare-pulse 2.4s ease-in-out infinite;
+}
+.asc-black-hole--pour-preview .asc-black-hole__effect-hint--compare .asc-black-hole__preview-after {
+    animation-delay: 1.2s;
+}
+@keyframes asc-bh-preview-compare-pulse {
+    0%,
+    45%,
+    100% {
+        opacity: 0.72;
+    }
+    22% {
+        opacity: 1;
+    }
+}
+html[data-theme="light"] .asc-black-hole__preview-now {
+    color: rgba(60, 80, 160, 0.95);
+}
+html[data-theme="light"] .asc-black-hole__preview-after {
+    color: rgba(140, 80, 20, 1);
+}
+.asc-black-hole__p2-now,
+.asc-black-hole__p2-next {
+    display: block;
+    font-size: 0.78rem;
+    line-height: 1.4;
+    margin-top: 0.25rem;
+}
+.asc-black-hole__p2-now strong,
+.asc-black-hole__p2-next strong {
+    font-weight: 600;
+    margin-right: 0.2rem;
+}
+.asc-black-hole__p2-next {
+    opacity: 0.88;
+}
+.asc-black-hole__p2-next--maxed {
+    font-style: italic;
+    opacity: 0.72;
+}
 .asc-black-hole__purse {
     margin-top: 0.65rem !important;
 }
@@ -6864,6 +7034,35 @@ html[data-theme="light"] .asc-map-node--owned .asc-map-node-pin::after {
 .number1-stage-collapse-bg .asc-black-hole__collapse-shard {
     opacity: 0;
     filter: saturate(0.9);
+}
+.number1-stage-collapse-bg .asc-black-hole__numeral-dust {
+    opacity: 0.52;
+}
+.number1-stage-root.bh-phase2-collapse-vfx .number1-stage-collapse-bg .asc-black-hole__numeral-dust span {
+    animation-name: asc-mass-numeral-infall;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-duration: var(--bh-p2-numeral-duration, 11s);
+}
+.number1-stage-root.bh-phase2-collapse-vfx .number1-stage-collapse-bg .asc-black-hole__collapse-shard {
+    animation-duration: var(--bh-p2-shard-duration, 12s);
+}
+.number1-stage-root.bh-phase2-collapse-vfx::after {
+    animation-duration: calc(18s / var(--bh-p2-collapse-speed, 1));
+}
+.number1-stage-root.bh-phase2-step-surge .number1-stage-collapse-bg {
+    animation: bh-phase2-step-surge-pulse 0.9s ease-out 1;
+}
+@keyframes bh-phase2-step-surge-pulse {
+    0% {
+        filter: brightness(1);
+    }
+    35% {
+        filter: brightness(1.35) saturate(1.2);
+    }
+    100% {
+        filter: brightness(1);
+    }
 }
 /* Phase 3 — accretion disk hero (spiral numerals, bands, core): same subtree as ascension panel, ambient behind UI */
 .number1-stage-disk-bg {

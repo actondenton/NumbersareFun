@@ -1,0 +1,38 @@
+---
+description: NumbersareFun always-on guardrails — legacy-boot extraction, planning gate, domain skills
+alwaysApply: true
+---
+
+# NumbersareFun (NAF)
+
+Follow project skills for detail (always-on):
+
+- `naf-plan-before-build` — when to create `.cursor/plans/*.plan.md`
+- `naf-legacy-boot-guard` — where code lives; keep `src/game/legacy-boot.js` thin
+- `naf-game-domains` — subsystem → file map in `reference.md`
+
+## Scope
+
+These guardrails apply when editing `src/game/**`, `style.css`, or `index.html`.
+
+## Plan gate (summary)
+
+**Small (no plan):** test/copy/comments only; no mults, costs, timings, unlocks, or save fields; total diff ≤ 25 lines.
+
+**Needs plan:** any balance/save change; diff > 25 lines; 2+ files in one subsystem; refactor/extraction; non-trivial `legacy-boot.js` touch.
+
+**Plans:** `.cursor/plans/<name>.plan.md` only (not new agent plans under `docs/plans/`).
+
+**After implementing a plan:** update `.cursor/skills/naf-game-domains/reference.md`.
+
+Exception: user says implement/execute an existing plan — proceed without a new plan.
+
+## Legacy-boot (summary)
+
+Do not add logic to `legacy-boot.js` except `deps` wiring and orchestration. Prefer `modules/number1/` and domain rules files; extend existing `n1-*-boot.js`; no imports of legacy-boot from children. Multi-layer work: touch rules, boot, and legacy — **legacy stays thinnest**. If a boot file is full, prefer `modules/number1/` over growing legacy.
+
+Before/after legacy-boot edits: `npm run metrics:legacy-boot`.
+
+## Hierarchy
+
+User rules override this file. Do not restate user rules (commits, test minimalism, scope) here.

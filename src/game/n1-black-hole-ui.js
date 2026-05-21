@@ -1,5 +1,11 @@
-import { BLACK_HOLE_PHASE1_ESSENCE_TARGET } from "./number1-black-hole.js";
-import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js";
+import { BLACK_HOLE_PHASE1_ESSENCE_TARGET, BLACK_HOLE_PHASE2_MASS_CAP } from "./number1-black-hole.js";
+import {
+    formatBlackHolePhase1EffectLines,
+    formatBlackHolePhase1PourHoverLines,
+    getBlackHolePhase1PourPreview,
+    resolvePhase1PourHoverPreviewPour
+} from "./modules/number1/black-hole-effect-copy.js";
+import { syncPhase1TesseractCanvasesInRoot } from "./modules/number1/tesseract-canvas.js";
 
 /**
  * Stage VFX, lensing, thermal theme, BH panel patching.
@@ -18,17 +24,155 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
  * @param {() => void} deps.refreshAscensionPanelIfOpen
  * @param {() => void} deps.patchAscensionHubStatsPillsDomIfChanged
  * @param {() => string} deps.renderNumber1BlackHolePanelHtml
+ * @param {(state: object, pour: number, capBase: number) => object} deps.buildPhase1AscendPourContext
  * @param {() => boolean} deps.isBlackHoleArcUnlocked
  * @param {(n: number | string) => string} deps.formatCount
+ * @param {(v: number) => string} deps.formatCompactMultiplier
  * @param {() => void} deps.autosaveNow
  * @param {() => number} deps.getAscensionEssence
  * @param {() => number} deps.getMaxSlowdownLevelCap
+ * @param {() => number} deps.getBlackHolePhase1SlowdownCapBonus
  */
 export function createNumber1BlackHoleUi(deps) {
     const ctrl = deps.controller;
 
+    function getPhase1SlowdownCapBase() {
+        return Math.max(0, deps.getMaxSlowdownLevelCap() - deps.getBlackHolePhase1SlowdownCapBonus());
+    }
+
+    function getPhase1Formatters() {
+        return {
+            formatCount: deps.formatCount,
+            formatCompactMultiplier: deps.formatCompactMultiplier,
+            formatCpsMult: m => ctrl.formatBlackHolePhase1CpsMultForUi(m)
+        };
+    }
+
+    function applyPhase1EffectLines(bhEl, lines, opts) {
+        const skipAscend = !!(opts && opts.skipAscend);
+        const inertialVal = bhEl.querySelector('.asc-black-hole__effect-val[data-asc-p1-effect="inertial"]');
+        const essenceVal = bhEl.querySelector('.asc-black-hole__effect-val[data-asc-p1-effect="essence"]');
+        const dragVal = bhEl.querySelector('.asc-black-hole__effect-val[data-asc-p1-effect="drag"]');
+        const ascendVal = bhEl.querySelector('.asc-black-hole__effect-val[data-asc-p1-effect="ascend"]');
+        const setLine = function (valEl, line) {
+            if (!valEl || !line) return;
+            valEl.textContent = line.val;
+            const li = valEl.closest("li");
+            const hint = li && li.querySelector(".asc-black-hole__effect-hint");
+            if (!hint) return;
+            if (line.hintHtml) {
+                hint.innerHTML = line.hintHtml;
+            } else {
+                hint.textContent = line.hint || "";
+            }
+        };
+        setLine(inertialVal, lines.inertial);
+        setLine(essenceVal, lines.essence);
+        setLine(dragVal, lines.drag);
+        if (!skipAscend) setLine(ascendVal, lines.ascend);
+    }
+
+    function getPhase1AscendPourContext(state, pour) {
+        if (typeof deps.buildPhase1AscendPourContext !== "function") {
+            return { pour, ready: false, gainNow: {}, gainAfterPour: {} };
+        }
+        return deps.buildPhase1AscendPourContext(state, pour, getPhase1SlowdownCapBase());
+    }
+
+    function applyPhase1PourPreview(bhEl) {
+        const state = deps.getBlackHoleState();
+        const spent = Math.floor(state.phase1EssenceSpent || 0);
+        const rem = Math.max(0, BLACK_HOLE_PHASE1_ESSENCE_TARGET - spent);
+        const have = Math.max(0, Math.floor(Number(deps.getAscensionEssence()) || 0));
+        const actualPour = Math.min(rem, have);
+        const ascendCtx = getPhase1AscendPourContext(state, actualPour);
+        const resolved = resolvePhase1PourHoverPreviewPour(state, actualPour, ascendCtx);
+        if (!(resolved.previewPour > 0) && !ascendCtx.ready) return;
+        const preview = getBlackHolePhase1PourPreview(state, resolved.previewPour, getPhase1SlowdownCapBase());
+        const hoverAscendCtx = Object.assign({}, ascendCtx, {
+            hypotheticalPreviewPour: resolved.hypothetical ? resolved.previewPour : 0
+        });
+        const lines = formatBlackHolePhase1PourHoverLines(preview, getPhase1Formatters(), hoverAscendCtx);
+        applyPhase1EffectLines(bhEl, lines, { skipAscend: true });
+        bhEl.classList.add("asc-black-hole--pour-preview");
+        bhEl.classList.toggle("asc-black-hole--pour-preview-hypothetical", resolved.hypothetical);
+        if (resolved.previewPour > 0) {
+            const meterWrap = bhEl.querySelector(".asc-black-hole__mass-meter-wrap");
+            if (meterWrap) {
+                meterWrap.classList.add("asc-black-hole__mass-meter-wrap--preview");
+                meterWrap.classList.toggle("asc-black-hole__mass-meter-wrap--hypothetical", resolved.hypothetical);
+            }
+            const meterNums = bhEl.querySelector(".asc-black-hole__mass-meter-nums");
+            if (meterNums) {
+                meterNums.innerHTML =
+                    "<strong>" +
+                    preview.afterSpent +
+                    "</strong> / " +
+                    BLACK_HOLE_PHASE1_ESSENCE_TARGET +
+                    " Essence · " +
+                    preview.after.fillPct +
+                    "%";
+            }
+            const meterFill = bhEl.querySelector(".asc-black-hole__mass-meter-fill");
+            if (meterFill) meterFill.style.width = preview.after.fillPct + "%";
+            const meterTrack = bhEl.querySelector(".asc-black-hole__mass-meter-track");
+            if (meterTrack) meterTrack.setAttribute("aria-valuenow", String(preview.afterSpent));
+            deps.syncPhase1MassFillCssVars();
+        }
+    }
+
+    /** Matches upgrade / hand-status hover tooltip delay in upgrades.js */
+    const PHASE1_POUR_PREVIEW_HOVER_DELAY_MS = 1500;
+    const phase1PourPreviewHoverTimers = new WeakMap();
+
+    function clearPhase1PourPreviewHoverTimer(btn) {
+        const id = phase1PourPreviewHoverTimers.get(btn);
+        if (id) clearTimeout(id);
+        phase1PourPreviewHoverTimers.delete(btn);
+    }
+
+    function clearPhase1PourPreview(bhEl) {
+        bhEl.classList.remove("asc-black-hole--pour-preview", "asc-black-hole--pour-preview-hypothetical");
+        const meterWrap = bhEl.querySelector(".asc-black-hole__mass-meter-wrap");
+        if (meterWrap) {
+            meterWrap.classList.remove("asc-black-hole__mass-meter-wrap--preview", "asc-black-hole__mass-meter-wrap--hypothetical");
+        }
+        patchBlackHolePhase1PanelLiveDom(bhEl);
+    }
+
+    function bindPhase1MassPourPreviewHover(btn, bhEl) {
+        const hoverEl = (btn && btn.closest(".asc-black-hole__p1-pour-hover-zone")) || btn;
+        if (!hoverEl || !bhEl || hoverEl.dataset.bhP1PourPreviewBound === "1") return;
+        hoverEl.dataset.bhP1PourPreviewBound = "1";
+        function onPointerIn(e) {
+            const pt = e && e.pointerType;
+            if (pt && pt !== "mouse" && pt !== "pen") return;
+            clearPhase1PourPreviewHoverTimer(hoverEl);
+            const id = setTimeout(function () {
+                phase1PourPreviewHoverTimers.delete(hoverEl);
+                if (!hoverEl.isConnected) return;
+                applyPhase1PourPreview(bhEl);
+            }, PHASE1_POUR_PREVIEW_HOVER_DELAY_MS);
+            phase1PourPreviewHoverTimers.set(hoverEl, id);
+        }
+        function onHoverZoneLeave(e) {
+            const pt = e && e.pointerType;
+            if (pt && pt !== "mouse" && pt !== "pen") return;
+            const next = e.relatedTarget;
+            if (next && bhEl.contains(next)) return;
+            clearPhase1PourPreviewHoverTimer(hoverEl);
+            if (bhEl.classList.contains("asc-black-hole--pour-preview")) {
+                clearPhase1PourPreview(bhEl);
+            }
+        }
+        hoverEl.addEventListener("pointerenter", onPointerIn);
+        hoverEl.addEventListener("pointerleave", onHoverZoneLeave);
+        bhEl.addEventListener("pointerleave", onHoverZoneLeave);
+    }
+
     let blackHoleUiRefreshQueued = false;
     let blackHolePhase1CollapsePulseQueued = false;
+    let blackHolePhase2StepSurgeTimerId = 0;
     let blackHolePhase1SurgeTimerId = 0;
     let blackHoleLensingManualBurstTimerId = 0;
     let blackHoleLensingAutoTickTimerId = 0;
@@ -218,10 +362,7 @@ export function createNumber1BlackHoleUi(deps) {
         const number1StageRootEl = deps.getStageRoot();
         const number1BlackHoleState = deps.getBlackHoleState();
         if (!number1StageRootEl) {
-            if (!blackHoleStageVfxHtmlAttrDone) {
-                document.documentElement.setAttribute("data-n1-bh-vfx-synced", "");
-                blackHoleStageVfxHtmlAttrDone = true;
-            }
+            /* Keep `html:not([data-n1-bh-vfx-synced])` FOUC guard until we can toggle phase classes on a real root; setting the attr here would reveal every layer at once. */
             return;
         }
         const arc = deps.isBlackHoleArcUnlocked();
@@ -271,6 +412,22 @@ export function createNumber1BlackHoleUi(deps) {
         if (heavyDue) {
             syncPhase1TesseractCanvasesInRoot(number1StageRootEl);
             deps.syncPhase1MassFillCssVars();
+            if (collapseMood) {
+                const mass = Math.max(0, Math.floor(Number(number1BlackHoleState.phase2Mass) || 0));
+                const speedCore = 1 + mass * 0.65;
+                /** 2× slower infall at L=0, 2× faster at max mass vs prior curve. */
+                const durationScale = 2 - (mass / BLACK_HOLE_PHASE2_MASS_CAP) * 1.5;
+                const speed = speedCore / durationScale;
+                const shardBase = Math.max(2, 12 / speed);
+                const numeralBase = Math.max(2, 11 / speed);
+                number1StageRootEl.style.setProperty("--bh-p2-collapse-speed", String(speed));
+                number1StageRootEl.style.setProperty("--bh-p2-shard-duration", shardBase + "s");
+                number1StageRootEl.style.setProperty("--bh-p2-numeral-duration", numeralBase + "s");
+            } else {
+                number1StageRootEl.style.removeProperty("--bh-p2-collapse-speed");
+                number1StageRootEl.style.removeProperty("--bh-p2-shard-duration");
+                number1StageRootEl.style.removeProperty("--bh-p2-numeral-duration");
+            }
         }
 
         if (massMood && !number1BlackHoleState.phase1VisualUnlockDone) {
@@ -300,6 +457,23 @@ export function createNumber1BlackHoleUi(deps) {
         }
     }
 
+    function triggerBlackHolePhase2StepSurgeVfx() {
+        const number1StageRootEl = deps.getStageRoot();
+        if (!number1StageRootEl) return;
+        if (blackHolePhase2StepSurgeTimerId) {
+            clearTimeout(blackHolePhase2StepSurgeTimerId);
+            blackHolePhase2StepSurgeTimerId = 0;
+        }
+        number1StageRootEl.classList.remove("bh-phase2-step-surge");
+        void number1StageRootEl.offsetWidth;
+        number1StageRootEl.classList.add("bh-phase2-step-surge");
+        blackHolePhase2StepSurgeTimerId = setTimeout(function () {
+            blackHolePhase2StepSurgeTimerId = 0;
+            const el = deps.getStageRoot();
+            if (el) el.classList.remove("bh-phase2-step-surge");
+        }, 900);
+    }
+
     function triggerBlackHolePhase1CollapseVfx() {
         const number1StageRootEl = deps.getStageRoot();
         if (!number1StageRootEl || blackHolePhase1CollapsePulseQueued) return;
@@ -324,17 +498,20 @@ export function createNumber1BlackHoleUi(deps) {
         const have = Math.max(0, Math.floor(Number(deps.getAscensionEssence()) || 0));
         const pour = Math.min(rem, have);
         const can = rem > 0 && have > 0;
+        const pourPreviewActive = bhEl.classList.contains("asc-black-hole--pour-preview");
         const fillPct = Math.round(ctrl.getBlackHolePhase1FillRatio() * 100);
-        const meterNums = bhEl.querySelector(".asc-black-hole__mass-meter-nums");
-        if (meterNums) meterNums.innerHTML = "<strong>" + spent + "</strong> / " + BLACK_HOLE_PHASE1_ESSENCE_TARGET + " Essence · " + fillPct + "%";
-        const meterTrack = bhEl.querySelector(".asc-black-hole__mass-meter-track");
-        if (meterTrack) meterTrack.setAttribute("aria-valuenow", String(spent));
-        const meterFill = bhEl.querySelector(".asc-black-hole__mass-meter-fill");
-        if (meterFill) meterFill.style.width = fillPct + "%";
+        if (!pourPreviewActive) {
+            const meterNums = bhEl.querySelector(".asc-black-hole__mass-meter-nums");
+            if (meterNums) meterNums.innerHTML = "<strong>" + spent + "</strong> / " + BLACK_HOLE_PHASE1_ESSENCE_TARGET + " Essence · " + fillPct + "%";
+            const meterTrack = bhEl.querySelector(".asc-black-hole__mass-meter-track");
+            if (meterTrack) meterTrack.setAttribute("aria-valuenow", String(spent));
+            const meterFill = bhEl.querySelector(".asc-black-hole__mass-meter-fill");
+            if (meterFill) meterFill.style.width = fillPct + "%";
+        }
         const multStat = bhEl.querySelector(".asc-black-hole__total-mult");
         if (multStat) {
             const mult = ctrl.getNumber1BlackHoleProductionMult();
-            const multStr = mult >= 10 ? mult.toFixed(2) : mult.toFixed(3);
+            const multStr = deps.formatCompactMultiplier(mult);
             multStat.innerHTML = ctrl.getTotalProductionMultLabelForPanel() + ": <strong>×" + multStr + "</strong>";
         }
         const purse = bhEl.querySelector(".asc-black-hole__purse");
@@ -343,10 +520,17 @@ export function createNumber1BlackHoleUi(deps) {
         if (btn) {
             btn.disabled = !can;
             btn.textContent = "Pour in all Essence (" + deps.formatCount(pour) + ")";
+            bindPhase1MassPourPreviewHover(btn, bhEl);
+        }
+        if (pourPreviewActive) {
+            applyPhase1PourPreview(bhEl);
+            deps.syncPhase1MassFillCssVars();
+            return true;
         }
         let inertialVal = bhEl.querySelector('.asc-black-hole__effect-val[data-asc-p1-effect="inertial"]');
         let essenceVal = bhEl.querySelector('.asc-black-hole__effect-val[data-asc-p1-effect="essence"]');
         let dragVal = bhEl.querySelector('.asc-black-hole__effect-val[data-asc-p1-effect="drag"]');
+        let ascendVal = bhEl.querySelector('.asc-black-hole__effect-val[data-asc-p1-effect="ascend"]');
         if (!inertialVal || !essenceVal || !dragVal) {
             const legacyVals = bhEl.querySelectorAll(".asc-black-hole__effect-list > li > .asc-black-hole__effect-val");
             if (legacyVals.length >= 3) {
@@ -355,9 +539,13 @@ export function createNumber1BlackHoleUi(deps) {
                 if (!dragVal) dragVal = legacyVals[2];
             }
         }
-        if (inertialVal) inertialVal.textContent = "run CPS ×" + ctrl.formatBlackHolePhase1CpsMultForUi(ctrl.getBlackHolePhase1RunCpsMult());
-        if (essenceVal) essenceVal.textContent = "Ascend payout ×" + ctrl.getBlackHolePhase1AscensionEssenceMult().toFixed(2);
-        if (dragVal) dragVal.textContent = "Compaction cap " + deps.getMaxSlowdownLevelCap();
+        const ascendCtx = getPhase1AscendPourContext(number1BlackHoleState, pour);
+        const p1Lines = formatBlackHolePhase1EffectLines(
+            getBlackHolePhase1PourPreview(number1BlackHoleState, pour, getPhase1SlowdownCapBase()),
+            getPhase1Formatters(),
+            { ascendCtx }
+        );
+        applyPhase1EffectLines(bhEl, p1Lines);
         deps.syncPhase1MassFillCssVars();
         return true;
     }
@@ -394,7 +582,7 @@ export function createNumber1BlackHoleUi(deps) {
         const cor = ctrl.getBlackHolePhase3TrackLevel("coronal");
         const have = Math.max(0, Math.floor(Number(deps.getAscensionEssence()) || 0));
         const mult = ctrl.getNumber1BlackHoleProductionMult();
-        const multStr = mult >= 10 ? mult.toFixed(2) : mult.toFixed(3);
+        const multStr = deps.formatCompactMultiplier(mult);
         const dataKey = lum + "|" + vis + "|" + cor + "|" + have + "|" + multStr;
         if (dataKey === patchBlackHolePhase3LastDataKey) return true;
         patchBlackHolePhase3LastDataKey = dataKey;
@@ -459,6 +647,7 @@ export function createNumber1BlackHoleUi(deps) {
         pulseBlackHoleLensingAutoTick,
         syncBlackHolePhase1Vfx,
         triggerBlackHolePhase1CollapseVfx,
+        triggerBlackHolePhase2StepSurgeVfx,
         patchBlackHolePhase1PanelLiveDom,
         patchBlackHolePhase2PanelLiveDom,
         patchBlackHolePhase3PanelLiveDom,

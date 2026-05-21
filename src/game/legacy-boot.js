@@ -1,7 +1,4 @@
 import {
-    NUMBER2_ASCENSION_READY_TOTAL
-} from "./number2-rules.js";
-import {
     BLACK_HOLE_EVAPORATION_CAP,
     BLACK_HOLE_FURNACE_COMPLETION_RITUAL_MS,
     BLACK_HOLE_FURNACE_ESSENCE_REFINERY_BONUS,
@@ -11,131 +8,81 @@ import {
     BLACK_HOLE_PHASE1_ESSENCE_TARGET,
     BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER,
     BLACK_HOLE_PHASE2_MASS_CAP,
-    BLACK_HOLE_PHASE4_WAVE_BOOST_DURATION_SEC,
     BLACK_HOLE_SCREEN_FX_MS,
     createNumber1BlackHoleState,
     createNumber1BlackHoleUxFlags,
+    getBlackHolePhase2ErgosphereTurboPassivePerSec,
+    getBlackHolePhase2PhotonComboPersistMinHands
 } from "./number1-black-hole.js";
 import { createNumber1BlackHoleBoot } from "./n1-black-hole-boot.js";
-import { createAscensionMapUi } from "./n1-ascension-map-ui.js";
 import {
-    createNumber2Controller,
-    createNumber2ModuleDefinition,
-    createNumber2State
-} from "./number2-game.js";
-import { hands1 } from "./n1-hand-ascii.js";
-import {
-    formatCompactMultiplier,
-    formatCount,
-    formatSeconds,
-    formatTurboBoostMultiplierForDisplay,
-    formatTurboScensionLevelDisplay,
-    formatWithCommas
-} from "./n1-format.js";
-import { createLogTickerRuntime } from "./n1-log-ticker-runtime.js";
-import { createShellPanelsUi } from "./n1-shell-panels.js";
-import {
-    applyObjectiveFlagsFromSnapshot,
-    normalizeNumber1SaveSnapshot,
-    patchTimeWarpAuraAppearedForActiveHands,
-    replaceClosedBannersFromSnapshot,
-    replaceEarnedComboNamesFromSnapshot
-} from "./n1-state-apply.js";
-import { formatUpgradeAffordEtaDuration, createUpgradeEtaSmoother } from "./n1-upgrade-eta.js";
-import { createUpgradeUiController } from "./n1-upgrade-ui-controller.js";
-import { createRateDisplayUi } from "./n1-rate-display-ui.js";
-import { createTopCountRowFit } from "./n1-top-count-row-fit.js";
-import {
-    HAND_BASE_SPEED,
-    UNLOCK_THRESHOLDS,
-    shouldUnlockNextHand,
-    storyTotalCountLead as getStoryTotalCountLead
-} from "./n1-hands.js";
-import { HandCounter } from "./n1-hand-counter.js";
-import {
-    GAME_LOOP_MS,
-    alignSameSpeedHandPhases,
-    createNumber1LoopRuntime,
-    runNumber1GameLoopStep
-} from "./n1-game-loop.js";
-import { accumulateNumber1DetachedCps } from "./n1-detached-cps-progress.js";
-import { assembleNumber1GameLoopStepDeps } from "./n1-game-loop-step-deps.js";
-import { createNumber1TickApplyStep } from "./n1-tick-apply-step.js";
-import { renderNumber1GlobalOverviewHtml } from "./n1-global-overview-render.js";
-import { renderAscensionPageShellHtml } from "./n1-ascension-page-shell.js";
-import { createNumber1SpeedUpgradeBoot } from "./n1-speed-upgrade-boot.js";
-import { createNumber1CheapenBoot } from "./n1-cheapen-boot.js";
-import { createNumber1SlowdownBoot } from "./n1-slowdown-boot.js";
-import { createNumber1ClapTick } from "./n1-clap-tick.js";
-import { createNumber1TurboGameLoopStep } from "./n1-turbo-game-loop-step.js";
-import { createNumber1AscensionPerform } from "./n1-ascension-perform.js";
-import { consumeAscendNumber1Button, createNumber1AscensionFlowUi } from "./n1-ascension-flow-ui.js";
-import { computeNumber1AdaptiveTipMessage } from "./n1-adaptive-tip-message.js";
-import {
-    BASE_MAX_CHEAPEN_LEVEL,
-    DEV_CHEAPEN_AUTOBUY_DELAY,
-    DEV_SLOWDOWN_AUTOBUY_DELAY,
-    MAX_SLOWDOWN_LEVEL,
-    SLOWDOWN_UNLOCK_COUNT,
-    getCheapenEffectTextForAchievedLevel,
-    getCheapenMultiplierForLevel,
-    getCheapenUpgradeCost as getCheapenUpgradeCostForLevel,
-    getEffectiveUpgradeLevel,
-    getSlowdownMultiplierForLevel,
-    getSlowdownUpgradeCost as getSlowdownUpgradeCostForLevel,
-    getSpeedMultiplierBigForLevel,
-    getSpeedMultiplierForLevel,
-    getSpeedUpgradeCost
-} from "./n1-upgrades.js";
-import {
-    TIME_WARP_UNLOCK_COUNT,
-    getTimeWarpAuraSpawnSpanMaxSecFromTotals,
-    getTimeWarpOverflowRatioFromTotals,
-    getTimeWarpProductionSecondsBonusFromTotals
-} from "./n1-time-warp.js";
-import { createNumber1TimeWarpBoot } from "./n1-time-warp-boot.js";
-import { createNumber1RateTickBoot } from "./n1-rate-tick-boot.js";
-import { createNumber1TurboBoot } from "./n1-turbo-boot.js";
-import { createNumber1ObjectivesBoot } from "./n1-objectives-boot.js";
-import { createNumber1StoryBannerBoot } from "./n1-story-banner-boot.js";
-import {
-    getObjectiveProgress as getObjectiveProgressForTotal,
-    isObjectiveComplete as isObjectiveCompleteForTotal,
-    renderObjective as renderObjectiveForTotal
-} from "./n1-objectives.js";
-import {
+    createNumber1AscensionPerform,
+    consumeAscendNumber1Button,
+    createNumber1AscensionFlowUi,
+    renderAscensionPageShellHtml,
+    isNumber1AscensionReadyFromState,
     ASCENSION_1_MIN_HANDS,
     ASCENSION_1_REQUIRED_TOTAL,
     computeNumber1AscensionBaseGain as computeNumber1AscensionBaseGainFromRules,
     computeNumber1AscensionGainBreakdown as computeNumber1AscensionGainBreakdownFromRules,
     computeNumber1AscensionGain as computeNumber1AscensionGainFromRules,
-    getNumber1AscensionClapEssenceMultiplier as getNumber1AscensionClapEssenceMultiplierFromValue,
-    getNumber1AscensionPendingBonusEssence as getNumber1AscensionPendingBonusEssenceFromValue,
     getNumber1AscensionRequiredHands as getNumber1AscensionRequiredHandsFromPhase,
-    isNumber1AscensionReady as isNumber1AscensionReadyFromState
-} from "./n1-ascension.js";
-import { escapeHtml, renderStoryArchiveHtml as renderStoryArchiveHtmlForState } from "./n1-story.js";
-import { createConfettiSprayer } from "./n1-vfx.js";
-import { createLedgerBeamVfx } from "./n1-ledger-beam.js";
-import { createComboDiscoveryUiLoop } from "./n1-combo-discovery-ui-loop.js";
-import { createOverviewAscensionPanelsRefresh } from "./n1-overview-ascension-panels.js";
-import { attachN1DevTools } from "./n1-dev-tools.js";
-import { createNumber1ComboNearMissAccess } from "./n1-combo-near-miss-access.js";
+    getNumber1AscensionPendingBonusEssence as getNumber1AscensionPendingBonusEssenceFromValue,
+    getNumber1AscensionClapEssenceMultiplier as getNumber1AscensionClapEssenceMultiplierFromValue
+} from "./modules/number1/ascension.js";
 import {
-    COMBOS,
-    COMBOS_BY_MIN_HANDS,
-    computeComboUiInputDigest as computeComboUiInputDigestForValues,
-    computeEarnedCatalogComboTierProducts as computeEarnedCatalogComboTierProductsForState,
-    getActiveCombosForValues,
-    getComboParticipatingHandIndicesForValues,
-    getPatternCatalogMultiplierFromEarned
-} from "./n1-combos.js";
-import { createComboHandStatusUi } from "./n1-combo-hand-status-ui.js";
-import { createCombinationsPanelUi } from "./n1-combinations-panel-ui.js";
-import { createCombinationsPanelRefresh } from "./n1-combinations-panel-refresh.js";
-import { createComboFeedbackUi } from "./n1-combo-feedback-ui.js";
-import { updateComboDiscoveryMilestonePanelIfOpen as syncComboDiscoveryMilestonePanel } from "./n1-combo-discovery-milestone-ui.js";
+    NUMBER2_ASCENSION_READY_TOTAL,
+    createNumber2ModuleDefinition
+} from "./modules/number2/game.js";
+import { createN2BootWiring } from "./n2-boot-wiring.js";
 import {
+    HAND_BASE_SPEED,
+    UNLOCK_THRESHOLDS,
+    shouldUnlockNextHand,
+    storyTotalCountLead as getStoryTotalCountLead,
+    hands1,
+    HandCounter
+} from "./modules/number1/hands.js";
+import {
+    formatCompactMultiplier,
+    formatCount,
+    formatSignedCountGain,
+    formatSeconds,
+    formatTurboBoostMultiplierForDisplay,
+    formatTurboScensionLevelDisplay,
+    formatWithCommas
+} from "./modules/number1/format.js";
+import {
+    buildBlackHolePhase2TrackEffectHtml,
+    formatBlackHolePhase1EffectLines,
+    getBlackHolePhase1PourPreview
+} from "./modules/number1/black-hole-effect-copy.js";
+import {
+    buildAscensionRunTimeBannerHtml,
+    getNumber1AscensionRunDurationSec,
+    getNumber1AscensionRunTimeMultPct
+} from "./modules/number1/ascension-run-time.js";
+import { accumulateNumber1DetachedCps } from "./modules/number1/detached-cps-progress.js";
+import { clearNumber1SaveAndReload } from "./modules/number1/number1-clear-save-and-reload.js";
+import { createLogTickerRuntime } from "./modules/number1/log.js";
+import { createShellPanelsUi } from "./modules/number1/shell-panels.js";
+import {
+    AUTOSAVE_INTERVAL_MS,
+    COMBO_ACTIVATION_EDGE_SAVE_VERSION,
+    readSaveData,
+    GAME_LOOP_MS,
+    GAME_LOOP_MAX_ELAPSED_MS,
+    GAME_LOOP_MAX_LAG_MS,
+    GAME_LOOP_MAX_CATCHUP_STEPS,
+    GAME_LOOP_HIDDEN_MAX_CATCHUP_STEPS,
+    clampGameLoopElapsedMs,
+    getGameLoopCatchupStepCap,
+    alignSameSpeedHandPhases,
+    createNumber1LoopRuntime,
+    createNumber1TickApplyStep,
+    calculateDetachedCpsProgress,
+    createNumber1TurboGameLoopStep,
+    createNumber1TurboBoot,
     TURBO_LEVELER_LINE_TOOLTIP,
     TURBO_SCENSION_AXIS_TITLES,
     TURBO_UNLOCK_COUNT,
@@ -150,19 +97,96 @@ import {
     getTurboScensionFillMult as getTurboScensionFillMultForLevel,
     getTurboScensionUpgradeRollCountFromTotals,
     turboMeterCurveScaleFromTotals as turboMeterCurveScaleFromTotalsRule
-} from "./n1-turbo.js";
+} from "./modules/number1/core.js";
 import {
-    AUTOSAVE_INTERVAL_MS,
-    COMBO_ACTIVATION_EDGE_SAVE_VERSION,
-    SAVE_KEY,
-    applyNumberModulesSaveState,
-    collectNumberModulesSaveState,
-    createGameSaveState,
-    readSaveData,
-    writeSaveData
-} from "./n1-save.js";
-import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js";
+    formatUpgradeAffordEtaDuration,
+    createUpgradeEtaSmoother,
+    createUpgradeUiController,
+    BASE_MAX_CHEAPEN_LEVEL,
+    DEV_CHEAPEN_AUTOBUY_DELAY,
+    DEV_SLOWDOWN_AUTOBUY_DELAY,
+    MAX_SLOWDOWN_LEVEL,
+    SLOWDOWN_UNLOCK_COUNT,
+    getCheapenEffectTextForAchievedLevel,
+    getCheapenMultiplierForLevel,
+    getCheapenUpgradeCost as getCheapenUpgradeCostForLevel,
+    getEffectiveUpgradeLevel,
+    getSlowdownMultiplierForLevel,
+    getSlowdownUpgradeCost as getSlowdownUpgradeCostForLevel,
+    getSpeedMultiplierBigForLevel,
+    getSpeedMultiplierForLevel,
+    getSpeedUpgradeCost
+} from "./modules/number1/upgrades.js";
+import { createTopCountRowFit } from "./modules/number1/top-count-row-fit.js";
+import { renderNumber1GlobalOverviewHtml } from "./modules/number1/global-overview-render.js";
+import { createOverviewAscensionPanelsRefresh } from "./modules/number1/overview-ascension-panels.js";
+import { createNumber1ClapTick } from "./modules/number1/clap.js";
+import { computeNumber1AdaptiveTipMessage } from "./modules/number1/adaptive-tip-message.js";
+import {
+    TIME_WARP_UNLOCK_COUNT,
+    TIME_WARP_MANUAL_CLICK_SCALE,
+    getTimeWarpAuraSpawnSpanMaxSecFromTotals,
+    getTimeWarpOverflowRatioFromTotals,
+    getTimeWarpProductionSecondsBonusFromTotals
+} from "./modules/number1/time-warp.js";
+import {
+    clampFiniteNonNegative,
+    formatCpsForDisplay,
+    createNumber1RateTickBoot,
+    createRateDisplayUi,
+    CPS_HEADLINE_THROTTLE_MS
+} from "./modules/number1/rate.js";
+import {
+    escapeHtml,
+    renderStoryArchiveHtml as renderStoryArchiveHtmlForState,
+    createNumber1StoryBannerBoot
+} from "./modules/number1/story.js";
+import { createConfettiSprayer } from "./modules/number1/vfx.js";
+import { createLedgerBeamVfx } from "./modules/number1/ledger-beam.js";
+import { attachN1DevTools } from "./modules/number1/dev-tools.js";
+import { COMBOS, createComboHandStatusUi } from "./modules/number1/combo.js";
+import { updateComboDiscoveryMilestonePanelIfOpen } from "./modules/number1/combo-discovery.js";
+import { createNumber1ComboBoot } from "./n1-combo-boot.js";
+import { createNumber1ObjectivesBoot, getObjectiveProgressForTotal, renderObjectiveForTotal, isObjectiveCompleteForTotal } from "./modules/number1/objectives.js";
+import { syncPhase1TesseractCanvasesInRoot } from "./modules/number1/tesseract-canvas.js";
+import { createN1AscensionGrants, createN1AscensionTreeRuntime } from "./n1-ascension.js";
+import {
+    createN1AscensionBootUi,
+    ASCENSION_FINGER_RESPEC_LABELS,
+    createN1AscensionMapDomDelegates,
+    renderAccretionDiskHeroInnerHtml,
+    initNumber1StageAccretionDiskBg
+} from "./n1-ascension-pages.js";
+import {
+    applyNumber1OfflineAdvance,
+    applyNumber1SnapToRuntime,
+    buildNumber1NormalizeSnapshotOptions,
+    buildNumber1SavePayload,
+    createN1SaveOffline
+} from "./n1-save-offline.js";
+import { createNumber1GameLoopAssembly } from "./n1-game-loop-wire.js";
+import { createN1UpgradeScrollHint } from "./n1-upgrade-scroll-hint.js";
+import { wireNumber1SlowdownCheapenSpeedAndTimeWarpBoots } from "./n1-upgrades-rate-turbo-boot.js";
 
+/**
+ * legacy-boot.js — primary game boot: Number 1 simulation, save/load, UI wiring, ascension, black hole, Number 2 glue.
+ * Pure mechanics live under `src/game/modules/number1/` (see core.js); this file owns DOM, init order, and cross-feature wiring.
+ *
+ * PILLARS (grep anchors):
+ *   - Core counting: `GLOBAL STATE`, `refreshTotalFromHandEarnings`, `assembleNumber1GameLoopStepDeps`
+ *   - Ascension (rules + tree + map + grants): `getNumber1AscensionPendingBonusEssence`, `createN1AscensionTreeRuntime`, `computeAscensionGrantTotals`
+ *   - Black hole: `createNumber1BlackHoleBoot`, `updateBlackHolePhaseStep`
+ *   - Number 2 (mode-gated; no cross-number bonuses): `createNumber2State`, `NUMBER_MODULES` key `2`
+ *
+ * REGION MAP — search for these banner titles (no line numbers):
+ *   Bootstrap constants | Core N1 state | Settings | Objectives | Log ticker
+ *   Hand loop runtime | Save / load / offline | Hand management | Story banners
+ *   Speed upgrades | Cheapen / compaction / time warp / rate | Turbo | Combos & clap
+ *   Ascension & pages | Black hole | Number 2 | Game loop assembly | Boot sequence
+ *
+ * Ordering: `const objectives` / factories that close over `let` state must stay below that state;
+ * upgrade stubs stay adjacent to `createNumber1*Boot` then reassignment.
+ */
     /** Page-load epoch ms for dev tools fallback when `performance.now` is unavailable. */
     const devToolsLoadTimeMs = Date.now();
 
@@ -170,12 +194,14 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
     const BLACK_HOLE_PHASE5_STOKE_MIN_REMAINING_MS = 8000;
 
 /* ---------------------------------------------------------
-       GLOBAL STATE
+       GLOBAL STATE (Core N1 simulation + meta — see REGION MAP in file header)
     --------------------------------------------------------- */
     const maxHands = 10;
     let totalChanges = 1;
     /** Max total count (sum of hand earnings) reached this Number 1 run; used only for Ascension Essence formula input. Resets on ascend. */
     let number1RunPeakTotalCount = 1;
+    /** Wall-clock start of the current Number 1 run (resets on ascend). Drives run-time Essence multiplier. */
+    let number1RunStartedAtMs = Date.now();
     let handEarnings = Array(maxHands).fill(0);
     handEarnings[0] = 1;
     let unlockedHands = 1;
@@ -215,6 +241,7 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
     function isTimeWarpUnlocked() {
         return number1TimeWarpBoot ? number1TimeWarpBoot.isTimeWarpUnlocked() : totalChanges >= TIME_WARP_UNLOCK_COUNT;
     }
+    /** When no time-warp boot yet, production bonus reads ascension grant totals (counting ↔ ascension grant coupling). */
     function getTimeWarpProductionSecondsBonus() {
         if (number1TimeWarpBoot) return number1TimeWarpBoot.getTimeWarpProductionSecondsBonus();
         return getTimeWarpProductionSecondsBonusFromTotals(computeAscensionGrantTotals());
@@ -223,6 +250,9 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
     /** Set when `totalChanges` first reaches Compaction unlock; stays true if total dips (per-hand spend) until Number 1 ascension. */
     let slowdownCompactionUnlockedLatched = false;
 
+    /* ---------------------------------------------------------
+       Core counting — total from hands, milestone sync (main loop below)
+    --------------------------------------------------------- */
     function refreshTotalFromHandEarnings() {
         let s = 0;
         for (let i = 0; i < unlockedHands; i++) s += handEarnings[i] || 0;
@@ -296,6 +326,9 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
     const actionLogEl = document.getElementById("action-log-lines");
     const actionLogToggle = document.getElementById("action-log-toggle");
     const actionLogContainer = document.getElementById("action-log");
+
+    /** Assigned after {@link createN1AscensionMapDomDelegates}; shell panels close hook runs earlier in boot. */
+    let teardownAscensionMapPanZoom = () => {};
 
     const shellPanels = createShellPanelsUi({
         pagePanelEl,
@@ -386,9 +419,10 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
     function patchAscensionPanelLiveDom() {
         overviewAscPanelDelegates.patchAscensionPanelLiveDom();
     }
-    /** Number 2 — Double or Nothing (isolated from Number 1 economy). */
-    const number2State = createNumber2State();
-    const number2 = createNumber2Controller(number2State, {
+    /* ---------------------------------------------------------
+       Number 2 — Double or Nothing (mode-gated; isolated economy; save slice via NUMBER_MODULES)
+    --------------------------------------------------------- */
+    const { number2State, number2 } = createN2BootWiring({
         formatCount,
         addToLog,
         autosaveNow,
@@ -573,10 +607,18 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
             return { current: spent, target: BLACK_HOLE_PHASE1_ESSENCE_TARGET, pct: getBlackHolePhase() >= 2 ? 100 : Math.max(0, Math.min(100, (spent / BLACK_HOLE_PHASE1_ESSENCE_TARGET) * 100)), label: formatCount(spent) + " / " + formatCount(BLACK_HOLE_PHASE1_ESSENCE_TARGET) + " Essence" };
         } },
         { id: "bh-phase2", text: "Collapse the Mass Accumulator", achieved: false, isComplete: () => getBlackHolePhase() >= 2, getProgress: () => ({ pct: getBlackHolePhase() >= 2 ? 100 : getBlackHolePhase1FillRatio() * 100, label: Math.floor(getBlackHolePhase1FillRatio() * 100) + "% charged" }) },
-        { id: "bh-phase2-tracks", text: "Stabilize all collapse tracks", achieved: false, isComplete: () => getBlackHolePhase() >= 3 || isBlackHolePhase2MassPourUnlocked(), getProgress: () => {
-            const total = BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER * 3;
+        { id: "bh-phase2-tracks", text: "Complete collapse cycles", achieved: false, isComplete: () => getBlackHolePhase() >= 3, getProgress: () => {
+            const mass = Math.max(0, Math.floor(Number(number1BlackHoleState.phase2Mass) || 0));
+            const cap = getBlackHolePhase() >= 3 ? BLACK_HOLE_PHASE2_MASS_CAP : mass;
+            const maxForStep = Math.min(BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER, mass + 1);
             const tiers = getBlackHolePhase2CollapseMassTier() + getBlackHolePhase2CollapsePhotonTier() + getBlackHolePhase2CollapseErgosphereTier();
-            return { current: tiers, target: total, pct: getBlackHolePhase() >= 3 ? 100 : Math.max(0, Math.min(100, (tiers / total) * 100)), label: tiers + " / " + total + " tiers" };
+            const cycleTarget = maxForStep * 3;
+            return {
+                current: getBlackHolePhase() >= 3 ? BLACK_HOLE_PHASE2_MASS_CAP : mass,
+                target: BLACK_HOLE_PHASE2_MASS_CAP,
+                pct: getBlackHolePhase() >= 3 ? 100 : Math.max(0, Math.min(100, (mass / BLACK_HOLE_PHASE2_MASS_CAP) * 100)),
+                label: getBlackHolePhase() >= 3 ? "Phase 2 complete" : "Step " + mass + "/" + BLACK_HOLE_PHASE2_MASS_CAP + " · channels " + tiers + "/" + cycleTarget
+            };
         } },
         { id: "bh-phase3", text: "Fill the singularity with mass", achieved: false, isComplete: () => getBlackHolePhase() >= 3, getProgress: () => {
             const mass = Math.max(0, Math.floor(Number(number1BlackHoleState.phase2Mass) || 0));
@@ -731,6 +773,9 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         });
         return module;
     }
+    /* ---------------------------------------------------------
+       Ascension — ascend payout rules + skill tree data + map UI helpers (BH arc unlock follows)
+    --------------------------------------------------------- */
     function getNumber1AscensionPendingBonusEssence() {
         return getNumber1AscensionPendingBonusEssenceFromValue(number1AscensionPendingBonusEssence);
     }
@@ -740,13 +785,17 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
     function computeNumber1AscensionBaseGain(fromTotal) {
         return computeNumber1AscensionBaseGainFromRules(fromTotal);
     }
+    function getNumber1AscensionRunDurationSecForUi() {
+        return getNumber1AscensionRunDurationSec(number1RunStartedAtMs);
+    }
     function computeNumber1AscensionGainBreakdown(fromTotal) {
         return computeNumber1AscensionGainBreakdownFromRules(fromTotal, {
             pendingBonus: getNumber1AscensionPendingBonusEssence(),
             blackHolePhase1Mult: getBlackHolePhase1AscensionEssenceMult(),
             blackHoleParallelBonus: number1BlackHoleState.phase2ParallelBonusPool || 0,
             blackHoleFurnaceBonus: getBlackHoleFurnaceEssenceBonus(),
-            clapMult: getNumber1AscensionClapEssenceMultiplier()
+            clapMult: getNumber1AscensionClapEssenceMultiplier(),
+            runDurationSec: getNumber1AscensionRunDurationSecForUi()
         });
     }
     function computeNumber1AscensionGain(fromTotal) {
@@ -755,8 +804,34 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
             blackHolePhase1Mult: getBlackHolePhase1AscensionEssenceMult(),
             blackHoleParallelBonus: number1BlackHoleState.phase2ParallelBonusPool || 0,
             blackHoleFurnaceBonus: getBlackHoleFurnaceEssenceBonus(),
-            clapMult: getNumber1AscensionClapEssenceMultiplier()
+            clapMult: getNumber1AscensionClapEssenceMultiplier(),
+            runDurationSec: getNumber1AscensionRunDurationSecForUi()
         });
+    }
+    function computeNumber1AscensionGainBreakdownAtPhase1EssenceMult(phase1EssenceMult) {
+        return computeNumber1AscensionGainBreakdownFromRules(getNumber1AscensionEssenceFormulaTotal(), {
+            pendingBonus: getNumber1AscensionPendingBonusEssence(),
+            blackHolePhase1Mult: phase1EssenceMult,
+            blackHoleParallelBonus: number1BlackHoleState.phase2ParallelBonusPool || 0,
+            blackHoleFurnaceBonus: getBlackHoleFurnaceEssenceBonus(),
+            clapMult: getNumber1AscensionClapEssenceMultiplier(),
+            runDurationSec: getNumber1AscensionRunDurationSecForUi()
+        });
+    }
+    function buildPhase1AscendPourContext(state, pourAmount, slowdownCapBase) {
+        const pour = Math.max(0, Math.floor(Number(pourAmount) || 0));
+        const gainNow = computeNumber1AscensionGainBreakdown(getNumber1AscensionEssenceFormulaTotal());
+        const pourPreview = getBlackHolePhase1PourPreview(state, pour, slowdownCapBase);
+        const gainAfterPour = computeNumber1AscensionGainBreakdownAtPhase1EssenceMult(pourPreview.after.essenceMult);
+        return {
+            gainNow,
+            gainAfterPour,
+            pourPreview,
+            pour,
+            ready: isNumber1AscensionReady(),
+            runDurationSec: getNumber1AscensionRunDurationSecForUi(),
+            runTimeMultPct: gainNow.runTimeMultPct
+        };
     }
     function getNumber1AscensionRequiredHands() {
         return getNumber1AscensionRequiredHandsFromPhase(getBlackHolePhase(), ASCENSION_1_MIN_HANDS);
@@ -770,16 +845,36 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
             requiredTotal: ASCENSION_1_REQUIRED_TOTAL
         });
     }
-    const ASCENSION_TREE_EXPORT = window.ASCENSION_TREE_EXPORT;
-    const ASCENSION_TREE_VERSION = ASCENSION_TREE_EXPORT.VERSION;
-    const ASCENSION_MAP_NODES = ASCENSION_TREE_EXPORT.NODES;
-    const ASCENSION_FINGER_KEYS = ["pinky", "ring", "middle", "index", "thumb"];
-    const ASCENSION_MAP_NODE_BY_ID = {};
-    ASCENSION_MAP_NODES.forEach(n => { ASCENSION_MAP_NODE_BY_ID[n.id] = n; });
-    const { getNearMissToleranceRanks } = createNumber1ComboNearMissAccess({
+    const {
+        ASCENSION_TREE_VERSION,
+        ASCENSION_MAP_NODES,
+        ASCENSION_FINGER_KEYS,
+        ASCENSION_MAP_NODE_BY_ID,
+        getNearMissToleranceRanks,
+        ascensionPurchasedSet,
+        ascMapUi,
+        isNumber1AscensionTreeFullyPurchased,
+        isBlackHoleArcUnlocked
+    } = createN1AscensionTreeRuntime({
+        getAscensionTreeExport: () => window.ASCENSION_TREE_EXPORT,
         getAscensionNodeIds: () => number1AscensionNodeIds,
-        getAscensionNodeById: () => ASCENSION_MAP_NODE_BY_ID
+        formatCount,
+        getNumber1AscensionEssence: () => number1AscensionEssence,
+        hasAscended: () => number1HasAscended
     });
+    const ascMapDomDelegates = createN1AscensionMapDomDelegates(ascMapUi);
+    const {
+        computeAscensionHandLayout,
+        renderAscensionMapColumnGuidesSvg,
+        renderAscensionMapEdgesSvg,
+        syncAscensionMapNodeDomPositions,
+        ascensionResolveNodeIdAtClient,
+        updateAscensionMapDetailPanel,
+        setAscensionMapSelectedNode,
+        initAscensionMapPanZoom,
+        renderAscensionMapDebugOverlaySvg
+    } = ascMapDomDelegates;
+    teardownAscensionMapPanZoom = ascMapDomDelegates.teardownAscensionMapPanZoom;
     function isTurboScensionUnlocked() {
         return number1AscensionNodeIds.some(function (id) {
             const def = ASCENSION_MAP_NODE_BY_ID[id];
@@ -794,31 +889,82 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
     }
     /** Pre-map ascension ids from early builds — any match clears the whole node list on load (no migration). */
     const ASCENSION_LEGACY_NODE_ID_RE = /^(?:tempo_cheapen_|boost_turbo_|boost_warp_|asc_(?:chp|cmb|spd|tur|wrp|syn)_)/;
-    function ascensionPurchasedSet() {
-        return new Set(number1AscensionNodeIds);
-    }
-    const ascMapUi = createAscensionMapUi({
-        getAscensionMapNodes: () => ASCENSION_MAP_NODES,
-        getAscensionMapNodeById: () => ASCENSION_MAP_NODE_BY_ID,
+    /** Combo UI + CPS stack; stubs until {@link createNumber1ComboBoot} runs (rate/twarp/ascension grants close over these). */
+    let updateEarnedBonusesUI = function() {};
+    let getComboMultiplier = function() {
+        return 1;
+    };
+    let getPatternCatalogMultiplier = function() {
+        return 1;
+    };
+    let getAscensionComboPatternMult = function() {
+        return 1;
+    };
+    let getTimeWarpComboMultiplier = function() {
+        return 1;
+    };
+    let getHandValues = function() {
+        return [];
+    };
+    let getActiveCombos = function() {
+        return [];
+    };
+    let getComboParticipatingHandIndices = function() {
+        return [];
+    };
+    let computeComboUiInputDigest = function() {
+        return "";
+    };
+    let computeEarnedCatalogComboTierProducts = function() {
+        return 1;
+    };
+    let getCombosByMinHands = function() {
+        return {};
+    };
+    let pulseCombinationsPageButtonForNewBonus = function() {};
+    let showComboBubble = function() {};
+    /** Upgrade / warp UI; stubs until cheapen/slowdown/tw boot runs (ascension grants close over these). */
+    let updateCheapenUpgradeUI = function() {};
+    let updateSlowdownUpgradeUI = function() {};
+    let updateTimeWarpAuraUI = function() {};
+    const n1AscGrants = createN1AscensionGrants({
         ascensionPurchasedSet,
+        getAscensionNodeIds: () => number1AscensionNodeIds,
+        getAscensionNodeById: id => ASCENSION_MAP_NODE_BY_ID[id],
+        getHasAscended: () => number1HasAscended,
+        getUnlockedHands: () => unlockedHands,
+        getHandEarnings: () => handEarnings,
+        setHandEarning: (i, v) => {
+            handEarnings[i] = v;
+        },
+        getTotalChanges: () => totalChanges,
+        refreshTotalFromHandEarnings,
+        getIncrementalEl: () => incrementalEl,
         formatCount,
-        getNumber1AscensionEssence: () => number1AscensionEssence,
-        hasAscended: () => number1HasAscended,
-        getAscensionTreeExport: () => ASCENSION_TREE_EXPORT
+        updateObjectives,
+        updateMilestoneUI,
+        updateSpeedUpgradeUI,
+        updateCheapenUpgradeUI,
+        updateSlowdownUpgradeUI,
+        updateTimeWarpAuraUI,
+        updateEarnedBonusesUI,
+        updatePageButtonUnlocks
     });
-    function isNumber1AscensionTreeFullyPurchased() {
-        if (!number1HasAscended || !ASCENSION_MAP_NODES || ASCENSION_MAP_NODES.length === 0) return false;
-        const s = ascensionPurchasedSet();
-        // Gate should only care whether every current map node is owned.
-        // Ignore duplicate/stale entries that may remain in old saves.
-        for (let i = 0; i < ASCENSION_MAP_NODES.length; i++) {
-            if (!s.has(ASCENSION_MAP_NODES[i].id)) return false;
-        }
-        return true;
-    }
-    function isBlackHoleArcUnlocked() {
-        return number1HasAscended && isNumber1AscensionTreeFullyPurchased();
-    }
+    const {
+        ASCENSION_NODE_AUTOBUY_DEFAULT_ON_ID,
+        ASCENSION_NODE_AUTOBUY_CHEAPEN_ID,
+        ASCENSION_NODE_AUTOBUY_SLOWDOWN_ID,
+        ASCENSION_COMBO_EARNED_PATTERN_MULT_CAP,
+        COMBO_DISCOVERY_MILESTONE_COOLDOWN_BASE_MS,
+        COMBO_DISCOVERY_MILESTONE_COOLDOWN_MIN_MS,
+        ascensionAutobuyDefaultOnForNewHands,
+        ascensionAutobuyIncludesCheapen,
+        ascensionAutobuyIncludesSlowdown,
+        getAscensionHandUnlockStartingCountFloor,
+        applyAscensionHandUnlockStartingCountFloorToUnlockedHands,
+        computeAscensionGrantTotals,
+        getComboDiscoveryMilestoneCooldownMs
+    } = n1AscGrants;
     function enterBlackHolePhase7GameplayReset() {
         totalChanges = 0;
         handEarnings = Array(maxHands).fill(0);
@@ -843,6 +989,16 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         updateRateDisplay() {},
         updateN1GravityCpsStrip() {}
     };
+    /** Combo discovery calls ledger beam before `ledgerBeamVfx` exists; patched after {@link createLedgerBeamVfx}. */
+    const ledgerBeamPlayBonusBridge = {
+        /** @type {(catalogBefore: number, catalogAfter: number, patternMultLabel: string) => void} */
+        play() {}
+    };
+    /** Hub live patch; stub until {@link createN1AscensionBootUi} (BH UI deps close over this). */
+    let patchAscensionHubStatsPillsDomIfChanged = function() {};
+    /* ---------------------------------------------------------
+       Black hole — boot wiring (deps for createNumber1BlackHoleBoot)
+    --------------------------------------------------------- */
     const {
         controller: number1BlackHoleCtl,
         getBlackHolePhase,
@@ -855,6 +1011,7 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         tryStartNumber1BlackHoleArc,
         hasBlackHoleProgressLockingRespec,
         getBlackHolePhase2CollapseMassTier,
+        getBlackHolePhase2CollapseMaxTier,
         getBlackHolePhase2CollapsePhotonTier,
         getBlackHolePhase2CollapseErgosphereTier,
         isBlackHolePhase2MassPourUnlocked,
@@ -864,6 +1021,7 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         getBlackHolePhase2CollapseUpgradeCost,
         getBlackHolePhase2CostAtLevel,
         getBlackHolePhase2MassMult,
+        getBlackHolePhase2MassMultAfterNextPour,
         getBlackHolePhase2NextCostEssence,
         addBlackHolePhase2ParallelBonusFromEssence,
         getBlackHolePhase3UpgradeFrac,
@@ -908,6 +1066,7 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         pulseBlackHoleLensingAutoTick,
         syncBlackHolePhase1Vfx,
         triggerBlackHolePhase1CollapseVfx,
+        triggerBlackHolePhase2StepSurgeVfx,
         patchBlackHolePhase1PanelLiveDom,
         patchBlackHolePhase2PanelLiveDom,
         patchBlackHolePhase3PanelLiveDom,
@@ -942,8 +1101,29 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
                 },
                 getTurboMeterMax,
                 getTurboBoostUnlocked: () => turboBoostUnlocked,
+                getTurboBoostEnabled: () => turboBoostEnabled,
+                setTurboBoostEnabled: v => {
+                    turboBoostEnabled = v;
+                },
+                syncTurboBoostToggleDomFromBoot: en => syncTurboBoostToggleDomFromBoot(en),
+                isTurboLevelerMode: () =>
+                    turboBoostUnlocked &&
+                    isTurboScensionUnlocked() &&
+                    !!computeAscensionGrantTotals().turboLeveler &&
+                    !turboBoostEnabled,
+                confirmPhase2MassPourWithoutCoupling(cost, available) {
+                    return window.confirm(
+                        "The Essence you pour (" +
+                            formatCount(available) +
+                            ") may be inconsequential against the next mass step (" +
+                            formatCount(cost) +
+                            "). Essence–mass coupling can cheapen it. Pour anyway?"
+                    );
+                },
+                syncBlackHolePhase2PhotonCombos: () => syncBlackHolePhase2PhotonCombosRef(),
+                triggerBlackHolePhase2StepSurgeVfx: () => bhUiBridge.triggerBlackHolePhase2StepSurgeVfx?.(),
                 getBlackHoleUxFlags: () => number1BlackHoleUxFlags,
-                getNumber1StageRootEl: () => number1StageRootEl,
+                getNumber1StageRootEl: () => number1StageRootEl || document.getElementById("number1-stage-root"),
                 playBlackHoleScreenEffect,
                 syncBlackHolePhase1Vfx: () => bhUiBridge.syncBlackHolePhase1Vfx?.(),
                 pulseBlackHoleLensingAutoTick: () => bhUiBridge.pulseBlackHoleLensingAutoTick?.(),
@@ -971,7 +1151,7 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
             return {
                 controller: ctl,
                 getBlackHoleState: () => number1BlackHoleState,
-                getStageRoot: () => number1StageRootEl,
+                getStageRoot: () => number1StageRootEl || document.getElementById("number1-stage-root"),
                 getPlayStage: () => playStageEl,
                 getIncrementalCountLabel: () => incrementalCountLabelEl,
                 syncPhase1MassFillCssVars: syncPhase1MassFill,
@@ -982,8 +1162,12 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
                 refreshAscensionPanelIfOpen,
                 patchAscensionHubStatsPillsDomIfChanged,
                 renderNumber1BlackHolePanelHtml,
+                buildPhase1AscendPourContext: (state, pour, capBase) =>
+                    buildPhase1AscendPourContext(state, pour, capBase),
                 isBlackHoleArcUnlocked,
                 formatCount,
+                formatCompactMultiplier,
+                getBlackHolePhase1SlowdownCapBonus: () => ctl.getBlackHolePhase1SlowdownCapBonus(),
                 autosaveNow,
                 getAscensionEssence: () => number1AscensionEssence,
                 getMaxSlowdownLevelCap: getMaxSlowdownCapFromBoot
@@ -1018,276 +1202,8 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         updateTurboBoostUI({ force: true });
         return true;
     }
-    const ASCENSION_NODE_AUTOBUY_DEFAULT_ON_ID = "asc_ix_00";
-    const ASCENSION_NODE_AUTOBUY_CHEAPEN_ID = "asc_ix_05";
-    const ASCENSION_NODE_AUTOBUY_SLOWDOWN_ID = "asc_ix_10";
-    function ascensionAutobuyDefaultOnForNewHands() {
-        return ascensionPurchasedSet().has(ASCENSION_NODE_AUTOBUY_DEFAULT_ON_ID);
-    }
-    function ascensionAutobuyIncludesCheapen() {
-        return ascensionPurchasedSet().has(ASCENSION_NODE_AUTOBUY_CHEAPEN_ID);
-    }
-    function ascensionAutobuyIncludesSlowdown() {
-        return ascensionPurchasedSet().has(ASCENSION_NODE_AUTOBUY_SLOWDOWN_ID);
-    }
-    /** Integer grant value; digit strings preserve values beyond Number.MAX_SAFE_INTEGER. */
-    function ascensionGrantHandUnlockCountToBigInt(v) {
-        if (v == null || v === false) return 0n;
-        if (typeof v === "bigint") return v < 0n ? 0n : v;
-        if (typeof v === "number" && isFinite(v)) return BigInt(Math.max(0, Math.floor(v)));
-        if (typeof v === "string" && /^[0-9]+$/.test(v)) {
-            try {
-                return BigInt(v);
-            } catch (e) {
-                return 0n;
-            }
-        }
-        return 0n;
-    }
-    /** Min count each unlocked hand should have from Velocity ascension nodes; raises totals and can cascade milestone hand unlocks. */
-    function getAscensionHandUnlockStartingCountFloor() {
-        const raw = computeAscensionGrantTotals().handUnlockStartingCount;
-        if (typeof raw === "bigint") {
-            if (raw <= 0n) return 0;
-            const cap = BigInt(Number.MAX_SAFE_INTEGER);
-            return raw > cap ? Number.MAX_SAFE_INTEGER : Number(raw);
-        }
-        return Math.max(0, Math.floor(Number(raw) || 0));
-    }
-    function applyAscensionHandUnlockStartingCountFloorToUnlockedHands() {
-        if (!number1HasAscended) return false;
-        const floor = getAscensionHandUnlockStartingCountFloor();
-        if (floor <= 0) return false;
-        let any = false;
-        for (let i = 0; i < unlockedHands; i++) {
-            const cur = handEarnings[i] || 0;
-            if (cur < floor) {
-                handEarnings[i] = floor;
-                any = true;
-            }
-        }
-        if (any) {
-            refreshTotalFromHandEarnings();
-            if (incrementalEl) incrementalEl.textContent = formatCount(totalChanges);
-            updateObjectives();
-            updateMilestoneUI();
-            updateSpeedUpgradeUI();
-            updateCheapenUpgradeUI();
-            updateSlowdownUpgradeUI();
-            updateTimeWarpAuraUI();
-            updateEarnedBonusesUI();
-            updatePageButtonUnlocks();
-        }
-        return any;
-    }
-    const ASCENSION_TURBO_BURN_EFFICIENCY_MAX_REDUCE = 0.99;
-    /** Middle-finger only: `comboEarnedPatternMultAdd` multiplies as Π(1 + x) over purchased middle nodes; product capped. */
-    const ASCENSION_COMBO_EARNED_PATTERN_MULT_CAP = 10;
-    /** Default gap between catalog “Discovered combo” milestones; reduced by middle `comboDiscoveryMilestoneCooldownMult` (× each, min 0.1s). */
-    const COMBO_DISCOVERY_MILESTONE_COOLDOWN_BASE_MS = 60000;
-    const COMBO_DISCOVERY_MILESTONE_COOLDOWN_MIN_MS = 100;
-    /** `computeAscensionGrantTotals` only depends on purchased node ids — reuse until that set changes. */
-    let _ascensionGrantTotalsCacheKey = "";
-    let _ascensionGrantTotalsCache = null;
-    function computeAscensionGrantTotals() {
-        const cacheKey = number1AscensionNodeIds.length + "|" + number1AscensionNodeIds.slice().sort().join(",");
-        if (_ascensionGrantTotalsCacheKey === cacheKey && _ascensionGrantTotalsCache) {
-            return _ascensionGrantTotalsCache;
-        }
-        let cheapenCap = 0;
-        let turboScaling = 0;
-        let warpOverflow = 0;
-        let speedMult = 1;
-        let comboMultAdd = 0;
-        let comboEarnedPatternMult = 1;
-        let comboTurboPointsMult = 1;
-        let turboBoostComboFillAdd = 0;
-        let autoBuyDelayMult = 1;
-        let slowdownCostMult = 1;
-        let clapCooldownMult = 1;
-        let clapBonusChanceAdd = 0;
-        let clapCheapenBonusChanceAdd = 0;
-        let clapSlowdownBonusChanceAdd = 0;
-        let clapEssenceProcChanceAdd = 0;
-        let clapEssenceMultiplierStepAdd = 0;
-        let clapCheapenExtraRoll = false;
-        let clapCheapenChainRolls = false;
-        let clapSlowdownExtraRoll = false;
-        let clapSlowdownChainRolls = false;
-        let comboClapExtraRoll = false;
-        let comboClapChainRolls = false;
-        let comboTimeWarpDelayReduceSec = 0;
-        let comboTimeWarpDelayReduceMult = 1;
-        let warpSpawnIntervalMult = 1;
-        let warpManualGrantSeconds = 60;
-        let warpAutoBuyAssist = false;
-        let warpFactor36AllHandsOverflow = false;
-        let warpPotencyMaxTiers = 0;
-        let warpClickAscensionEssenceChance = 0;
-        let warpOverflowAscensionEssenceChance = 0;
-        let turboScensionActivationCostMult = 1;
-        let turboBurnEfficiencyReduceSum = 0;
-        let turboTankSizeMult = 1;
-        let turboBurnRateMult = 1;
-        let turboScensionExtraUpgradeRolls = 0;
-        let turboLeveler = false;
-        let turboScensionAllAxesUpgrade = false;
-        let turboMeterFromComboMult = 1;
-        let turboMeterDrainMult = 1;
-        let turboOffMeterFillMult = 1;
-        let turboPassiveMeterPerSec = 0;
-        let handUnlockStartingCount = 0n;
-        let comboDiscoveryMilestoneCooldownMult = 1;
-        number1AscensionNodeIds.forEach(id => {
-            const def = ASCENSION_MAP_NODE_BY_ID[id];
-            if (!def || !def.grants) return;
-            const g = def.grants;
-            const capBi = ascensionGrantHandUnlockCountToBigInt(g.handUnlockStartingCount);
-            if (capBi > handUnlockStartingCount) handUnlockStartingCount = capBi;
-            if (typeof g.cheapenCap === "number") cheapenCap += g.cheapenCap;
-            if (typeof g.turboScaling === "number") turboScaling += g.turboScaling;
-            if (typeof g.warpOverflow === "number") warpOverflow += g.warpOverflow;
-            if (typeof g.speedCostMult === "number" && g.speedCostMult > 0 && g.speedCostMult <= 1) speedMult *= g.speedCostMult;
-            if (typeof g.comboMultAdd === "number") comboMultAdd += g.comboMultAdd;
-            if (def.finger === "middle" && typeof g.comboEarnedPatternMultAdd === "number" && g.comboEarnedPatternMultAdd > 0) {
-                comboEarnedPatternMult *= 1 + g.comboEarnedPatternMultAdd;
-            }
-            if (def.finger === "middle") {
-                if (g.comboClapExtraRoll === true) comboClapExtraRoll = true;
-                if (g.comboClapChainRolls === true) comboClapChainRolls = true;
-                if (typeof g.comboTimeWarpDelayReduceSec === "number" && g.comboTimeWarpDelayReduceSec > 0) {
-                    comboTimeWarpDelayReduceSec += g.comboTimeWarpDelayReduceSec;
-                }
-                if (typeof g.comboTimeWarpDelayReduceMult === "number" && g.comboTimeWarpDelayReduceMult > 1) {
-                    comboTimeWarpDelayReduceMult *= g.comboTimeWarpDelayReduceMult;
-                }
-                if (typeof g.comboDiscoveryMilestoneCooldownMult === "number" && g.comboDiscoveryMilestoneCooldownMult > 0 && g.comboDiscoveryMilestoneCooldownMult <= 1) {
-                    comboDiscoveryMilestoneCooldownMult *= g.comboDiscoveryMilestoneCooldownMult;
-                }
-            }
-            if (typeof g.comboTurboPointsMult === "number" && g.comboTurboPointsMult > 0) comboTurboPointsMult *= 1 + g.comboTurboPointsMult;
-            if (typeof g.turboBoostComboFillAdd === "number" && g.turboBoostComboFillAdd > 0) turboBoostComboFillAdd += g.turboBoostComboFillAdd;
-            if (typeof g.autoBuyDelayMult === "number" && g.autoBuyDelayMult > 0 && g.autoBuyDelayMult <= 1) autoBuyDelayMult *= g.autoBuyDelayMult;
-            if (typeof g.slowdownCostMult === "number" && g.slowdownCostMult > 0 && g.slowdownCostMult <= 1) slowdownCostMult *= g.slowdownCostMult;
-            if (typeof g.clapCooldownMult === "number" && g.clapCooldownMult > 0 && g.clapCooldownMult <= 1) clapCooldownMult *= g.clapCooldownMult;
-            if (typeof g.clapBonusChanceAdd === "number" && g.clapBonusChanceAdd > 0) clapBonusChanceAdd += g.clapBonusChanceAdd;
-            if (typeof g.clapCheapenBonusChanceAdd === "number" && g.clapCheapenBonusChanceAdd > 0) clapCheapenBonusChanceAdd += g.clapCheapenBonusChanceAdd;
-            if (typeof g.clapSlowdownBonusChanceAdd === "number" && g.clapSlowdownBonusChanceAdd > 0) clapSlowdownBonusChanceAdd += g.clapSlowdownBonusChanceAdd;
-            if (typeof g.clapEssenceProcChanceAdd === "number" && g.clapEssenceProcChanceAdd > 0) clapEssenceProcChanceAdd += g.clapEssenceProcChanceAdd;
-            if (typeof g.clapEssenceMultiplierStepAdd === "number" && g.clapEssenceMultiplierStepAdd > 0) clapEssenceMultiplierStepAdd += g.clapEssenceMultiplierStepAdd;
-            if (def.finger === "thumb" && g.clapCheapenExtraRoll === true) clapCheapenExtraRoll = true;
-            if (def.finger === "thumb" && g.clapCheapenChainRolls === true) clapCheapenChainRolls = true;
-            if (def.finger === "thumb" && g.clapSlowdownExtraRoll === true) clapSlowdownExtraRoll = true;
-            if (def.finger === "thumb" && g.clapSlowdownChainRolls === true) clapSlowdownChainRolls = true;
-            if (typeof g.warpSpawnIntervalMult === "number" && g.warpSpawnIntervalMult > 0 && g.warpSpawnIntervalMult <= 1) {
-                warpSpawnIntervalMult *= g.warpSpawnIntervalMult;
-            }
-            if (def.finger === "pinky" && typeof g.warpManualGrantSeconds === "number" && Number.isFinite(g.warpManualGrantSeconds) && g.warpManualGrantSeconds >= 60) {
-                warpManualGrantSeconds = Math.max(warpManualGrantSeconds, g.warpManualGrantSeconds);
-            }
-            if (def.finger === "pinky" && g.warpAutoBuyAssist === true) warpAutoBuyAssist = true;
-            if (def.finger === "pinky" && g.warpFactor36AllHandsOverflow === true) warpFactor36AllHandsOverflow = true;
-            if (def.finger === "pinky" && typeof g.warpPotencyMaxTiers === "number" && Number.isFinite(g.warpPotencyMaxTiers) && g.warpPotencyMaxTiers > 0) {
-                warpPotencyMaxTiers += Math.floor(g.warpPotencyMaxTiers);
-            }
-            if (def.finger === "pinky" && typeof g.warpClickAscensionEssenceChance === "number" && Number.isFinite(g.warpClickAscensionEssenceChance) && g.warpClickAscensionEssenceChance > 0) {
-                warpClickAscensionEssenceChance += g.warpClickAscensionEssenceChance;
-            }
-            if (def.finger === "pinky" && typeof g.warpOverflowAscensionEssenceChance === "number" && Number.isFinite(g.warpOverflowAscensionEssenceChance) && g.warpOverflowAscensionEssenceChance > 0) {
-                warpOverflowAscensionEssenceChance += g.warpOverflowAscensionEssenceChance;
-            }
-            if (def.finger === "ring" && typeof g.turboScensionActivationCostMult === "number" && g.turboScensionActivationCostMult > 0 && g.turboScensionActivationCostMult <= 1) {
-                turboScensionActivationCostMult *= g.turboScensionActivationCostMult;
-            }
-            if (def.finger === "ring" && typeof g.turboBurnEfficiencyReduce === "number" && g.turboBurnEfficiencyReduce > 0) {
-                turboBurnEfficiencyReduceSum += g.turboBurnEfficiencyReduce;
-            }
-            if (def.finger === "ring" && typeof g.turboTankSizeMultAdd === "number" && g.turboTankSizeMultAdd > 0) {
-                turboTankSizeMult *= 1 + g.turboTankSizeMultAdd;
-            }
-            if (def.finger === "ring" && typeof g.turboBurnRateMultAdd === "number" && g.turboBurnRateMultAdd > 0) {
-                turboBurnRateMult *= 1 + g.turboBurnRateMultAdd;
-            }
-            if (def.finger === "ring" && g.turboScensionDoubleUpgrade === true) turboScensionExtraUpgradeRolls++;
-            if (def.finger === "ring" && g.turboLeveler === true) turboLeveler = true;
-            if (def.finger === "ring" && g.turboScensionAllAxesUpgrade === true) turboScensionAllAxesUpgrade = true;
-            if (def.finger === "ring" && typeof g.turboMeterFromComboMultAdd === "number" && g.turboMeterFromComboMultAdd > 0) {
-                turboMeterFromComboMult *= 1 + g.turboMeterFromComboMultAdd;
-            }
-            if (def.finger === "ring" && typeof g.turboMeterDrainMult === "number" && g.turboMeterDrainMult > 0 && g.turboMeterDrainMult <= 1) {
-                turboMeterDrainMult *= g.turboMeterDrainMult;
-            }
-            if (def.finger === "ring" && typeof g.turboOffMeterFillMultAdd === "number" && g.turboOffMeterFillMultAdd > 0) {
-                turboOffMeterFillMult *= 1 + g.turboOffMeterFillMultAdd;
-            }
-            if (def.finger === "ring" && typeof g.turboPassiveMeterPerSec === "number" && g.turboPassiveMeterPerSec > 0) {
-                turboPassiveMeterPerSec += g.turboPassiveMeterPerSec;
-            }
-        });
-        comboEarnedPatternMult = Math.min(ASCENSION_COMBO_EARNED_PATTERN_MULT_CAP, comboEarnedPatternMult);
-        clapBonusChanceAdd = Math.min(0.45, clapBonusChanceAdd);
-        clapCheapenBonusChanceAdd = Math.min(0.9, clapCheapenBonusChanceAdd);
-        clapSlowdownBonusChanceAdd = Math.min(0.75, clapSlowdownBonusChanceAdd);
-        clapEssenceProcChanceAdd = Math.min(0.85, clapEssenceProcChanceAdd);
-        clapEssenceMultiplierStepAdd = Math.min(0.05, clapEssenceMultiplierStepAdd);
-        turboBurnEfficiencyReduceSum = Math.min(ASCENSION_TURBO_BURN_EFFICIENCY_MAX_REDUCE, turboBurnEfficiencyReduceSum);
-        const out = {
-            cheapenCap,
-            turboScaling,
-            warpOverflow,
-            speedMult,
-            comboMultAdd,
-            comboEarnedPatternMult,
-            comboTurboPointsMult,
-            turboBoostComboFillAdd,
-            autoBuyDelayMult,
-            slowdownCostMult,
-            clapCooldownMult,
-            clapBonusChanceAdd,
-            clapCheapenBonusChanceAdd,
-            clapSlowdownBonusChanceAdd,
-            clapEssenceProcChanceAdd,
-            clapEssenceMultiplierStepAdd,
-            clapCheapenExtraRoll,
-            clapCheapenChainRolls,
-            clapSlowdownExtraRoll,
-            clapSlowdownChainRolls,
-            comboClapExtraRoll,
-            comboClapChainRolls,
-            comboTimeWarpDelayReduceSec,
-            comboTimeWarpDelayReduceMult,
-            warpSpawnIntervalMult,
-            warpManualGrantSeconds,
-            warpAutoBuyAssist,
-            warpFactor36AllHandsOverflow,
-            warpPotencyMaxTiers,
-            warpClickAscensionEssenceChance,
-            warpOverflowAscensionEssenceChance,
-            turboScensionActivationCostMult,
-            turboBurnEfficiencyReduceSum,
-            turboTankSizeMult,
-            turboBurnRateMult,
-            turboScensionExtraUpgradeRolls,
-            turboLeveler,
-            turboScensionAllAxesUpgrade,
-            turboMeterFromComboMult,
-            turboMeterDrainMult,
-            turboOffMeterFillMult,
-            turboPassiveMeterPerSec,
-            handUnlockStartingCount,
-            comboDiscoveryMilestoneCooldownMult
-        };
-        _ascensionGrantTotalsCacheKey = cacheKey;
-        _ascensionGrantTotalsCache = out;
-        return out;
-    }
-    /** Effective delay after a catalog discovery milestone before the next can apply (ascension reduces from 60s, floor 0.1s). */
-    function getComboDiscoveryMilestoneCooldownMs() {
-        const t = computeAscensionGrantTotals();
-        const mult = Number(t.comboDiscoveryMilestoneCooldownMult) || 1;
-        const m = Math.max(0, Math.min(1, mult));
-        return Math.max(COMBO_DISCOVERY_MILESTONE_COOLDOWN_MIN_MS, Math.min(COMBO_DISCOVERY_MILESTONE_COOLDOWN_BASE_MS, Math.round(COMBO_DISCOVERY_MILESTONE_COOLDOWN_BASE_MS * m)));
-    }
+    /* Runtime ascension grants: createN1AscensionGrants → n1AscGrants (wired after ascMapUi). */
+
     function getAscensionCheapenCapBonusFromTree() {
         return computeAscensionGrantTotals().cheapenCap;
     }
@@ -1320,6 +1236,44 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
     function getTimeWarpAuraSpawnSpanMaxSec() {
         return getTimeWarpAuraSpawnSpanMaxSecFromTotals(computeAscensionGrantTotals());
     }
+    let escapeAscensionHtml;
+    let collectPurchasedAscensionGrantFlags;
+    let renderAscensionHubGrantsHtml;
+    let renderAscensionHubStatsPillsHtml;
+    ({
+        escapeAscensionHtml,
+        collectPurchasedAscensionGrantFlags,
+        renderAscensionHubGrantsHtml,
+        renderAscensionHubStatsPillsHtml,
+        patchAscensionHubStatsPillsDomIfChanged
+    } = createN1AscensionBootUi({
+        getHasAscended: () => number1HasAscended,
+        getAscensionNodeIds: () => number1AscensionNodeIds,
+        getAscensionNodeById: id => ASCENSION_MAP_NODE_BY_ID[id],
+        computeAscensionGrantTotals,
+        getNearMissToleranceRanks,
+        getUnlockedHands: () => unlockedHands,
+        getPatternCatalogMultiplier,
+        getAscensionComboPatternMult,
+        getTimeWarpComboMultiplier,
+        getTurboCountMultiplierMax,
+        getTurboMeterMax,
+        getTimeWarpOverflowRatio,
+        getTimeWarpAuraSpawnSpanMaxSec,
+        getMaxCheapenLevel,
+        formatCount,
+        BLACK_HOLE_PHASE1_ESSENCE_TARGET,
+        getAscensionEssenceInvestedInNodes,
+        getNumber1AscensionPendingBonusEssence,
+        getNumber1AscensionEssence: () => number1AscensionEssence,
+        getNumber1BlackHoleState: () => number1BlackHoleState,
+        getBlackHolePhase,
+        isBlackHoleArcUnlocked,
+        getNumber1BlackHoleProductionMult,
+        formatBlackHolePhase1CpsMultForUi,
+        getBlackHolePhase1RunCpsMult,
+        getAscensionMapNodeCount: () => ASCENSION_MAP_NODES.length
+    }));
     function getAscensionNodePurchaseCost(id) {
         return ascMapUi.getAscensionNodePurchaseCost(id);
     }
@@ -1459,13 +1413,6 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         refreshOverviewAndAscensionPanelsIfOpen();
         autosaveNow();
     }
-    const ASCENSION_FINGER_RESPEC_LABELS = {
-        index: "Index (velocity)",
-        middle: "Middle (combo)",
-        ring: "Ring (turbo)",
-        pinky: "Pinky (warp)",
-        thumb: "Thumb (clap)"
-    };
     function ascensionFingerHasPurchasedNodes(finger) {
         return number1AscensionNodeIds.some(id => {
             const def = ASCENSION_MAP_NODE_BY_ID[id];
@@ -1502,302 +1449,6 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         refreshOverviewAndAscensionPanelsIfOpen();
         autosaveNow();
     }
-    function escapeAscensionHtml(t) {
-        return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-    }
-    /** Grants not folded into `computeAscensionGrantTotals` — scan owned nodes for one-way unlock flags. */
-    function collectPurchasedAscensionGrantFlags() {
-        let autoBuyDefaultOnForNewHands = false;
-        let autoBuyAlsoCheapen = false;
-        let autoBuyAlsoSlowdown = false;
-        let turboScensionUnlock = false;
-        let turboScensionUpgradeAutobuy = false;
-        for (let i = 0; i < number1AscensionNodeIds.length; i++) {
-            const def = ASCENSION_MAP_NODE_BY_ID[number1AscensionNodeIds[i]];
-            if (!def || !def.grants) continue;
-            const g = def.grants;
-            if (g.autoBuyDefaultOnForNewHands === true) autoBuyDefaultOnForNewHands = true;
-            if (g.autoBuyAlsoCheapen === true) autoBuyAlsoCheapen = true;
-            if (g.autoBuyAlsoSlowdown === true) autoBuyAlsoSlowdown = true;
-            if (def.finger === "ring" && g.turboScensionUnlock === true) turboScensionUnlock = true;
-            if (def.finger === "ring" && g.turboScensionUpgradeAutobuy === true) turboScensionUpgradeAutobuy = true;
-        }
-        return {
-            autoBuyDefaultOnForNewHands,
-            autoBuyAlsoCheapen,
-            autoBuyAlsoSlowdown,
-            turboScensionUnlock,
-            turboScensionUpgradeAutobuy
-        };
-    }
-    /**
-     * Full, grouped summary of purchased ascension benefits for the hub header.
-     * Uses `computeAscensionGrantTotals()` plus a small set of flags from owned nodes (near-miss, autobuy, turbo-scension unlocks).
-     */
-    function renderAscensionHubGrantsHtml() {
-        if (!number1HasAscended) return "";
-        const esc = escapeAscensionHtml;
-        const owned = number1AscensionNodeIds.length;
-        if (!owned) {
-            return "<p class=\"asc-hub-grants-empty\">No gems purchased yet. Unlock nodes on the map to see your benefits listed here.</p>";
-        }
-        const t = computeAscensionGrantTotals();
-        const gf = collectPurchasedAscensionGrantFlags();
-        const groups = [];
-        function push(title, lines) {
-            const L = (lines || []).filter(Boolean);
-            if (L.length) groups.push({ title, lines: L });
-        }
-        const economy = [];
-        if ((t.cheapenCap || 0) > 0) economy.push("+" + t.cheapenCap + " bonus Cheapen cap tiers (on top of the base 10)");
-        if ((t.speedMult || 1) < 0.999) economy.push("Speed upgrade costs " + ((1 - t.speedMult) * 100).toFixed(1) + "% less (index gems stack multiplicatively)");
-        if ((t.slowdownCostMult || 1) < 0.999) economy.push("Compaction upgrade costs " + ((1 - t.slowdownCostMult) * 100).toFixed(1) + "% less (index gems stack multiplicatively)");
-        if ((t.autoBuyDelayMult || 1) < 0.999) economy.push("Speed (and linked) autobuy countdown runs " + ((1 / t.autoBuyDelayMult)).toFixed(2) + "× faster (\u00d7" + t.autoBuyDelayMult.toFixed(3) + " delay)");
-        if ((t.handUnlockStartingCount || 0n) > 0n) {
-            try {
-                economy.push("Hands first unlocked via milestones start at count " + t.handUnlockStartingCount.toLocaleString("en-US") + " (highest purchased tier wins)");
-            } catch (e) {
-                economy.push("Hands first unlocked via milestones start at a higher count (highest purchased tier wins)");
-            }
-        }
-        if (gf.autoBuyDefaultOnForNewHands) economy.push("New hands default to Speed autobuy On");
-        if (gf.autoBuyAlsoCheapen) economy.push("With Speed autobuy on a hand, Cheapen autobuys on the same cadence");
-        if (gf.autoBuyAlsoSlowdown) economy.push("With Speed autobuy on a hand, Compaction autobuys on the same cadence");
-        push("Economy, autobuy & hand unlocks", economy);
-        const combo = [];
-        if ((t.comboMultAdd || 0) > 0.0001) {
-            combo.push("Time Warp burst stack from index-finger digit combos: +" + (t.comboMultAdd * 100).toFixed(2) + "% (additive across index nodes; does not multiply tick CPS)");
-        }
-        if ((t.comboEarnedPatternMult || 1) > 1.001) {
-            combo.push("Ascended Combo (middle): \u00d7" + t.comboEarnedPatternMult.toFixed(2) + " to tick CPS and bursts (successive middle ranks compound as \u00d7(1+step); branch cap applies)");
-        }
-        if ((t.comboDiscoveryMilestoneCooldownMult || 1) < 0.999) {
-            combo.push("Combo Catalog discovery milestones: cooldown \u00d7" + t.comboDiscoveryMilestoneCooldownMult.toFixed(3) + " of the default 60s (middle nodes; floor 0.1s)");
-        }
-        if ((t.turboBoostComboFillAdd || 0) > 0) {
-            combo.push("Extra Turbo Boost meter fill from each qualifying combo: +" + t.turboBoostComboFillAdd);
-        }
-        if ((t.comboTimeWarpDelayReduceSec || 0) > 0.0001) {
-            combo.push("Active combos reduce the next Time Warp aura delay by " + String(+t.comboTimeWarpDelayReduceSec.toFixed(3)) + " s in total (middle)");
-        }
-        if ((t.comboTimeWarpDelayReduceMult || 1) > 1.001) {
-            combo.push("Multiplier on the above combo \u2192 Time Warp delay reduction: \u00d7" + t.comboTimeWarpDelayReduceMult.toFixed(2));
-        }
-        if (t.comboClapExtraRoll) combo.push("Combo Claps: chance for an immediate extra clap on the same pair (middle)");
-        if (t.comboClapChainRolls) combo.push("Combo Claps can chain further bonus claps (middle)");
-        const nr = getNearMissToleranceRanks();
-        if (nr.length) combo.push("Pair-of-n combos count \u201calmost pairs\u201d for digit ranks: " + nr.join(", ") + " (middle near-miss tolerance; up to 5 ranks)");
-        push("Combos, catalog & clap synergy", combo);
-        const warp = [];
-        if ((t.warpOverflow || 0) > 0.0001) warp.push("Time Warp overflow strength +" + (t.warpOverflow * 5).toFixed(0) + "% toward the 90% cap (pinky)");
-        if ((t.warpSpawnIntervalMult || 1) < 0.999) warp.push("Time Warp aura spawn span \u00d7" + t.warpSpawnIntervalMult.toFixed(3) + " (lower = faster auras)");
-        if ((t.warpManualGrantSeconds || 60) > 60.5) warp.push("Manual Time Warp aura: up to " + Math.round(t.warpManualGrantSeconds) + " s of that hand\u2019s effective rate per click (base 60s without pinky upgrades)");
-        if (t.warpAutoBuyAssist) warp.push("Manual aura click, after the warp, also buys every Speed, Cheapen, and Compaction upgrade that hand can afford until none remain");
-        if (t.warpFactor36AllHandsOverflow) warp.push("Overflow bursts use \u00be strength but hit every unlocked hand at once");
-        if ((t.warpPotencyMaxTiers || 0) >= 1) warp.push("Warp Potency: +" + Math.floor(t.warpPotencyMaxTiers) + " manual-aura potency tiers (idle charge steps)");
-        if ((t.warpClickAscensionEssenceChance || 0) > 0.0001) warp.push("Manual aura: +" + (t.warpClickAscensionEssenceChance * 100).toFixed(2) + "% chance per click to bank +1 bonus Essence for your next ascend");
-        if ((t.warpOverflowAscensionEssenceChance || 0) > 0.0001) warp.push("Overflow trigger: +" + (t.warpOverflowAscensionEssenceChance * 100).toFixed(2) + "% chance to bank +1 bonus Essence for your next ascend");
-        push("Time Warp & overflow", warp);
-        const turbo = [];
-        if ((t.turboScaling || 0) > 0) turbo.push("Turbo scaling stacks: " + t.turboScaling + " (each +25 meter max and \u00d71.25 Turbo Boost count multiplier cap)");
-        if ((t.comboTurboPointsMult || 1) > 1.001) {
-            turbo.push("Turbo-scension upgrade points from combos: \u00d7" + t.comboTurboPointsMult.toFixed(2) + " (from ring gems; multiplicative as \u00d7(1+bonus) per node)");
-        }
-        if (gf.turboScensionUnlock) turbo.push("Turbo-scension unlocked: spend Turbo activations for random Burn / Boost Tank / Boost Multiplier / Meter Fill levels");
-        if (gf.turboScensionUpgradeAutobuy) turbo.push("Turbo-scension Upgrade autobuy: spends activations for random levels whenever affordable");
-        if ((t.turboScensionActivationCostMult || 1) < 0.999) turbo.push("Turbo-scension Upgrade activation cost \u00d7" + t.turboScensionActivationCostMult.toFixed(3) + " (multiplicative)");
-        if ((t.turboBurnEfficiencyReduceSum || 0) > 0.0001) turbo.push("Burn efficiency: total meter drain \u2212" + (t.turboBurnEfficiencyReduceSum * 100).toFixed(0) + "% while Turbo is on (additive across ring nodes, capped)");
-        if ((t.turboTankSizeMult || 1) > 1.001) turbo.push("Turbo meter max (tank growth): \u00d7" + t.turboTankSizeMult.toFixed(2));
-        if ((t.turboBurnRateMult || 1) > 1.001) turbo.push("Turbo burn rate: \u00d7" + t.turboBurnRateMult.toFixed(2));
-        if ((t.turboScensionExtraUpgradeRolls || 0) >= 1) turbo.push("Turbo-scension Upgrade: +" + t.turboScensionExtraUpgradeRolls + " extra random axis roll(s) per purchase (stacks)");
-        if (t.turboScensionAllAxesUpgrade) turbo.push("Turbo-scension Upgrade: each activation grants +1 Burn, Tank, Mult, and Fill (no random picks)");
-        if (t.turboLeveler) turbo.push("Turbo Leveler: overflow combo fill while Turbo is off can buy random Turbo-scension levels");
-        if ((t.turboMeterFromComboMult || 1) > 1.001) turbo.push("Combo \u2192 meter fill while Turbo is on: \u00d7" + t.turboMeterFromComboMult.toFixed(2));
-        if ((t.turboMeterDrainMult || 1) < 0.999) turbo.push("Turbo meter drain while on: \u00d7" + t.turboMeterDrainMult.toFixed(3) + " (slower drain)");
-        if ((t.turboOffMeterFillMult || 1) > 1.001) turbo.push("Combo \u2192 meter fill while Turbo is off: \u00d7" + t.turboOffMeterFillMult.toFixed(2));
-        if ((t.turboPassiveMeterPerSec || 0) > 0.0001) turbo.push("Passive Turbo meter while On (with charge): +" + (+t.turboPassiveMeterPerSec).toFixed(2) + "/s");
-        push("Turbo Boost, meter & Turbo-scension", turbo);
-        const clap = [];
-        if ((t.clapCooldownMult || 1) < 0.999) clap.push("Clap cooldown: \u00d7" + t.clapCooldownMult.toFixed(3) + " (shorter wait)");
-        if ((t.clapBonusChanceAdd || 0) > 0.0001) clap.push("Base clap bonus chance: +" + (t.clapBonusChanceAdd * 100).toFixed(2) + "%");
-        if ((t.clapCheapenBonusChanceAdd || 0) > 0.0001) clap.push("Clap \u2192 bonus Cheapen tier: +" + (t.clapCheapenBonusChanceAdd * 100).toFixed(2) + "% per roll");
-        if ((t.clapSlowdownBonusChanceAdd || 0) > 0.0001) clap.push("Clap \u2192 bonus Compaction tier: +" + (t.clapSlowdownBonusChanceAdd * 100).toFixed(2) + "% per roll");
-        if ((t.clapEssenceProcChanceAdd || 0) > 0.0001) clap.push("Clap \u2192 strengthen this run\u2019s Ascension Essence multiplier: +" + (t.clapEssenceProcChanceAdd * 100).toFixed(2) + "% per roll");
-        if ((t.clapEssenceMultiplierStepAdd || 0) > 0.0001) clap.push("Each essence clap proc: next ascend Essence \u00d7(1+" + t.clapEssenceMultiplierStepAdd.toFixed(4) + ") extra (resets on ascend)");
-        if (t.clapCheapenExtraRoll) clap.push("Cheapen Clap Echo: extra 10% chance for another cheapen-bonus roll on the same hand");
-        if (t.clapCheapenChainRolls) clap.push("Cheapen Clap Echo can chain further bonus rolls");
-        if (t.clapSlowdownExtraRoll) clap.push("Compaction Clap Echo: extra 10% chance for another compaction-bonus roll on the same hand");
-        if (t.clapSlowdownChainRolls) clap.push("Compaction Clap Echo can chain further bonus rolls");
-        push("Clap & essence", clap);
-        const live = [];
-        if (unlockedHands >= 2) {
-            const cat = getPatternCatalogMultiplier();
-            const pat = getAscensionComboPatternMult();
-            live.push("Combo CPS right now (Combo Catalog \u00d7 Ascended Combo): \u00d7" + (cat * pat).toFixed(2) + " (needs 2+ hands)");
-            live.push("Time Warp burst combo multiplier (with your stacks): \u00d7" + getTimeWarpComboMultiplier().toFixed(2));
-        } else {
-            live.push("Unlock a second hand to enable combo CPS and live warp-stack multipliers.");
-        }
-        live.push("Turbo Boost count multiplier cap (this run): \u00d7" + (Math.round(getTurboCountMultiplierMax() * 100) / 100).toLocaleString("en-US"));
-        live.push("Turbo meter max (this run): " + formatCount(getTurboMeterMax()));
-        live.push("Time Warp overflow ratio toward cap: " + (getTimeWarpOverflowRatio() * 100).toFixed(0) + "% · max aura spawn span: \u2264" + formatCount(Math.round(getTimeWarpAuraSpawnSpanMaxSec())) + "s");
-        live.push("Cheapen level cap (base + gems): " + getMaxCheapenLevel());
-        push("How strong you are right now", live);
-        if (!groups.length) {
-            return "<p class=\"asc-hub-grants-empty\">No aggregate bonuses detected. Hover individual gems on the map for exact effects.</p>";
-        }
-        return (
-            "<div class=\"asc-hub-grants-inner\">" +
-            groups.map(function (g) {
-                return (
-                    "<section class=\"asc-hub-grant-section\" aria-label=\"" + esc(g.title) + "\">" +
-                    (g.title ? "<h5 class=\"asc-hub-grant-section-title\">" + esc(g.title) + "</h5>" : "") +
-                    "<ul class=\"asc-hub-grant-list\">" +
-                    g.lines.map(function (line) { return "<li class=\"asc-hub-grant-item\">" + esc(line) + "</li>"; }).join("") +
-                    "</ul></section>"
-                );
-            }).join("") +
-            "</div>"
-        );
-    }
-    function computeAscensionHandLayout() {
-        return ascMapUi.computeAscensionHandLayout();
-    }
-    function renderAscensionMapColumnGuidesSvg(vbH) {
-        return ascMapUi.renderAscensionMapColumnGuidesSvg(vbH);
-    }
-    function renderAscensionMapEdgesSvg(layout) {
-        return ascMapUi.renderAscensionMapEdgesSvg(layout);
-    }
-    function syncAscensionMapNodeDomPositions() {
-        ascMapUi.syncAscensionMapNodeDomPositions();
-    }
-    function ascensionResolveNodeIdAtClient(clientX, clientY) {
-        return ascMapUi.ascensionResolveNodeIdAtClient(clientX, clientY);
-    }
-    function updateAscensionMapDetailPanel() {
-        ascMapUi.updateAscensionMapDetailPanel();
-    }
-    function setAscensionMapSelectedNode(id, skipIfSame) {
-        ascMapUi.setAscensionMapSelectedNode(id, skipIfSame);
-    }
-    function teardownAscensionMapPanZoom() {
-        ascMapUi.teardownAscensionMapPanZoom();
-    }
-    function initAscensionMapPanZoom() {
-        ascMapUi.initAscensionMapPanZoom();
-    }
-    /** Compact account / arc row — detailed benefits live in `#ascension-hub-grants`. */
-    function renderAscensionHubStatsPillsHtml() {
-        if (!number1HasAscended) return "";
-        const totalNodes = ASCENSION_MAP_NODES.length;
-        const ownedCount = number1AscensionNodeIds.length;
-        const invested = getAscensionEssenceInvestedInNodes();
-        const pendingBonusEss = getNumber1AscensionPendingBonusEssence();
-        const pendingBonusPill = pendingBonusEss > 0
-            ? "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Next bonus</span> <span class=\"asc-stat-pill-v\">+" + formatCount(pendingBonusEss) + " Essence</span></span>"
-            : "";
-        const bhMultStat = getNumber1BlackHoleProductionMult();
-        const bhPhase = getBlackHolePhase();
-        const p1Spent = Math.floor(Number(number1BlackHoleState.phase1EssenceSpent) || 0);
-        const bhParallel = Math.max(0, Number(number1BlackHoleState.phase2ParallelBonusPool) || 0);
-        const blackHolePill = (isBlackHoleArcUnlocked() || bhPhase > 0)
-            ? (bhPhase === 1
-                ? "<span class=\"asc-stat-pill asc-stat-pill--wide asc-stat-pill--mass\"><span class=\"asc-stat-pill-k\">Mass accumulator</span> <span class=\"asc-stat-pill-v\">charge " + p1Spent + " / " + BLACK_HOLE_PHASE1_ESSENCE_TARGET + " · inertial ×" + formatBlackHolePhase1CpsMultForUi(getBlackHolePhase1RunCpsMult()) + "</span></span>"
-                : bhPhase === 7
-                    ? "<span class=\"asc-stat-pill asc-stat-pill--wide asc-stat-pill--epilogue\"><span class=\"asc-stat-pill-k\">Evaporation</span> <span class=\"asc-stat-pill-v\">P7 · epilogue</span></span>"
-                    : "<span class=\"asc-stat-pill asc-stat-pill--wide asc-stat-pill--void\"><span class=\"asc-stat-pill-k\">Black hole</span> <span class=\"asc-stat-pill-v\">P" + bhPhase + " · ×" + (bhMultStat >= 10 ? bhMultStat.toFixed(2) : bhMultStat.toFixed(3)) + " · mass " + Math.floor(Number(number1BlackHoleState.phase2Mass) || 0) + "</span></span>")
-            : "";
-        const blackHoleParallelPill = bhParallel > 0
-            ? "<span class=\"asc-stat-pill asc-stat-pill--bh-parallel\"><span class=\"asc-stat-pill-k\">Parallel pool</span> <span class=\"asc-stat-pill-v\">+" + (bhParallel * 100).toFixed(1) + "% Essence</span></span>"
-            : "";
-        return (
-            "<span class=\"asc-stat-pill asc-stat-pill--wide\"><span class=\"asc-stat-pill-k\">Gems</span> <span class=\"asc-stat-pill-v\">" + ownedCount + " / " + totalNodes + "</span></span>" +
-            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Spent in tree</span> <span class=\"asc-stat-pill-v\">" + formatCount(invested) + " Essence</span></span>" +
-            "<span class=\"asc-stat-pill\"><span class=\"asc-stat-pill-k\">Pool</span> <span class=\"asc-stat-pill-v\">" + formatCount(number1AscensionEssence) + "</span></span>" +
-            pendingBonusPill +
-            blackHolePill +
-            blackHoleParallelPill
-        );
-    }
-    /** Live-update hub header: compact pills + full grant summary (no map rebuild). */
-    function patchAscensionHubStatsPillsDomIfChanged() {
-        const statsEl = document.getElementById("ascension-hub-stats");
-        const grantsEl = document.getElementById("ascension-hub-grants");
-        if (!statsEl && !grantsEl) return;
-        if (statsEl) {
-            const nextStats = renderAscensionHubStatsPillsHtml();
-            if (statsEl.dataset.ascHubPillsSnap !== nextStats) {
-                statsEl.dataset.ascHubPillsSnap = nextStats;
-                statsEl.innerHTML = nextStats;
-            }
-        }
-        if (grantsEl) {
-            const nextGrants = renderAscensionHubGrantsHtml();
-            if (grantsEl.dataset.ascHubGrantsSnap !== nextGrants) {
-                grantsEl.dataset.ascHubGrantsSnap = nextGrants;
-                grantsEl.innerHTML = nextGrants;
-            }
-        }
-    }
-    function renderAscensionMapDebugOverlaySvg() {
-        return ascMapUi.renderAscensionMapDebugOverlaySvg();
-    }
-    /** Vogel (golden-angle) spiral from disk center; glyphs follow the Fibonacci sequence. */
-    function renderAccretionDiskSpiralNumeralsHtml() {
-        const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
-        /** Larger radius + exponent > 0.5 opens the Vogel arms so the spiral reads clearly in the hero. */
-        const SCALE_REM = 1.02;
-        const RADIAL_EXP = 0.63;
-        const DURATION_SEC = 180;
-        const MAX_TERMS = 12;
-        const fib = [1];
-        let prev = 1;
-        let cur = 1;
-        while (fib.length < MAX_TERMS) {
-            const next = prev + cur;
-            prev = cur;
-            cur = next;
-            fib.push(next);
-        }
-        const n = fib.length;
-        const arms = [];
-        for (let i = 0; i < n; i++) {
-            let dx = 0;
-            let dy = 0;
-            if (i > 0) {
-                const r = SCALE_REM * Math.pow(i, RADIAL_EXP);
-                const ang = (i - 1) * GOLDEN_ANGLE;
-                dx = r * Math.cos(ang);
-                dy = r * Math.sin(ang);
-            }
-            const fadeDelay = -(i * DURATION_SEC / n);
-            const wideClass = fib[i] >= 100 ? " asc-black-hole__disk-number-glyph--wide" : "";
-            arms.push(
-                "<span class=\"asc-black-hole__disk-spiral-arm\" style=\"--sdx:" + dx.toFixed(3) + "rem;--sdy:" + dy.toFixed(3) + "rem;--spiral-anim-delay:" + fadeDelay.toFixed(2) + "s\">" +
-                "<span class=\"asc-black-hole__disk-number\"><span class=\"asc-black-hole__disk-number-glyph" + wideClass + "\">" + fib[i] + "</span></span></span>"
-            );
-        }
-        return "<span class=\"asc-black-hole__disk-spiral\" aria-hidden=\"true\">" + arms.join("") + "</span>";
-    }
-    function renderAccretionDiskHeroInnerHtml() {
-        return (
-            "<span class=\"asc-black-hole__disk-glow\"></span>" +
-            "<span class=\"asc-black-hole__disk-band asc-black-hole__disk-band--outer\"></span>" +
-            "<span class=\"asc-black-hole__disk-band asc-black-hole__disk-band--inner\"></span>" +
-            "<span class=\"asc-black-hole__disk-core\"></span>" +
-            renderAccretionDiskSpiralNumeralsHtml()
-        );
-    }
-    function initNumber1StageAccretionDiskBg() {
-        const wrap = document.getElementById("number1-stage-disk-bg");
-        if (!wrap || wrap.dataset.diskBgInit === "1") return;
-        wrap.dataset.diskBgInit = "1";
-        wrap.innerHTML =
-            "<div class=\"asc-black-hole__disk-hero number1-stage-disk-hero\" aria-hidden=\"true\">" +
-            renderAccretionDiskHeroInnerHtml() +
-            "</div>";
-    }
     function renderNumber1BlackHolePanelHtml() {
         const esc = escapeAscensionHtml;
         if (!number1HasAscended || !isBlackHoleArcUnlocked()) return "";
@@ -1821,9 +1472,15 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
             const pour = Math.min(rem, have);
             const can = rem > 0 && have > 0;
             const fillPct = Math.round(getBlackHolePhase1FillRatio() * 100);
-            const slowdownCap = getMaxSlowdownLevelCap();
-            const cpsM = formatBlackHolePhase1CpsMultForUi(getBlackHolePhase1RunCpsMult());
-            const ascM = getBlackHolePhase1AscensionEssenceMult().toFixed(2);
+            const p1Fmt = {
+                formatCount,
+                formatCompactMultiplier,
+                formatCpsMult: formatBlackHolePhase1CpsMultForUi
+            };
+            const p1AscendCtx = buildPhase1AscendPourContext(number1BlackHoleState, pour, MAX_SLOWDOWN_LEVEL);
+            const p1Live = formatBlackHolePhase1EffectLines(getBlackHolePhase1PourPreview(number1BlackHoleState, pour, MAX_SLOWDOWN_LEVEL), p1Fmt, {
+                ascendCtx: p1AscendCtx
+            });
             body =
                 "<div class=\"asc-black-hole__mass-geometry\" aria-hidden=\"true\">" +
                 "<div class=\"asc-black-hole__tesseract\"></div>" +
@@ -1836,15 +1493,39 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
                 "<div class=\"asc-black-hole__mass-meter-track\" role=\"progressbar\" aria-valuenow=\"" + spent + "\" aria-valuemin=\"0\" aria-valuemax=\"" + BLACK_HOLE_PHASE1_ESSENCE_TARGET + "\" aria-label=\"Essence poured into numerical mass\"><div class=\"asc-black-hole__mass-meter-fill\" style=\"width:" + fillPct + "%\"></div></div>" +
                 "</div>" +
                 "<ul class=\"asc-black-hole__effect-list\" aria-label=\"Mass effects on this run\">" +
-                "<li><span class=\"asc-black-hole__effect-name\">Inertial counting</span><span class=\"asc-black-hole__effect-val\" data-asc-p1-effect=\"inertial\">run CPS ×" + esc(cpsM) + "</span><span class=\"asc-black-hole__effect-hint\">ticks feel heavier as the bar fills</span></li>" +
-                "<li><span class=\"asc-black-hole__effect-name\">Essence coupling</span><span class=\"asc-black-hole__effect-val\" data-asc-p1-effect=\"essence\">Ascend payout ×" + esc(ascM) + "</span><span class=\"asc-black-hole__effect-hint\">next Number 1 ascend earns more Essence</span></li>" +
-                "<li><span class=\"asc-black-hole__effect-name\">Drag ceiling</span><span class=\"asc-black-hole__effect-val\" data-asc-p1-effect=\"drag\">Compaction cap " + slowdownCap + "</span><span class=\"asc-black-hole__effect-hint\">room to lean on Compaction upgrades</span></li>" +
+                "<li><span class=\"asc-black-hole__effect-name\">Inertial counting</span><span class=\"asc-black-hole__effect-val\" data-asc-p1-effect=\"inertial\">" +
+                esc(p1Live.inertial.val) +
+                "</span><span class=\"asc-black-hole__effect-hint\">" +
+                esc(p1Live.inertial.hint) +
+                "</span></li>" +
+                "<li><span class=\"asc-black-hole__effect-name\">Essence coupling</span><span class=\"asc-black-hole__effect-val\" data-asc-p1-effect=\"essence\">" +
+                esc(p1Live.essence.val) +
+                "</span><span class=\"asc-black-hole__effect-hint\">" +
+                esc(p1Live.essence.hint) +
+                "</span></li>" +
+                "<li><span class=\"asc-black-hole__effect-name\">Drag ceiling</span><span class=\"asc-black-hole__effect-val\" data-asc-p1-effect=\"drag\">" +
+                esc(p1Live.drag.val) +
+                "</span><span class=\"asc-black-hole__effect-hint\">" +
+                esc(p1Live.drag.hint) +
+                "</span></li>" +
+                "<li class=\"asc-black-hole__effect-li--ascend\"><span class=\"asc-black-hole__effect-name\">This run's ascend</span><span class=\"asc-black-hole__effect-val\" data-asc-p1-effect=\"ascend\">" +
+                esc(p1Live.ascend.val) +
+                "</span><span class=\"asc-black-hole__effect-hint\">" +
+                esc(p1Live.ascend.hint) +
+                "</span></li>" +
                 "</ul>";
             note = "<p class=\"asc-black-hole__stats asc-black-hole__purse\">You hold <strong>" + esc(formatCount(have)) + "</strong> Ascension Essence · next pour: <strong>" + esc(formatCount(pour)) + "</strong> into mass</p>";
             if (!can && rem > 0) {
                 note += "<p class=\"asc-black-hole__note\">Ascend on Number 1 to earn Essence, then come back — one tap dumps your whole purse into the accumulator.</p>";
             }
-            actions = "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn page-btn--mass-pour\" data-asc-black-hole-buy=\"1\"" + (can ? "" : " disabled") + ">Pour in all Essence (" + esc(formatCount(pour)) + ")</button></p>";
+            actions =
+                "<div class=\"asc-black-hole__p1-pour-hover-zone\">" +
+                "<p class=\"asc-black-hole__pour-preview-note\">Hover <strong>Pour in all Essence</strong> to preview how mass coupling boosts Inertial counting, Essence coupling, and Drag ceiling.</p>" +
+                "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn page-btn--mass-pour\" data-asc-black-hole-buy=\"1\"" +
+                (can ? "" : " disabled") +
+                ">Pour in all Essence (" +
+                esc(formatCount(pour)) +
+                ")</button></p></div>";
         } else if (phase === 2) {
             panelExtraClass = " asc-black-hole--phase2";
             if (Date.now() - (number1BlackHoleUxFlags.lastPhase2MassFeedAtMs || 0) < 1600) {
@@ -1856,6 +1537,7 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
             const have = Math.max(0, Math.floor(Number(number1AscensionEssence) || 0));
             const parallel = Math.max(0, Number(number1BlackHoleState.phase2ParallelBonusPool) || 0);
             const parallelPct = Math.min(100, Math.round((parallel / 1.5) * 100));
+            const maxForStep = getBlackHolePhase2CollapseMaxTier();
             const tm = getBlackHolePhase2CollapseMassTier();
             const tp = getBlackHolePhase2CollapsePhotonTier();
             const te = getBlackHolePhase2CollapseErgosphereTier();
@@ -1863,32 +1545,27 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
             const cMass = getBlackHolePhase2CollapseUpgradeCost("mass");
             const cPhoton = getBlackHolePhase2CollapseUpgradeCost("photon");
             const cErgo = getBlackHolePhase2CollapseUpgradeCost("ergosphere");
-            const canMassUp = tm < BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER && have >= cMass && cMass > 0;
-            const canPhotonUp = tp < BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER && have >= cPhoton && cPhoton > 0;
-            const canErgoUp = te < BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER && have >= cErgo && cErgo > 0;
-            const canPourMass = massPourUnlock && have >= 1 && L < BLACK_HOLE_PHASE2_MASS_CAP;
-            const coupPct = (getBlackHolePhase2MassCouplingCostMult() * 100).toFixed(1);
-            const photonMultStr = getBlackHolePhase2PhotonShellMult().toFixed(3);
-            const cdTrimStr = getBlackHolePhase2PhotonHawkingCdTrimSec().toFixed(2);
-            const massEffectHtml =
-                tm > 0
-                    ? ("Lowers Essence cost per mass step while in this phase. Now: <strong>" + esc(coupPct) + "%</strong> of base cost.")
-                    : "Each tier tightens Essence→mass conversion (lower % of base cost per step).";
-            const photonEffectHtml =
-                tp > 0
-                    ? ("Disk primer: counting mult <strong>×" + esc(photonMultStr) + "</strong> · trims Hawking cooldown by <strong>" + esc(cdTrimStr) + "s</strong> (Phase 3+).")
-                    : "Each tier adds counting mult and trims Hawking burst cooldown once the accretion disk exists.";
-            const ergoEffectHtml =
-                te > 0
-                    ? ("Passively charges the Turbo meter on Number 1 during Phase 2 (strength scales with tier).")
-                    : "Each tier increases passive Turbo meter fill per second while Turbo is unlocked (Phase 2 only).";
-            const bankLine = nextCost > 0 && bank > 0
-                ? (" · Banked toward next step: <strong>" + esc(formatCount(bank)) + "</strong> / " + esc(formatCount(nextCost)))
-                : (nextCost > 0 ? (" · Next step: <strong>" + esc(formatCount(nextCost)) + "</strong> Essence") : "");
+            const canMassUp = tm < maxForStep && have >= cMass && cMass > 0;
+            const canPhotonUp = tp < maxForStep && have >= cPhoton && cPhoton > 0;
+            const canErgoUp = te < maxForStep && have >= cErgo && cErgo > 0;
+            const pourTotal = have + bank;
+            const canPourMass = massPourUnlock && L < BLACK_HOLE_PHASE2_MASS_CAP && pourTotal >= nextCost && nextCost > 0;
+            const massMultNow = getBlackHolePhase2MassMult();
+            const massMultNext = L < BLACK_HOLE_PHASE2_MASS_CAP ? getBlackHolePhase2MassMultAfterNextPour() : massMultNow;
+            const massMultNowStr = formatCompactMultiplier(massMultNow);
+            const massMultNextStr = formatCompactMultiplier(massMultNext);
+            const massEffectHtml = buildBlackHolePhase2TrackEffectHtml(number1BlackHoleState, "mass", esc);
+            const photonEffectHtml = buildBlackHolePhase2TrackEffectHtml(number1BlackHoleState, "photon", esc);
+            const ergoEffectHtml = buildBlackHolePhase2TrackEffectHtml(number1BlackHoleState, "ergosphere", esc);
+            const bankLine =
+                nextCost > 0
+                    ? " · Next pour: <strong>" + esc(formatCount(nextCost)) + "</strong> Essence" +
+                      (bank > 0 ? (" (banked <strong>" + esc(formatCount(bank)) + "</strong>)") : "")
+                    : "";
             const p2Row = function (track, title, tier, effectHtml, cost, canBuy) {
-                const maxed = tier >= BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER;
-                const tierLabel = maxed ? "max" : (tier + "/" + BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER);
-                const btnLabel = maxed ? "Maxed" : ("Buy (" + esc(formatCount(cost)) + ")");
+                const maxed = tier >= maxForStep;
+                const tierLabel = maxed ? "max" : tier + "/" + maxForStep;
+                const btnLabel = maxed ? "Maxed" : "Buy (" + esc(formatCount(cost)) + ")";
                 return (
                     "<div class=\"asc-black-hole__p2-row\" data-asc-black-hole-p2-row=\"" + esc(track) + "\">" +
                     "<div class=\"asc-black-hole__p2-row-head\"><span class=\"asc-black-hole__p2-name\">" + esc(title) + "</span>" +
@@ -1900,12 +1577,19 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
                 );
             };
             body =
+                "<section class=\"asc-black-hole__p2-mass-block\" aria-label=\"Singularity mass\">" +
+                "<h4 class=\"asc-black-hole__p2-mass-title\">Singularity mass</h4>" +
+                "<p class=\"asc-black-hole__p2-mass-desc\">Raises the permanent black-hole counting multiplier for this arc.</p>" +
+                "<p class=\"asc-black-hole__p2-mass-stats\">Mass step <strong>" + L + " / " + BLACK_HOLE_PHASE2_MASS_CAP + "</strong> · Now <strong>×" + esc(massMultNowStr) + "</strong>" +
+                (L < BLACK_HOLE_PHASE2_MASS_CAP ? " · After next pour <strong>×" + esc(massMultNextStr) + "</strong>" : "") +
+                bankLine + "</p></section>" +
                 "<div class=\"asc-black-hole__collapse-geometry\" aria-hidden=\"true\">" +
                 "<span class=\"asc-black-hole__collapse-core\"></span>" +
+                "<div class=\"asc-black-hole__numeral-dust\"><span>1</span><span>1</span><span>1</span><span>1</span><span>1</span><span>1</span><span>1</span><span>1</span></div>" +
                 "<span class=\"asc-black-hole__collapse-shard asc-black-hole__collapse-shard--a\"></span><span class=\"asc-black-hole__collapse-shard asc-black-hole__collapse-shard--b\"></span><span class=\"asc-black-hole__collapse-shard asc-black-hole__collapse-shard--c\"></span><span class=\"asc-black-hole__collapse-shard asc-black-hole__collapse-shard--d\"></span><span class=\"asc-black-hole__collapse-shard asc-black-hole__collapse-shard--e\"></span><span class=\"asc-black-hole__collapse-shard asc-black-hole__collapse-shard--f\"></span><span class=\"asc-black-hole__collapse-shard asc-black-hole__collapse-shard--g\"></span><span class=\"asc-black-hole__collapse-shard asc-black-hole__collapse-shard--h\"></span><span class=\"asc-black-hole__collapse-shard asc-black-hole__collapse-shard--i\"></span><span class=\"asc-black-hole__collapse-shard asc-black-hole__collapse-shard--j\"></span>" +
                 "</div>" +
-                "<p class=\"asc-black-hole__kicker\">Phase 2 · collapse upgrades</p>" +
-                "<p class=\"asc-black-hole__body\">Before the singularity accepts raw mass, stabilize three channels with Ascension Essence. Each track has <strong>" + BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER + "</strong> tiers. Every Phase 2 spend also charges a distinct <strong>parallel Essence bonus</strong> for future ascends.</p>" +
+                "<p class=\"asc-black-hole__kicker\">Phase 2 · collapse cycle</p>" +
+                "<p class=\"asc-black-hole__body\">Max all three channels at tier <strong>" + maxForStep + "</strong>, pour once into mass, then channels reset (final pour keeps upgrades). Parallel Essence bonus still builds on every spend.</p>" +
                 "<div class=\"asc-black-hole__parallel-meter-wrap\" role=\"group\" aria-label=\"Parallel Essence bonus for future ascends\">" +
                 "<div class=\"asc-black-hole__mass-meter-label\"><span>Parallel pool</span><span class=\"asc-black-hole__mass-meter-nums\"><strong>+" + esc((parallel * 100).toFixed(1)) + "%</strong> / +150.0% Essence</span></div>" +
                 "<div class=\"asc-black-hole__mass-meter-track asc-black-hole__parallel-meter-track\" role=\"progressbar\" aria-valuenow=\"" + esc((parallel * 100).toFixed(1)) + "\" aria-valuemin=\"0\" aria-valuemax=\"150\" aria-label=\"Parallel Essence bonus\"><div class=\"asc-black-hole__mass-meter-fill asc-black-hole__parallel-meter-fill\" style=\"width:" + parallelPct + "%\"></div></div>" +
@@ -1916,12 +1600,18 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
                 p2Row("ergosphere", "Ergosphere coupling", te, ergoEffectHtml, cErgo, canErgoUp) +
                 "</div>";
             note =
-                "<p class=\"asc-black-hole__stats\">Phase: <strong>2</strong> · Mass pour: <strong>" + (massPourUnlock ? "unlocked" : "locked") + "</strong> · Mass: <strong>" + L + "</strong> · Total gain: <strong>×" + esc(multStr) + "</strong>" + bankLine + "</p>" +
-                "<p class=\"asc-black-hole__stats asc-black-hole__purse\">You hold <strong>" + esc(formatCount(have)) + "</strong> Ascension Essence.</p>" +
+                "<p class=\"asc-black-hole__stats\">Phase: <strong>2</strong> · Mass pour: <strong>" + (massPourUnlock ? "unlocked" : "locked") + "</strong> · Run mult: <strong>×" + esc(multStr) + "</strong></p>" +
+                "<p class=\"asc-black-hole__stats asc-black-hole__purse\">You hold <strong>" + esc(formatCount(have)) + "</strong> Ascension Essence" +
+                (bank > 0 ? (" · banked <strong>" + esc(formatCount(bank)) + "</strong>") : "") + ".</p>" +
                 (massPourUnlock
                     ? ""
-                    : "<p class=\"asc-black-hole__note\">Bring every collapse track to tier " + BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER + " to unlock mass investment.</p>");
-            actions = "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-buy=\"1\"" + (canPourMass ? "" : " disabled") + ">Pour all Essence into mass (" + esc(formatCount(have)) + ")</button></p>";
+                    : "<p class=\"asc-black-hole__note\">Max all three channels at tier <strong>" + maxForStep + "</strong> to unlock the next mass pour.</p>");
+            actions =
+                "<p class=\"asc-black-hole__buy\"><button type=\"button\" class=\"page-btn\" data-asc-black-hole-buy=\"1\"" +
+                (canPourMass ? "" : " disabled") +
+                ">Pour one mass step (" +
+                esc(formatCount(nextCost)) +
+                " Essence)</button></p>";
         } else if (phase === 3) {
             panelExtraClass = " asc-black-hole--phase3";
             const have = Math.max(0, Math.floor(Number(number1AscensionEssence) || 0));
@@ -2156,20 +1846,20 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
     function getNumber1AscendControlLivePatchDigest() {
         const essence = Math.floor(Number(number1AscensionEssence) || 0);
         if (!number1HasAscended) {
-            return "pre|" + unlockedHands + "|" + totalChanges + "|" + essence;
+            return "pre|" + unlockedHands + "|" + totalChanges + "|" + essence + "|rt|" + getNumber1AscensionRunDurationSecForUi();
         }
         const ph = getBlackHolePhase();
         if (ph === 7) {
-            return "p7|" + totalChanges + "|" + unlockedHands + "|" + essence;
+            return "p7|" + totalChanges + "|" + unlockedHands + "|" + essence + "|rt|" + getNumber1AscensionRunDurationSecForUi();
         }
         const req = getNumber1AscensionRequiredHands();
         if (!isNumber1AscensionReady()) {
-            return "nr|" + totalChanges + "|" + unlockedHands + "|" + req + "|" + ASCENSION_1_REQUIRED_TOTAL + "|" + essence;
+            return "nr|" + totalChanges + "|" + unlockedHands + "|" + req + "|" + ASCENSION_1_REQUIRED_TOTAL + "|" + essence + "|rt|" + getNumber1AscensionRunDurationSecForUi();
         }
         const g = computeNumber1AscensionGainBreakdown(getNumber1AscensionEssenceFormulaTotal());
         return (
             "r|" + g.finalGain + "|" + g.baseGain + "|" + g.pendingBonus + "|" + g.blackHolePhaseMult + "|" + g.beforeMult + "|" + g.clapMult + "|" +
-            g.blackHoleMultiplierBonus + "|" + g.multiplierBonus
+            g.blackHoleMultiplierBonus + "|" + g.multiplierBonus + "|rt|" + g.runDurationSec + "|rtp|" + Math.floor(g.runTimeMultPct)
         );
     }
     function renderNumber1AscendControlHtml(livePatchDigest) {
@@ -2180,12 +1870,19 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
                 ? " data-live-patch-digest=\"" + esc(livePatchDigest) + "\""
                 : "";
         const requiredHands = getNumber1AscensionRequiredHands();
+        const runDurationSec = getNumber1AscensionRunDurationSecForUi();
         const gainInfo = ready ? computeNumber1AscensionGainBreakdown(getNumber1AscensionEssenceFormulaTotal()) : null;
+        const runTimeMultPct = gainInfo ? gainInfo.runTimeMultPct : getNumber1AscensionRunTimeMultPct(runDurationSec);
+        const runTimeBannerHtml = buildAscensionRunTimeBannerHtml({ runDurationSec, runTimeMultPct, esc });
         const gainText = gainInfo ? formatCount(gainInfo.finalGain) : "0";
         const gainFormulaText = gainInfo
             ? " Formula: base " + formatCount(gainInfo.baseGain) +
                 (gainInfo.pendingBonus > 0 ? " + warp bonus " + formatCount(gainInfo.pendingBonus) : "") +
                 (gainInfo.blackHoleMultiplierBonus > 0 ? " + " + getArcEssenceMultiplierBonusPhraseLower() + " " + formatCount(gainInfo.blackHoleMultiplierBonus) + " (" + gainInfo.blackHolePhaseMult.toFixed(3) + "x)" : "") +
+                " × run time " +
+                gainInfo.runTimeMultPct.toFixed(1) +
+                "%" +
+                (gainInfo.runTimeMultBonus !== 0 ? " (" + (gainInfo.runTimeMultBonus > 0 ? "+" : "") + formatCount(gainInfo.runTimeMultBonus) + ")" : "") +
                 (gainInfo.multiplierBonus > 0 ? " + clap mult " + formatCount(gainInfo.multiplierBonus) + " (" + gainInfo.clapMult.toFixed(3) + "x)" : "") +
                 " = " + gainText + "."
             : "";
@@ -2194,6 +1891,7 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
             : "Not ready: reach " + formatCount(ASCENSION_1_REQUIRED_TOTAL) + " total and " + requiredHands + " hand" + (requiredHands === 1 ? "" : "s") + ". Current: " + formatCount(totalChanges) + " total, " + unlockedHands + "/" + requiredHands + " hands.";
         return (
             "<section" + digestAttr + " class=\"ascension-run-action" + (ready ? " ascension-run-action--ready" : "") + "\" aria-label=\"Number 1 ascend action\">" +
+            runTimeBannerHtml +
             "<div class=\"ascension-run-action__copy\">" +
             "<strong class=\"ascension-run-action__title\">Number 1 Ascension</strong>" +
             "<span class=\"ascension-run-action__status\">" + esc(requirementText) + "</span>" +
@@ -2473,22 +2171,6 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         return false;
     };
 
-    /** Live countdown + queue hint while combo discovery milestones are pending (Combinations page). */
-    function updateComboDiscoveryMilestonePanelIfOpen() {
-        syncComboDiscoveryMilestonePanel({
-            pagePanelEl,
-            pagePanelTitleEl,
-            unlockedHands,
-            milestoneCooldownMinMs: COMBO_DISCOVERY_MILESTONE_COOLDOWN_MIN_MS,
-            milestone: {
-                pendingQueue: comboDiscoveryMilestonePendingQueue,
-                readyAtMs: comboDiscoveryMilestoneReadyAtMs,
-                cooldownSpanMs: comboDiscoveryMilestoneCooldownSpanMs
-            },
-            getDefaultCooldownMs: getComboDiscoveryMilestoneCooldownMs
-        });
-    }
-
     function showPagePanel(pageId) {
         if (!pagePanelEl || !pagePanelTitleEl || !pagePanelBodyEl) return;
         teardownAscensionMapPanZoom();
@@ -2552,7 +2234,7 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
     }
 
     /* ---------------------------------------------------------
-       SPEED UPGRADE (per-hand)
+       SPEED UPGRADE (per-hand) — Region: Speed upgrades
     --------------------------------------------------------- */
     let speedLevel = Array(maxHands).fill(0);
     /** Clap bonus: adds to speed multiplier like purchased levels; does not affect upgrade cost. Resets on ascension. */
@@ -2563,6 +2245,14 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
     let clapCooldownUntilMsByHand = Array(maxHands).fill(0);
     let autoBuyUnlocked = false;
     let autoBuyEnabledByHand = [];
+    /** Mutates `target` in place so closures (e.g. upgrade UI `change` handler) keep the same array reference. */
+    function copyArrayIntoExisting(target, source, mapValue) {
+        target.length = 0;
+        if (!Array.isArray(source)) return;
+        for (let i = 0; i < source.length; i++) {
+            target.push(mapValue ? mapValue(source[i], i) : source[i]);
+        }
+    }
     const AUTO_BUY_DELAY_SECONDS = 30;
     let devAutoBuyDelaySeconds = null;
     function getAutoBuyDelaySeconds() {
@@ -2658,7 +2348,7 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
     }
     function updateSpeedUpgradeUI() {
         bumpUpgradeEtaSmoothPass();
-        if (totalChanges >= 10) {
+        if (totalChanges >= 10 && upgradeContainer) {
             upgradeContainer.classList.add("show-upgrade-content");
             if (!handUpgradeDetailTipLogged) {
                 handUpgradeDetailTipLogged = true;
@@ -2723,250 +2413,47 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         updateHandUpgradeScrollHint();
     }
 
-    const upgradeScrollHintEl = document.getElementById("upgrade-scroll-hint");
-    const upgradeScrollHintMessagesEl = document.getElementById("upgrade-scroll-hint-messages");
-    const upgradeScrollHintJumpsEl = document.getElementById("upgrade-scroll-hint-jumps");
-    const UPGRADE_SCROLL_HINT_TOP_MARGIN = 72;
-    const UPGRADE_SCROLL_HINT_BOTTOM_MARGIN = 32;
-    const SCROLL_HINT_PULSE_COOLDOWN_MS = 5000;
-    const SPEED_AUTOBUY_SUPPRESS_COUNTDOWN_SEC = 5;
-    let lastScrollHintPulseUpAt = 0;
-    let lastScrollHintPulseDownAt = 0;
-    let upgradeScrollHintLastStateKey = "";
-    function handHasSpeedAffordableNext(handIndex) {
-        if (handIndex < 0 || handIndex >= unlockedHands || totalChanges < 10) return false;
-        const bal = handEarnings[handIndex] || 0;
-        const nextLevel = speedLevel[handIndex] + 1;
-        return bal >= getUpgradeCost(handIndex, nextLevel);
-    }
-    function handHasCheapenAffordableNext(handIndex) {
-        if (handIndex < 0 || handIndex >= unlockedHands || !cheapenSectionUnlocked) return false;
-        const bal = handEarnings[handIndex] || 0;
-        const cl = cheapenLevel[handIndex] ?? 0;
-        const cap = getMaxCheapenLevel();
-        if (cl >= cap) return false;
-        const c = getCheapenUpgradeCost(handIndex, cl + 1);
-        return c !== null && bal >= c;
-    }
-    function handHasSlowdownAffordableNext(handIndex) {
-        if (handIndex < 0 || handIndex >= unlockedHands || !isSlowdownUnlocked()) return false;
-        const bal = handEarnings[handIndex] || 0;
-        const sl = slowdownLevel[handIndex] ?? 0;
-        const cap = getMaxSlowdownLevelCap();
-        if (sl >= cap) return false;
-        const c = getSlowdownUpgradeCost(sl + 1);
-        return c !== null && bal >= c;
-    }
-    function handHasAffordableUpgradeWaiting(handIndex) {
-        return handHasSpeedAffordableNext(handIndex) || handHasCheapenAffordableNext(handIndex) || handHasSlowdownAffordableNext(handIndex);
-    }
-    /** Speed autobuy will buy within N seconds and no other upgrade type is waiting — suppress scroll hint for that hand. */
-    function handSuppressedForImminentSpeedAutobuy(handIndex) {
-        if (!autoBuyUnlocked || !autoBuyEnabledByHand[handIndex]) return false;
-        const cd = autoBuyCountdownSecondsByHand[handIndex] || 0;
-        if (cd <= 0 || cd > SPEED_AUTOBUY_SUPPRESS_COUNTDOWN_SEC) return false;
-        if (!handHasSpeedAffordableNext(handIndex)) return false;
-        if (handHasCheapenAffordableNext(handIndex) || handHasSlowdownAffordableNext(handIndex)) return false;
-        return true;
-    }
-    function handScrollHintHasUpgradeReason(handIndex) {
-        if (!handHasAffordableUpgradeWaiting(handIndex)) return false;
-        if (handSuppressedForImminentSpeedAutobuy(handIndex)) return false;
-        return true;
-    }
-    function handUpgradeRowIntersectsViewportComfort(el) {
-        if (!el) return true;
-        const r = el.getBoundingClientRect();
-        const vTop = UPGRADE_SCROLL_HINT_TOP_MARGIN;
-        const vBot = window.innerHeight - UPGRADE_SCROLL_HINT_BOTTOM_MARGIN;
-        return r.bottom > vTop && r.top < vBot;
-    }
-    function classifyOffScreenScrollHintHands() {
-        const above = [];
-        const below = [];
-        const vTop = UPGRADE_SCROLL_HINT_TOP_MARGIN;
-        const vBot = window.innerHeight - UPGRADE_SCROLL_HINT_BOTTOM_MARGIN;
-        for (let i = 0; i < unlockedHands; i++) {
-            if (!handContributesToScrollHint(i)) continue;
-            const row = speedRowRefs[i] && speedRowRefs[i].handUpgradeRowEl;
-            if (!row) continue;
-            if (handUpgradeRowIntersectsViewportComfort(row)) continue;
-            const r = row.getBoundingClientRect();
-            if (r.bottom <= vTop) above.push({ handIndex: i, row: row, r: r });
-            else if (r.top >= vBot) below.push({ handIndex: i, row: row, r: r });
+    const scrollHintTimeWarpApi = {
+        handContributesToScrollHint(handIndex) {
+            return handIndex >= 0 && handIndex < unlockedHands;
+        },
+        handContributesTimeWarpPriority(_handIndex) {
+            return 0;
+        },
+        handHasActiveTimeWarpAura() {
+            return false;
         }
-        above.sort((a, b) => {
-            const pa = handContributesTimeWarpPriority(a.handIndex);
-            const pb = handContributesTimeWarpPriority(b.handIndex);
-            if (pa !== pb) return pb - pa;
-            return b.r.bottom - a.r.bottom;
-        });
-        below.sort((a, b) => {
-            const pa = handContributesTimeWarpPriority(a.handIndex);
-            const pb = handContributesTimeWarpPriority(b.handIndex);
-            if (pa !== pb) return pb - pa;
-            return a.r.top - b.r.top;
-        });
-        return { above: above, below: below };
-    }
-    function pulseUpgradeScrollHintShell() {
-        if (!upgradeScrollHintEl) return;
-        upgradeScrollHintEl.classList.remove("upgrade-scroll-hint--pulse");
-        void upgradeScrollHintEl.offsetWidth;
-        upgradeScrollHintEl.classList.add("upgrade-scroll-hint--pulse");
-        window.clearTimeout(pulseUpgradeScrollHintShell._clearT);
-        pulseUpgradeScrollHintShell._clearT = window.setTimeout(() => {
-            upgradeScrollHintEl.classList.remove("upgrade-scroll-hint--pulse");
-        }, 750);
-    }
-    function pulseHandUpgradeRowForScrollHint(rowEl) {
-        if (!rowEl) return;
-        rowEl.classList.remove("hand-upgrade-row--scroll-pulse");
-        void rowEl.offsetWidth;
-        rowEl.classList.add("hand-upgrade-row--scroll-pulse");
-        window.setTimeout(() => rowEl.classList.remove("hand-upgrade-row--scroll-pulse"), 750);
-    }
-    /** Scroll window so the full hand row fits in view (same margins as scroll-hint comfort band). Vertical only. */
-    function scrollHandUpgradeRowFullyIntoView(rowEl) {
-        if (!rowEl) return;
-        const padTop = UPGRADE_SCROLL_HINT_TOP_MARGIN;
-        const padBot = UPGRADE_SCROLL_HINT_BOTTOM_MARGIN;
-        const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-        const rect = rowEl.getBoundingClientRect();
-        const available = vh - padTop - padBot;
-        let delta = 0;
-        if (rect.height <= available) {
-            if (rect.top < padTop) {
-                delta = rect.top - padTop;
-            } else if (rect.bottom > vh - padBot) {
-                delta = rect.bottom - (vh - padBot);
-            }
-        } else {
-            const bandMidY = padTop + available / 2;
-            const idealTop = bandMidY - rect.height / 2;
-            delta = rect.top - idealTop;
-        }
-        if (Math.abs(delta) > 2) {
-            window.scrollBy({ top: delta, left: 0, behavior: "smooth" });
-        }
-    }
-    if (upgradeScrollHintEl && upgradeScrollHintEl.dataset.jumpBound !== "1") {
-        upgradeScrollHintEl.dataset.jumpBound = "1";
-        upgradeScrollHintEl.addEventListener("click", function(e) {
-            const btn = e.target.closest("[data-jump-hand]");
-            if (!btn) return;
-            const i = parseInt(btn.getAttribute("data-jump-hand"), 10);
-            if (isNaN(i) || i < 0 || i >= unlockedHands) return;
-            const row = speedRowRefs[i] && speedRowRefs[i].handUpgradeRowEl;
-            if (row) scrollHandUpgradeRowFullyIntoView(row);
-        });
-    }
-    let handUpgradeScrollHintRaf = 0;
-    function updateHandUpgradeScrollHint() {
-        if (!upgradeScrollHintEl || !upgradeScrollHintMessagesEl || !upgradeScrollHintJumpsEl) return;
-        const { above, below } = classifyOffScreenScrollHintHands();
-        const needUp = above.length > 0;
-        const needDown = below.length > 0;
-        if (!needUp) lastScrollHintPulseUpAt = 0;
-        if (!needDown) lastScrollHintPulseDownAt = 0;
-        if (!needUp && !needDown) {
-            upgradeScrollHintMessagesEl.textContent = "";
-            upgradeScrollHintJumpsEl.innerHTML = "";
-            upgradeScrollHintEl.classList.remove("upgrade-scroll-hint--down-only");
-            upgradeScrollHintEl.hidden = true;
-            upgradeScrollHintLastStateKey = "";
-            return;
-        }
-        upgradeScrollHintEl.hidden = false;
-        upgradeScrollHintEl.classList.toggle("upgrade-scroll-hint--down-only", needDown && !needUp);
-        const upTwAny = needUp && above.some(e => handHasActiveTimeWarpAura(e.handIndex));
-        const upGrAny = needUp && above.some(e => handScrollHintHasUpgradeReason(e.handIndex));
-        const downTwAny = needDown && below.some(e => handHasActiveTimeWarpAura(e.handIndex));
-        const downGrAny = needDown && below.some(e => handScrollHintHasUpgradeReason(e.handIndex));
-        const upPri = above[0] ? above[0].handIndex : "x";
-        const downPri = below[0] ? below[0].handIndex : "x";
-        const upPriTw = above[0] && handHasActiveTimeWarpAura(above[0].handIndex) ? "1" : "0";
-        const downPriTw = below[0] && handHasActiveTimeWarpAura(below[0].handIndex) ? "1" : "0";
-        const stateKey =
-            (needUp ? "1" : "0") +
-            "|" +
-            (needDown ? "1" : "0") +
-            "|" +
-            upPri +
-            "|" +
-            downPri +
-            "|" +
-            (upTwAny ? "1" : "0") +
-            (upGrAny ? "1" : "0") +
-            (downTwAny ? "1" : "0") +
-            (downGrAny ? "1" : "0") +
-            "|" +
-            upPriTw +
-            "|" +
-            downPriTw;
-        if (stateKey !== upgradeScrollHintLastStateKey) {
-            upgradeScrollHintLastStateKey = stateKey;
-            lastScrollHintPulseUpAt = 0;
-            lastScrollHintPulseDownAt = 0;
-            upgradeScrollHintMessagesEl.innerHTML = "";
-            if (needUp) {
-                const line = document.createElement("div");
-                line.className = "upgrade-scroll-hint-line";
-                if (upTwAny && upGrAny) line.textContent = "Scroll up, hand upgrades or a Time Warp are available!";
-                else if (upTwAny) line.textContent = "Scroll up, a Time Warp is waiting!";
-                else line.textContent = "Scroll up, hand upgrades are available!";
-                upgradeScrollHintMessagesEl.appendChild(line);
-            }
-            if (needDown) {
-                const line = document.createElement("div");
-                line.className = "upgrade-scroll-hint-line";
-                if (downTwAny && downGrAny) line.textContent = "Scroll down, hand upgrades or a Time Warp are available!";
-                else if (downTwAny) line.textContent = "Scroll down, a Time Warp is waiting!";
-                else line.textContent = "Scroll down, hand upgrades are available!";
-                upgradeScrollHintMessagesEl.appendChild(line);
-            }
-            upgradeScrollHintJumpsEl.innerHTML = "";
-            if (needUp && above[0]) {
-                const hi = above[0].handIndex;
-                const b = document.createElement("button");
-                b.type = "button";
-                b.className = "upgrade-scroll-hint-jump-btn";
-                b.setAttribute("data-jump-hand", String(hi));
-                b.textContent = handHasActiveTimeWarpAura(hi) ? "Jump to Hand " + (hi + 1) + " (Time Warp)" : "Jump to Hand " + (hi + 1);
-                upgradeScrollHintJumpsEl.appendChild(b);
-            }
-            if (needDown && below[0]) {
-                const hi = below[0].handIndex;
-                const b = document.createElement("button");
-                b.type = "button";
-                b.className = "upgrade-scroll-hint-jump-btn";
-                b.setAttribute("data-jump-hand", String(hi));
-                b.textContent = handHasActiveTimeWarpAura(hi) ? "Jump to Hand " + (hi + 1) + " (Time Warp)" : "Jump to Hand " + (hi + 1);
-                upgradeScrollHintJumpsEl.appendChild(b);
-            }
-        }
-        const now = Date.now();
-        const upDue = needUp && (lastScrollHintPulseUpAt === 0 || now - lastScrollHintPulseUpAt >= SCROLL_HINT_PULSE_COOLDOWN_MS);
-        const downDue = needDown && (lastScrollHintPulseDownAt === 0 || now - lastScrollHintPulseDownAt >= SCROLL_HINT_PULSE_COOLDOWN_MS);
-        if (upDue || downDue) {
-            if (upDue) lastScrollHintPulseUpAt = now;
-            if (downDue) lastScrollHintPulseDownAt = now;
-            pulseUpgradeScrollHintShell();
-            if (upDue && above[0]) pulseHandUpgradeRowForScrollHint(above[0].row);
-            if (downDue && below[0]) {
-                if (upDue) window.setTimeout(() => pulseHandUpgradeRowForScrollHint(below[0].row), 160);
-                else pulseHandUpgradeRowForScrollHint(below[0].row);
-            }
-        }
-    }
-    function scheduleHandUpgradeScrollHintUpdate() {
-        if (handUpgradeScrollHintRaf) return;
-        handUpgradeScrollHintRaf = requestAnimationFrame(() => {
-            handUpgradeScrollHintRaf = 0;
-            updateHandUpgradeScrollHint();
-        });
-    }
+    };
+    const n1UpgradeScrollHintBoot = createN1UpgradeScrollHint({
+        upgradeScrollHintEl: document.getElementById("upgrade-scroll-hint"),
+        upgradeScrollHintMessagesEl: document.getElementById("upgrade-scroll-hint-messages"),
+        upgradeScrollHintJumpsEl: document.getElementById("upgrade-scroll-hint-jumps"),
+        getUnlockedHands: () => unlockedHands,
+        getTotalChanges: () => totalChanges,
+        getHandEarning: i => handEarnings[i] || 0,
+        getSpeedLevel: () => speedLevel,
+        getUpgradeCost,
+        getCheapenSectionUnlocked: () => cheapenSectionUnlocked,
+        getCheapenLevel: () => cheapenLevel,
+        getMaxCheapenLevel,
+        getCheapenUpgradeCost,
+        isSlowdownUnlocked,
+        getSlowdownLevel: () => slowdownLevel,
+        getMaxSlowdownLevelCap,
+        getSlowdownUpgradeCost,
+        getAutoBuyUnlocked: () => autoBuyUnlocked,
+        getAutoBuyEnabledByHand: i => !!autoBuyEnabledByHand[i],
+        getAutoBuyCountdownSecondsByHand: i => autoBuyCountdownSecondsByHand[i] || 0,
+        getSpeedRowRefs: () => speedRowRefs,
+        getTimeWarpScrollHintApi: () => scrollHintTimeWarpApi
+    });
+    const {
+        updateHandUpgradeScrollHint,
+        scheduleHandUpgradeScrollHintUpdate,
+        handScrollHintHasUpgradeReason
+    } = n1UpgradeScrollHintBoot;
 
+    /** Phase 2: replace no-op placeholders with boot exports once all deps exist (see createNumber1SpeedUpgradeBoot below). */
     let buySpeedUpgradeForHand = function() {};
     let maybeAutoBuySpeedUpgrade = function() {};
 
@@ -2986,6 +2473,8 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
     }
     let cheapenSectionUnlocked = false;
     let devCheapenAutobuyOn = false;
+    /** Dev: when false, combos do not call addTurboBoostMeter (BH Ergosphere passive fill still runs). */
+    let devComboTurboFillFromCombosEnabled = true;
     let cheapenAutoBuyCountdownByHand = [];
     let devSlowdownAutobuyOn = false;
     let slowdownAutoBuyCountdownByHand = [];
@@ -2995,7 +2484,6 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         return getCheapenEffectTextForAchievedLevel(nextLevel);
     }
 
-    let updateCheapenUpgradeUI = function() {};
     let buyCheapenUpgradeForHand = function() {};
     let maybeAutoBuyCheapen = function() {};
 
@@ -3025,7 +2513,6 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
     function isSlowdownUnlocked() {
         return slowdownCompactionUnlockedLatched;
     }
-    let updateSlowdownUpgradeUI = function() {};
     let buySlowdownUpgradeForHand = function() {};
 
     /* ---------------------------------------------------------
@@ -3041,7 +2528,6 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
 
     /* RATE DISPLAY and TICK INTERVAL (per-hand CPS + tick interval; n1-rate-display-ui consumes bridges). */
     const {
-        formatCpsForDisplay,
         getTickIntervalMs,
         getHandPerHandRawCps,
         getHandBaseCpsBeforeSlowdownMult,
@@ -3092,7 +2578,7 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         getHandTurboFactorForDisplay,
         getHandSlowdownFactorForDisplay,
         formatCount,
-        formatCpsForDisplay
+        formatCpsForDisplay: formatCpsForDisplay(formatCount)
     });
     const { updateN1GravityCpsStrip, updateHandStatusBlocks, updateRateDisplay } = createRateDisplayUi({
         n1GravityCpsStripEl,
@@ -3129,33 +2615,34 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         getHandComboFactorForDisplay,
         getHandTurboFactorForDisplay,
         getHandEffectiveCps,
-        formatCpsForDisplay,
+        formatCount,
+        formatCpsForDisplay: formatCpsForDisplay(formatCount),
         refreshCombinationsHandStatusIfOpen,
         scheduleFitTopCountRow
     });
     rateDisplayUiRef.updateRateDisplay = updateRateDisplay;
     rateDisplayUiRef.updateN1GravityCpsStrip = updateN1GravityCpsStrip;
 
-    const n1UpgradeCrossRefresh = {
-        updateCheapenUpgradeUI() {},
-        updateSlowdownUpgradeUI() {}
-    };
-    const number1SlowdownBoot = createNumber1SlowdownBoot({
+    const n1UrtSlowMo = wireNumber1SlowdownCheapenSpeedAndTimeWarpBoots({
         getBlackHolePhase,
         getUnlockedHands: () => unlockedHands,
         getHandEarnings: i => handEarnings[i] || 0,
         getSlowdownLevel: () => slowdownLevel,
         getSlowdownBonusLevel: () => slowdownBonusLevel,
         getSlowdownAutoBuyCountdownByHand: () => slowdownAutoBuyCountdownByHand,
-        setSlowdownAutoBuyCountdown: (i, v) => { slowdownAutoBuyCountdownByHand[i] = v; },
+        setSlowdownAutoBuyCountdown: (i, v) => {
+            slowdownAutoBuyCountdownByHand[i] = v;
+        },
         getMaxSlowdownLevelCap,
         getSlowdownUpgradeCost,
         isSlowdownUnlocked,
-        devSlowdownAutobuyOn: () => devSlowdownAutobuyOn,
+        getDevSlowdownAutobuyOn: () => devSlowdownAutobuyOn,
         ascensionAutobuyIncludesSlowdown,
         getAutoBuyUnlocked: () => autoBuyUnlocked,
         getAutoBuyEnabledByHand: i => !!autoBuyEnabledByHand[i],
-        setHandEarningBalance: (i, b) => { handEarnings[i] = b; },
+        setHandEarningBalance: (i, b) => {
+            handEarnings[i] = b;
+        },
         markMeaningfulProgress,
         markAutobuyDeferredTotalsPending,
         refreshTotalFromHandEarnings,
@@ -3163,8 +2650,12 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         formatCount,
         getTotalChanges: () => totalChanges,
         addToLog,
-        setSlowdownBaseLevel: (i, v) => { slowdownLevel[i] = v; },
-        resetSpeedLevelForCompaction: i => { speedLevel[i] = 0; },
+        setSlowdownBaseLevel: (i, v) => {
+            slowdownLevel[i] = v;
+        },
+        resetSpeedLevelForCompaction: i => {
+            speedLevel[i] = 0;
+        },
         getHands: () => hands,
         getSpeedRowRefs: () => speedRowRefs,
         sprayConfettiFrom,
@@ -3172,151 +2663,80 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         setUpgradeButtonProgress,
         formatUpgradeAffordEtaLine,
         flashSpeedAutobuyToast,
-        setBatchedUpgradeUiFlush: v => { batchedUpgradeUiFlush = v; },
+        setBatchedUpgradeUiFlush: v => {
+            batchedUpgradeUiFlush = v;
+        },
         updateSpeedUpgradeUI,
-        updateCheapenUpgradeUI: () => n1UpgradeCrossRefresh.updateCheapenUpgradeUI(),
         updateRateDisplay,
         updateHandUpgradeScrollHint,
         getAutoBuyDelaySeconds,
-        onSlowdownUnlockedFirstUi: () => {
-            if (isSlowdownUnlocked() && !slowdownUnlockLogged) {
-                slowdownUnlockLogged = true;
-                addToLog("Compaction unlocked (all hands).", "milestone");
-            }
-        }
-    });
-    const number1CheapenBoot = createNumber1CheapenBoot({
-        getBlackHolePhase,
-        getUnlockedHands: () => unlockedHands,
-        getHandEarnings: i => handEarnings[i] || 0,
+        getSlowdownUnlockLogged: () => slowdownUnlockLogged,
+        setSlowdownUnlockLogged: v => {
+            slowdownUnlockLogged = v;
+        },
         getCheapenLevel: () => cheapenLevel,
         getCheapenBonusLevel: () => cheapenBonusLevel,
         getCheapenSectionUnlocked: () => cheapenSectionUnlocked,
-        setCheapenSectionUnlocked: v => { cheapenSectionUnlocked = v; },
+        setCheapenSectionUnlocked: v => {
+            cheapenSectionUnlocked = v;
+        },
         getCheapenAutoBuyCountdownByHand: () => cheapenAutoBuyCountdownByHand,
-        setCheapenAutoBuyCountdown: (i, v) => { cheapenAutoBuyCountdownByHand[i] = v; },
+        setCheapenAutoBuyCountdown: (i, v) => {
+            cheapenAutoBuyCountdownByHand[i] = v;
+        },
         getMaxCheapenLevel,
         getCheapenUpgradeCost,
-        devCheapenAutobuyOn: () => devCheapenAutobuyOn,
+        getDevCheapenAutobuyOn: () => devCheapenAutobuyOn,
         ascensionAutobuyIncludesCheapen,
-        getAutoBuyUnlocked: () => autoBuyUnlocked,
-        getAutoBuyEnabledByHand: i => !!autoBuyEnabledByHand[i],
-        setHandEarningBalance: (i, b) => { handEarnings[i] = b; },
-        markMeaningfulProgress,
-        markAutobuyDeferredTotalsPending,
-        refreshTotalFromHandEarnings,
-        getIncrementalCountEl: () => incrementalEl,
-        formatCount,
-        getTotalChanges: () => totalChanges,
-        addToLog,
         getCheapenEffectText,
-        setCheapenBaseLevel: (i, v) => { cheapenLevel[i] = v; },
-        getSpeedRowRefs: () => speedRowRefs,
-        sprayConfettiFrom,
-        setUpgradeTooltipText,
-        setUpgradeButtonProgress,
-        formatUpgradeAffordEtaLine,
-        flashSpeedAutobuyToast,
-        setBatchedUpgradeUiFlush: v => { batchedUpgradeUiFlush = v; },
-        updateSpeedUpgradeUI,
-        updateSlowdownUpgradeUI: () => n1UpgradeCrossRefresh.updateSlowdownUpgradeUI(),
-        updateRateDisplay,
+        setCheapenBaseLevel: (i, v) => {
+            cheapenLevel[i] = v;
+        },
         ensureSpeedRows,
-        updateHandUpgradeScrollHint,
-        getAutoBuyDelaySeconds
-    });
-    const number1SpeedUpgradeBoot = createNumber1SpeedUpgradeBoot({
-        getBlackHolePhase,
-        getUnlockedHands: () => unlockedHands,
         getSpeedLevel: () => speedLevel,
         getUpgradeCost,
-        getHandEarnings: i => handEarnings[i] || 0,
-        setHandEarningBalance: (i, b) => { handEarnings[i] = b; },
-        markMeaningfulProgress,
-        markAutobuyDeferredTotalsPending,
-        refreshTotalFromHandEarnings,
-        incrementSpeedLevel: i => { speedLevel[i]++; },
-        getHands: () => hands,
-        addToLog,
-        getIncrementalCountEl: () => incrementalEl,
-        formatCount,
-        getTotalChanges: () => totalChanges,
+        incrementSpeedLevel: i => {
+            speedLevel[i]++;
+        },
         restartAllHandTimers: () => hands.forEach(h => h.restartTimer()),
-        getAutoBuyUnlocked: () => autoBuyUnlocked,
-        setSpeedAutobuyCountdown: (i, v) => { autoBuyCountdownSecondsByHand[i] = v; },
-        getAutoBuyEnabledByHand: i => !!autoBuyEnabledByHand[i],
+        setSpeedAutobuyCountdown: (i, v) => {
+            autoBuyCountdownSecondsByHand[i] = v;
+        },
         getAutoBuyCountdownSecondsByHand: i => autoBuyCountdownSecondsByHand[i] || 0,
-        getAutoBuyDelaySeconds,
-        getSpeedRowRefs: () => speedRowRefs,
-        sprayConfettiFrom,
-        setBatchedUpgradeUiFlush: v => { batchedUpgradeUiFlush = v; },
-        updateSpeedUpgradeUI,
-        updateCheapenUpgradeUI: () => n1UpgradeCrossRefresh.updateCheapenUpgradeUI(),
-        updateSlowdownUpgradeUI: () => n1UpgradeCrossRefresh.updateSlowdownUpgradeUI(),
-        updateRateDisplay,
-        flashSpeedAutobuyToast
-    });
-    n1UpgradeCrossRefresh.updateCheapenUpgradeUI = () => { number1CheapenBoot.updateCheapenUpgradeUI(); };
-    n1UpgradeCrossRefresh.updateSlowdownUpgradeUI = () => { number1SlowdownBoot.updateSlowdownUpgradeUI(); };
-    buySpeedUpgradeForHand = number1SpeedUpgradeBoot.buySpeedUpgradeForHand;
-    maybeAutoBuySpeedUpgrade = number1SpeedUpgradeBoot.maybeAutoBuySpeedUpgrade;
-    buyCheapenUpgradeForHand = number1CheapenBoot.buyCheapenUpgradeForHand;
-    maybeAutoBuyCheapen = number1CheapenBoot.maybeAutoBuyCheapen;
-    updateCheapenUpgradeUI = number1CheapenBoot.updateCheapenUpgradeUI;
-    buySlowdownUpgradeForHand = number1SlowdownBoot.buySlowdownUpgradeForHand;
-    maybeAutoBuySlowdown = number1SlowdownBoot.maybeAutoBuySlowdown;
-    updateSlowdownUpgradeUI = number1SlowdownBoot.updateSlowdownUpgradeUI;
-
-    number1TimeWarpBoot = createNumber1TimeWarpBoot({
-        getTotalChanges: () => totalChanges,
-        getUnlockedHands: () => unlockedHands,
-        getSpeedRowRefs: () => speedRowRefs,
-        getHandEarnings: i => handEarnings[i] || 0,
-        setHandEarningBalance: (i, v) => { handEarnings[i] = v; },
-        getTimeWarpAuraActiveByHand: () => timeWarpAuraActiveByHand,
-        setTimeWarpAuraActiveByHand: v => { timeWarpAuraActiveByHand = v; },
-        getTimeWarpAuraAppearedAtMsByHand: () => timeWarpAuraAppearedAtMsByHand,
-        setTimeWarpAuraAppearedAtMsByHand: v => { timeWarpAuraAppearedAtMsByHand = v; },
-        getTimeWarpNextSpawnInSec: () => timeWarpNextSpawnInSec,
-        setTimeWarpNextSpawnInSec: v => { timeWarpNextSpawnInSec = v; },
-        getTimeWarpUnlockLogged: () => timeWarpUnlockLogged,
-        setTimeWarpUnlockLogged: v => { timeWarpUnlockLogged = v; },
         computeAscensionGrantTotals,
         getHandPerHandRawCps,
         getTimeWarpComboMultiplier,
         getTurboCountMultiplier,
         getNumber1BlackHoleProductionMult,
-        getIncrementalCountEl: () => incrementalEl,
-        formatCount,
-        refreshTotalFromHandEarnings,
-        updateObjectives: () => number1ObjectivesBoot.scheduleObjectiveDomFlush(),
-        updateSpeedUpgradeUI,
-        updateCheapenUpgradeUI,
-        updateSlowdownUpgradeUI,
-        updateRateDisplay,
+        scheduleObjectiveDomFlush: () => number1ObjectivesBoot.scheduleObjectiveDomFlush(),
         updateMilestoneUI,
-        addToLog,
-        markMeaningfulProgress,
         scheduleHandUpgradeScrollHintUpdate,
         handScrollHintHasUpgradeReason,
         getNumber1HasAscended: () => number1HasAscended,
         getAscensionPendingBonusEssence: getNumber1AscensionPendingBonusEssence,
-        setAscensionPendingBonusEssence: v => { number1AscensionPendingBonusEssence = v; },
+        setAscensionPendingBonusEssence: v => {
+            number1AscensionPendingBonusEssence = v;
+        },
         refreshOverviewAndAscensionHubLiveIfOpen,
         autosaveNow,
-        getSpeedLevel: () => speedLevel,
-        getCheapenLevel: () => cheapenLevel,
-        getSlowdownLevel: () => slowdownLevel,
-        getMaxCheapenLevel,
-        getCheapenUpgradeCost,
-        getUpgradeCost,
-        getSlowdownUpgradeCost,
-        getMaxSlowdownLevelCap,
-        isSlowdownUnlocked,
-        buyCheapenUpgradeForHand,
-        buySpeedUpgradeForHand,
-        buySlowdownUpgradeForHand,
-        flushAutobuyDeferredTotalsIfAny
+        getTimeWarpAuraActiveByHand: () => timeWarpAuraActiveByHand,
+        setTimeWarpAuraActiveByHand: v => {
+            timeWarpAuraActiveByHand = v;
+        },
+        getTimeWarpAuraAppearedAtMsByHand: () => timeWarpAuraAppearedAtMsByHand,
+        setTimeWarpAuraAppearedAtMsByHand: v => {
+            timeWarpAuraAppearedAtMsByHand = v;
+        },
+        getTimeWarpNextSpawnInSec: () => timeWarpNextSpawnInSec,
+        setTimeWarpNextSpawnInSec: v => {
+            timeWarpNextSpawnInSec = v;
+        },
+        getTimeWarpUnlockLogged: () => timeWarpUnlockLogged,
+        setTimeWarpUnlockLogged: v => {
+            timeWarpUnlockLogged = v;
+        },
+        flushAutobuyDeferredTotalsIfAny,
+        scrollHintTimeWarpApi
     });
     const {
         handHasActiveTimeWarpAura,
@@ -3332,21 +2752,22 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         tryGrantAscensionBonusEssenceFromWarp,
         applyTimeWarpOverflowToAllHands,
         applyTimeWarpManualAutoBuyAssistForHand,
-        updateTimeWarpAuraUI,
         playTimeWarpScreenEffect,
         activateTimeWarpAuraForHand,
         updateTimeWarpSystem,
         getAscensionComboTimeWarpDelayReductionPerTriggerSec,
         applyAscensionComboTimeWarpDelayReduction
-    } = number1TimeWarpBoot;
-    number1TimeWarpBoot.wireAfterWarpAssist(() => {
-        batchedUpgradeUiFlush = false;
-        updateSpeedUpgradeUI();
-        updateCheapenUpgradeUI();
-        updateSlowdownUpgradeUI();
-        updateRateDisplay();
-        number1TimeWarpBoot.updateTimeWarpAuraUI();
-    });
+    } = n1UrtSlowMo;
+    number1TimeWarpBoot = n1UrtSlowMo.number1TimeWarpBoot;
+    updateTimeWarpAuraUI = n1UrtSlowMo.updateTimeWarpAuraUI;
+    buySpeedUpgradeForHand = n1UrtSlowMo.number1SpeedUpgradeBoot.buySpeedUpgradeForHand;
+    maybeAutoBuySpeedUpgrade = n1UrtSlowMo.number1SpeedUpgradeBoot.maybeAutoBuySpeedUpgrade;
+    buyCheapenUpgradeForHand = n1UrtSlowMo.number1CheapenBoot.buyCheapenUpgradeForHand;
+    maybeAutoBuyCheapen = n1UrtSlowMo.number1CheapenBoot.maybeAutoBuyCheapen;
+    updateCheapenUpgradeUI = n1UrtSlowMo.number1CheapenBoot.updateCheapenUpgradeUI;
+    buySlowdownUpgradeForHand = n1UrtSlowMo.number1SlowdownBoot.buySlowdownUpgradeForHand;
+    maybeAutoBuySlowdown = n1UrtSlowMo.number1SlowdownBoot.maybeAutoBuySlowdown;
+    updateSlowdownUpgradeUI = n1UrtSlowMo.number1SlowdownBoot.updateSlowdownUpgradeUI;
 
     /* ---------------------------------------------------------
        TURBO BOOST (unlocks at 1T; gauge to right of total count)
@@ -3429,7 +2850,7 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         if (!container || !gaugeEl || !wrapEl || points <= 0) return;
         const popup = document.createElement("div");
         popup.className = "turbo-gain-popup";
-        popup.textContent = "+" + points;
+        popup.textContent = formatSignedCountGain(points);
         const gaugeRect = gaugeEl.getBoundingClientRect();
         const wrapRect = wrapEl.getBoundingClientRect();
         const offsetX = (Math.random() - 0.5) * 56;
@@ -3828,226 +3249,32 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
     tryUnlockTurboIfEligible = number1TurboBoot.tryUnlockTurboIfEligible;
     syncTurboBoostToggleDomFromBoot = number1TurboBoot.syncTurboBoostToggleDom;
 
-    function getSaveState(savedAt) {
-        return createGameSaveState(savedAt, {
-            handEarnings,
-            unlockedHands,
-            speedLevel,
-            speedBonusLevel,
-            cheapenLevel,
-            cheapenBonusLevel,
-            slowdownLevel,
-            slowdownBonusLevel,
-            slowdownUnlockLogged,
-            slowdownCompactionUnlockedLatched,
-            timeWarpAuraActiveByHand,
-            timeWarpAuraAppearedAtMsByHand,
-            timeWarpNextSpawnInSec,
-            timeWarpUnlockLogged,
-            autoBuyUnlocked,
-            autoBuyEnabledByHand,
-            autoBuyCountdownSecondsByHand,
-            turboBoostMeter,
-            turboBoostUnlocked,
-            turboBoostEnabled,
-            turboActivationCount,
-            turboScensionBurnLevel,
-            turboScensionTankLevel,
-            turboScensionMultLevel,
-            turboScensionFillLevel,
-            turboLevelerBank,
-            turboLevelerPurchases,
-            earnedComboNames,
-            comboActivationCounts,
-            comboDiscoveryMilestonePendingQueue,
-            comboDiscoveryMilestoneReadyAtMs,
-            comboDiscoveryMilestoneCooldownSpanMs,
-            adaptiveLastProgressAtMs: logTickerRt.getAdaptiveLastProgressAtMs(),
-            adaptiveLastHintAtMs: logTickerRt.getAdaptiveLastHintAtMs(),
-            previousTickActiveComboNames: Array.from(previousTickActiveComboNames),
-            objectivesAchieved: objectives.map(o => o.achieved),
-            longTermObjectivesAchieved: longTermObjectives.map(o => o.achieved),
-            shownBannerIds: Array.from(shownBannerIds),
-            closedBanners,
-            settings,
-            numberModulesState: collectNumberModulesSaveState(NUMBER_MODULES),
-            number1RunPeakTotalCount,
-            number1AscensionEssence,
-            number1AscensionPendingBonusEssence,
-            number1AscensionClapEssenceMultiplier,
-            number1AscensionClapEssenceProcCount,
-            number1HasAscended,
-            number1AscensionNodeIds,
-            number1AscensionBlackHoleLevel: Math.floor(Number(number1BlackHoleState.phase2Mass) || 0),
-            number1BlackHoleState,
-            unlockedHandsCap,
-            ascensionNumber1IntroSeen,
-            ascensionTreeVersion: ASCENSION_TREE_VERSION,
-            clapCooldownUntilMsByHand,
-            totalPlayTimeMs: number1LoopRuntime.getTotalPlayTimeMs()
-        });
-    }
-    function autosaveNow() {
-        if (suppressAutosave) return;
-        writeSaveData(localStorage, getSaveState(Date.now()));
-    }
-    function applyLoadedState(data) {
-        const snap = normalizeNumber1SaveSnapshot(data, {
-            maxHands,
-            ascensionTreeVersionExpected: ASCENSION_TREE_VERSION,
-            comboActivationEdgeVersion: COMBO_ACTIVATION_EDGE_SAVE_VERSION,
-            blackHoleMaxLevel: BLACK_HOLE_MAX_LEVEL,
-            blackHoleEvaporationCap: BLACK_HOLE_EVAPORATION_CAP,
-            comboDiscoveryCooldownBaseMs: COMBO_DISCOVERY_MILESTONE_COOLDOWN_BASE_MS,
-            comboDiscoveryCooldownMinMs: COMBO_DISCOVERY_MILESTONE_COOLDOWN_MIN_MS,
-            settingsFallback: settings,
-            currentAscensionNumber1IntroSeen: ascensionNumber1IntroSeen,
-            currentEssenceForMerge: number1AscensionEssence,
-            fallbackAutoBuyEnabled: autoBuyEnabledByHand,
-            fallbackAutoBuyCountdown: autoBuyCountdownSecondsByHand,
-            nowMs: Date.now()
-        });
-        if (!snap) return;
-
-        number1LoopRuntime.setTotalPlayTimeMs(snap.totalPlayTimeMs);
-        number1LoopRuntime.resetSavePlayWallClock();
-
-        if (snap.handEarnings) handEarnings = snap.handEarnings;
-        if (snap.speedLevel) speedLevel = snap.speedLevel;
-        speedBonusLevel = snap.speedBonusLevel;
-        clapDigitPrevious = Array(maxHands).fill(-1);
-        clapCooldownUntilMsByHand = snap.clapCooldownUntilMsByHand;
-
-        if (snap.cheapenLevel) cheapenLevel = snap.cheapenLevel;
-        cheapenBonusLevel = snap.cheapenBonusLevel;
-
-        if (snap.slowdownLevel) slowdownLevel = snap.slowdownLevel;
-        slowdownBonusLevel = snap.slowdownBonusLevel;
-
-        slowdownUnlockLogged = snap.slowdownUnlockLogged;
-        slowdownCompactionUnlockedLatched = snap.slowdownCompactionUnlockedLatched;
-
-        timeWarpAuraActiveByHand = snap.timeWarpAuraActiveByHand ? snap.timeWarpAuraActiveByHand : timeWarpAuraActiveByHand;
-        timeWarpAuraAppearedAtMsByHand = snap.timeWarpAuraAppearedAtMsByHand;
-        timeWarpNextSpawnInSec = snap.timeWarpNextSpawnInSec;
-        timeWarpUnlockLogged = snap.timeWarpUnlockLogged;
-
-        unlockedHandsCap = snap.unlockedHandsCap;
-        unlockedHands = snap.unlockedHands;
-
-        for (let i = unlockedHands; i < maxHands; i++) handEarnings[i] = 0;
-        while (timeWarpAuraAppearedAtMsByHand.length < maxHands) timeWarpAuraAppearedAtMsByHand.push(0);
-        patchTimeWarpAuraAppearedForActiveHands(
-            timeWarpAuraActiveByHand,
-            timeWarpAuraAppearedAtMsByHand,
-            unlockedHands,
-            Date.now()
-        );
-
-        ensureSpeedRows();
-        while (hands.length < unlockedHands) {
-            const handNum = hands.length + 1;
-            const slot = speedRowRefs[handNum - 1]?.handMountEl;
-            hands.push(new HandCounter(handNum, HAND_BASE_SPEED, slot));
-        }
-
-        autoBuyUnlocked = snap.autoBuyUnlocked;
-        autoBuyEnabledByHand = snap.autoBuyEnabledByHand;
-        autoBuyCountdownSecondsByHand = snap.autoBuyCountdownSecondsByHand;
-
-        turboBoostMeter = snap.turboBoostMeter;
-        turboBoostUnlocked = snap.turboBoostUnlocked;
-        turboBoostEnabled = snap.turboBoostEnabled;
-        turboActivationCount = snap.turboActivationCount;
-        turboScensionBurnLevel = snap.turboScensionBurnLevel;
-        turboScensionTankLevel = snap.turboScensionTankLevel;
-        turboScensionMultLevel = snap.turboScensionMultLevel;
-        turboScensionFillLevel = snap.turboScensionFillLevel;
-        turboLevelerBank = snap.turboLevelerBank;
-        turboLevelerPurchases = snap.turboLevelerPurchases;
-        if (!turboBoostEnabled) tryTurboLevelerPurchases();
-
-        logTickerRt.setAdaptiveTipTimestampsFromSave(snap.adaptiveLastProgressAtMs, snap.adaptiveLastHintAtMs);
-
-        replaceEarnedComboNamesFromSnapshot(earnedComboNames, snap.earnedComboNames);
-        comboActivationCounts = snap.comboActivationCounts;
-        comboDiscoveryMilestonePendingQueue = snap.comboDiscoveryMilestonePendingQueue;
-        comboDiscoveryMilestoneReadyAtMs = snap.comboDiscoveryMilestoneReadyAtMs;
-        comboDiscoveryMilestoneCooldownSpanMs = snap.comboDiscoveryMilestoneCooldownSpanMs;
-
-        if (snap.previousTickActiveComboNames) previousTickActiveComboNames = snap.previousTickActiveComboNames;
-        applyObjectiveFlagsFromSnapshot(snap, { objectives, longTermObjectives });
-
-        if (snap.shownBannerIds) {
-            shownBannerIds.clear();
-            snap.shownBannerIds.forEach(id => shownBannerIds.add(id));
-        }
-
-        replaceClosedBannersFromSnapshot(closedBanners, snap.closedBanners);
-        settings = snap.settings || settings;
-
-        applyNumberModulesSaveState(NUMBER_MODULES, snap.numberModulesState);
-        number1AscensionEssence = snap.mergedNumber1AscensionEssence;
-
-        number1AscensionPendingBonusEssence = snap.number1AscensionPendingBonusEssence;
-        number1AscensionClapEssenceMultiplier = snap.number1AscensionClapEssenceMultiplier;
-        number1AscensionClapEssenceProcCount = snap.number1AscensionClapEssenceProcCount;
-        number1HasAscended = snap.number1HasAscended;
-
-        reconcileNumber2LockState();
-        updateNumber2SidebarUnlockUI();
-
-        number1AscensionNodeIds = [];
-        if (snap.ascensionNodesLoadedFromSave) {
-            snap.number1AscensionNodeIds.forEach(id => number1AscensionNodeIds.push(id));
-            normalizeAscensionNodeIds();
-        }
-
-        ascensionNumber1IntroSeen = snap.ascensionNumber1IntroSeen;
-
-        number1AscensionBlackHoleLevel = snap.number1AscensionBlackHoleLevel;
-        number1BlackHoleState = snap.number1BlackHoleState;
-
-        if (number1HasAscended && isNumber1AscensionTreeFullyPurchased() && getBlackHolePhase() === 0) {
-            number1BlackHoleState.phase = 1;
-        }
-        if (turboBoostUnlocked) turboBoostMeter = Math.min(turboBoostMeter, getTurboMeterMax());
-
-        number1RunPeakTotalCount = snap.number1RunPeakTotalCount;
-
-        refreshTotalFromHandEarnings();
-        syncBlackHolePhase1Vfx();
-        updateN1GravityCpsStrip();
-        checkStoryBanners();
-    }
-    function applyOfflineProgress(offlineMs, opts) {
-        const options = opts || {};
-        const showSummary = options.showSummary !== false;
-        const capMs = Math.max(0, settings.offlineCapHours * 3600 * 1000);
-        const effectiveMs = Math.min(Math.max(0, offlineMs), capMs);
-        if (effectiveMs <= 0) return;
-        const offlineSec = effectiveMs / 1000;
-        tickBackgroundNumberModules(offlineSec);
-        updateBlackHolePhaseStep(offlineSec);
-        try {
-            if (getBlackHolePhase() === 7) {
-                totalChanges = Math.floor(number1BlackHoleState.phase7EpilogueCounter || 0);
-                handEarnings[0] = totalChanges;
-                if (totalChanges > number1RunPeakTotalCount) number1RunPeakTotalCount = totalChanges;
-                return;
-            }
-            const cpsPerHandProbe = getRawCpsPerHand();
-            const rawCpsProbe = cpsPerHandProbe.reduce((a, b) => a + b, 0);
-            if (rawCpsProbe <= 0) return;
-            const gained = applyNumber1DetachedCpsProgress(offlineSec);
-            if (showSummary && offlineSummaryBodyEl && offlineSummaryPanelEl) {
-                const capped = offlineMs > capMs;
-                offlineSummaryBodyEl.textContent = "Simulated " + (effectiveMs / 1000).toFixed(1) + "s offline and gained " + formatCount(gained) + (capped ? " (capped)." : ".");
-                offlineSummaryPanelEl.style.display = "flex";
-            }
-        } finally {
-            syncBlackHolePhase1Vfx();
-        }
+    const number1OfflineAdvanceDeps = {
+        getSettings: () => settings,
+        tickBackgroundNumberModules,
+        updateBlackHolePhaseStep,
+        getBlackHolePhase,
+        setTotalChanges: v => {
+            totalChanges = v;
+        },
+        getTotalChanges: () => totalChanges,
+        getNumber1BlackHoleState: () => number1BlackHoleState,
+        setHandEarning: (i, v) => {
+            handEarnings[i] = v;
+        },
+        setNumber1RunPeakTotalCount: v => {
+            number1RunPeakTotalCount = v;
+        },
+        getNumber1RunPeakTotalCount: () => number1RunPeakTotalCount,
+        getRawCpsPerHand,
+        applyNumber1DetachedCpsProgress,
+        offlineSummaryBodyEl,
+        offlineSummaryPanelEl,
+        formatCount,
+        syncBlackHolePhase1Vfx
+    };
+    function applyOfflineAdvanceFromLegacy(offlineMs, opts) {
+        applyNumber1OfflineAdvance(number1OfflineAdvanceDeps, offlineMs, opts);
     }
 
     /* ---------------------------------------------------------
@@ -4062,7 +3289,7 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
             return mode === 2 && isNumber2Unlocked() && number2State.started;
         },
         runGameLoopStep: opts => runGameLoopStep(opts),
-        applyOfflineProgress: (offlineMs, opts) => applyOfflineProgress(offlineMs, opts),
+        applyOfflineProgress: applyOfflineAdvanceFromLegacy,
         patchOverviewIfNeeded: nowOverview => {
             if (
                 typeof document !== "undefined" &&
@@ -4087,6 +3314,310 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
     function endHiddenOfflineTracking() {
         number1LoopRuntime.endHiddenOfflineTracking();
     }
+
+    /* ---------------------------------------------------------
+       SAVE / LOAD / OFFLINE (after loop runtime — getSaveState uses number1LoopRuntime)
+    --------------------------------------------------------- */
+
+    /** Mutable refs for {@link number1SaveApplyDeps} (combo/story boot runs later in this file). */
+    const earnedComboNames = [];
+    function syncBlackHolePhase2PhotonCombosRef() {
+        if ((number1BlackHoleState.phase || 0) < 2) return;
+        const minH = getBlackHolePhase2PhotonComboPersistMinHands(number1BlackHoleState);
+        if (!(minH > 0)) return;
+        let added = false;
+        for (let i = 0; i < COMBOS.length; i++) {
+            const c = COMBOS[i];
+            if (c.minHands <= minH && c.minHands <= unlockedHands && earnedComboNames.indexOf(c.name) === -1) {
+                earnedComboNames.push(c.name);
+                added = true;
+            }
+        }
+        if (added) {
+            if (typeof updateEarnedBonusesUI === "function") updateEarnedBonusesUI();
+            updateRateDisplay();
+        }
+    }
+    let comboActivationCounts = {};
+    let comboDiscoveryMilestonePendingQueue = [];
+    let comboDiscoveryMilestoneReadyAtMs = 0;
+    let comboDiscoveryMilestoneCooldownSpanMs = 0;
+    let previousTickActiveComboNames = new Set();
+    const shownBannerIds = new Set();
+    const closedBanners = [];
+
+    const NUMBER1_SAVE_NORMALIZE_FIXED = {
+        ascensionTreeVersionExpected: ASCENSION_TREE_VERSION,
+        comboActivationEdgeVersion: COMBO_ACTIVATION_EDGE_SAVE_VERSION,
+        blackHoleMaxLevel: BLACK_HOLE_MAX_LEVEL,
+        blackHoleEvaporationCap: BLACK_HOLE_EVAPORATION_CAP,
+        comboDiscoveryCooldownBaseMs: COMBO_DISCOVERY_MILESTONE_COOLDOWN_BASE_MS,
+        comboDiscoveryCooldownMinMs: COMBO_DISCOVERY_MILESTONE_COOLDOWN_MIN_MS
+    };
+
+    const number1SavePayloadRead = {
+        handEarnings: () => handEarnings,
+        unlockedHands: () => unlockedHands,
+        speedLevel: () => speedLevel,
+        speedBonusLevel: () => speedBonusLevel,
+        cheapenLevel: () => cheapenLevel,
+        cheapenBonusLevel: () => cheapenBonusLevel,
+        slowdownLevel: () => slowdownLevel,
+        slowdownBonusLevel: () => slowdownBonusLevel,
+        slowdownUnlockLogged: () => slowdownUnlockLogged,
+        slowdownCompactionUnlockedLatched: () => slowdownCompactionUnlockedLatched,
+        timeWarpAuraActiveByHand: () => timeWarpAuraActiveByHand,
+        timeWarpAuraAppearedAtMsByHand: () => timeWarpAuraAppearedAtMsByHand,
+        timeWarpNextSpawnInSec: () => timeWarpNextSpawnInSec,
+        timeWarpUnlockLogged: () => timeWarpUnlockLogged,
+        autoBuyUnlocked: () => autoBuyUnlocked,
+        autoBuyEnabledByHand: () => autoBuyEnabledByHand,
+        autoBuyCountdownSecondsByHand: () => autoBuyCountdownSecondsByHand,
+        turboBoostMeter: () => turboBoostMeter,
+        turboBoostUnlocked: () => turboBoostUnlocked,
+        turboBoostEnabled: () => turboBoostEnabled,
+        turboActivationCount: () => turboActivationCount,
+        turboScensionBurnLevel: () => turboScensionBurnLevel,
+        turboScensionTankLevel: () => turboScensionTankLevel,
+        turboScensionMultLevel: () => turboScensionMultLevel,
+        turboScensionFillLevel: () => turboScensionFillLevel,
+        turboLevelerBank: () => turboLevelerBank,
+        turboLevelerPurchases: () => turboLevelerPurchases,
+        earnedComboNames: () => earnedComboNames,
+        comboActivationCounts: () => comboActivationCounts,
+        comboDiscoveryMilestonePendingQueue: () => comboDiscoveryMilestonePendingQueue,
+        comboDiscoveryMilestoneReadyAtMs: () => comboDiscoveryMilestoneReadyAtMs,
+        comboDiscoveryMilestoneCooldownSpanMs: () => comboDiscoveryMilestoneCooldownSpanMs,
+        adaptiveLastProgressAtMs: () => logTickerRt.getAdaptiveLastProgressAtMs(),
+        adaptiveLastHintAtMs: () => logTickerRt.getAdaptiveLastHintAtMs(),
+        previousTickActiveComboNames: () => Array.from(previousTickActiveComboNames),
+        objectivesAchieved: () => objectives.map(o => o.achieved),
+        longTermObjectivesAchieved: () => longTermObjectives.map(o => o.achieved),
+        shownBannerIds: () => Array.from(shownBannerIds),
+        closedBanners: () => closedBanners,
+        settings: () => settings,
+        numberModules: () => NUMBER_MODULES,
+        maxHands: () => maxHands,
+        number1RunPeakTotalCount: () => number1RunPeakTotalCount,
+        number1RunStartedAtMs: () => number1RunStartedAtMs,
+        number1AscensionEssence: () => number1AscensionEssence,
+        number1AscensionPendingBonusEssence: () => number1AscensionPendingBonusEssence,
+        number1AscensionClapEssenceMultiplier: () => number1AscensionClapEssenceMultiplier,
+        number1AscensionClapEssenceProcCount: () => number1AscensionClapEssenceProcCount,
+        number1HasAscended: () => number1HasAscended,
+        number1AscensionNodeIds: () => number1AscensionNodeIds,
+        number1AscensionBlackHoleLevel: () => Math.floor(Number(number1BlackHoleState.phase2Mass) || 0),
+        number1BlackHoleState: () => number1BlackHoleState,
+        unlockedHandsCap: () => unlockedHandsCap,
+        ascensionNumber1IntroSeen: () => ascensionNumber1IntroSeen,
+        ascensionTreeVersion: () => ASCENSION_TREE_VERSION,
+        clapCooldownUntilMsByHand: () => clapCooldownUntilMsByHand,
+        totalPlayTimeMs: () => number1LoopRuntime.getTotalPlayTimeMs()
+    };
+
+    const number1SaveApplyDeps = {
+        loopRt: number1LoopRuntime,
+        maxHands,
+        setHandEarnings: v => {
+            handEarnings = v;
+        },
+        getHandEarnings: () => handEarnings,
+        setSpeedLevel: v => {
+            speedLevel = v;
+        },
+        setSpeedBonusLevel: v => {
+            speedBonusLevel = v;
+        },
+        setClapDigitPrevious: v => {
+            clapDigitPrevious = v;
+        },
+        setClapCooldownUntilMsByHand: v => {
+            clapCooldownUntilMsByHand = v;
+        },
+        setCheapenLevel: v => {
+            cheapenLevel = v;
+        },
+        setCheapenBonusLevel: v => {
+            cheapenBonusLevel = v;
+        },
+        setSlowdownLevel: v => {
+            slowdownLevel = v;
+        },
+        setSlowdownBonusLevel: v => {
+            slowdownBonusLevel = v;
+        },
+        setSlowdownUnlockLogged: v => {
+            slowdownUnlockLogged = v;
+        },
+        setSlowdownCompactionUnlockedLatched: v => {
+            slowdownCompactionUnlockedLatched = v;
+        },
+        setTimeWarpAuraActiveByHand: v => {
+            timeWarpAuraActiveByHand = v;
+        },
+        getTimeWarpAuraActiveByHand: () => timeWarpAuraActiveByHand,
+        setTimeWarpAuraAppearedAtMsByHand: v => {
+            timeWarpAuraAppearedAtMsByHand = v;
+        },
+        getTimeWarpAuraAppearedAtMsByHand: () => timeWarpAuraAppearedAtMsByHand,
+        setTimeWarpNextSpawnInSec: v => {
+            timeWarpNextSpawnInSec = v;
+        },
+        setTimeWarpUnlockLogged: v => {
+            timeWarpUnlockLogged = v;
+        },
+        setUnlockedHandsCap: v => {
+            unlockedHandsCap = v;
+        },
+        setUnlockedHands: v => {
+            unlockedHands = v;
+        },
+        ensureSpeedRows,
+        getHands: () => hands,
+        getSpeedRowRef: i => speedRowRefs[i],
+        HandCounter,
+        HAND_BASE_SPEED,
+        setAutoBuyUnlocked: v => {
+            autoBuyUnlocked = v;
+        },
+        copyArrayIntoExisting,
+        autoBuyEnabledByHand,
+        autoBuyCountdownSecondsByHand,
+        setTurboBoostMeter: v => {
+            turboBoostMeter = v;
+        },
+        getTurboBoostMeter: () => turboBoostMeter,
+        setTurboBoostUnlocked: v => {
+            turboBoostUnlocked = v;
+        },
+        setTurboBoostEnabled: v => {
+            turboBoostEnabled = v;
+        },
+        getTurboBoostEnabled: () => turboBoostEnabled,
+        setTurboActivationCount: v => {
+            turboActivationCount = v;
+        },
+        setTurboScensionBurnLevel: v => {
+            turboScensionBurnLevel = v;
+        },
+        setTurboScensionTankLevel: v => {
+            turboScensionTankLevel = v;
+        },
+        setTurboScensionMultLevel: v => {
+            turboScensionMultLevel = v;
+        },
+        setTurboScensionFillLevel: v => {
+            turboScensionFillLevel = v;
+        },
+        setTurboLevelerBank: v => {
+            turboLevelerBank = v;
+        },
+        setTurboLevelerPurchases: v => {
+            turboLevelerPurchases = v;
+        },
+        tryTurboLevelerPurchases,
+        logTickerRt,
+        earnedComboNames,
+        setComboActivationCounts: v => {
+            comboActivationCounts = v;
+        },
+        setComboDiscoveryMilestonePendingQueue: v => {
+            comboDiscoveryMilestonePendingQueue = v;
+        },
+        setComboDiscoveryMilestoneReadyAtMs: v => {
+            comboDiscoveryMilestoneReadyAtMs = v;
+        },
+        setComboDiscoveryMilestoneCooldownSpanMs: v => {
+            comboDiscoveryMilestoneCooldownSpanMs = v;
+        },
+        setPreviousTickActiveComboNames: s => {
+            previousTickActiveComboNames = s;
+        },
+        objectiveLists: { objectives, longTermObjectives },
+        shownBannerIds,
+        closedBanners,
+        getSettings: () => settings,
+        setSettings: v => {
+            settings = v;
+        },
+        NUMBER_MODULES,
+        setNumber1AscensionEssence: v => {
+            number1AscensionEssence = v;
+        },
+        setNumber1AscensionPendingBonusEssence: v => {
+            number1AscensionPendingBonusEssence = v;
+        },
+        setNumber1AscensionClapEssenceMultiplier: v => {
+            number1AscensionClapEssenceMultiplier = v;
+        },
+        setNumber1AscensionClapEssenceProcCount: v => {
+            number1AscensionClapEssenceProcCount = v;
+        },
+        setNumber1HasAscended: v => {
+            number1HasAscended = v;
+        },
+        reconcileNumber2LockState,
+        updateNumber2SidebarUnlockUI,
+        clearAscensionNodeIds: () => {
+            number1AscensionNodeIds = [];
+        },
+        pushAscensionNodeId: id => {
+            number1AscensionNodeIds.push(id);
+        },
+        normalizeAscensionNodeIds,
+        setAscensionNumber1IntroSeen: v => {
+            ascensionNumber1IntroSeen = v;
+        },
+        setNumber1AscensionBlackHoleLevel: v => {
+            number1AscensionBlackHoleLevel = v;
+        },
+        setNumber1BlackHoleState: v => {
+            number1BlackHoleState = v;
+        },
+        isNumber1AscensionTreeFullyPurchased,
+        getBlackHolePhase,
+        promoteBlackHoleToPhase1IfNeeded: () => {
+            if (number1HasAscended && isNumber1AscensionTreeFullyPurchased() && getBlackHolePhase() === 0) {
+                number1BlackHoleState.phase = 1;
+            }
+        },
+        getTurboBoostUnlocked: () => turboBoostUnlocked,
+        getTurboMeterMax,
+        setNumber1RunPeakTotalCount: v => {
+            number1RunPeakTotalCount = v;
+        },
+        setNumber1RunStartedAtMs: v => {
+            number1RunStartedAtMs = v;
+        },
+        refreshTotalFromHandEarnings,
+        syncBlackHolePhase1Vfx,
+        updateN1GravityCpsStrip,
+        checkStoryBanners: forwardCheckStoryBanners
+    };
+
+    const n1SaveOffline = createN1SaveOffline({
+        buildSavePayload: () => buildNumber1SavePayload(number1SavePayloadRead),
+        getNormalizeSnapshotOptions: () =>
+            buildNumber1NormalizeSnapshotOptions(number1SavePayloadRead, NUMBER1_SAVE_NORMALIZE_FIXED),
+        applySnapToRuntime: snap => applyNumber1SnapToRuntime(number1SaveApplyDeps, snap),
+        applyOfflineAdvance: applyOfflineAdvanceFromLegacy,
+        getLocalStorage: () => localStorage,
+        getSuppressAutosave: () => suppressAutosave
+    });
+
+    function getSaveState(savedAt) {
+        return n1SaveOffline.getSaveState(savedAt);
+    }
+    function autosaveNow() {
+        return n1SaveOffline.autosaveNow();
+    }
+    function applyLoadedState(data) {
+        return n1SaveOffline.applyLoadedState(data);
+    }
+    function applyOfflineProgress(offlineMs, opts) {
+        return n1SaveOffline.applyOfflineProgress(offlineMs, opts);
+    }
+
 
     /* ---------------------------------------------------------
        HAND MANAGEMENT
@@ -4117,8 +3648,7 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
     }
     function executeDeleteSaveAndReload() {
         suppressAutosave = true;
-        try { localStorage.removeItem(SAVE_KEY); } catch (_) {}
-        location.reload();
+        clearNumber1SaveAndReload(localStorage);
     }
 
     function unlockHand() {
@@ -4242,11 +3772,12 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
             body: "Ok, so there appear to be some minor consequences. It looks like our numerical mass is starting to get a bit heavy and collpased in on itself. BUT somehow its still helping us count, so the power of imagination lives. Let's see how far we can push this collapse, let's add some more ascension essence."
         },
         {
+            // Unlocks collapse autobuy burst (applyAffordableUpgradeBurstForHand) when getBlackHolePhase() >= 2.
             id: "black-hole-phase-1-collapse",
             order: 1001,
             trigger: () => false,
             title: "Mass Accumulator Collapse",
-            body: "Critical mass reached. The accumulator collapses inward. A black hole is born. You done messed up son (or daughter)!"
+            body: "Critical mass reached. The accumulator collapses inward. A black hole is born. You done messed up son (or daughter)! The singularity's gravity doesn't only bend count—it bends your autobuyers to unknown speeds. When an autobuy timer fires, they'll snap up every Speed (and linked) upgrade that hand can still afford, not just one level at a time."
         },
         {
             id: "black-hole-phase-2-disk",
@@ -4291,8 +3822,6 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
             body: "Digestion complete. The furnace answers with new power."
         }
     ];
-    const shownBannerIds = new Set();
-    const closedBanners = [];
 
     const storyBannerOverlayEl = document.getElementById("story-banner-overlay");
     const storyBannerTitleEl = document.getElementById("story-banner-title");
@@ -4617,125 +4146,65 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
     }
 
     /* ---------------------------------------------------------
-       HAND COMBOS (poker-style: hand values 1–10, bonuses stack)
+       HAND COMBOS (poker-style: hand values 1–10, bonuses stack) — Region: Combos & clap
     --------------------------------------------------------- */
-    function getHandValues() {
-        return hands.map(h => h.count);
-    }
-    function getActiveCombos() {
-        const v = getHandValues();
-        return getActiveCombosForValues(v, getNearMissToleranceRanks());
-    }
-    /** Hand indices that participate in an active combo (for ascension pulse split). */
-    function getComboParticipatingHandIndices(c, v) {
-        return getComboParticipatingHandIndicesForValues(c, v, unlockedHands, getNearMissToleranceRanks());
-    }
-    const earnedComboNames = [];
-    let comboActivationCounts = {};
-    /** FIFO combo names waiting for catalog milestone (log/bubble); turbo fill ignores this queue. */
-    let comboDiscoveryMilestonePendingQueue = [];
-    /** Wall-clock ms until the next catalog milestone may fire; `0` = no cooldown lock. */
-    let comboDiscoveryMilestoneReadyAtMs = 0;
-    /** Duration (ms) of the active cooldown for accurate progress bar (persisted; legacy saves infer from remaining time). */
-    let comboDiscoveryMilestoneCooldownSpanMs = 0;
+    /** When unchanged vs last game loop, combo detection can skip `getActiveCombos()` if Combinations is closed. */
+    let lastComboUiInputDigest = "";
+    const comboBubbleContainerEl = document.getElementById("combo-bubble-container");
     ({
         patchCombinationsPageLiveDom,
         renderCombinationsPageHtml,
         setComboIndexStatusFilter,
         setComboIndexHandsFilter,
-        resetComboIndexFilters
-    } = createCombinationsPanelUi({
-        combos: COMBOS,
-        getUnlockedHands: () => unlockedHands,
-        getEarnedComboNames: () => earnedComboNames,
-        getActiveComboNames: () => getActiveCombos().map(c => c.name),
-        getComboActivationCounts: () => comboActivationCounts,
-        formatCount,
-        renderComboPagePerHandStatusSectionHtml
-    }));
-    let previousTickActiveComboNames = new Set();
-    /** When unchanged vs last game loop, combo detection can skip `getActiveCombos()` if Combinations is closed. */
-    let lastComboUiInputDigest = "";
-
-    /** Drives combo matching: unlocked hand digits + ascension-owned nodes (near-miss ranks derive from the latter). */
-    function computeComboUiInputDigest() {
-        return computeComboUiInputDigestForValues(getHandValues(), unlockedHands, number1AscensionNodeIds);
-    }
-
-    function getCombosByMinHands() {
-        return COMBOS_BY_MIN_HANDS;
-    }
-    /**
-     * Per tier: product of every earned combo in that tier (unlocked catalog only; activation counts do not scale this).
-     * Tier products sum for the pattern-catalog multiplier (CPS and warp base; activation counts do not scale this).
-     */
-    function computeEarnedCatalogComboTierProducts() {
-        return computeEarnedCatalogComboTierProductsForState(earnedComboNames, unlockedHands);
-    }
-    /** Sum of tier products for unlocked patterns (minimum 1). Multiplies CPS together with {@link getAscensionComboPatternMult}. */
-    function getPatternCatalogMultiplier() {
-        return getPatternCatalogMultiplierFromEarned(earnedComboNames, unlockedHands);
-    }
-    /** Middle-finger ascension pattern mult only (capped). Does not include the unlocked catalog. */
-    function getAscensionComboPatternMult() {
-        if (unlockedHands < 2) return 1;
-        const t = computeAscensionGrantTotals();
-        return t.comboEarnedPatternMult > 1 ? Math.min(ASCENSION_COMBO_EARNED_PATTERN_MULT_CAP, t.comboEarnedPatternMult) : 1;
-    }
-    /**
-     * Combo multiplier applied to Number 1 CPS (ticks, offline, hand tooltips): Combo Catalog × Ascended Combo.
-     */
-    function getComboMultiplier() {
-        if (unlockedHands < 2) return 1;
-        return getPatternCatalogMultiplier() * getAscensionComboPatternMult();
-    }
-    /**
-     * Combo stack for Time Warp grants: same CPS combo product × index comboMultAdd.
-     */
-    function getTimeWarpComboMultiplier() {
-        if (unlockedHands < 2) return 1;
-        const t = computeAscensionGrantTotals();
-        const flat = 1 + (t.comboMultAdd || 0);
-        return getComboMultiplier() * flat;
-    }
-    const comboBubbleContainerEl = document.getElementById("combo-bubble-container");
-    const {
-        pulseCombinationsPageButtonForNewBonus,
-        showComboBubble,
-        updateEarnedBonusesUI
-    } = createComboFeedbackUi({
-        comboBubbleContainerEl,
-        combinationsPageBtn,
-        computeAscensionGrantTotals,
-        getUnlockedHands: () => unlockedHands,
-        getEarnedComboNames: () => earnedComboNames,
-        getComboDiscoveryPendingQueue: () => comboDiscoveryMilestonePendingQueue,
+        resetComboIndexFilters,
+        refreshCombinationsPanelIfOpen,
+        markCombinationsPanelOpenedClock,
+        consumeComboFilterClickDebounced,
+        tryProcessOneComboDiscoveryMilestone,
+        updateComboUI,
+        getHandValues,
+        getActiveCombos,
+        getComboParticipatingHandIndices,
+        computeComboUiInputDigest,
+        getCombosByMinHands,
+        computeEarnedCatalogComboTierProducts,
         getPatternCatalogMultiplier,
         getAscensionComboPatternMult,
         getComboMultiplier,
         getTimeWarpComboMultiplier,
-        getCombosByMinHands
-    });
-    const combinationsPanelRefresh = createCombinationsPanelRefresh({
+        pulseCombinationsPageButtonForNewBonus,
+        showComboBubble,
+        updateEarnedBonusesUI
+    } = createNumber1ComboBoot({
+        getHands: () => hands,
+        getUnlockedHands: () => unlockedHands,
+        getAscensionNodeIds: () => number1AscensionNodeIds,
+        getNearMissToleranceRanks,
+        formatCount,
+        renderComboPagePerHandStatusSectionHtml,
+        computeAscensionGrantTotals,
+        ASCENSION_COMBO_EARNED_PATTERN_MULT_CAP,
+        combinationsPageBtn,
         getPagePanelEl: () => pagePanelEl,
         getPagePanelBodyEl: () => pagePanelBodyEl,
         getPagePanelTitleEl: () => pagePanelTitleEl,
-        combinationsPageTitleText: "Combinations",
-        getPatchCombinationsPageLiveDom: () => patchCombinationsPageLiveDom,
-        getRenderCombinationsPageHtml: () => renderCombinationsPageHtml,
+        comboBubbleContainerEl,
+        getComboDiscoveryMilestoneCooldownMs,
+        addToLog,
+        markMeaningfulProgress,
+        updateRateDisplay,
+        playLedgerBeamBonus: (catalogBefore, catalogAfter, lbl) =>
+            ledgerBeamPlayBonusBridge.play(catalogBefore, catalogAfter, lbl),
+        applyAscensionComboTimeWarpDelayReduction,
+        getTurboBoostUnlocked: () => turboBoostUnlocked,
+        getBlackHoleState: () => number1BlackHoleState,
+        isComboTurboFillFromCombosEnabled: () => devComboTurboFillFromCombosEnabled,
+        addTurboBoostMeter,
+        getTurboComboPoints,
         refreshCombinationsHandStatusIfOpen,
-        updateEarnedBonusesUI,
-        updateComboDiscoveryMilestonePanelIfOpen
-    });
-    refreshCombinationsPanelIfOpen = combinationsPanelRefresh.refreshCombinationsPanelIfOpen;
-    markCombinationsPanelOpenedClock = combinationsPanelRefresh.markCombinationsPanelOpenedClock;
-    consumeComboFilterClickDebounced = combinationsPanelRefresh.consumeComboFilterClickDebounced;
-    ({
-        tryProcessOneComboDiscoveryMilestone,
-        updateComboUI
-    } = createComboDiscoveryUiLoop({
-        getUnlockedHands: () => unlockedHands,
-        getEarnedComboNames: () => earnedComboNames,
+        updateComboDiscoveryMilestonePanelIfOpen,
+        earnedComboNames,
+        getComboActivationCounts: () => comboActivationCounts,
         getMilestonePendingQueue: () => comboDiscoveryMilestonePendingQueue,
         getMilestoneReadyAtMs: () => comboDiscoveryMilestoneReadyAtMs,
         setMilestoneReadyAtMs: v => {
@@ -4744,39 +4213,14 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         setMilestoneCooldownSpanMs: v => {
             comboDiscoveryMilestoneCooldownSpanMs = v;
         },
-        getPatternCatalogMultiplier,
-        addToLog,
-        markMeaningfulProgress,
-        showComboBubble,
-        pulseCombinationsPageButtonForNewBonus,
-        updateEarnedBonusesUI,
-        updateRateDisplay,
-        playLedgerBeamBonus: (catalogBefore, catalogAfter, lbl) =>
-            ledgerBeamPlayBonus(catalogBefore, catalogAfter, lbl),
-        getComboDiscoveryMilestoneCooldownMs,
-        computeComboUiInputDigest,
-        isCombinationsPageOpen: () =>
-            !!(
-                pagePanelEl &&
-                pagePanelEl.style.display !== "none" &&
-                pagePanelTitleEl &&
-                pagePanelTitleEl.textContent === "Combinations"
-            ),
-        getActiveCombos,
-        getLastComboUiInputDigest: () => lastComboUiInputDigest,
-        setLastComboUiInputDigest: v => {
-            lastComboUiInputDigest = v;
-        },
         getPreviousTickActiveComboNames: () => previousTickActiveComboNames,
         setPreviousTickActiveComboNames: s => {
             previousTickActiveComboNames = s;
         },
-        getComboActivationCounts: () => comboActivationCounts,
-        applyAscensionComboTimeWarpDelayReduction,
-        getTurboBoostUnlocked: () => turboBoostUnlocked,
-        addTurboBoostMeter,
-        getTurboComboPoints,
-        refreshCombinationsPanelIfOpen
+        getLastComboUiInputDigest: () => lastComboUiInputDigest,
+        setLastComboUiInputDigest: v => {
+            lastComboUiInputDigest = v;
+        }
     }));
 
     /* Overview + ascension page panel refresh / live patch (implementation in n1-overview-ascension-panels). */
@@ -4862,9 +4306,9 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
             {
                 const autobuyDefaultAsc = ascensionAutobuyDefaultOnForNewHands();
                 autoBuyUnlocked = autobuyDefaultAsc;
-                autoBuyEnabledByHand = [autobuyDefaultAsc];
+                copyArrayIntoExisting(autoBuyEnabledByHand, [autobuyDefaultAsc]);
             }
-            autoBuyCountdownSecondsByHand = [0];
+            copyArrayIntoExisting(autoBuyCountdownSecondsByHand, [0]);
             cheapenSectionUnlocked = false;
             cheapenAutoBuyCountdownByHand = [];
             slowdownAutoBuyCountdownByHand = [];
@@ -4912,6 +4356,7 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         },
         recalculateTotalsHideUpgradeStripeIfBare() {
             number1RunPeakTotalCount = 0;
+            number1RunStartedAtMs = Date.now();
             refreshTotalFromHandEarnings();
             if (upgradeContainer && totalChanges < 10) upgradeContainer.classList.remove("show-upgrade-content");
             incrementalEl.textContent = formatCount(totalChanges);
@@ -4941,6 +4386,7 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         ascensionConfirmCancelBtn,
         ascensionConfirmAscendBtn,
         ascensionReadyCtaEl,
+        formatCount,
         getAscensionGainBreakdown: () => computeNumber1AscensionGainBreakdown(getNumber1AscensionEssenceFormulaTotal()),
         getTotalChanges: () => totalChanges,
         getNumber1AscensionEssence: () => number1AscensionEssence,
@@ -4976,9 +4422,9 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         actionLogContainer,
         incrementalRateEl
     });
-    function ledgerBeamPlayBonus(catalogBefore, catalogAfter, patternMultLabel) {
+    ledgerBeamPlayBonusBridge.play = (catalogBefore, catalogAfter, patternMultLabel) => {
         ledgerBeamVfx.playBonus(catalogBefore, catalogAfter, patternMultLabel);
-    }
+    };
     function snapshotHandLedgerBonusDisplays() {
         return ledgerBeamVfx.snapshotHandLedgerBonusDisplays();
     }
@@ -5017,8 +4463,6 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         }
     });
 
-    let lastUIUpdateMs = 0;
-    const UI_UPDATE_THROTTLE_MS = 150;
     let lastSameSpeedHandAlignWallMs = Date.now();
     const SAME_SPEED_HAND_ALIGN_INTERVAL_MS = 1000;
     /** Re-align digit + sub-tick carry for hands that share the same speed tier (lowest-id hand is source of truth). */
@@ -5067,79 +4511,77 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
     flushAutobuyDeferredTotalsIfAny = number1TickApplyStep.flushAutobuyDeferredTotalsIfAny;
     markAutobuyDeferredTotalsPending = number1TickApplyStep.markAutobuyDeferredTotalsPending;
 
-    const number1GameLoopStepDeps = assembleNumber1GameLoopStepDeps({
-        tickBackgroundNumberModules,
-        updateBlackHolePhaseStep,
-        syncBlackHolePhase1Vfx,
-        getCurrentNumberMode: () => typeof window.getCurrentNumberMode === "function" ? window.getCurrentNumberMode() : 1,
-        shouldRunNumber2Foreground: mode => mode === 2 && isNumber2Unlocked() && number2State.started,
-        runNumber2GameLoopStep: dtSec => number2.runGameLoopStep(dtSec),
-        processComboDiscoveryMilestoneIfUnlocked: () => {
-            if (unlockedHands >= 2) tryProcessOneComboDiscoveryMilestone(Date.now());
+    /* ---------------------------------------------------------
+       GAME LOOP ASSEMBLY (step deps, turbo tick apply, throttled UI flush)
+    --------------------------------------------------------- */
+    const { UI_UPDATE_THROTTLE_MS, flushLoopUiThrottled, number1GameLoopStepDeps, runGameLoopStep } = createNumber1GameLoopAssembly({
+        legacyLoopFlush: {
+            getBatchedUpgradeUiFlush: () => batchedUpgradeUiFlush,
+            setBatchedUpgradeUiFlush: v => { batchedUpgradeUiFlush = v; },
+            updateSpeedUpgradeUI,
+            updateCheapenUpgradeUI,
+            updateSlowdownUpgradeUI,
+            updateTimeWarpAuraUI,
+            updateRateDisplay
         },
-        getBlackHolePhase,
-        runBlackHolePhase7Step: backgroundTab => {
-            totalChanges = Math.floor(number1BlackHoleState.phase7EpilogueCounter || 0);
-            handEarnings[0] = totalChanges;
-            if (totalChanges > number1RunPeakTotalCount) number1RunPeakTotalCount = totalChanges;
-            if (!backgroundTab) {
-                if (incrementalCountLabelEl) incrementalCountLabelEl.textContent = "Epilogue Count";
-                if (incrementalEl) incrementalEl.textContent = formatCount(totalChanges);
-                updateRateDisplay();
-                updateMilestoneUI();
-            }
-        },
-        updateTimeWarpSystem,
-        maybeAlignSameSpeedHandPhasesFromWallClock,
-        getUnlockedHands: () => unlockedHands,
-        getHands: () => hands,
-        getTickIntervalMs,
-        getHandSpeedSyncBucketKey,
-        getEffectiveSpeedLevel,
-        getSpeedMultiplierBigForLevel,
-        processClappingThisTick: number1ClapTick.processClappingThisTick,
-        updateTurboStep: number1TurboGameLoopStep.updateTurboStep,
-        updateComboStep: backgroundTab => {
-            if (backgroundTab) {
+        gameLoopStep: {
+            tickBackgroundNumberModules,
+            updateBlackHolePhaseStep,
+            syncBlackHolePhase1Vfx,
+            getCurrentNumberMode: () => typeof window.getCurrentNumberMode === "function" ? window.getCurrentNumberMode() : 1,
+            shouldRunNumber2Foreground: mode => mode === 2 && isNumber2Unlocked() && number2State.started,
+            runNumber2GameLoopStep: dtSec => number2.runGameLoopStep(dtSec),
+            processComboDiscoveryMilestoneIfUnlocked: () => {
                 if (unlockedHands >= 2) tryProcessOneComboDiscoveryMilestone(Date.now());
-            } else {
-                updateComboUI();
-            }
-        },
-        getComboMultiplier,
-        getTurboCountMultiplier,
-        getNumber1BlackHoleProductionMult,
-        getSlowdownMultiplier,
-        applyTickGains: number1TickApplyStep.applyTickGains,
-        runAutobuyStep: () => {
-            /* Autobuy uses wall-clock dt via GAME_LOOP_MS; must run every step — not only when a hand tick fires (speed 0 = rare ticks, countdown would barely move). */
-            maybeAutoBuySpeedUpgrade();
-            maybeAutoBuyCheapen();
-            maybeAutoBuySlowdown();
-        },
-        flushAutobuyDeferredTotalsIfAny,
-        flushLoopUi: (totalTicks, backgroundTab) => {
-            if (backgroundTab || (totalTicks <= 0 && !batchedUpgradeUiFlush)) return;
-            const now = Date.now();
-            if (now - lastUIUpdateMs >= UI_UPDATE_THROTTLE_MS || batchedUpgradeUiFlush) {
-                if (now - lastUIUpdateMs >= UI_UPDATE_THROTTLE_MS) lastUIUpdateMs = now;
-                if (batchedUpgradeUiFlush) batchedUpgradeUiFlush = false;
-                updateSpeedUpgradeUI();
-                updateCheapenUpgradeUI();
-                updateSlowdownUpgradeUI();
-                updateTimeWarpAuraUI();
-                updateRateDisplay({ throttleCpsHeadline: true });
-            }
+            },
+            getBlackHolePhase,
+            runBlackHolePhase7Step: backgroundTab => {
+                totalChanges = Math.floor(number1BlackHoleState.phase7EpilogueCounter || 0);
+                handEarnings[0] = totalChanges;
+                if (totalChanges > number1RunPeakTotalCount) number1RunPeakTotalCount = totalChanges;
+                if (!backgroundTab) {
+                    if (incrementalCountLabelEl) incrementalCountLabelEl.textContent = "Epilogue Count";
+                    if (incrementalEl) incrementalEl.textContent = formatCount(totalChanges);
+                    updateRateDisplay();
+                    updateMilestoneUI();
+                }
+            },
+            updateTimeWarpSystem,
+            maybeAlignSameSpeedHandPhasesFromWallClock,
+            getUnlockedHands: () => unlockedHands,
+            getHands: () => hands,
+            getTickIntervalMs,
+            getHandSpeedSyncBucketKey,
+            getEffectiveSpeedLevel,
+            getSpeedMultiplierBigForLevel,
+            processClappingThisTick: number1ClapTick.processClappingThisTick,
+            updateTurboStep: number1TurboGameLoopStep.updateTurboStep,
+            updateComboStep: backgroundTab => {
+                if (backgroundTab) {
+                    if (unlockedHands >= 2) tryProcessOneComboDiscoveryMilestone(Date.now());
+                } else {
+                    updateComboUI();
+                }
+            },
+            getComboMultiplier,
+            getTurboCountMultiplier,
+            getNumber1BlackHoleProductionMult,
+            getSlowdownMultiplier,
+            applyTickGains: number1TickApplyStep.applyTickGains,
+            runAutobuyStep: () => {
+                /* Autobuy uses wall-clock dt via GAME_LOOP_MS; must run every step — not only when a hand tick fires (speed 0 = rare ticks, countdown would barely move). */
+                maybeAutoBuySpeedUpgrade();
+                maybeAutoBuyCheapen();
+                maybeAutoBuySlowdown();
+            },
+            flushAutobuyDeferredTotalsIfAny
         }
     });
-    function runGameLoopStep(opts) {
-        runNumber1GameLoopStep(number1GameLoopStepDeps, opts);
-    }
 
     let lastOverviewUpdateMs = 0;
     const OVERVIEW_PANEL_LIVE_PATCH_MS = 1000;
 
-    number1LoopRuntime.start();
+    number1LoopRuntime.startGameLoop();
     document.addEventListener("visibilitychange", () => {
         if (document.hidden) beginHiddenOfflineTracking();
         else endHiddenOfflineTracking();
@@ -5183,6 +4625,9 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         const savedAt = Number(savedGameData.savedAt) || Date.now();
         applyOfflineProgress(Date.now() - savedAt, { showSummary: true });
     }
+    updateSpeedUpgradeUI();
+    updateCheapenUpgradeUI();
+    updateSlowdownUpgradeUI();
     syncPlayStageForNumberMode(typeof window.getCurrentNumberMode === "function" ? window.getCurrentNumberMode() : 1);
     try {
         number2.bindUI();
@@ -5208,6 +4653,7 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
             devBlackHolePhaseApplyBtn: document.getElementById("dev-black-hole-phase-apply"),
             devPauseGameCheckbox: document.getElementById("dev-pause-game"),
             devN1StageBgStaticCheckbox: document.getElementById("dev-n1-stage-bg-static"),
+            devComboTurboFillCheckbox: document.getElementById("dev-combo-turbo-fill"),
             devDeleteSaveBtn
         },
         n1Gameplay: {
@@ -5217,6 +4663,12 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
                 get: () => devFreezeGame,
                 set: v => {
                     devFreezeGame = v;
+                }
+            },
+            comboTurboFillFromCombosFlag: {
+                get: () => devComboTurboFillFromCombosEnabled,
+                set: v => {
+                    devComboTurboFillFromCombosEnabled = !!v;
                 }
             },
             getDevHandsRuntime: () => ({
@@ -5361,8 +4813,7 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
     maybeShowFirstAscensionIntroOnUnlock();
     syncPhase1MassFillCssVars();
     syncPhase1TesseractCanvasesInRoot(document.body);
-    setInterval(autosaveNow, AUTOSAVE_INTERVAL_MS);
-    window.addEventListener("beforeunload", autosaveNow);
+    n1SaveOffline.registerWindowAutosave(window, AUTOSAVE_INTERVAL_MS);
 
     /* ---------------------------------------------------------
        Hand milestones: checkUnlockHands() via syncUnlocksWithTotalCount → refreshTotalFromHandEarnings()

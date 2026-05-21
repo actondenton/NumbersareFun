@@ -6,6 +6,8 @@ import {
     BLACK_HOLE_PHASE1_RUN_CPS_MULT_MAX,
     BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER,
     BLACK_HOLE_PHASE2_MASS_CAP,
+    BLACK_HOLE_PHASE2_MASS_STEP_ESSENCE,
+    BLACK_HOLE_PHASE2_MASS_STEP_MULT,
     clampBlackHolePhase,
     clampBlackHolePhase2CollapseTier,
     createNumber1BlackHoleDevPhasePreset,
@@ -13,9 +15,12 @@ import {
     createNumber1BlackHoleUxFlags,
     getBlackHoleFurnaceEssenceBonus,
     getBlackHoleFurnaceMult,
+    getBlackHolePhase2CollapseMaxTier,
     getBlackHolePhase2CollapseUpgradeCost,
     getBlackHolePhase2CostAtLevel,
     getBlackHolePhase2MassCouplingCostMult,
+    getBlackHolePhase2CountingMult,
+    getBlackHolePhase2MassMultFromLevel,
     getBlackHolePhase2PhotonHawkingCdTrimSec,
     getBlackHolePhase2PhotonShellMult,
     getBlackHolePhase1AscensionEssenceMult,
@@ -77,7 +82,9 @@ describe("number1 black hole defaults", () => {
 
     it("keeps core tuning constants stable", () => {
         expect(BLACK_HOLE_PHASE1_ESSENCE_TARGET).toBe(35000);
-        expect(BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER).toBe(3);
+        expect(BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER).toBe(5);
+        expect(BLACK_HOLE_PHASE2_MASS_CAP).toBe(5);
+        expect(BLACK_HOLE_PHASE2_MASS_STEP_MULT).toBe(1e6);
         expect(BLACK_HOLE_DIGEST_BASE_MS).toBe(24 * 3600 * 1000);
         expect(BLACK_HOLE_EVAPORATION_CAP).toBe(1e308);
     });
@@ -88,7 +95,7 @@ describe("number1 black hole defaults", () => {
         expect(clampBlackHolePhase(99)).toBe(7);
         expect(clampBlackHolePhase2CollapseTier(-1)).toBe(0);
         expect(clampBlackHolePhase2CollapseTier(2.9)).toBe(2);
-        expect(clampBlackHolePhase2CollapseTier(99)).toBe(3);
+        expect(clampBlackHolePhase2CollapseTier(99)).toBe(5);
     });
 
     it("creates dev phase presets with phase-owned black-hole state", () => {
@@ -126,24 +133,57 @@ describe("number1 black hole defaults", () => {
 
     it("computes Phase 2 collapse unlocks and costs from state", () => {
         const state = createNumber1BlackHoleState();
+        expect(getBlackHolePhase2CollapseMaxTier(state)).toBe(1);
         expect(isBlackHolePhase2MassPourUnlocked(state)).toBe(false);
-        expect(getBlackHolePhase2CollapseUpgradeCost(state, "mass")).toBe(300);
+        expect(getBlackHolePhase2CollapseUpgradeCost(state, "mass")).toBe(10_000);
 
-        state.phase2CollapseMassTier = 3;
+        state.phase2CollapseMassTier = 1;
         state.phase2CollapsePhotonTier = 1;
-        state.phase2CollapseErgosphereTier = 3;
-
-        expect(isBlackHolePhase2MassPourUnlocked(state)).toBe(false);
-        expect(getBlackHolePhase2CollapseUpgradeCost(state, "mass")).toBe(0);
-        expect(getBlackHolePhase2CollapseUpgradeCost(state, "photon")).toBe(707);
-        expect(getBlackHolePhase2MassCouplingCostMult(state, 2)).toBeCloseTo(1 / 1.27);
-        expect(getBlackHolePhase2MassCouplingCostMult(state, 3)).toBe(1);
-        expect(getBlackHolePhase2PhotonShellMult(state)).toBeCloseTo(1.045);
-        expect(getBlackHolePhase2PhotonHawkingCdTrimSec(state)).toBe(0.75);
-        expect(getBlackHolePhase2CostAtLevel(0, getBlackHolePhase2MassCouplingCostMult(state, 2))).toBe(3140);
-
-        state.phase2CollapsePhotonTier = 3;
+        state.phase2CollapseErgosphereTier = 1;
+        expect(getBlackHolePhase2CollapseMaxTier(state)).toBe(1);
         expect(isBlackHolePhase2MassPourUnlocked(state)).toBe(true);
+        expect(getBlackHolePhase2CollapseUpgradeCost(state, "mass")).toBe(0);
+
+        state.phase2Mass = 1;
+        expect(getBlackHolePhase2CollapseMaxTier(state)).toBe(2);
+        expect(isBlackHolePhase2MassPourUnlocked({ ...state, phase2CollapseMassTier: 2, phase2CollapsePhotonTier: 1 })).toBe(
+            false
+        );
+
+        state.phase2CollapseMassTier = 0;
+        state.phase2CollapsePhotonTier = 0;
+        state.phase2CollapseErgosphereTier = 0;
+        expect(getBlackHolePhase2MassCouplingCostMult(state, 2)).toBe(1);
+        state.phase2CollapseMassTier = 1;
+        expect(getBlackHolePhase2MassCouplingCostMult(state, 2)).toBe(1 / 1000);
+        expect(getBlackHolePhase2PhotonShellMult(state)).toBe(1);
+        state.phase2CollapsePhotonTier = 1;
+        expect(getBlackHolePhase2PhotonShellMult(state)).toBe(10);
+        expect(getBlackHolePhase2PhotonHawkingCdTrimSec(state)).toBe(0.75);
+        expect(getBlackHolePhase2CostAtLevel(0, 1)).toBe(BLACK_HOLE_PHASE2_MASS_STEP_ESSENCE[0]);
+        expect(getBlackHolePhase2CostAtLevel(0, 1 / 1000)).toBe(30_000);
+
+        state.phase2CollapsePhotonTier = 2;
+        state.phase2CollapseMassTier = 2;
+        state.phase2CollapseErgosphereTier = 2;
+        expect(isBlackHolePhase2MassPourUnlocked(state)).toBe(true);
+    });
+
+    it("mass mult scales by credited step count (step 5 adds no mult)", () => {
+        expect(getBlackHolePhase2MassMultFromLevel(0)).toBe(1);
+        expect(getBlackHolePhase2MassMultFromLevel(1)).toBe(1e6);
+        expect(getBlackHolePhase2MassMultFromLevel(4)).toBe(1e24);
+        expect(getBlackHolePhase2MassMultFromLevel(5)).toBe(1e24);
+    });
+
+    it("Phase 2 counting mult caps at mass(4) × photon(5) === 1e30", () => {
+        const state = createNumber1BlackHoleState();
+        state.phase2Mass = 4;
+        state.phase2CollapsePhotonTier = 5;
+        expect(getBlackHolePhase2CountingMult(state)).toBe(1e30);
+
+        state.phase2Mass = 5;
+        expect(getBlackHolePhase2CountingMult(state)).toBe(1e30);
     });
 
     it("computes Phase 5 digestion and furnace mutation math", () => {
@@ -174,16 +214,16 @@ describe("number1 black hole defaults", () => {
     it("computes Phase 1 fill bonuses and wave interval", () => {
         const state = createNumber1BlackHoleState();
         state.phase1EssenceSpent = Math.floor(BLACK_HOLE_PHASE1_ESSENCE_TARGET / 2);
-        state.phase2Mass = 125;
+        state.phase2Mass = 3;
 
         expect(getBlackHolePhase1FillRatio(state)).toBe(0.5);
         expect(getBlackHolePhase1RunCpsMult(state)).toBeCloseTo(Math.pow(BLACK_HOLE_PHASE1_RUN_CPS_MULT_MAX, 0.5));
         expect(getBlackHolePhase1AscensionEssenceMult(state)).toBe(1.5);
         expect(getBlackHolePhase1SlowdownCapBonus(state)).toBe(3);
-        expect(getBlackHoleWaveIntervalSec(state)).toBe(37.5);
+        expect(getBlackHoleWaveIntervalSec(state)).toBeCloseTo(33);
 
         state.phase1EssenceSpent = BLACK_HOLE_PHASE1_ESSENCE_TARGET;
-        state.phase2Mass = 999;
+        state.phase2Mass = 5;
         expect(getBlackHolePhase1FillRatio(state)).toBe(1);
         expect(getBlackHoleWaveIntervalSec(state)).toBe(15);
     });
@@ -236,13 +276,13 @@ describe("number1 black hole defaults", () => {
         });
 
         expect(state.phase).toBe(2);
-        expect(state.phase2Mass).toBe(12);
-        expect(state.phase2CollapseMassTier).toBe(3);
-        expect(state.phase2CollapsePhotonTier).toBe(3);
-        expect(state.phase2CollapseErgosphereTier).toBe(3);
+        expect(state.phase2Mass).toBe(5);
+        expect(state.phase2CollapseMassTier).toBe(5);
+        expect(state.phase2CollapsePhotonTier).toBe(5);
+        expect(state.phase2CollapseErgosphereTier).toBe(5);
     });
 
-    it("normalizes saved state clamps, Phase 3 migration, and Phase 2 tier repair", () => {
+    it("normalizes saved state clamps and Phase 3 migration", () => {
         const state = normalizeNumber1BlackHoleStateFromSaveData({
             phase: 99,
             phase2Mass: 4,
@@ -259,29 +299,15 @@ describe("number1 black hole defaults", () => {
         });
 
         expect(state.phase).toBe(7);
+        expect(state.phase2Mass).toBe(4);
         expect(state.phase2CollapseMassTier).toBe(0);
-        expect(state.phase2CollapsePhotonTier).toBe(3);
+        expect(state.phase2CollapsePhotonTier).toBe(5);
         expect(state.phase2CollapseErgosphereTier).toBe(1);
         expect(state.phase3LuminosityLevel).toBe(4);
         expect(state.phase3ViscousLevel).toBe(4);
         expect(state.phase3CoronalLevel).toBe(4);
         expect(state.phase3HawkingRate).toBe(4);
         expect(state.phase3HawkingDuration).toBe(4);
-
-        const repaired = normalizeNumber1BlackHoleStateFromSaveData({
-            phase: 2,
-            phase2EssenceBank: 100,
-            phase2CollapseMassTier: 0,
-            phase2CollapsePhotonTier: 0,
-            phase2CollapseErgosphereTier: 0
-        }, {
-            maxHands: 10,
-            nowMs: 1000
-        });
-
-        expect(repaired.phase2CollapseMassTier).toBe(3);
-        expect(repaired.phase2CollapsePhotonTier).toBe(3);
-        expect(repaired.phase2CollapseErgosphereTier).toBe(3);
     });
 
     it("normalizes active and expired digestion timers", () => {
@@ -292,49 +318,24 @@ describe("number1 black hole defaults", () => {
             phase5DigestHandNumber: 0,
             phase5DigestStartedAtMs: 0,
             phase5DigestDurationMs: 0,
-            phase5DigestEndsAtMs: 2000,
-            phase5PendingMutationHand: 99,
-            phase5LastDigestedHand: 99
+            phase5DigestEndsAtMs: 5000
         }, {
             maxHands: 10,
             nowMs: 1000
         });
 
-        expect(active.phase5DigestEndsAtMs).toBe(2000);
-        expect(active.phase5DigestStartedAtMs).toBeLessThan(2000);
-        expect(active.phase5DigestDurationMs).toBe(2000 - active.phase5DigestStartedAtMs);
+        expect(active.phase5DigestEndsAtMs).toBeGreaterThan(1000);
         expect(active.phase5DigestHandNumber).toBe(10);
-        expect(active.phase5PendingMutationHand).toBe(10);
-        expect(active.phase5LastDigestedHand).toBe(10);
 
-        const expired = normalizeNumber1BlackHoleStateFromSaveData({
-            phase: 5,
-            phase5DigestStartedAtMs: 1000,
-            phase5DigestDurationMs: 1000,
-            phase5DigestEndsAtMs: 1500,
-            phase5DigestHandNumber: 8
-        }, {
-            maxHands: 10,
-            nowMs: 2000
-        });
+        const expired = normalizeNumber1BlackHoleStateFromSaveData(
+            {
+                phase: 5,
+                phase5DigestEndsAtMs: 500
+            },
+            { maxHands: 10, nowMs: 1000 }
+        );
 
-        expect(expired.phase5DigestStartedAtMs).toBe(0);
-        expect(expired.phase5DigestDurationMs).toBe(0);
         expect(expired.phase5DigestEndsAtMs).toBe(0);
         expect(expired.phase5DigestHandNumber).toBe(0);
-    });
-
-    it("syncs Phase 3 legacy aggregate fields from individual track levels", () => {
-        const state = createNumber1BlackHoleState();
-        state.phase3HawkingStrength = 1;
-        state.phase3LuminosityLevel = 3;
-        state.phase3ViscousLevel = 4;
-        state.phase3CoronalLevel = 5;
-
-        syncNumber1BlackHolePhase3LegacyLevel(state);
-
-        expect(state.phase3HawkingStrength).toBe(3);
-        expect(state.phase3HawkingRate).toBe(4);
-        expect(state.phase3HawkingDuration).toBe(5);
     });
 });

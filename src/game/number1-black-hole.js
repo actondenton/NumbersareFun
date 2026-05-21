@@ -7,7 +7,7 @@ export const BLACK_HOLE_COST_GROWTH = 1.38;
 export const BLACK_HOLE_MAX_LEVEL = 400;
 export const BLACK_HOLE_PHASE1_ESSENCE_TARGET = 35000;
 /** Inertial CPS multiplier at full Phase 1 mass charge (empty bar → ×1). */
-export const BLACK_HOLE_PHASE1_RUN_CPS_MULT_MAX = 1e30;
+export const BLACK_HOLE_PHASE1_RUN_CPS_MULT_MAX = 1e20;
 /**
  * Bonus added to ascend-payout multiplier at full Phase 1 charge, scaling linearly with fill (empty → ×1, full → ×(1 + this)).
  * Value 1 ⇒ 200% payout (×2) at full charge; same linear shape as before, steeper slope.
@@ -25,23 +25,43 @@ export const BLACK_HOLE_FURNACE_COMPLETION_RITUAL_MS = 12000;
 export const BLACK_HOLE_EVAPORATION_CAP = 1e308;
 export const BLACK_HOLE_DIGEST_BASE_MS = 24 * 3600 * 1000;
 /** Mass steps in Phase 2 before transition to accretion (Phase 3); must match tryBuy transition. */
-export const BLACK_HOLE_PHASE2_MASS_CAP = 60;
-/** Purchases per collapse track before Essence can pour into mass (Phase 2). */
-export const BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER = 3;
-/** Essence cost multiplier for all Phase 2 costs (upgrades + mass steps). */
-export const BLACK_HOLE_PHASE2_COST_MULT = 10;
+export const BLACK_HOLE_PHASE2_MASS_CAP = 5;
+/** Max tier per collapse track (absolute ceiling). */
+export const BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER = 5;
+/** Permanent ×mult per credited mass step (steps 1–4); step 5 is transition-only. Design cap: mass(4) × photon(5) === 1e30. */
+export const BLACK_HOLE_PHASE2_MASS_STEP_MULT = 1e6;
+/** Essence for mass steps 1–5 (before coupling discount). */
+export const BLACK_HOLE_PHASE2_MASS_STEP_ESSENCE = [
+    30_000_000,
+    42_000_000_000,
+    56_000_000_000_000,
+    72_000_000_000_000_000,
+    90_000_000_000_000_000_000
+];
+/** Mass-step cost divisor by Essence–mass coupling tier (index = tier). */
+export const BLACK_HOLE_PHASE2_COUPLING_COST_DIVISORS = [1, 1e3, 1e6, 1e9, 1e12, 1e15];
+/** Flat Essence cost for the next collapse purchase (index 0 = tier 1). */
+export const BLACK_HOLE_PHASE2_COLLAPSE_COST_MASS = [10_000, 12_000, 15_000, 20_000, 25_000];
+export const BLACK_HOLE_PHASE2_COLLAPSE_COST_PHOTON = [8_000, 10_000, 13_000, 17_000, 22_000];
+export const BLACK_HOLE_PHASE2_COLLAPSE_COST_ERGOS = [9_000, 11_000, 20_000, 10_000, 8_000];
+/** Photon shell ×mult by tier (index 0 = tier 1). */
+export const BLACK_HOLE_PHASE2_PHOTON_SHELL_MULT = [10, 100, 1_000, 10_000, 1_000_000];
+/** Combos with minHands ≤ this stay in the catalog without rediscovery (by photon tier). */
+export const BLACK_HOLE_PHASE2_PHOTON_COMBO_PERSIST_MIN_HANDS = [0, 3, 3, 5, 7, 10];
+/** Ergosphere passive Turbo meter/sec by tier (index 0 = tier 1). */
+export const BLACK_HOLE_PHASE2_ERGO_TURBO_PER_SEC = [1_000_000, 1_000_000, 1_000_000, 1_000_000, 2_000_000];
 export const BLACK_HOLE_SCREEN_FX_MS = 1800;
 
 export function createNumber1BlackHoleState() {
     return {
         phase: 0,
         phase1EssenceSpent: 0,
-        /** 1 = post–35k-bar / ×1e30 CPS scaling; missing/0 on load triggers one-time save migration. */
+        /** 1 = post–35k-bar / ×1e20 CPS scaling; missing/0 on load triggers one-time save migration. */
         phase1EssenceVersion: 1,
         phase2Mass: 0,
         /** Essence banked toward the next Phase 2 mass step (partial feeds). */
         phase2EssenceBank: 0,
-        /** Phase 2 collapse upgrades (0-3 each). All three must reach 3 before mass pour unlocks. */
+        /** Phase 2 collapse upgrades (0–5 each); max tier per cycle is phase2Mass + 1. */
         phase2CollapseMassTier: 0,
         phase2CollapsePhotonTier: 0,
         phase2CollapseErgosphereTier: 0,
@@ -117,7 +137,7 @@ export function createNumber1BlackHoleDevPhasePreset(phase, opts = {}) {
         phase2CollapseMassTier: p >= 3 ? BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER : 0,
         phase2CollapsePhotonTier: p >= 3 ? BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER : 0,
         phase2CollapseErgosphereTier: p >= 3 ? BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER : 0,
-        phase2Mass: p >= 3 ? BLACK_HOLE_PHASE2_MASS_CAP : (p === 2 ? Math.min(10, BLACK_HOLE_PHASE2_MASS_CAP) : 0),
+        phase2Mass: p >= 3 ? BLACK_HOLE_PHASE2_MASS_CAP : (p === 2 ? 0 : 0),
         phase2EssenceBank: 0,
         phase2ParallelBonusPool: p >= 3 ? 1.5 : (p === 2 ? 0.25 : 0),
         phase3LuminosityLevel: p >= 4 ? 6 : (p === 3 ? 2 : 0),
@@ -238,20 +258,16 @@ export function normalizeNumber1BlackHoleStateFromSaveData(savedState, opts = {}
             state.phase5DigestHandNumber = 0;
         }
 
-        const phase2Mass = Math.floor(Number(state.phase2Mass) || 0);
-        const phase2Bank = Math.floor(Number(state.phase2EssenceBank) || 0);
-        const sumTiers =
-            state.phase2CollapseMassTier +
-            state.phase2CollapsePhotonTier +
-            state.phase2CollapseErgosphereTier;
-        if (clampBlackHolePhase(state.phase) === 2 && (phase2Mass > 0 || phase2Bank > 0) && sumTiers < BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER * 3) {
-            state.phase2CollapseMassTier = BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER;
-            state.phase2CollapsePhotonTier = BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER;
-            state.phase2CollapseErgosphereTier = BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER;
-        }
+        state.phase2Mass = Math.max(
+            0,
+            Math.min(BLACK_HOLE_PHASE2_MASS_CAP, Math.floor(Number(state.phase2Mass) || 0))
+        );
     } else if (legacyBlackHoleLevel > 0) {
-        state.phase = 2;
-        state.phase2Mass = Math.max(state.phase2Mass || 0, legacyBlackHoleLevel);
+        state.phase = Math.max(state.phase || 0, 2);
+        state.phase2Mass = Math.max(
+            state.phase2Mass || 0,
+            Math.min(BLACK_HOLE_PHASE2_MASS_CAP, legacyBlackHoleLevel)
+        );
         state.phase2CollapseMassTier = BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER;
         state.phase2CollapsePhotonTier = BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER;
         state.phase2CollapseErgosphereTier = BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER;
@@ -280,24 +296,46 @@ export function getBlackHolePhase2CollapseErgosphereTier(state) {
     return clampBlackHolePhase2CollapseTier(state && state.phase2CollapseErgosphereTier);
 }
 
+/** Max purchasable tier this cycle (1…5 while mass 0…4). */
+export function getBlackHolePhase2CollapseMaxTier(state) {
+    const mass = Math.max(0, Math.min(BLACK_HOLE_PHASE2_MASS_CAP, Math.floor(Number(state && state.phase2Mass) || 0)));
+    if (mass >= BLACK_HOLE_PHASE2_MASS_CAP) return BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER;
+    return Math.min(BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER, Math.max(1, mass + 1));
+}
+
 export function isBlackHolePhase2MassPourUnlocked(state) {
+    const cap = getBlackHolePhase2CollapseMaxTier(state);
     return (
-        getBlackHolePhase2CollapseMassTier(state) >= BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER &&
-        getBlackHolePhase2CollapsePhotonTier(state) >= BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER &&
-        getBlackHolePhase2CollapseErgosphereTier(state) >= BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER
+        getBlackHolePhase2CollapseMassTier(state) >= cap &&
+        getBlackHolePhase2CollapsePhotonTier(state) >= cap &&
+        getBlackHolePhase2CollapseErgosphereTier(state) >= cap
     );
 }
 
 export function getBlackHolePhase2MassCouplingCostMult(state, phase) {
     const t = getBlackHolePhase2CollapseMassTier(state);
     if (t <= 0 || clampBlackHolePhase(phase) !== 2) return 1;
-    return 1 / (1 + 0.09 * t);
+    const div = BLACK_HOLE_PHASE2_COUPLING_COST_DIVISORS[t];
+    if (!(div > 0)) return 1;
+    return 1 / div;
+}
+
+export function getBlackHolePhase2MassMultFromLevel(massLevel) {
+    const L = Math.max(0, Math.min(BLACK_HOLE_PHASE2_MASS_CAP, Math.floor(Number(massLevel) || 0)));
+    const effectiveL = Math.min(L, BLACK_HOLE_PHASE2_MASS_CAP - 1);
+    if (effectiveL <= 0) return 1;
+    return Math.pow(BLACK_HOLE_PHASE2_MASS_STEP_MULT, effectiveL);
+}
+
+/** Phase 2 counting mult from mass steps (1–4 credited) × current photon-shell tier. */
+export function getBlackHolePhase2CountingMult(state) {
+    return getBlackHolePhase2MassMultFromLevel(state && state.phase2Mass) * getBlackHolePhase2PhotonShellMult(state);
 }
 
 export function getBlackHolePhase2PhotonShellMult(state) {
     const t = getBlackHolePhase2CollapsePhotonTier(state);
     if (t <= 0) return 1;
-    return 1 + 0.045 * t;
+    return BLACK_HOLE_PHASE2_PHOTON_SHELL_MULT[t - 1] || 1;
 }
 
 export function getBlackHolePhase2PhotonHawkingCdTrimSec(state) {
@@ -306,33 +344,61 @@ export function getBlackHolePhase2PhotonHawkingCdTrimSec(state) {
     return Math.min(6, 0.75 * t);
 }
 
+export function getBlackHolePhase2PhotonHideComboDiscovery(state) {
+    return getBlackHolePhase2CollapsePhotonTier(state) >= 1;
+}
+
+export function getBlackHolePhase2PhotonComboPersistMinHands(state) {
+    const t = getBlackHolePhase2CollapsePhotonTier(state);
+    return BLACK_HOLE_PHASE2_PHOTON_COMBO_PERSIST_MIN_HANDS[t] || 0;
+}
+
+export function getBlackHolePhase2ErgosphereTurboPassivePerSec(state) {
+    const t = getBlackHolePhase2CollapseErgosphereTier(state);
+    if (t <= 0) return 0;
+    return BLACK_HOLE_PHASE2_ERGO_TURBO_PER_SEC[t - 1] || 0;
+}
+
+/** Tier 1: only while Turbo On; tier 2+: always (when unlocked). */
+export function getBlackHolePhase2ErgosphereTurboPassiveRequiresOn(state) {
+    return getBlackHolePhase2CollapseErgosphereTier(state) <= 1;
+}
+
+/** Tier 3+: passive fill while Turbo Leveler banks (Turbo off, full meter). */
+export function getBlackHolePhase2ErgosphereTurboLevelerPassive(state) {
+    return getBlackHolePhase2CollapseErgosphereTier(state) >= 3;
+}
+
+export function getBlackHolePhase2ErgosphereTurboDefaultOn(state) {
+    return getBlackHolePhase2CollapseErgosphereTier(state) >= 4;
+}
+
+function getBlackHolePhase2CollapseCostTable(track) {
+    if (track === "mass") return BLACK_HOLE_PHASE2_COLLAPSE_COST_MASS;
+    if (track === "photon") return BLACK_HOLE_PHASE2_COLLAPSE_COST_PHOTON;
+    if (track === "ergosphere") return BLACK_HOLE_PHASE2_COLLAPSE_COST_ERGOS;
+    return null;
+}
+
 export function getBlackHolePhase2CollapseUpgradeCost(state, track) {
     let tier = 0;
-    let base = 32;
-    if (track === "mass") {
-        tier = getBlackHolePhase2CollapseMassTier(state);
-        base = 30;
-    } else if (track === "photon") {
-        tier = getBlackHolePhase2CollapsePhotonTier(state);
-        base = 34;
-    } else if (track === "ergosphere") {
-        tier = getBlackHolePhase2CollapseErgosphereTier(state);
-        base = 38;
-    } else {
-        return Number.MAX_SAFE_INTEGER;
-    }
-    if (tier >= BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER) return 0;
-    const raw = base * Math.pow(2.08, tier);
-    if (!Number.isFinite(raw) || raw <= 0) return Number.MAX_SAFE_INTEGER;
-    return Math.min(Number.MAX_SAFE_INTEGER, Math.floor(raw * BLACK_HOLE_PHASE2_COST_MULT));
+    if (track === "mass") tier = getBlackHolePhase2CollapseMassTier(state);
+    else if (track === "photon") tier = getBlackHolePhase2CollapsePhotonTier(state);
+    else if (track === "ergosphere") tier = getBlackHolePhase2CollapseErgosphereTier(state);
+    else return Number.MAX_SAFE_INTEGER;
+    const cap = getBlackHolePhase2CollapseMaxTier(state);
+    if (tier >= cap || tier >= BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER) return 0;
+    const table = getBlackHolePhase2CollapseCostTable(track);
+    if (!table || tier >= table.length) return Number.MAX_SAFE_INTEGER;
+    return table[tier];
 }
 
 export function getBlackHolePhase2CostAtLevel(level, massCouplingCostMult) {
     const lv = Math.max(0, Math.min(BLACK_HOLE_PHASE2_MASS_CAP - 1, Math.floor(level)));
-    const raw = BLACK_HOLE_COST_BASE * Math.pow(BLACK_HOLE_COST_GROWTH, lv);
-    if (!Number.isFinite(raw) || raw <= 0) return Number.MAX_SAFE_INTEGER;
-    const scaled = Math.floor(raw * (Number(massCouplingCostMult) || 1));
-    return Math.min(Number.MAX_SAFE_INTEGER, Math.max(1, Math.floor(scaled * BLACK_HOLE_PHASE2_COST_MULT)));
+    const base = BLACK_HOLE_PHASE2_MASS_STEP_ESSENCE[lv];
+    if (!(base > 0)) return Number.MAX_SAFE_INTEGER;
+    const mult = Number(massCouplingCostMult) || 1;
+    return Math.min(Number.MAX_SAFE_INTEGER, Math.max(1, Math.floor(base * mult)));
 }
 
 export function getBlackHolePhase3TrackLevel(state, track) {
@@ -416,7 +482,7 @@ export function getBlackHolePhase1SlowdownCapBonus(state) {
 
 export function getBlackHoleWaveIntervalSec(state) {
     const mass = Math.max(0, Math.floor(Number(state && state.phase2Mass) || 0));
-    const t = Math.max(0, Math.min(1, mass / 250));
+    const t = Math.max(0, Math.min(1, mass / BLACK_HOLE_PHASE2_MASS_CAP));
     return BLACK_HOLE_PHASE4_WAVE_BASE_SEC - (BLACK_HOLE_PHASE4_WAVE_BASE_SEC - BLACK_HOLE_PHASE4_WAVE_MIN_SEC) * t;
 }
 

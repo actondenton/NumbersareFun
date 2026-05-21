@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { createOverviewAscensionPanelsRefresh } from "./n1-overview-ascension-panels.js";
+import { createOverviewAscensionPanelsRefresh } from "./modules/number1/overview-ascension-panels.js";
 
 describe("createOverviewAscensionPanelsRefresh", () => {
     it("refills overview HTML when the overview panel is open", () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { attachN1DevTools } from "./n1-dev-tools.js";
+import { attachN1DevTools } from "./modules/number1/dev-tools.js";
 
 describe("attachN1DevTools", () => {
     it("runs without throwing when elements are absent", () => {
