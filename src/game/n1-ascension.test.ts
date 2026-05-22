@@ -1,6 +1,42 @@
 import { describe, expect, it } from "vitest";
 
-import { createN1AscensionGrants, createN1AscensionTreeRuntime } from "./n1-ascension.js";
+import {
+    createN1AscensionGrants,
+    createN1AscensionTreeRuntime,
+    resolveAutobuyLanesAfterAscensionReset
+} from "./n1-ascension.js";
+
+describe("resolveAutobuyLanesAfterAscensionReset", () => {
+    it("keeps autobuy unlocked after ascend without re-hitting 100 total", () => {
+        expect(
+            resolveAutobuyLanesAfterAscensionReset({
+                ascensionDefaultOnForNewHands: false,
+                hasAscended: true,
+                anyHandHadAutobuyEnabled: false
+            })
+        ).toEqual({ unlocked: true, hand0Enabled: false });
+    });
+
+    it("preserves hand autobuy on when it was enabled before reset", () => {
+        expect(
+            resolveAutobuyLanesAfterAscensionReset({
+                ascensionDefaultOnForNewHands: false,
+                hasAscended: true,
+                anyHandHadAutobuyEnabled: true
+            })
+        ).toEqual({ unlocked: true, hand0Enabled: true });
+    });
+
+    it("ascension default-on node forces unlock and enabled", () => {
+        expect(
+            resolveAutobuyLanesAfterAscensionReset({
+                ascensionDefaultOnForNewHands: true,
+                hasAscended: false,
+                anyHandHadAutobuyEnabled: false
+            })
+        ).toEqual({ unlocked: true, hand0Enabled: true });
+    });
+});
 
 describe("createN1AscensionGrants", () => {
     it("returns defaults for empty node list", () => {

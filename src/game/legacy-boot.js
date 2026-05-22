@@ -149,7 +149,11 @@ import { updateComboDiscoveryMilestonePanelIfOpen } from "./modules/number1/comb
 import { createNumber1ComboBoot } from "./n1-combo-boot.js";
 import { createNumber1ObjectivesBoot, getObjectiveProgressForTotal, renderObjectiveForTotal, isObjectiveCompleteForTotal } from "./modules/number1/objectives.js";
 import { syncPhase1TesseractCanvasesInRoot } from "./modules/number1/tesseract-canvas.js";
-import { createN1AscensionGrants, createN1AscensionTreeRuntime } from "./n1-ascension.js";
+import {
+    createN1AscensionGrants,
+    createN1AscensionTreeRuntime,
+    resolveAutobuyLanesAfterAscensionReset
+} from "./n1-ascension.js";
 import {
     createN1AscensionBootUi,
     ASCENSION_FINGER_RESPEC_LABELS,
@@ -4285,6 +4289,13 @@ import { wireNumber1SlowdownCheapenSpeedAndTimeWarpBoots } from "./n1-upgrades-r
             }
         },
         bootstrapLanesArraysAutobuyTimeWarpCheapenFlagsForAscension() {
+            const autobuyDefaultAsc = ascensionAutobuyDefaultOnForNewHands();
+            const hadAutobuyEnabled = autoBuyEnabledByHand.some((v, i) => i < unlockedHands && v);
+            const autobuyAfterAsc = resolveAutobuyLanesAfterAscensionReset({
+                ascensionDefaultOnForNewHands: autobuyDefaultAsc,
+                hasAscended: number1HasAscended,
+                anyHandHadAutobuyEnabled: hadAutobuyEnabled
+            });
             unlockedHands = 1;
             handEarnings = Array(maxHands).fill(0);
             const ascHandStartFloor = getAscensionHandUnlockStartingCountFloor();
@@ -4304,9 +4315,8 @@ import { wireNumber1SlowdownCheapenSpeedAndTimeWarpBoots } from "./n1-upgrades-r
             timeWarpNextSpawnInSec = 0;
             timeWarpUnlockLogged = false;
             {
-                const autobuyDefaultAsc = ascensionAutobuyDefaultOnForNewHands();
-                autoBuyUnlocked = autobuyDefaultAsc;
-                copyArrayIntoExisting(autoBuyEnabledByHand, [autobuyDefaultAsc]);
+                autoBuyUnlocked = autobuyAfterAsc.unlocked;
+                copyArrayIntoExisting(autoBuyEnabledByHand, [autobuyAfterAsc.hand0Enabled]);
             }
             copyArrayIntoExisting(autoBuyCountdownSecondsByHand, [0]);
             cheapenSectionUnlocked = false;

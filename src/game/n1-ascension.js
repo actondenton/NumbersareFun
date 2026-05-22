@@ -27,6 +27,21 @@ import { createNumber1ComboNearMissAccess } from "./modules/number1/combo-near-m
  * @param {() => void} deps.updateEarnedBonusesUI
  * @param {() => void} deps.updatePageButtonUnlocks
  */
+
+/**
+ * Speed autobuy unlock + hand-0 enabled after Number 1 ascension lane reset.
+ * Milestone unlock (100 total) must persist once the save has ascended; optional asc node forces on.
+ *
+ * @param {{ ascensionDefaultOnForNewHands: boolean, hasAscended: boolean, anyHandHadAutobuyEnabled: boolean }} p
+ */
+export function resolveAutobuyLanesAfterAscensionReset(p) {
+    const ascDefault = !!p.ascensionDefaultOnForNewHands;
+    return {
+        unlocked: ascDefault || !!p.hasAscended,
+        hand0Enabled: ascDefault || !!p.anyHandHadAutobuyEnabled
+    };
+}
+
 export function createN1AscensionGrants(deps) {
 
     const ASCENSION_NODE_AUTOBUY_DEFAULT_ON_ID = "asc_ix_00";
