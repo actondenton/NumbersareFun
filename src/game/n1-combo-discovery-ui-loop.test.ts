@@ -125,4 +125,50 @@ describe("createComboDiscoveryUiLoop", () => {
         expect(pendingQueue).toEqual([]);
         expect(readyMs).toBe(10_050);
     });
+
+    it("skips combo turbo meter gain when dev flag disables it", () => {
+        let prevTick = new Set<string>();
+        let lastDigest = "";
+        const addTurboBoostMeter = vi.fn();
+        const combo = findCombo("Pair of 1s");
+
+        const { updateComboUI } = createComboDiscoveryUiLoop({
+            getUnlockedHands: () => 2,
+            getEarnedComboNames: () => [combo.name],
+            getMilestonePendingQueue: () => [],
+            getMilestoneReadyAtMs: () => 0,
+            setMilestoneReadyAtMs: () => {},
+            setMilestoneCooldownSpanMs: () => {},
+            getPatternCatalogMultiplier: () => 1,
+            addToLog: () => {},
+            markMeaningfulProgress: () => {},
+            showComboBubble: () => {},
+            pulseCombinationsPageButtonForNewBonus: () => {},
+            updateEarnedBonusesUI: () => {},
+            updateRateDisplay: () => {},
+            playLedgerBeamBonus: vi.fn(),
+            getComboDiscoveryMilestoneCooldownMs: () => 50,
+            computeComboUiInputDigest: () => "digest-b",
+            isCombinationsPageOpen: () => false,
+            getActiveCombos: () => [combo],
+            getLastComboUiInputDigest: () => lastDigest,
+            setLastComboUiInputDigest: v => {
+                lastDigest = v;
+            },
+            getPreviousTickActiveComboNames: () => prevTick,
+            setPreviousTickActiveComboNames: s => {
+                prevTick = s;
+            },
+            getComboActivationCounts: () => ({}),
+            applyAscensionComboTimeWarpDelayReduction: () => {},
+            getTurboBoostUnlocked: () => true,
+            isTurboComboMeterGainEnabled: () => false,
+            addTurboBoostMeter,
+            getTurboComboPoints: () => 99,
+            refreshCombinationsPanelIfOpen: () => {}
+        });
+
+        updateComboUI();
+        expect(addTurboBoostMeter).not.toHaveBeenCalled();
+    });
 });

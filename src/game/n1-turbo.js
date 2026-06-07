@@ -14,6 +14,8 @@ export const TURBO_SCENSION_ACTIVATION_BASE_COST = 10000;
 export const TURBO_LEVELER_BASE_POINT_COST = 48;
 export const TURBO_LEVELER_LINE_TOOLTIP =
     "While Turbo is off, combo fill past a full meter banks here. With Turbo still off, meeting the point cost buys one random Burn/Tank/Mult/Fill level; that cost doubles each purchase.";
+export const TURBO_ACTIVATIONS_LINE_TOOLTIP =
+    "Game ticks while Turbo is on and the meter has charge (resets on ascension)";
 
 /** Burn/Tank/Mult/Fill row copy for upgrade-style detail tooltips (Turbo-scension panel). */
 export const TURBO_SCENSION_AXIS_TITLES = [
@@ -102,4 +104,20 @@ export function getTurboBurnDrainForStep(dtSec, state) {
 
 export function getTurboLevelerNextPointCost(purchases) {
     return TURBO_LEVELER_BASE_POINT_COST * Math.pow(2, purchases);
+}
+
+/** Per game-loop tick while Turbo runs: 1 + ergosphere-style additive bonus (e.g. +1.0 → 2 activations/tick at cap). */
+export function getTurboActivationEarnMultFromBonus(bonus) {
+    return 1 + Math.max(0, Number(bonus) || 0);
+}
+
+/** Bank fractional activation earn so the displayed count stays whole while long-run rate matches earnMult/tick. */
+export function earnFractionalTurboActivations(accumulator, earnMult) {
+    let acc = Number(accumulator) || 0;
+    const mult = Number(earnMult) || 0;
+    if (!(mult > 0)) return { accumulator: acc, earned: 0 };
+    acc += mult;
+    const earned = Math.floor(acc + 1e-9);
+    acc -= earned;
+    return { accumulator: acc, earned };
 }

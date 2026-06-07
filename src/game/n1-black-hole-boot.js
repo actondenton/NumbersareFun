@@ -50,9 +50,7 @@ export function createNumber1BlackHoleBoot(dep) {
         getBlackHolePhase2CollapsePhotonTier: () => ctl.getBlackHolePhase2CollapsePhotonTier(),
         getBlackHolePhase2CollapseErgosphereTier: () => ctl.getBlackHolePhase2CollapseErgosphereTier(),
         isBlackHolePhase2MassPourUnlocked: () => ctl.isBlackHolePhase2MassPourUnlocked(),
-        getBlackHolePhase2MassCouplingCostMult: () => ctl.getBlackHolePhase2MassCouplingCostMult(),
-        getBlackHolePhase2PhotonShellMult: () => ctl.getBlackHolePhase2PhotonShellMult(),
-        getBlackHolePhase2PhotonHawkingCdTrimSec: () => ctl.getBlackHolePhase2PhotonHawkingCdTrimSec(),
+        getBlackHolePhase2MassCouplingAscensionEssenceBonus: () => ctl.getBlackHolePhase2MassCouplingAscensionEssenceBonus(),
         getBlackHolePhase2CollapseUpgradeCost: track => ctl.getBlackHolePhase2CollapseUpgradeCost(track),
         getBlackHolePhase2CostAtLevel: L => ctl.getBlackHolePhase2CostAtLevel(L),
         getBlackHolePhase2MassMult: () => ctl.getBlackHolePhase2MassMult(),
@@ -108,6 +106,9 @@ export function createNumber1BlackHoleBoot(dep) {
         patchBlackHolePhase2PanelLiveDom: bhEl => bhUiBridge.patchBlackHolePhase2PanelLiveDom?.(bhEl),
         patchBlackHolePhase3PanelLiveDom: bhEl => bhUiBridge.patchBlackHolePhase3PanelLiveDom?.(bhEl),
         refreshBlackHolePanelLiveDomIfOpen: () => bhUiBridge.refreshBlackHolePanelLiveDomIfOpen?.(),
+        bindBlackHoleUpgradePreviewListeners: pagePanelEl =>
+            bhUiBridge.bindBlackHoleUpgradePreviewListeners?.(pagePanelEl),
+        afterBlackHolePanelMounted: bhEl => bhUiBridge.afterBlackHolePanelMounted?.(bhEl),
 
         completeBlackHolePhaseTransition: (nextPhase, message) =>
             ctl.completeBlackHolePhaseTransition(nextPhase, message),

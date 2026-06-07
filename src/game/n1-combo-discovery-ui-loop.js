@@ -70,11 +70,15 @@ export function createComboDiscoveryUiLoop(deps) {
         tryProcessOneComboDiscoveryMilestone(nowCombo);
         if (deps.getTurboBoostUnlocked() && active.length > 0) {
             const activeNames = new Set(active.map(c => c.name));
-            active.forEach(c => {
-                if (!prev.has(c.name)) {
-                    deps.addTurboBoostMeter(deps.getTurboComboPoints(c.minHands));
-                }
-            });
+            const comboMeterGainEnabled =
+                typeof deps.isTurboComboMeterGainEnabled !== "function" || deps.isTurboComboMeterGainEnabled();
+            if (comboMeterGainEnabled) {
+                active.forEach(c => {
+                    if (!prev.has(c.name)) {
+                        deps.addTurboBoostMeter(deps.getTurboComboPoints(c.minHands));
+                    }
+                });
+            }
             deps.setPreviousTickActiveComboNames(activeNames);
         } else {
             deps.setPreviousTickActiveComboNames(new Set(active.map(c => c.name)));

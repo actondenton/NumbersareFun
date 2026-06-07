@@ -10,6 +10,8 @@ import {
     getTurboMeterMaxFromState,
     getTurboNominalBurnPerSecFromState,
     getTurboScensionActivationCostFromTotals,
+    earnFractionalTurboActivations,
+    getTurboActivationEarnMultFromBonus,
     turboMeterCurveScaleFromTotals
 } from "./n1-turbo.js";
 
@@ -52,5 +54,19 @@ describe("n1 turbo helpers", () => {
     it("calculates turbo-scension costs", () => {
         expect(getTurboScensionActivationCostFromTotals({ turboScensionActivationCostMult: 0.5 })).toBe(5000);
         expect(getTurboLevelerNextPointCost(3)).toBe(384);
+    });
+
+    it("banks fractional turbo activations without decimal display", () => {
+        expect(getTurboActivationEarnMultFromBonus(0)).toBe(1);
+        expect(getTurboActivationEarnMultFromBonus(1)).toBe(2);
+        let acc = 0;
+        let earned = 0;
+        for (let i = 0; i < 4; i++) {
+            const step = earnFractionalTurboActivations(acc, 1.25);
+            acc = step.accumulator;
+            earned += step.earned;
+        }
+        expect(earned).toBe(5);
+        expect(acc).toBeCloseTo(0);
     });
 });

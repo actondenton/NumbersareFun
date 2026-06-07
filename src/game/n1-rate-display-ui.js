@@ -1,5 +1,7 @@
 /** Count/s headline, BH gravity strip text, and upgrade-column hand status blocks (Number 1). */
 
+import { formatBlackHoleMultForUi } from "./n1-format.js";
+
 export const CPS_HEADLINE_THROTTLE_MS = 1000;
 
 /**
@@ -75,7 +77,7 @@ export function createRateDisplayUi(deps) {
         }
         if (p >= 2) {
             const t = deps.getBlackHoleTotalMult();
-            const ts = t >= 10 ? t.toFixed(2) : t.toFixed(3);
+            const ts = formatBlackHoleMultForUi(t);
             let sub = "All phase effects apply here";
             if (p >= 5) {
                 const bh = deps.getNumber1BlackHoleState();

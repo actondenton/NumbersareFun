@@ -50,7 +50,9 @@ export function computeNumber1AscensionGainBreakdown(fromTotal, opts) {
     const blackHolePhase1Mult = Number(options.blackHolePhase1Mult) || 1;
     const blackHoleParallelBonus = Number(options.blackHoleParallelBonus) || 0;
     const blackHoleFurnaceBonus = Number(options.blackHoleFurnaceBonus) || 0;
-    const phaseMult = blackHolePhase1Mult + blackHoleParallelBonus + blackHoleFurnaceBonus;
+    const blackHoleMassCouplingBonus = Number(options.blackHoleMassCouplingBonus) || 0;
+    const phaseMult =
+        blackHolePhase1Mult + blackHoleParallelBonus + blackHoleFurnaceBonus + blackHoleMassCouplingBonus;
     const beforeMultRaw = (baseGain + pendingBonus) * Math.max(1, phaseMult);
     const beforeMult = Math.max(baseGain + pendingBonus, Math.floor(beforeMultRaw));
     const clapMult = getNumber1AscensionClapEssenceMultiplier(options.clapMult);
@@ -61,6 +63,7 @@ export function computeNumber1AscensionGainBreakdown(fromTotal, opts) {
         blackHolePhase1Mult,
         blackHoleParallelBonus,
         blackHoleFurnaceBonus,
+        blackHoleMassCouplingBonus,
         blackHolePhaseMult: phaseMult,
         blackHoleMultiplierBonus: Math.max(0, beforeMult - (baseGain + pendingBonus)),
         beforeMult,

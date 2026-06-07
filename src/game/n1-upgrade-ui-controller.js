@@ -9,7 +9,8 @@ export function createUpgradeUiController(coreDeps) {
         ascensionAutobuyDefaultOnForNewHands,
         autoBuyEnabledByHand,
         autoBuyCountdownSecondsByHand,
-        getTimeWarpProductionSecondsBonus
+        getTimeWarpProductionSecondsBonus,
+        setAutoBuyEnabledForHand
     } = coreDeps;
 
     const speedRowRefs = [];
@@ -376,6 +377,24 @@ export function createUpgradeUiController(coreDeps) {
                 statusFormulaEl: statusBlock.querySelector(".hand-status-formula"),
                 statusCompactEl: statusBlock.querySelector(".hand-status-compact")
             });
+            const newRef = speedRowRefs[speedRowRefs.length - 1];
+            if (newRef && newRef.autobuyToggleEl) {
+                newRef.autobuyToggleEl.checked = !!autoBuyEnabledByHand[i];
+            }
+        }
+    }
+
+    function toggleAutobuyForHandFromWrap(wrap) {
+        const cb = wrap && wrap.querySelector(".speed-autobuy-toggle");
+        if (!cb || cb.disabled) return;
+        const i = parseInt(cb.getAttribute("data-hand-index"), 10);
+        if (isNaN(i) || i < 0 || i >= getUnlockedHands()) return;
+        const nextEnabled = !autoBuyEnabledByHand[i];
+        if (typeof setAutoBuyEnabledForHand === "function") {
+            setAutoBuyEnabledForHand(i, nextEnabled);
+        } else {
+            autoBuyEnabledByHand[i] = nextEnabled;
+            cb.checked = nextEnabled;
         }
     }
 
@@ -561,11 +580,11 @@ export function createUpgradeUiController(coreDeps) {
                     if (!isNaN(handIndex)) buySlowdownUpgradeForHand(handIndex, slowdownBtn);
                 }
             });
-            speedUpgradesContainerEl.addEventListener("change", function(e) {
-                const cb = e.target.closest(".speed-autobuy-toggle");
-                if (!cb) return;
-                const i = parseInt(cb.getAttribute("data-hand-index"), 10);
-                if (!isNaN(i) && i >= 0 && i < getUnlockedHands()) autoBuyEnabledByHand[i] = cb.checked;
+            speedUpgradesContainerEl.addEventListener("click", function (e) {
+                const wrap = e.target.closest(".speed-autobuy-wrap");
+                if (!wrap) return;
+                e.preventDefault();
+                toggleAutobuyForHandFromWrap(wrap);
             });
         }
         if (turboScensionPanelEl) {

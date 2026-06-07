@@ -6,6 +6,11 @@ import {
     BLACK_HOLE_PHASE1_RUN_CPS_MULT_MAX,
     BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER,
     BLACK_HOLE_PHASE2_MASS_CAP,
+    BLACK_HOLE_PHASE2_MASS_MULT_AT_CAP,
+    BLACK_HOLE_PHASE2_MASS_STEP_ESSENCE,
+    BLACK_HOLE_PHASE2_MASS_CURVE_EXP,
+    BLACK_HOLE_PHASE2_RUN_MULT_TARGET,
+    BLACK_HOLE_MULT_PER_LEVEL,
     clampBlackHolePhase,
     clampBlackHolePhase2CollapseTier,
     createNumber1BlackHoleDevPhasePreset,
@@ -15,9 +20,18 @@ import {
     getBlackHoleFurnaceMult,
     getBlackHolePhase2CollapseUpgradeCost,
     getBlackHolePhase2CostAtLevel,
-    getBlackHolePhase2MassCouplingCostMult,
-    getBlackHolePhase2PhotonHawkingCdTrimSec,
-    getBlackHolePhase2PhotonShellMult,
+    getBlackHolePhase2MassCouplingAscensionEssenceBonus,
+    getBlackHolePhase2MassCouplingAscensionEssenceBonusPct,
+    getBlackHolePhase2MassCouplingNextTierEssenceBonusPct,
+    getBlackHolePhase2ErgosphereTurboActivationBonus,
+    getBlackHolePhase2ErgosphereTurboActivationBonusPct,
+    getBlackHolePhase2ErgosphereNextTierTurboActivationBonusPct,
+    getBlackHoleErgosphereActivationsTooltipSuffix,
+    getBlackHolePhase2MassMultFromEffectiveLevel,
+    getBlackHolePhase2PhotonShellOffTurboFillBonus,
+    getBlackHolePhase2PhotonShellOffTurboFillBonusPct,
+    getBlackHolePhase2PhotonShellNextTierOffTurboFillBonusPct,
+    getBlackHolePhotonShellLevelerTooltipSuffix,
     getBlackHolePhase1AscensionEssenceMult,
     getBlackHolePhase1FillRatio,
     getBlackHolePhase1RunCpsMult,
@@ -42,6 +56,7 @@ import {
     normalizeNumber1BlackHoleStateFromSaveData,
     syncNumber1BlackHolePhase3LegacyLevel
 } from "./number1-black-hole.js";
+import { getPhase2MassMultFromState } from "./n1-black-hole-spend-sim.js";
 
 describe("number1 black hole defaults", () => {
     it("creates isolated persistent state with expected phase defaults", () => {
@@ -80,6 +95,37 @@ describe("number1 black hole defaults", () => {
         expect(BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER).toBe(3);
         expect(BLACK_HOLE_DIGEST_BASE_MS).toBe(24 * 3600 * 1000);
         expect(BLACK_HOLE_EVAPORATION_CAP).toBe(1e308);
+    });
+
+    it("targets Phase 1 and Phase 2 cumulative run mult caps", () => {
+        expect(BLACK_HOLE_PHASE1_RUN_CPS_MULT_MAX).toBe(1e15);
+        expect(BLACK_HOLE_PHASE2_RUN_MULT_TARGET).toBe(1e25);
+        expect(getBlackHolePhase2MassMultFromEffectiveLevel(BLACK_HOLE_PHASE2_MASS_CAP)).toBeCloseTo(
+            BLACK_HOLE_PHASE2_MASS_MULT_AT_CAP,
+            3
+        );
+        expect(getBlackHolePhase2MassMultFromEffectiveLevel(0)).toBe(1);
+
+        const legacySteepAtHalf = Math.pow(
+            BLACK_HOLE_PHASE2_MASS_MULT_AT_CAP,
+            0.5
+        );
+        const shapedAtHalf = getBlackHolePhase2MassMultFromEffectiveLevel(BLACK_HOLE_PHASE2_MASS_CAP / 2);
+        expect(shapedAtHalf).toBeGreaterThan(legacySteepAtHalf);
+        expect(BLACK_HOLE_PHASE2_MASS_CURVE_EXP).toBeLessThan(1);
+
+        const phase1Full = createNumber1BlackHoleState();
+        phase1Full.phase = 1;
+        phase1Full.phase1EssenceSpent = BLACK_HOLE_PHASE1_ESSENCE_TARGET;
+        expect(getBlackHolePhase1RunCpsMult(phase1Full)).toBeCloseTo(1e15, -10);
+
+        const phase2Full = createNumber1BlackHoleState();
+        phase2Full.phase = 2;
+        phase2Full.phase1EssenceSpent = BLACK_HOLE_PHASE1_ESSENCE_TARGET;
+        phase2Full.phase2Mass = BLACK_HOLE_PHASE2_MASS_CAP;
+        const massMult = getPhase2MassMultFromState(phase2Full, 2);
+        const cumulative = getBlackHolePhase1RunCpsMult(phase2Full) * massMult;
+        expect(cumulative / BLACK_HOLE_PHASE2_RUN_MULT_TARGET).toBeCloseTo(1, 10);
     });
 
     it("clamps phase and Phase 2 collapse tiers", () => {
@@ -127,23 +173,85 @@ describe("number1 black hole defaults", () => {
     it("computes Phase 2 collapse unlocks and costs from state", () => {
         const state = createNumber1BlackHoleState();
         expect(isBlackHolePhase2MassPourUnlocked(state)).toBe(false);
-        expect(getBlackHolePhase2CollapseUpgradeCost(state, "mass")).toBe(300);
+        expect(getBlackHolePhase2CollapseUpgradeCost(state, "mass")).toBe(1500);
 
-        state.phase2CollapseMassTier = 3;
+        state.phase2CollapseMassTier = 2;
         state.phase2CollapsePhotonTier = 1;
         state.phase2CollapseErgosphereTier = 3;
 
         expect(isBlackHolePhase2MassPourUnlocked(state)).toBe(false);
-        expect(getBlackHolePhase2CollapseUpgradeCost(state, "mass")).toBe(0);
-        expect(getBlackHolePhase2CollapseUpgradeCost(state, "photon")).toBe(707);
-        expect(getBlackHolePhase2MassCouplingCostMult(state, 2)).toBeCloseTo(1 / 1.27);
-        expect(getBlackHolePhase2MassCouplingCostMult(state, 3)).toBe(1);
-        expect(getBlackHolePhase2PhotonShellMult(state)).toBeCloseTo(1.045);
-        expect(getBlackHolePhase2PhotonHawkingCdTrimSec(state)).toBe(0.75);
-        expect(getBlackHolePhase2CostAtLevel(0, getBlackHolePhase2MassCouplingCostMult(state, 2))).toBe(3140);
+        expect(getBlackHolePhase2CollapseUpgradeCost(state, "mass")).toBeGreaterThan(0);
+        expect(getBlackHolePhase2CollapseUpgradeCost(state, "photon")).toBe(3536);
+        expect(getBlackHolePhase2MassCouplingAscensionEssenceBonus(state)).toBeCloseTo(0.25 + 0.35);
+        expect(getBlackHolePhase2MassCouplingAscensionEssenceBonusPct(state)).toBe(60);
+        expect(getBlackHolePhase2MassCouplingNextTierEssenceBonusPct(state)).toBe(40);
+        expect(getBlackHolePhase2PhotonShellOffTurboFillBonus(state)).toBeCloseTo(0.25);
+        expect(getBlackHolePhase2PhotonShellOffTurboFillBonusPct(state)).toBe(25);
+        expect(getBlackHolePhase2CostAtLevel(0, 1)).toBe(9000);
+        expect(BLACK_HOLE_PHASE2_MASS_STEP_ESSENCE).toEqual([9000, 12000, 15000, 18000, 21000, 24000]);
+        expect(BLACK_HOLE_PHASE2_MASS_STEP_ESSENCE.reduce((a, b) => a + b, 0)).toBe(99000);
+        expect(BLACK_HOLE_PHASE2_MASS_CAP).toBe(6);
 
+        state.phase2CollapseMassTier = 3;
         state.phase2CollapsePhotonTier = 3;
         expect(isBlackHolePhase2MassPourUnlocked(state)).toBe(true);
+        expect(getBlackHolePhase2MassCouplingAscensionEssenceBonus(state)).toBeCloseTo(1);
+        expect(getBlackHolePhase2MassCouplingNextTierEssenceBonusPct(state)).toBe(0);
+    });
+
+    it("sums mass-coupling ascension essence bonus per tier", () => {
+        const state = createNumber1BlackHoleState();
+        expect(getBlackHolePhase2MassCouplingAscensionEssenceBonus(state)).toBe(0);
+        state.phase2CollapseMassTier = 1;
+        expect(getBlackHolePhase2MassCouplingAscensionEssenceBonus(state)).toBeCloseTo(0.25);
+        state.phase2CollapseMassTier = 2;
+        expect(getBlackHolePhase2MassCouplingAscensionEssenceBonus(state)).toBeCloseTo(0.6);
+        state.phase2CollapseMassTier = 3;
+        expect(getBlackHolePhase2MassCouplingAscensionEssenceBonus(state)).toBeCloseTo(1);
+    });
+
+    it("sums photon shell off-turbo combo fill bonus per tier", () => {
+        const state = createNumber1BlackHoleState();
+        expect(getBlackHolePhase2PhotonShellOffTurboFillBonus(state)).toBe(0);
+        state.phase2CollapsePhotonTier = 1;
+        expect(getBlackHolePhase2PhotonShellOffTurboFillBonus(state)).toBeCloseTo(0.25);
+        state.phase2CollapsePhotonTier = 3;
+        expect(getBlackHolePhase2PhotonShellOffTurboFillBonus(state)).toBeCloseTo(1);
+        expect(getBlackHolePhase2PhotonShellOffTurboFillBonusPct(state)).toBe(100);
+    });
+
+    it("sums ergosphere turbo activation bonus per tier", () => {
+        const state = createNumber1BlackHoleState();
+        expect(getBlackHolePhase2ErgosphereTurboActivationBonus(state)).toBe(0);
+        state.phase2CollapseErgosphereTier = 1;
+        expect(getBlackHolePhase2ErgosphereTurboActivationBonus(state)).toBeCloseTo(0.25);
+        expect(getBlackHolePhase2ErgosphereTurboActivationBonusPct(state)).toBe(25);
+        state.phase2CollapseErgosphereTier = 2;
+        expect(getBlackHolePhase2ErgosphereTurboActivationBonus(state)).toBeCloseTo(0.6);
+        state.phase2CollapseErgosphereTier = 3;
+        expect(getBlackHolePhase2ErgosphereTurboActivationBonus(state)).toBeCloseTo(1);
+        expect(getBlackHolePhase2ErgosphereNextTierTurboActivationBonusPct(state)).toBe(0);
+    });
+
+    it("builds turbo UI tooltip suffixes for collapse tracks", () => {
+        const state = createNumber1BlackHoleState();
+        expect(getBlackHoleErgosphereActivationsTooltipSuffix(state)).toBe("");
+        expect(getBlackHolePhotonShellLevelerTooltipSuffix(state)).toBe("");
+
+        state.phase2CollapseErgosphereTier = 1;
+        expect(getBlackHoleErgosphereActivationsTooltipSuffix(state)).toContain("+25%");
+        expect(getBlackHoleErgosphereActivationsTooltipSuffix(state)).toContain("Ergosphere coupling");
+
+        state.phase2CollapseErgosphereTier = 3;
+        expect(getBlackHoleErgosphereActivationsTooltipSuffix(state)).toContain("+100%");
+        expect(getBlackHoleErgosphereActivationsTooltipSuffix(state)).toContain("doubles activations per second");
+
+        state.phase2CollapsePhotonTier = 2;
+        expect(getBlackHolePhotonShellLevelerTooltipSuffix(state)).toContain("+60%");
+        expect(getBlackHolePhotonShellLevelerTooltipSuffix(state)).toContain("Photon shell");
+
+        state.phase2CollapsePhotonTier = 3;
+        expect(getBlackHolePhotonShellLevelerTooltipSuffix(state)).toContain("doubles meter points");
     });
 
     it("computes Phase 5 digestion and furnace mutation math", () => {
@@ -236,7 +344,7 @@ describe("number1 black hole defaults", () => {
         });
 
         expect(state.phase).toBe(2);
-        expect(state.phase2Mass).toBe(12);
+        expect(state.phase2Mass).toBe(6);
         expect(state.phase2CollapseMassTier).toBe(3);
         expect(state.phase2CollapsePhotonTier).toBe(3);
         expect(state.phase2CollapseErgosphereTier).toBe(3);

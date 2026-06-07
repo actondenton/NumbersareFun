@@ -44,6 +44,10 @@ export function createOverviewAscensionPanelsRefresh(deps) {
         }
         deps.syncPhase1MassFillCssVars();
         deps.syncPhase1TesseractCanvasesInRoot(pagePanelBodyEl);
+        if (typeof deps.afterBlackHolePanelMounted === "function") {
+            const bhEl = pagePanelBodyEl.querySelector(".asc-black-hole");
+            if (bhEl) deps.afterBlackHolePanelMounted(bhEl);
+        }
     }
 
     function refreshOverviewAndAscensionPanelsIfOpen() {

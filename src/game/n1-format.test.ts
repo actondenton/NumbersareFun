@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+    formatBlackHoleMultForUi,
     formatCompactMultiplier,
     formatCount,
     formatSeconds,
@@ -30,6 +31,12 @@ describe("Number 1 format helpers", () => {
         expect(formatCompactMultiplier(1234)).toBe("1234.0");
         expect(formatTurboBoostMultiplierForDisplay(99.96)).toBe("100×");
         expect(formatTurboBoostMultiplierForDisplay(1_250_000)).toBe("1.3 million×");
+    });
+
+    it("formats black hole mults with exponential notation at large magnitudes", () => {
+        expect(formatBlackHoleMultForUi(1.234567)).toBe("1.235");
+        expect(formatBlackHoleMultForUi(19306.98)).toBe("1.93e+4");
+        expect(formatBlackHoleMultForUi(1.3894954943731345e17)).toBe("1.39e+17");
     });
 
     it("formats Turbo-scension levels as whole values", () => {

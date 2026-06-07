@@ -26,6 +26,15 @@ export function formatSeconds(sec) {
     return r + "s";
 }
 
+/** Black hole run / production multiplier (ascension panel, preview, gravity strip). */
+export function formatBlackHoleMultForUi(v) {
+    const x = Number(v);
+    if (!Number.isFinite(x) || x < 1) return "1";
+    if (x >= 1e4) return x.toExponential(2);
+    if (x >= 10) return x.toFixed(2);
+    return x.toFixed(3);
+}
+
 /** Compact multiplier text to keep top-center CPS line readable. */
 export function formatCompactMultiplier(v) {
     const n = Number(v) || 0;

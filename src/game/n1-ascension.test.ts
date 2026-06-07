@@ -58,6 +58,20 @@ describe("Number 1 ascension helpers", () => {
         expect(computeNumber1AscensionGain(1e35, { pendingBonus: 5 })).toBe(40);
     });
 
+    it("adds mass-coupling bonus to ascension phase mult", () => {
+        const without = computeNumber1AscensionGainBreakdown(1e35, {
+            blackHolePhase1Mult: 1,
+            blackHoleMassCouplingBonus: 0
+        });
+        const withCoupling = computeNumber1AscensionGainBreakdown(1e35, {
+            blackHolePhase1Mult: 1,
+            blackHoleMassCouplingBonus: 1
+        });
+        expect(withCoupling.blackHolePhaseMult).toBe(2);
+        expect(withCoupling.beforeMult).toBe(without.beforeMult * 2);
+        expect(withCoupling.finalGain).toBe(without.finalGain * 2);
+    });
+
     it("allows one-hand ascension only during black-hole phases 5 and 6", () => {
         expect(getNumber1AscensionRequiredHands(0)).toBe(10);
         expect(getNumber1AscensionRequiredHands(5)).toBe(1);

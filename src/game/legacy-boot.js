@@ -15,8 +15,20 @@ import {
     BLACK_HOLE_SCREEN_FX_MS,
     createNumber1BlackHoleState,
     createNumber1BlackHoleUxFlags,
+    getBlackHolePhase2MassCouplingAscensionEssenceBonus,
+    getBlackHolePhase2ErgosphereTurboActivationBonus,
+    getBlackHoleErgosphereActivationsTooltipSuffix,
+    getBlackHolePhotonShellLevelerTooltipSuffix,
+    getBlackHolePhase2PhotonShellOffTurboFillBonus,
 } from "./number1-black-hole.js";
 import { createNumber1BlackHoleBoot } from "./n1-black-hole-boot.js";
+import { applyBlackHoleTierAccentClass } from "./n1-black-hole-tier-accent.js";
+import { getPhase2CollapseEffectHtml } from "./n1-black-hole-upgrade-preview.js";
+import {
+    applyAutobuyGrantToUnlockedHands,
+    copyAutobuyArraysFromSave,
+    resetAutobuyHandArrays
+} from "./n1-autobuy-state.js";
 import { createAscensionMapUi } from "./n1-ascension-map-ui.js";
 import {
     createNumber2Controller,
@@ -25,6 +37,7 @@ import {
 } from "./number2-game.js";
 import { hands1 } from "./n1-hand-ascii.js";
 import {
+    formatBlackHoleMultForUi,
     formatCompactMultiplier,
     formatCount,
     formatSeconds,
@@ -136,6 +149,7 @@ import { createCombinationsPanelRefresh } from "./n1-combinations-panel-refresh.
 import { createComboFeedbackUi } from "./n1-combo-feedback-ui.js";
 import { updateComboDiscoveryMilestonePanelIfOpen as syncComboDiscoveryMilestonePanel } from "./n1-combo-discovery-milestone-ui.js";
 import {
+    TURBO_ACTIVATIONS_LINE_TOOLTIP,
     TURBO_LEVELER_LINE_TOOLTIP,
     TURBO_SCENSION_AXIS_TITLES,
     TURBO_UNLOCK_COUNT,
@@ -149,6 +163,8 @@ import {
     getTurboScensionActivationCostFromTotals,
     getTurboScensionFillMult as getTurboScensionFillMultForLevel,
     getTurboScensionUpgradeRollCountFromTotals,
+    earnFractionalTurboActivations,
+    getTurboActivationEarnMultFromBonus,
     turboMeterCurveScaleFromTotals as turboMeterCurveScaleFromTotalsRule
 } from "./n1-turbo.js";
 import {
@@ -260,6 +276,8 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
     const turboBoostActivationsEl = document.getElementById("turbo-boost-activations");
     const turboBoostEnabledCheckbox = document.getElementById("turbo-boost-enabled");
     const turboBoostToggleLabelEl = document.querySelector(".turbo-boost-toggle-label");
+    /** Forwarding ref: sync Photon/Ergosphere tier accent colors on Turbo UI. */
+    const syncBhCollapseTurboTierAccentsRef = { fn: () => {} };
     const handsContainer = document.getElementById("hands-container");
     const objectiveList = document.getElementById("objective-list");
     const longObjectiveList = document.getElementById("long-objective-list");
@@ -746,6 +764,7 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
             blackHolePhase1Mult: getBlackHolePhase1AscensionEssenceMult(),
             blackHoleParallelBonus: number1BlackHoleState.phase2ParallelBonusPool || 0,
             blackHoleFurnaceBonus: getBlackHoleFurnaceEssenceBonus(),
+            blackHoleMassCouplingBonus: getBlackHolePhase2MassCouplingAscensionEssenceBonus(number1BlackHoleState),
             clapMult: getNumber1AscensionClapEssenceMultiplier()
         });
     }
@@ -755,6 +774,7 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
             blackHolePhase1Mult: getBlackHolePhase1AscensionEssenceMult(),
             blackHoleParallelBonus: number1BlackHoleState.phase2ParallelBonusPool || 0,
             blackHoleFurnaceBonus: getBlackHoleFurnaceEssenceBonus(),
+            blackHoleMassCouplingBonus: getBlackHolePhase2MassCouplingAscensionEssenceBonus(number1BlackHoleState),
             clapMult: getNumber1AscensionClapEssenceMultiplier()
         });
     }
@@ -858,9 +878,6 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         getBlackHolePhase2CollapsePhotonTier,
         getBlackHolePhase2CollapseErgosphereTier,
         isBlackHolePhase2MassPourUnlocked,
-        getBlackHolePhase2MassCouplingCostMult,
-        getBlackHolePhase2PhotonShellMult,
-        getBlackHolePhase2PhotonHawkingCdTrimSec,
         getBlackHolePhase2CollapseUpgradeCost,
         getBlackHolePhase2CostAtLevel,
         getBlackHolePhase2MassMult,
@@ -912,6 +929,8 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         patchBlackHolePhase2PanelLiveDom,
         patchBlackHolePhase3PanelLiveDom,
         refreshBlackHolePanelLiveDomIfOpen,
+        bindBlackHoleUpgradePreviewListeners,
+        afterBlackHolePanelMounted,
         completeBlackHolePhaseTransition,
         tryBuyBlackHolePhase2CollapseUpgrade,
         tryBuyBlackHolePhase3DiskUpgrade,
@@ -986,7 +1005,45 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
                 formatCount,
                 autosaveNow,
                 getAscensionEssence: () => number1AscensionEssence,
-                getMaxSlowdownLevelCap: getMaxSlowdownCapFromBoot
+                getMaxSlowdownLevelCap: getMaxSlowdownCapFromBoot,
+                getSlowdownCapBase: () => MAX_SLOWDOWN_LEVEL,
+                isNumber1AscensionReady,
+                getAscensionGainBreakdown: () => computeNumber1AscensionGainBreakdown(getNumber1AscensionEssenceFormulaTotal()),
+                getBlackHolePhase: () => getBlackHolePhase(),
+                formatBlackHolePhase1CpsMultForUi: m => formatBlackHolePhase1CpsMultForUi(m),
+                getJetMult: () => getBlackHoleJetMult(),
+                escapeHtml: escapeAscensionHtml,
+                formatSeconds,
+                getBlackHoleUxFlags: () => number1BlackHoleUxFlags,
+                syncBhCollapseTurboTierAccents: () => syncBhCollapseTurboTierAccentsRef.fn(),
+                getStokePreviewStats: budget => {
+                    const now = Date.now();
+                    const held = Math.max(0, Math.floor(Number(number1AscensionEssence) || 0));
+                    const current = getBlackHolePhase5StokePreview(held, now);
+                    const future = getBlackHolePhase5StokePreview(Math.max(0, Math.floor(Number(budget) || 0)), now);
+                    if (!future) return null;
+                    const lineFor = p => {
+                        if (!p) return { stokeLine: "", stokeFillWidth: "0" };
+                        const progressPct = Math.floor(p.progress * 1000) / 10;
+                        const curvedPct = Math.floor(p.curved * 1000) / 10;
+                        const removedSec = Math.max(0, Math.floor(p.removedMs / 1000));
+                        const remainingSec = Math.max(0, Math.ceil(p.projectedRemainingMs / 1000));
+                        return {
+                            stokeLine:
+                                "Projected after stoke: <strong>" +
+                                progressPct.toFixed(1) +
+                                "%</strong> time · <strong>" +
+                                curvedPct.toFixed(1) +
+                                "%</strong> power · removes <strong>" +
+                                escapeAscensionHtml(formatSeconds(removedSec)) +
+                                "</strong> · leaves <strong>" +
+                                escapeAscensionHtml(formatSeconds(remainingSec)) +
+                                "</strong>",
+                            stokeFillWidth: String(Math.max(0, Math.min(100, progressPct)).toFixed(1))
+                        };
+                    };
+                    return { current: lineFor(current || future), future: lineFor(future) };
+                }
             };
         }
     });
@@ -1004,7 +1061,7 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         }
         for (let i = unlockedHands; i < maxHands; i++) {
             handEarnings[i] = 0;
-            autoBuyEnabledByHand[i] = false;
+            setAutoBuyEnabledForHand(i, false);
             autoBuyCountdownSecondsByHand[i] = 0;
             timeWarpAuraActiveByHand[i] = false;
             timeWarpAuraAppearedAtMsByHand[i] = 0;
@@ -1029,6 +1086,13 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
     }
     function ascensionAutobuyIncludesSlowdown() {
         return ascensionPurchasedSet().has(ASCENSION_NODE_AUTOBUY_SLOWDOWN_ID);
+    }
+    function applyAscensionAutobuyGrantToUnlockedHands() {
+        if (!ascensionAutobuyDefaultOnForNewHands()) return;
+        autoBuyUnlocked = true;
+        ensureSpeedRows();
+        applyAutobuyGrantToUnlockedHands(autoBuyEnabledByHand, unlockedHands, true);
+        syncAllAutobuyTogglesFromState();
     }
     /** Integer grant value; digit strings preserve values beyond Number.MAX_SAFE_INTEGER. */
     function ascensionGrantHandUnlockCountToBigInt(v) {
@@ -1374,9 +1438,7 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         addToLog("Ascension skill: " + ascensionNodeDisplayName(id) + " (" + boughtLabel + ", " + formatCount(spend) + " Essence)", "milestone");
         applyAscensionHandUnlockStartingCountFloorToUnlockedHands();
         if (chain.missingOrdered.indexOf(ASCENSION_NODE_AUTOBUY_DEFAULT_ON_ID) >= 0) {
-            autoBuyUnlocked = true;
-            ensureSpeedRows();
-            for (let i = 0; i < unlockedHands; i++) autoBuyEnabledByHand[i] = true;
+            applyAscensionAutobuyGrantToUnlockedHands();
         }
         updateCheapenUpgradeUI();
         updateTurboBoostUI({ force: true });
@@ -1706,7 +1768,7 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
                 ? "<span class=\"asc-stat-pill asc-stat-pill--wide asc-stat-pill--mass\"><span class=\"asc-stat-pill-k\">Mass accumulator</span> <span class=\"asc-stat-pill-v\">charge " + p1Spent + " / " + BLACK_HOLE_PHASE1_ESSENCE_TARGET + " · inertial ×" + formatBlackHolePhase1CpsMultForUi(getBlackHolePhase1RunCpsMult()) + "</span></span>"
                 : bhPhase === 7
                     ? "<span class=\"asc-stat-pill asc-stat-pill--wide asc-stat-pill--epilogue\"><span class=\"asc-stat-pill-k\">Evaporation</span> <span class=\"asc-stat-pill-v\">P7 · epilogue</span></span>"
-                    : "<span class=\"asc-stat-pill asc-stat-pill--wide asc-stat-pill--void\"><span class=\"asc-stat-pill-k\">Black hole</span> <span class=\"asc-stat-pill-v\">P" + bhPhase + " · ×" + (bhMultStat >= 10 ? bhMultStat.toFixed(2) : bhMultStat.toFixed(3)) + " · mass " + Math.floor(Number(number1BlackHoleState.phase2Mass) || 0) + "</span></span>")
+                    : "<span class=\"asc-stat-pill asc-stat-pill--wide asc-stat-pill--void\"><span class=\"asc-stat-pill-k\">Black hole</span> <span class=\"asc-stat-pill-v\">P" + bhPhase + " · ×" + formatBlackHoleMultForUi(bhMultStat) + " · mass " + Math.floor(Number(number1BlackHoleState.phase2Mass) || 0) + "</span></span>")
             : "";
         const blackHoleParallelPill = bhParallel > 0
             ? "<span class=\"asc-stat-pill asc-stat-pill--bh-parallel\"><span class=\"asc-stat-pill-k\">Parallel pool</span> <span class=\"asc-stat-pill-v\">+" + (bhParallel * 100).toFixed(1) + "% Essence</span></span>"
@@ -1804,7 +1866,7 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         if (getBlackHolePhase() === 0) ensureBlackHoleArcStarted();
         const phase = getBlackHolePhase();
         const mult = getNumber1BlackHoleProductionMult();
-        const multStr = mult >= 10 ? mult.toFixed(2) : mult.toFixed(3);
+        const multStr = formatBlackHoleMultForUi(mult);
         let body = "";
         let note = "";
         let actions = "";
@@ -1867,21 +1929,14 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
             const canPhotonUp = tp < BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER && have >= cPhoton && cPhoton > 0;
             const canErgoUp = te < BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER && have >= cErgo && cErgo > 0;
             const canPourMass = massPourUnlock && have >= 1 && L < BLACK_HOLE_PHASE2_MASS_CAP;
-            const coupPct = (getBlackHolePhase2MassCouplingCostMult() * 100).toFixed(1);
-            const photonMultStr = getBlackHolePhase2PhotonShellMult().toFixed(3);
-            const cdTrimStr = getBlackHolePhase2PhotonHawkingCdTrimSec().toFixed(2);
-            const massEffectHtml =
-                tm > 0
-                    ? ("Lowers Essence cost per mass step while in this phase. Now: <strong>" + esc(coupPct) + "%</strong> of base cost.")
-                    : "Each tier tightens Essence→mass conversion (lower % of base cost per step).";
-            const photonEffectHtml =
-                tp > 0
-                    ? ("Disk primer: counting mult <strong>×" + esc(photonMultStr) + "</strong> · trims Hawking cooldown by <strong>" + esc(cdTrimStr) + "s</strong> (Phase 3+).")
-                    : "Each tier adds counting mult and trims Hawking burst cooldown once the accretion disk exists.";
-            const ergoEffectHtml =
-                te > 0
-                    ? ("Passively charges the Turbo meter on Number 1 during Phase 2 (strength scales with tier).")
-                    : "Each tier increases passive Turbo meter fill per second while Turbo is unlocked (Phase 2 only).";
+            const p2EffectDeps = {
+                escapeHtml: esc,
+                formatCount,
+                getBlackHolePhase: () => phase
+            };
+            const massEffectHtml = getPhase2CollapseEffectHtml("mass", number1BlackHoleState, p2EffectDeps);
+            const photonEffectHtml = getPhase2CollapseEffectHtml("photon", number1BlackHoleState, p2EffectDeps);
+            const ergoEffectHtml = getPhase2CollapseEffectHtml("ergosphere", number1BlackHoleState, p2EffectDeps);
             const bankLine = nextCost > 0 && bank > 0
                 ? (" · Banked toward next step: <strong>" + esc(formatCount(bank)) + "</strong> / " + esc(formatCount(nextCost)))
                 : (nextCost > 0 ? (" · Next step: <strong>" + esc(formatCount(nextCost)) + "</strong> Essence") : "");
@@ -1916,7 +1971,7 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
                 p2Row("ergosphere", "Ergosphere coupling", te, ergoEffectHtml, cErgo, canErgoUp) +
                 "</div>";
             note =
-                "<p class=\"asc-black-hole__stats\">Phase: <strong>2</strong> · Mass pour: <strong>" + (massPourUnlock ? "unlocked" : "locked") + "</strong> · Mass: <strong>" + L + "</strong> · Total gain: <strong>×" + esc(multStr) + "</strong>" + bankLine + "</p>" +
+                "<p class=\"asc-black-hole__stats\" data-asc-bh-phase-stats>Phase: <strong>2</strong> · Mass pour: <strong>" + (massPourUnlock ? "unlocked" : "locked") + "</strong> · Mass: <strong>" + L + "</strong> · Total gain: <strong>×" + esc(multStr) + "</strong>" + bankLine + "</p>" +
                 "<p class=\"asc-black-hole__stats asc-black-hole__purse\">You hold <strong>" + esc(formatCount(have)) + "</strong> Ascension Essence.</p>" +
                 (massPourUnlock
                     ? ""
@@ -2351,9 +2406,9 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
                     const m = getNumber1BlackHoleProductionMult();
                     const ph = getBlackHolePhase();
                     if (ph === 1) {
-                        s += " · Numerical mass · ×" + (m >= 10 ? m.toFixed(2) : m.toFixed(3)) + " total run mult";
+                        s += " · Numerical mass · ×" + formatBlackHoleMultForUi(m) + " total run mult";
                     } else {
-                        s += " · Black hole P" + ph + " ×" + (m >= 10 ? m.toFixed(2) : m.toFixed(3)) + " (mass " + Math.floor(number1BlackHoleState.phase2Mass || 0) + ")";
+                        s += " · Black hole P" + ph + " ×" + formatBlackHoleMultForUi(m) + " (mass " + Math.floor(number1BlackHoleState.phase2Mass || 0) + ")";
                     }
                 }
                 return s;
@@ -2595,7 +2650,8 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         ascensionAutobuyDefaultOnForNewHands,
         autoBuyEnabledByHand,
         autoBuyCountdownSecondsByHand,
-        getTimeWarpProductionSecondsBonus
+        getTimeWarpProductionSecondsBonus,
+        setAutoBuyEnabledForHand
     });
     const speedRowRefs = upgradeDom.speedRowRefs;
     /** When autobuy / warp-assist skips per-purchase upgrade DOM, flush once this step (or with the normal throttle). */
@@ -2603,6 +2659,18 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
     let handUpgradeDetailTipLogged = false;
     function flashSpeedAutobuyToast(handIndex, text) {
         upgradeDom.flashSpeedAutobuyToast(handIndex, text);
+    }
+    function syncAutobuyToggleDomFromState(handIndex) {
+        const ref = speedRowRefs[handIndex];
+        if (ref && ref.autobuyToggleEl) ref.autobuyToggleEl.checked = !!autoBuyEnabledByHand[handIndex];
+    }
+    function setAutoBuyEnabledForHand(handIndex, enabled) {
+        if (handIndex < 0) return;
+        autoBuyEnabledByHand[handIndex] = !!enabled;
+        syncAutobuyToggleDomFromState(handIndex);
+    }
+    function syncAllAutobuyTogglesFromState() {
+        for (let i = 0; i < unlockedHands; i++) syncAutobuyToggleDomFromState(i);
     }
     function ensureSpeedRows() {
         upgradeDom.ensureSpeedRows();
@@ -2698,7 +2766,6 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
                 ref.btn.classList.remove("upgrade-btn-maxed");
                 setUpgradeTooltipText(ref.btn, "Base level: " + speedLevel[i] + "\nBonus (clap): " + bonusB + "\nEffective: " + effLv + "\nBalance/Cost: " + formatCount(balance) + " / " + formatCount(cost) + "\nEffect next: +" + percent.toFixed(1) + "%" + formatUpgradeAffordEtaLine(balance, cost, i));
                 if (ref.autobuyToggleEl) {
-                    ref.autobuyToggleEl.checked = !!autoBuyEnabledByHand[i];
                     ref.autobuyToggleEl.disabled = !autoBuyUnlocked;
                     const autobuyStack = ref.autobuyToggleEl.closest(".speed-autobuy-stack");
                     if (autobuyStack) autobuyStack.style.visibility = (totalChanges >= 100 || autoBuyUnlocked) ? "visible" : "hidden";
@@ -2988,6 +3055,8 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
     let devCheapenAutobuyOn = false;
     let cheapenAutoBuyCountdownByHand = [];
     let devSlowdownAutobuyOn = false;
+    /** Dev-only: when true, hand combos no longer charge the Turbo meter (passive fill still applies). */
+    let devTurboComboMeterGainDisabled = false;
     let slowdownAutoBuyCountdownByHand = [];
 
     /** Effect after purchasing the next tier (same as achieved level once bought). */
@@ -3377,6 +3446,8 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
     let turboBoostUnlocked = false;
     let turboBoostEnabled = false;
     let turboActivationCount = 0;
+    /** Fractional Turbo activations banked between ticks (ergosphere bonus). */
+    let turboActivationEarnAccumulator = 0;
     /** Turbo Leveler (Ring): overflow combo fill while Turbo off + full meter → bank; spend for random scension levels. */
     let turboLevelerBank = 0;
     let turboLevelerPurchases = 0;
@@ -3480,6 +3551,7 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         const totals = computeAscensionGrantTotals();
         if (!turboBoostEnabled) {
             points *= (totals.turboOffMeterFillMult || 1);
+            points *= 1 + getBlackHolePhase2PhotonShellOffTurboFillBonus(number1BlackHoleState);
         }
         const maxM = getTurboMeterMax();
         const prev = turboBoostMeter;
@@ -3532,6 +3604,16 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
             setTimeout(() => turboBoostGaugeEl.classList.remove("turbo-boost-gauge-burning"), 250);
         }
         updateTurboBoostUI({ force: true });
+    }
+
+    function getTurboActivationEarnMultPerTick() {
+        return getTurboActivationEarnMultFromBonus(getBlackHolePhase2ErgosphereTurboActivationBonus(number1BlackHoleState));
+    }
+
+    function earnTurboActivationsFromTick() {
+        const result = earnFractionalTurboActivations(turboActivationEarnAccumulator, getTurboActivationEarnMultPerTick());
+        turboActivationEarnAccumulator = result.accumulator;
+        if (result.earned > 0) turboActivationCount += result.earned;
     }
 
     /** Flat meter per second while Turbo On and meter has charge (Ring sustain nodes). */
@@ -3591,9 +3673,10 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         const cost = getTurboScensionActivationCost();
         const need = cost - turboActivationCount;
         if (need <= 0) return "";
-        const perSec = 1000 / GAME_LOOP_MS;
+        const basePerSec = 1000 / GAME_LOOP_MS;
+        const perSec = basePerSec * getTurboActivationEarnMultPerTick();
         if (!turboBoostEnabled || turboBoostMeter <= 0) {
-            return " Turn Turbo ON with charge in the meter to earn activations (~" + Math.round(perSec) + "/s — one per " + (GAME_LOOP_MS / 1000) + "s tick — only while boost runs). Refill the gauge with combos if it is empty.";
+            return " Turn Turbo ON with charge in the meter to earn activations (~" + Math.round(perSec) + "/s — one per " + (GAME_LOOP_MS / 1000) + "s tick while boost runs). Refill the gauge with combos if it is empty.";
         }
         const secApprox = need / perSec;
         const dur = formatUpgradeAffordEtaDuration(secApprox).replace(/ at current rate/g, "").trim();
@@ -3745,7 +3828,6 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
                     const next = getTurboLevelerNextPointCost();
                     const lab = turboScensionLevelerLineEl.querySelector(".turbo-scension-level-line-label");
                     if (lab) lab.textContent = "Leveler " + formatTurboScensionLevelDisplay(turboLevelerBank) + " / " + formatTurboScensionLevelDisplay(next) + " pts";
-                    setUpgradeTooltipText(turboScensionLevelerLineEl, TURBO_LEVELER_LINE_TOOLTIP);
                     turboScensionLevelerLineEl.removeAttribute("title");
                 } else {
                     turboScensionLevelerLineEl.style.display = "none";
@@ -3753,7 +3835,57 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
                 }
             }
         }
+        syncBhCollapseTurboTierAccents();
     }
+    function syncBhCollapseTurboTierAccents() {
+        const photonTier = Math.max(
+            0,
+            Math.min(3, Math.floor(Number(number1BlackHoleState.phase2CollapsePhotonTier) || 0))
+        );
+        const ergoTier = Math.max(
+            0,
+            Math.min(3, Math.floor(Number(number1BlackHoleState.phase2CollapseErgosphereTier) || 0))
+        );
+
+        applyBlackHoleTierAccentClass(turboBoostActivationsEl, ergoTier);
+
+        let photonTarget = turboBoostToggleLabelEl;
+        const levelerVisible =
+            turboScensionLevelerLineEl &&
+            turboScensionLevelerLineEl.style.display !== "none" &&
+            turboScensionLevelerLineEl.getAttribute("aria-hidden") !== "true" &&
+            !!computeAscensionGrantTotals().turboLeveler;
+        if (levelerVisible) {
+            const lab = turboScensionLevelerLineEl.querySelector(".turbo-scension-level-line-label");
+            if (lab) photonTarget = lab;
+        }
+
+        applyBlackHoleTierAccentClass(photonTarget, photonTier);
+        if (photonTarget === turboScensionLevelerLineEl?.querySelector(".turbo-scension-level-line-label")) {
+            applyBlackHoleTierAccentClass(turboBoostToggleLabelEl, 0);
+        } else {
+            const lab = turboScensionLevelerLineEl?.querySelector(".turbo-scension-level-line-label");
+            applyBlackHoleTierAccentClass(lab, 0);
+        }
+
+        if (turboBoostActivationsEl) {
+            turboBoostActivationsEl.title =
+                TURBO_ACTIVATIONS_LINE_TOOLTIP + getBlackHoleErgosphereActivationsTooltipSuffix(number1BlackHoleState);
+        }
+        if (
+            turboScensionLevelerLineEl &&
+            turboScensionLevelerLineEl.style.display !== "none" &&
+            turboScensionLevelerLineEl.getAttribute("aria-hidden") !== "true" &&
+            !!computeAscensionGrantTotals().turboLeveler
+        ) {
+            setUpgradeTooltipText(
+                turboScensionLevelerLineEl,
+                TURBO_LEVELER_LINE_TOOLTIP + getBlackHolePhotonShellLevelerTooltipSuffix(number1BlackHoleState)
+            );
+        }
+    }
+    syncBhCollapseTurboTierAccentsRef.fn = syncBhCollapseTurboTierAccents;
+
     function paintTurboBoostMeterStrip() {
         if (!turboBoostWrapEl || !turboBoostUnlocked) return;
         const en = !!turboBoostEnabled;
@@ -3786,6 +3918,7 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
             turboBoostUiStripLastActCount = turboActivationCount;
             turboBoostActivationsEl.textContent = "Activations: " + formatCount(turboActivationCount);
         }
+        syncBhCollapseTurboTierAccents();
     }
     /**
      * @param {{ force?: boolean }} [opts] force: immediate Turbo-scision pass (purchases, toggle, load).
@@ -3952,8 +4085,13 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         }
 
         autoBuyUnlocked = snap.autoBuyUnlocked;
-        autoBuyEnabledByHand = snap.autoBuyEnabledByHand;
-        autoBuyCountdownSecondsByHand = snap.autoBuyCountdownSecondsByHand;
+        copyAutobuyArraysFromSave(
+            autoBuyEnabledByHand,
+            autoBuyCountdownSecondsByHand,
+            snap.autoBuyEnabledByHand,
+            snap.autoBuyCountdownSecondsByHand
+        );
+        syncAllAutobuyTogglesFromState();
 
         turboBoostMeter = snap.turboBoostMeter;
         turboBoostUnlocked = snap.turboBoostUnlocked;
@@ -4001,6 +4139,12 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         if (snap.ascensionNodesLoadedFromSave) {
             snap.number1AscensionNodeIds.forEach(id => number1AscensionNodeIds.push(id));
             normalizeAscensionNodeIds();
+        }
+
+        if (ascensionAutobuyDefaultOnForNewHands()) {
+            autoBuyUnlocked = true;
+            applyAutobuyGrantToUnlockedHands(autoBuyEnabledByHand, unlockedHands, true);
+            syncAllAutobuyTogglesFromState();
         }
 
         ascensionNumber1IntroSeen = snap.ascensionNumber1IntroSeen;
@@ -4458,31 +4602,7 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
     }
 
     if (pagePanelEl) {
-        const setStokePreviewActive = function(target, active) {
-            const btn = target && typeof target.closest === "function"
-                ? target.closest("[data-asc-black-hole-stoke-preview-toggle]")
-                : null;
-            if (!btn) return;
-            const panel = btn.closest(".asc-black-hole");
-            if (panel) panel.classList.toggle("asc-black-hole--stoke-preview-active", !!active);
-        };
-        pagePanelEl.addEventListener("pointerover", function(e) {
-            setStokePreviewActive(e.target, true);
-        });
-        pagePanelEl.addEventListener("pointerout", function(e) {
-            const btn = e.target && typeof e.target.closest === "function"
-                ? e.target.closest("[data-asc-black-hole-stoke-preview-toggle]")
-                : null;
-            if (!btn) return;
-            if (e.relatedTarget && btn.contains(e.relatedTarget)) return;
-            setStokePreviewActive(btn, false);
-        });
-        pagePanelEl.addEventListener("focusin", function(e) {
-            setStokePreviewActive(e.target, true);
-        });
-        pagePanelEl.addEventListener("focusout", function(e) {
-            setStokePreviewActive(e.target, false);
-        });
+        bindBlackHoleUpgradePreviewListeners?.(pagePanelEl);
         pagePanelEl.addEventListener("click", function(e) {
             const ascTab = e.target.closest("[data-asc-tab]");
             if (ascTab && pagePanelEl.dataset.openPageId === "ascension" && pagePanelBodyEl) {
@@ -4496,6 +4616,8 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
                     pagePanelBodyEl.innerHTML = renderAscensionPageHtml();
                     syncPhase1MassFillCssVars();
                     syncPhase1TesseractCanvasesInRoot(pagePanelBodyEl);
+                    const bhElTab = pagePanelBodyEl.querySelector(".asc-black-hole");
+                    if (bhElTab) afterBlackHolePanelMounted?.(bhElTab);
                     if (t === 1 && number1HasAscended) {
                         requestAnimationFrame(() => initAscensionMapPanZoom());
                     }
@@ -4774,6 +4896,7 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         getComboActivationCounts: () => comboActivationCounts,
         applyAscensionComboTimeWarpDelayReduction,
         getTurboBoostUnlocked: () => turboBoostUnlocked,
+        isTurboComboMeterGainEnabled: () => !devTurboComboMeterGainDisabled,
         addTurboBoostMeter,
         getTurboComboPoints,
         refreshCombinationsPanelIfOpen
@@ -4798,6 +4921,7 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         getBlackHolePhase,
         isBlackHoleArcUnlocked,
         refreshBlackHolePanelLiveDomIfOpen,
+        afterBlackHolePanelMounted,
         updateAscensionMapDetailPanel: () => {
             if (typeof updateAscensionMapDetailPanel === "function") updateAscensionMapDetailPanel();
         },
@@ -4862,18 +4986,18 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
             {
                 const autobuyDefaultAsc = ascensionAutobuyDefaultOnForNewHands();
                 autoBuyUnlocked = autobuyDefaultAsc;
-                autoBuyEnabledByHand = [autobuyDefaultAsc];
+                resetAutobuyHandArrays(autoBuyEnabledByHand, autoBuyCountdownSecondsByHand, autobuyDefaultAsc);
             }
-            autoBuyCountdownSecondsByHand = [0];
             cheapenSectionUnlocked = false;
-            cheapenAutoBuyCountdownByHand = [];
-            slowdownAutoBuyCountdownByHand = [];
+            cheapenAutoBuyCountdownByHand.length = 0;
+            slowdownAutoBuyCountdownByHand.length = 0;
         },
         resetTurboAfterAscension() {
             turboBoostMeter = 0;
             turboBoostUnlocked = false;
             turboBoostEnabled = true;
             turboActivationCount = 0;
+            turboActivationEarnAccumulator = 0;
             turboScensionBurnLevel = 0;
             turboScensionTankLevel = 0;
             turboScensionMultLevel = 0;
@@ -4918,6 +5042,8 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         },
         refreshAllStaleUiAfterAscension() {
             ensureSpeedRows();
+            applyAscensionAutobuyGrantToUnlockedHands();
+            syncAllAutobuyTogglesFromState();
             updateObjectives();
             updateMilestoneUI();
             updateSpeedUpgradeUI();
@@ -5041,9 +5167,7 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
         getTurboBoostUnlocked: () => turboBoostUnlocked,
         getTurboBoostEnabled: () => turboBoostEnabled,
         getTurboBoostMeter: () => turboBoostMeter,
-        incrementTurboActivationCount: () => {
-            turboActivationCount++;
-        },
+        incrementTurboActivationCount: earnTurboActivationsFromTick,
         updateTurboBurn,
         applyTurboPassiveMeterRegen,
         isTurboScensionUpgradeAutobuyUnlocked,
@@ -5207,6 +5331,7 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
             blackHolePhaseSelect: document.getElementById("dev-black-hole-phase-select"),
             devBlackHolePhaseApplyBtn: document.getElementById("dev-black-hole-phase-apply"),
             devPauseGameCheckbox: document.getElementById("dev-pause-game"),
+            devTurboComboMeterOffCheckbox: document.getElementById("dev-turbo-combo-meter-off"),
             devN1StageBgStaticCheckbox: document.getElementById("dev-n1-stage-bg-static"),
             devDeleteSaveBtn
         },
@@ -5233,7 +5358,7 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
                 },
                 clearHandSideForDev(i) {
                     handEarnings[i] = 0;
-                    autoBuyEnabledByHand[i] = false;
+                    setAutoBuyEnabledForHand(i, false);
                     autoBuyCountdownSecondsByHand[i] = 0;
                     timeWarpAuraActiveByHand[i] = false;
                     timeWarpAuraAppearedAtMsByHand[i] = 0;
@@ -5276,6 +5401,8 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
             maybeApplyMidPhaseHandFloor: applyAscensionHandUnlockStartingCountFloorToUnlockedHands,
             ensureSpeedRows,
             shrinkSpeedRowsTo,
+            syncAllAutobuyTogglesFromState,
+            setAutoBuyEnabledForHand,
             autoBuyDelayStandardSeconds: () => AUTO_BUY_DELAY_SECONDS,
             autoBuyDelayOverrideSeconds: {
                 get: () => devAutoBuyDelaySeconds,
@@ -5299,6 +5426,12 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
                 get: () => devSlowdownAutobuyOn,
                 set: v => {
                     devSlowdownAutobuyOn = v;
+                }
+            },
+            turboComboMeterGainDisabledFlag: {
+                get: () => devTurboComboMeterGainDisabled,
+                set: v => {
+                    devTurboComboMeterGainDisabled = v;
                 }
             },
             flushCheapenAutobuySeedsDev: () => {

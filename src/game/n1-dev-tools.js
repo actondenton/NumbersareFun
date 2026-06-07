@@ -165,6 +165,11 @@ export function attachN1DevTools(depsRaw) {
                 updateDevToolsTimeLabels();
                 updateDevBlackHolePhaseSelect();
                 if (els.devPauseGameCheckbox) els.devPauseGameCheckbox.checked = deps.freeze.get();
+                if (els.devTurboComboMeterOffCheckbox) {
+                    els.devTurboComboMeterOffCheckbox.checked =
+                        typeof deps.turboComboMeterGainDisabledFlag?.get === "function" &&
+                        deps.turboComboMeterGainDisabledFlag.get();
+                }
                 syncDevN1StageBackgroundMotionFromSession();
                 if (!devSecondsIntervalId) devSecondsIntervalId = setInterval(updateDevToolsTimeLabels, 1000);
             } else if (devSecondsIntervalId) {
@@ -184,6 +189,20 @@ export function attachN1DevTools(depsRaw) {
         });
     }
 
+    if (els.devTurboComboMeterOffCheckbox && deps.turboComboMeterGainDisabledFlag) {
+        els.devTurboComboMeterOffCheckbox.addEventListener("change", () => {
+            deps.turboComboMeterGainDisabledFlag.set(!!els.devTurboComboMeterOffCheckbox.checked);
+            if (typeof deps.addToLog === "function") {
+                deps.addToLog(
+                    els.devTurboComboMeterOffCheckbox.checked
+                        ? "Dev: Turbo combo meter gain disabled (passive fill only)."
+                        : "Dev: Turbo combo meter gain re-enabled.",
+                    "warning"
+                );
+            }
+        });
+    }
+
     if (els.devN1StageBgStaticCheckbox) {
         els.devN1StageBgStaticCheckbox.addEventListener("change", () => {
             const off = !!els.devN1StageBgStaticCheckbox.checked;
@@ -196,15 +215,30 @@ export function attachN1DevTools(depsRaw) {
 
     syncDevN1StageBackgroundMotionFromSession();
 
+    function applyDevAllAutobuyers(on) {
+        if (on) deps.setAutoBuyUnlockedDev(true);
+        deps.ensureSpeedRows();
+        const unlocked = deps.unlockedHandsGetter();
+        const autoEn = deps.autoBuyEnabledByHandMutable;
+        for (let i = 0; i < unlocked; i++) {
+            if (typeof deps.setAutoBuyEnabledForHand === "function") {
+                deps.setAutoBuyEnabledForHand(i, on);
+            } else {
+                autoEn[i] = on;
+            }
+        }
+        if (typeof deps.syncAllAutobuyTogglesFromState === "function") deps.syncAllAutobuyTogglesFromState();
+        deps.updateSpeedUpgradeUI();
+    }
+
     if (els.devAllAutobuyCheckbox) {
         els.devAllAutobuyCheckbox.addEventListener("change", () => {
-            const on = els.devAllAutobuyCheckbox.checked;
-            if (on) deps.setAutoBuyUnlockedDev(true);
-            deps.ensureSpeedRows();
-            const u = deps.unlockedHandsGetter();
-            const autoEn = deps.autoBuyEnabledByHandMutable;
-            for (let i = 0; i < u; i++) autoEn[i] = on;
-            deps.updateSpeedUpgradeUI();
+            applyDevAllAutobuyers(!!els.devAllAutobuyCheckbox.checked);
+        });
+        els.devAllAutobuyCheckbox.addEventListener("click", () => {
+            queueMicrotask(function () {
+                if (els.devAllAutobuyCheckbox && els.devAllAutobuyCheckbox.checked) applyDevAllAutobuyers(true);
+            });
         });
     }
 

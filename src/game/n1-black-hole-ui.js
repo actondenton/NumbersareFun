@@ -1,5 +1,7 @@
-import { BLACK_HOLE_PHASE1_ESSENCE_TARGET } from "./number1-black-hole.js";
+import { BLACK_HOLE_PHASE1_ESSENCE_TARGET, BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER, BLACK_HOLE_PHASE2_MASS_CAP } from "./number1-black-hole.js";
 import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js";
+import { createBlackHolePreviewUi } from "./n1-black-hole-preview-ui.js";
+import { getPhase2CollapseEffectHtml } from "./n1-black-hole-upgrade-preview.js";
 
 /**
  * Stage VFX, lensing, thermal theme, BH panel patching.
@@ -23,9 +25,32 @@ import { syncPhase1TesseractCanvasesInRoot } from "./phase1-tesseract-canvas.js"
  * @param {() => void} deps.autosaveNow
  * @param {() => number} deps.getAscensionEssence
  * @param {() => number} deps.getMaxSlowdownLevelCap
+ * @param {() => number} deps.getSlowdownCapBase
+ * @param {() => boolean} deps.isNumber1AscensionReady
+ * @param {() => { finalGain: number }} deps.getAscensionGainBreakdown
+ * @param {() => number} deps.getBlackHolePhase
+ * @param {(m: number) => string} deps.formatBlackHolePhase1CpsMultForUi
+ * @param {() => number} [deps.getJetMult]
+ * @param {(s: string) => string} [deps.escapeHtml]
+ * @param {(n: number) => string} [deps.formatSeconds]
+ * @param {(budget: number) => object | null} [deps.getStokePreviewStats]
+ * @param {() => object} [deps.getBlackHoleUxFlags]
  */
 export function createNumber1BlackHoleUi(deps) {
     const ctrl = deps.controller;
+    const previewUi = createBlackHolePreviewUi({
+        getAscensionEssence: deps.getAscensionEssence,
+        isNumber1AscensionReady: deps.isNumber1AscensionReady,
+        getAscensionGainBreakdown: deps.getAscensionGainBreakdown,
+        getBlackHolePhase: deps.getBlackHolePhase,
+        getBlackHoleState: deps.getBlackHoleState,
+        getSlowdownCapBase: deps.getSlowdownCapBase,
+        formatBlackHolePhase1CpsMultForUi: deps.formatBlackHolePhase1CpsMultForUi,
+        getJetMult: deps.getJetMult || (() => 1),
+        escapeHtml: deps.escapeHtml || (s => String(s)),
+        formatCount: deps.formatCount,
+        getStokePreviewStats: deps.getStokePreviewStats
+    });
 
     let blackHoleUiRefreshQueued = false;
     let blackHolePhase1CollapsePulseQueued = false;
@@ -46,6 +71,7 @@ export function createNumber1BlackHoleUi(deps) {
             deps.syncPhase1MassFillCssVars();
             deps.refreshGlobalOverviewPanelIfOpen();
             refreshBlackHolePanelLiveDomIfOpen();
+            if (typeof deps.syncBhCollapseTurboTierAccents === "function") deps.syncBhCollapseTurboTierAccents();
         });
     }
 
@@ -326,7 +352,16 @@ export function createNumber1BlackHoleUi(deps) {
         const can = rem > 0 && have > 0;
         const fillPct = Math.round(ctrl.getBlackHolePhase1FillRatio() * 100);
         const meterNums = bhEl.querySelector(".asc-black-hole__mass-meter-nums");
-        if (meterNums) meterNums.innerHTML = "<strong>" + spent + "</strong> / " + BLACK_HOLE_PHASE1_ESSENCE_TARGET + " Essence · " + fillPct + "%";
+        if (meterNums && meterNums.dataset.previewWrapped !== "1") {
+            meterNums.innerHTML = "<strong>" + spent + "</strong> / " + BLACK_HOLE_PHASE1_ESSENCE_TARGET + " Essence · " + fillPct + "%";
+        } else {
+            previewUi.setPreviewStatCurrent(
+                bhEl,
+                "massMeter",
+                "<strong>" + spent + "</strong> / " + BLACK_HOLE_PHASE1_ESSENCE_TARGET + " Essence · " + fillPct + "%",
+                true
+            );
+        }
         const meterTrack = bhEl.querySelector(".asc-black-hole__mass-meter-track");
         if (meterTrack) meterTrack.setAttribute("aria-valuenow", String(spent));
         const meterFill = bhEl.querySelector(".asc-black-hole__mass-meter-fill");
@@ -334,15 +369,20 @@ export function createNumber1BlackHoleUi(deps) {
         const multStat = bhEl.querySelector(".asc-black-hole__total-mult");
         if (multStat) {
             const mult = ctrl.getNumber1BlackHoleProductionMult();
-            const multStr = mult >= 10 ? mult.toFixed(2) : mult.toFixed(3);
-            multStat.innerHTML = ctrl.getTotalProductionMultLabelForPanel() + ": <strong>×" + multStr + "</strong>";
+            const multStr = deps.formatBlackHolePhase1CpsMultForUi(mult);
+            const label = ctrl.getTotalProductionMultLabelForPanel();
+            if (multStat.querySelector('[data-preview-stat="totalMult"]')) {
+                previewUi.setPreviewStatCurrent(bhEl, "totalMult", "×" + multStr, false);
+            } else {
+                multStat.innerHTML = label + ": <strong>×" + multStr + "</strong>";
+            }
         }
         const purse = bhEl.querySelector(".asc-black-hole__purse");
         if (purse) purse.innerHTML = "You hold <strong>" + deps.formatCount(have) + "</strong> Ascension Essence · next pour: <strong>" + deps.formatCount(pour) + "</strong> into mass";
         const btn = bhEl.querySelector(".page-btn--mass-pour");
         if (btn) {
             btn.disabled = !can;
-            btn.textContent = "Pour in all Essence (" + deps.formatCount(pour) + ")";
+            previewUi.setPreviewButtonLabel(btn, "Pour in all Essence (" + deps.formatCount(pour) + ")");
         }
         let inertialVal = bhEl.querySelector('.asc-black-hole__effect-val[data-asc-p1-effect="inertial"]');
         let essenceVal = bhEl.querySelector('.asc-black-hole__effect-val[data-asc-p1-effect="essence"]');
@@ -355,31 +395,179 @@ export function createNumber1BlackHoleUi(deps) {
                 if (!dragVal) dragVal = legacyVals[2];
             }
         }
-        if (inertialVal) inertialVal.textContent = "run CPS ×" + ctrl.formatBlackHolePhase1CpsMultForUi(ctrl.getBlackHolePhase1RunCpsMult());
-        if (essenceVal) essenceVal.textContent = "Ascend payout ×" + ctrl.getBlackHolePhase1AscensionEssenceMult().toFixed(2);
-        if (dragVal) dragVal.textContent = "Compaction cap " + deps.getMaxSlowdownLevelCap();
+        if (inertialVal) {
+            const text = "run CPS ×" + ctrl.formatBlackHolePhase1CpsMultForUi(ctrl.getBlackHolePhase1RunCpsMult());
+            if (inertialVal.dataset.previewWrapped === "1") previewUi.setPreviewStatCurrent(bhEl, "inertial", text, false);
+            else inertialVal.textContent = text;
+        }
+        if (essenceVal) {
+            const text = "Ascend payout ×" + ctrl.getBlackHolePhase1AscensionEssenceMult().toFixed(2);
+            if (essenceVal.dataset.previewWrapped === "1") previewUi.setPreviewStatCurrent(bhEl, "essence", text, false);
+            else essenceVal.textContent = text;
+        }
+        if (dragVal) {
+            const text = "Compaction cap " + deps.getMaxSlowdownLevelCap();
+            if (dragVal.dataset.previewWrapped === "1") previewUi.setPreviewStatCurrent(bhEl, "drag", text, false);
+            else dragVal.textContent = text;
+        }
         deps.syncPhase1MassFillCssVars();
+        previewUi.refreshActivePreview(bhEl);
         return true;
     }
 
+    let patchBlackHolePhase2LastDataKey = "";
     function patchBlackHolePhase2PanelLiveDom(bhEl) {
         if (!bhEl) return false;
         const phase = ctrl.getBlackHolePhase();
         if (phase !== 2 || !bhEl.classList.contains("asc-black-hole--phase2")) return false;
-        const collapseGeometry = bhEl.querySelector(".asc-black-hole__collapse-geometry");
-        if (!collapseGeometry) return false;
-        const wrap = document.createElement("div");
-        wrap.innerHTML = deps.renderNumber1BlackHolePanelHtml();
-        const freshBhEl = wrap.firstElementChild;
-        if (!freshBhEl || !freshBhEl.classList || !freshBhEl.classList.contains("asc-black-hole--phase2")) return false;
-        bhEl.className = freshBhEl.className;
-        Array.from(bhEl.childNodes).forEach(function (node) {
-            if (node !== collapseGeometry) node.remove();
-        });
-        Array.from(freshBhEl.childNodes).forEach(function (node) {
-            if (node.nodeType === 1 && node.classList.contains("asc-black-hole__collapse-geometry")) return;
-            bhEl.appendChild(node);
-        });
+        if (!bhEl.querySelector(".asc-black-hole__collapse-geometry")) return false;
+
+        const state = deps.getBlackHoleState();
+        const L = Math.floor(state.phase2Mass || 0);
+        const nextCost = ctrl.getBlackHolePhase2NextCostEssence();
+        const bank = Math.floor(state.phase2EssenceBank || 0);
+        const have = Math.max(0, Math.floor(Number(deps.getAscensionEssence()) || 0));
+        const parallel = Math.max(0, Number(state.phase2ParallelBonusPool) || 0);
+        const parallelPct = Math.min(100, Math.round((parallel / 1.5) * 100));
+        const tm = ctrl.getBlackHolePhase2CollapseMassTier();
+        const tp = ctrl.getBlackHolePhase2CollapsePhotonTier();
+        const te = ctrl.getBlackHolePhase2CollapseErgosphereTier();
+        const massPourUnlock = ctrl.isBlackHolePhase2MassPourUnlocked();
+        const mult = ctrl.getNumber1BlackHoleProductionMult();
+        const multStr = deps.formatBlackHolePhase1CpsMultForUi(mult);
+        const uxFlags = typeof deps.getBlackHoleUxFlags === "function" ? deps.getBlackHoleUxFlags() : null;
+        const feedPulse = uxFlags && Date.now() - (uxFlags.lastPhase2MassFeedAtMs || 0) < 1600;
+        const dataKey =
+            L +
+            "|" +
+            nextCost +
+            "|" +
+            bank +
+            "|" +
+            have +
+            "|" +
+            parallelPct +
+            "|" +
+            tm +
+            "|" +
+            tp +
+            "|" +
+            te +
+            "|" +
+            massPourUnlock +
+            "|" +
+            multStr +
+            "|" +
+            feedPulse;
+        if (dataKey === patchBlackHolePhase2LastDataKey) {
+            previewUi.refreshActivePreview(bhEl);
+            return true;
+        }
+        patchBlackHolePhase2LastDataKey = dataKey;
+
+        bhEl.classList.toggle("asc-black-hole--feed-pulse", !!feedPulse);
+
+        const parallelHtml = "<strong>+" + (parallel * 100).toFixed(1) + "%</strong> / +150.0% Essence";
+        const parallelNums = bhEl.querySelector(".asc-black-hole__parallel-meter-wrap .asc-black-hole__mass-meter-nums");
+        if (parallelNums) {
+            if (parallelNums.dataset.previewWrapped === "1") {
+                previewUi.setPreviewStatCurrent(bhEl, "parallelMeter", parallelHtml, true);
+            } else {
+                parallelNums.innerHTML = parallelHtml;
+            }
+        }
+        const parallelTrack = bhEl.querySelector(".asc-black-hole__parallel-meter-track");
+        if (parallelTrack) parallelTrack.setAttribute("aria-valuenow", (parallel * 100).toFixed(1));
+        const parallelFill = bhEl.querySelector(".asc-black-hole__parallel-meter-fill");
+        if (parallelFill) parallelFill.style.width = parallelPct + "%";
+
+        const multStat = bhEl.querySelector(".asc-black-hole__total-mult");
+        if (multStat) {
+            const label = ctrl.getTotalProductionMultLabelForPanel();
+            if (multStat.querySelector('[data-preview-stat="totalMult"]')) {
+                previewUi.setPreviewStatCurrent(bhEl, "totalMult", "×" + multStr, false);
+            } else {
+                multStat.innerHTML = label + ": <strong>×" + multStr + "</strong>";
+            }
+        }
+
+        const esc = v => (typeof deps.escapeHtml === "function" ? deps.escapeHtml(String(v)) : String(v));
+        const bankLine =
+            nextCost > 0 && bank > 0
+                ? " · Banked toward next step: <strong>" + esc(deps.formatCount(bank)) + "</strong> / " + esc(deps.formatCount(nextCost))
+                : nextCost > 0
+                  ? " · Next step: <strong>" + esc(deps.formatCount(nextCost)) + "</strong> Essence"
+                  : "";
+        const phaseStatsHtml =
+            "Phase: <strong>2</strong> · Mass pour: <strong>" +
+            (massPourUnlock ? "unlocked" : "locked") +
+            "</strong> · Mass: <strong>" +
+            L +
+            "</strong> · Total gain: <strong>×" +
+            esc(multStr) +
+            "</strong>" +
+            bankLine;
+        const phaseStat = bhEl.querySelector("[data-asc-bh-phase-stats]");
+        if (phaseStat) {
+            if (phaseStat.dataset.previewWrapped === "1") {
+                previewUi.setPreviewStatCurrent(bhEl, "phaseStats", phaseStatsHtml, true);
+            } else {
+                phaseStat.innerHTML = phaseStatsHtml;
+            }
+        }
+
+        const purse = bhEl.querySelector(".asc-black-hole__purse");
+        if (purse) purse.innerHTML = "You hold <strong>" + deps.formatCount(have) + "</strong> Ascension Essence.";
+
+        const p2EffectDeps = {
+            escapeHtml: esc,
+            formatCount: deps.formatCount,
+            getBlackHolePhase: () => 2
+        };
+        const patchP2Row = function (track, tier, cost, canBuy) {
+            const row = bhEl.querySelector('[data-asc-black-hole-p2-row="' + track + '"]');
+            if (!row) return;
+            const maxed = tier >= BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER;
+            const tierLabel = maxed ? "max" : tier + "/" + BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER;
+            const tierStrong = row.querySelector(".asc-black-hole__p2-tier strong");
+            if (tierStrong) {
+                if (tierStrong.dataset.previewWrapped === "1") {
+                    previewUi.setPreviewStatCurrent(bhEl, "p2-tier-" + track, tierLabel, false);
+                } else {
+                    tierStrong.textContent = tierLabel;
+                }
+            }
+            const effect = row.querySelector(".asc-black-hole__p2-effect");
+            if (effect) {
+                const effectHtml = getPhase2CollapseEffectHtml(track, state, p2EffectDeps);
+                if (effect.dataset.previewWrapped === "1") {
+                    previewUi.setPreviewStatCurrent(bhEl, "p2-effect-" + track, effectHtml, true);
+                } else {
+                    effect.innerHTML = effectHtml;
+                }
+            }
+            const btn = row.querySelector("[data-asc-black-hole-p2]");
+            if (btn) {
+                btn.disabled = !canBuy;
+                previewUi.setPreviewButtonLabel(btn, maxed ? "Maxed" : "Buy (" + deps.formatCount(cost) + ")");
+            }
+        };
+
+        const cMass = ctrl.getBlackHolePhase2CollapseUpgradeCost("mass");
+        const cPhoton = ctrl.getBlackHolePhase2CollapseUpgradeCost("photon");
+        const cErgo = ctrl.getBlackHolePhase2CollapseUpgradeCost("ergosphere");
+        patchP2Row("mass", tm, cMass, tm < BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER && have >= cMass && cMass > 0);
+        patchP2Row("photon", tp, cPhoton, tp < BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER && have >= cPhoton && cPhoton > 0);
+        patchP2Row("ergosphere", te, cErgo, te < BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER && have >= cErgo && cErgo > 0);
+
+        const pourBtn = bhEl.querySelector('[data-asc-black-hole-buy="1"]');
+        const canPourMass = massPourUnlock && have >= 1 && L < BLACK_HOLE_PHASE2_MASS_CAP;
+        if (pourBtn) {
+            pourBtn.disabled = !canPourMass;
+            previewUi.setPreviewButtonLabel(pourBtn, "Pour all Essence into mass (" + deps.formatCount(have) + ")");
+        }
+
+        previewUi.refreshActivePreview(bhEl);
         return true;
     }
 
@@ -394,7 +582,7 @@ export function createNumber1BlackHoleUi(deps) {
         const cor = ctrl.getBlackHolePhase3TrackLevel("coronal");
         const have = Math.max(0, Math.floor(Number(deps.getAscensionEssence()) || 0));
         const mult = ctrl.getNumber1BlackHoleProductionMult();
-        const multStr = mult >= 10 ? mult.toFixed(2) : mult.toFixed(3);
+        const multStr = deps.formatBlackHolePhase1CpsMultForUi(mult);
         const dataKey = lum + "|" + vis + "|" + cor + "|" + have + "|" + multStr;
         if (dataKey === patchBlackHolePhase3LastDataKey) return true;
         patchBlackHolePhase3LastDataKey = dataKey;
@@ -428,12 +616,13 @@ export function createNumber1BlackHoleUi(deps) {
             const btn = row.querySelector("[data-asc-black-hole-p3]");
             if (btn) {
                 btn.disabled = !canBuy;
-                btn.textContent = maxed ? "Maxed" : "Buy (" + deps.formatCount(cost) + ")";
+                previewUi.setPreviewButtonLabel(btn, maxed ? "Maxed" : "Buy (" + deps.formatCount(cost) + ")");
             }
         };
         patchP3Row("luminosity", lum);
         patchP3Row("viscous", vis);
         patchP3Row("coronal", cor);
+        previewUi.refreshActivePreview(bhEl);
         return true;
     }
 
@@ -444,7 +633,13 @@ export function createNumber1BlackHoleUi(deps) {
         if (pagePanelEl.dataset.openPageId !== "ascension" || deps.getAscensionPageActiveNumber() !== 1) return;
         const bhEl = pagePanelBodyEl.querySelector(".asc-black-hole");
         if (bhEl) {
-            if (!patchBlackHolePhase1PanelLiveDom(bhEl) && !patchBlackHolePhase2PanelLiveDom(bhEl) && !patchBlackHolePhase3PanelLiveDom(bhEl)) bhEl.outerHTML = deps.renderNumber1BlackHolePanelHtml();
+            if (!patchBlackHolePhase1PanelLiveDom(bhEl) && !patchBlackHolePhase2PanelLiveDom(bhEl) && !patchBlackHolePhase3PanelLiveDom(bhEl)) {
+                bhEl.outerHTML = deps.renderNumber1BlackHolePanelHtml();
+                const nextBhEl = pagePanelBodyEl.querySelector(".asc-black-hole");
+                previewUi.afterPanelMounted(nextBhEl);
+            } else {
+                previewUi.afterPanelMounted(bhEl);
+            }
         } else {
             deps.refreshAscensionPanelIfOpen();
         }
@@ -462,6 +657,8 @@ export function createNumber1BlackHoleUi(deps) {
         patchBlackHolePhase1PanelLiveDom,
         patchBlackHolePhase2PanelLiveDom,
         patchBlackHolePhase3PanelLiveDom,
-        refreshBlackHolePanelLiveDomIfOpen
+        refreshBlackHolePanelLiveDomIfOpen,
+        bindBlackHoleUpgradePreviewListeners: previewUi.bindBlackHoleUpgradePreviewListeners,
+        afterBlackHolePanelMounted: previewUi.afterPanelMounted
     };
 }

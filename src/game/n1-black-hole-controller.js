@@ -2,10 +2,10 @@
  * Number 1 black-hole controller: read model, production mult cache, arc start, and simulated phase stepping.
  * Composition root wires DOM/VFX and cross-module gameplay (turbo meter, hands reset) via deps.
  */
+import { formatBlackHoleMultForUi } from "./n1-format.js";
 import {
     BLACK_HOLE_DIGEST_BASE_MS,
     BLACK_HOLE_EVAPORATION_CAP,
-    BLACK_HOLE_MULT_PER_LEVEL,
     BLACK_HOLE_PHASE1_ESSENCE_TARGET,
     BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER,
     BLACK_HOLE_PHASE2_MASS_CAP,
@@ -19,9 +19,8 @@ import {
     getBlackHolePhase2CollapsePhotonTier as getBlackHolePhase2CollapsePhotonTierRule,
     getBlackHolePhase2CollapseUpgradeCost as getBlackHolePhase2CollapseUpgradeCostRule,
     getBlackHolePhase2CostAtLevel as getBlackHolePhase2CostAtLevelRule,
-    getBlackHolePhase2MassCouplingCostMult as getBlackHolePhase2MassCouplingCostMultRule,
-    getBlackHolePhase2PhotonHawkingCdTrimSec as getBlackHolePhase2PhotonHawkingCdTrimSecRule,
-    getBlackHolePhase2PhotonShellMult as getBlackHolePhase2PhotonShellMultRule,
+    getBlackHolePhase2MassCouplingAscensionEssenceBonus as getBlackHolePhase2MassCouplingAscensionEssenceBonusRule,
+    getBlackHolePhase2MassMultFromEffectiveLevel,
     getBlackHolePhase1AscensionEssenceMult as getBlackHolePhase1AscensionEssenceMultRule,
     getBlackHolePhase1FillRatio as getBlackHolePhase1FillRatioRule,
     getBlackHolePhase1RunCpsMult as getBlackHolePhase1RunCpsMultRule,
@@ -134,16 +133,8 @@ export function createNumber1BlackHoleController(deps) {
         return isBlackHolePhase2MassPourUnlockedRule(getS());
     }
 
-    function getBlackHolePhase2MassCouplingCostMult() {
-        return getBlackHolePhase2MassCouplingCostMultRule(getS(), getBlackHolePhase());
-    }
-
-    function getBlackHolePhase2PhotonShellMult() {
-        return getBlackHolePhase2PhotonShellMultRule(getS());
-    }
-
-    function getBlackHolePhase2PhotonHawkingCdTrimSec() {
-        return getBlackHolePhase2PhotonHawkingCdTrimSecRule(getS());
+    function getBlackHolePhase2MassCouplingAscensionEssenceBonus() {
+        return getBlackHolePhase2MassCouplingAscensionEssenceBonusRule(getS());
     }
 
     function getBlackHolePhase2CollapseUpgradeCost(track) {
@@ -151,7 +142,7 @@ export function createNumber1BlackHoleController(deps) {
     }
 
     function getBlackHolePhase2CostAtLevel(L) {
-        return getBlackHolePhase2CostAtLevelRule(L, getBlackHolePhase2MassCouplingCostMult());
+        return getBlackHolePhase2CostAtLevelRule(L, 1);
     }
 
     function getBlackHolePhase2MassMult() {
@@ -159,14 +150,14 @@ export function createNumber1BlackHoleController(deps) {
         const L = Math.max(0, Math.min(BLACK_HOLE_PHASE2_MASS_CAP, Math.floor(Number(s.phase2Mass) || 0)));
         if (getBlackHolePhase() > 2) {
             if (L <= 0) return 1;
-            return Math.pow(BLACK_HOLE_MULT_PER_LEVEL, L);
+            return getBlackHolePhase2MassMultFromEffectiveLevel(L);
         }
         const bank = Math.max(0, Math.floor(Number(s.phase2EssenceBank) || 0));
-        if (L >= BLACK_HOLE_PHASE2_MASS_CAP) return Math.pow(BLACK_HOLE_MULT_PER_LEVEL, BLACK_HOLE_PHASE2_MASS_CAP);
+        if (L >= BLACK_HOLE_PHASE2_MASS_CAP) return getBlackHolePhase2MassMultFromEffectiveLevel(BLACK_HOLE_PHASE2_MASS_CAP);
         if (L <= 0 && bank <= 0) return 1;
         const cost = getBlackHolePhase2CostAtLevel(L);
         const frac = cost > 0 ? Math.min(1, bank / cost) : 0;
-        return Math.pow(BLACK_HOLE_MULT_PER_LEVEL, L + frac);
+        return getBlackHolePhase2MassMultFromEffectiveLevel(L + frac);
     }
 
     function getBlackHolePhase2NextCostEssence() {
@@ -236,11 +227,7 @@ export function createNumber1BlackHoleController(deps) {
     }
 
     function formatBlackHolePhase1CpsMultForUi(m) {
-        const x = Number(m);
-        if (!Number.isFinite(x) || x < 1) return "1";
-        if (x >= 1e4) return x.toExponential(2);
-        if (x >= 10) return x.toFixed(2);
-        return x.toFixed(3);
+        return formatBlackHoleMultForUi(m);
     }
 
     function getBlackHolePhase1AscensionEssenceMult() {
@@ -371,7 +358,6 @@ export function createNumber1BlackHoleController(deps) {
         return (
             getBlackHolePhase2MassMult() *
             getBlackHolePhase1RunCpsMult() *
-            getBlackHolePhase2PhotonShellMult() *
             getBlackHoleHawkingMult() *
             getBlackHoleWaveMult() *
             getBlackHoleFurnaceMult() *
@@ -398,7 +384,6 @@ export function createNumber1BlackHoleController(deps) {
         return (
             getBlackHolePhase2MassMult() *
             getBlackHolePhase1RunCpsMult() *
-            getBlackHolePhase2PhotonShellMult() *
             getBlackHoleFurnaceMult() *
             jetMult
         );
@@ -410,7 +395,7 @@ export function createNumber1BlackHoleController(deps) {
         let hawkingAvg = 1;
         if (p >= 3) {
             const f = p === 3 ? getBlackHolePhase3UpgradeFrac() : 0;
-            const cd = Math.max(4, 18 - (getBlackHolePhase3TrackLevel("viscous") + f) - getBlackHolePhase2PhotonHawkingCdTrimSec());
+            const cd = Math.max(4, 18 - (getBlackHolePhase3TrackLevel("viscous") + f));
             const dur = 5 + getBlackHolePhase3TrackLevel("coronal") + f;
             const amp = 0.25 + 0.1 * (getBlackHolePhase3TrackLevel("luminosity") + f);
             const uptime = Math.max(0, Math.min(1, dur / cd));
@@ -1091,17 +1076,9 @@ export function createNumber1BlackHoleController(deps) {
         const s = getS();
         const ux = deps.getBlackHoleUxFlags();
 
-        if (phase === 2) {
-            const erg = getBlackHolePhase2CollapseErgosphereTier();
-            if (erg > 0 && deps.getTurboBoostUnlocked()) {
-                const ergoRate = 0.45 * erg;
-                deps.setTurboBoostMeter(Math.min(deps.getTurboMeterMax(), deps.getTurboBoostMeter() + ergoRate * dtSec));
-            }
-        }
-
         if (phase >= 3 && phase < 6) {
             const f = phase === 3 ? getBlackHolePhase3UpgradeFrac() : 0;
-            const baseCd = Math.max(4, 18 - (getBlackHolePhase3TrackLevel("viscous") + f) - getBlackHolePhase2PhotonHawkingCdTrimSec());
+            const baseCd = Math.max(4, 18 - (getBlackHolePhase3TrackLevel("viscous") + f));
             if (!(s.phase3NextHawkingAtMs > 0)) s.phase3NextHawkingAtMs = now + baseCd * 1000;
             if (now >= s.phase3NextHawkingAtMs) {
                 const durSec = 5 + getBlackHolePhase3TrackLevel("coronal") + f;
@@ -1265,11 +1242,9 @@ export function createNumber1BlackHoleController(deps) {
         getBlackHolePhase2CollapsePhotonTier,
         getBlackHolePhase2CollapseUpgradeCost,
         getBlackHolePhase2CostAtLevel,
-        getBlackHolePhase2MassCouplingCostMult,
+        getBlackHolePhase2MassCouplingAscensionEssenceBonus,
         getBlackHolePhase2MassMult,
         getBlackHolePhase2NextCostEssence,
-        getBlackHolePhase2PhotonHawkingCdTrimSec,
-        getBlackHolePhase2PhotonShellMult,
         getBlackHolePhase3TrackCost,
         getBlackHolePhase3TrackLevel,
         getBlackHolePhase3UpgradeFrac,
