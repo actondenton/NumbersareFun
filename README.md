@@ -8,7 +8,7 @@ Use these files for current gameplay work:
 
 - `index.html` defines the active single-page shell and overlays.
 - `src/main.ts` loads shared data, installs the mode switch shell, and lazy-loads gameplay behind the curtain transition.
-- `src/game/legacy-boot.js` contains the current Number 1, Number 2, ascension, save/load, and black-hole gameplay.
+- `src/game/index.js` boots Number 1 via `number1/n1-boot.js` (ascension, save/load, black hole, combos, etc.).
 - `style.css` is the active stylesheet for the Vite app.
 - `ascension-tree-data.js`, `ascension2-tree-data.js`, and `number2-upgrades.js` are active gameplay data files loaded by `src/main.ts`.
 

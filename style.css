@@ -3290,6 +3290,29 @@ html[data-theme="light"] .page-btn.page-btn--new-bonus-pulse {
     margin-bottom: 0;
 }
 
+.dev-tools-section-label {
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.dev-tools-hint {
+    margin: 0;
+    font-size: 0.75rem;
+    opacity: 0.85;
+    line-height: 1.35;
+}
+
+.dev-tools-autoplayer-buttons {
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.dev-autoplayer-status {
+    font-size: 0.8rem;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
 .dev-input {
     width: 100px;
     padding: 4px 6px;

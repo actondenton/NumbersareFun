@@ -14,5 +14,5 @@ import { installGlobalModeApi } from "./shell/mode-switch.js";
 installGlobalModeApi();
 
 runCurtainTransition(() => {
-  void import("./game/legacy-boot.js");
+  void import("./game/index.js");
 });

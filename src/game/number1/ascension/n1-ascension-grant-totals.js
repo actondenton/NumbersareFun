@@ -1,0 +1,229 @@
+export const ASCENSION_TURBO_BURN_EFFICIENCY_MAX_REDUCE = 0.99;
+export const ASCENSION_COMBO_EARNED_PATTERN_MULT_CAP = 10;
+
+/** Integer grant value; digit strings preserve values beyond Number.MAX_SAFE_INTEGER. */
+export function ascensionGrantHandUnlockCountToBigInt(v) {
+    if (v == null || v === false) return 0n;
+    if (typeof v === "bigint") return v < 0n ? 0n : v;
+    if (typeof v === "number" && isFinite(v)) return BigInt(Math.max(0, Math.floor(v)));
+    if (typeof v === "string" && /^[0-9]+$/.test(v)) {
+        try {
+            return BigInt(v);
+        } catch (e) {
+            return 0n;
+        }
+    }
+    return 0n;
+}
+
+/**
+ * Pure ascension grant rollup from purchased node ids.
+ * @param {string[]} nodeIds
+ * @param {(id: string) => { finger?: string, grants?: Record<string, unknown> } | undefined} getNodeById
+ */
+export function computeAscensionGrantTotalsFromNodeIds(nodeIds, getNodeById) {
+    let cheapenCap = 0;
+    let turboScaling = 0;
+    let warpOverflow = 0;
+    let speedMult = 1;
+    let comboMultAdd = 0;
+    let comboEarnedPatternMult = 1;
+    let comboTurboPointsMult = 1;
+    let turboBoostComboFillAdd = 0;
+    let autoBuyDelayMult = 1;
+    let slowdownCostMult = 1;
+    let clapCooldownMult = 1;
+    let clapBonusChanceAdd = 0;
+    let clapCheapenBonusChanceAdd = 0;
+    let clapSlowdownBonusChanceAdd = 0;
+    let clapEssenceProcChanceAdd = 0;
+    let clapEssenceMultiplierStepAdd = 0;
+    let clapCheapenExtraRoll = false;
+    let clapCheapenChainRolls = false;
+    let clapSlowdownExtraRoll = false;
+    let clapSlowdownChainRolls = false;
+    let comboClapExtraRoll = false;
+    let comboClapChainRolls = false;
+    let comboTimeWarpDelayReduceSec = 0;
+    let comboTimeWarpDelayReduceMult = 1;
+    let warpSpawnIntervalMult = 1;
+    let warpManualGrantSeconds = 60;
+    let warpAutoBuyAssist = false;
+    let warpFactor36AllHandsOverflow = false;
+    let warpPotencyMaxTiers = 0;
+    let warpClickAscensionEssenceChance = 0;
+    let warpOverflowAscensionEssenceChance = 0;
+    let turboScensionActivationCostMult = 1;
+    let turboBurnEfficiencyReduceSum = 0;
+    let turboTankSizeMult = 1;
+    let turboBurnRateMult = 1;
+    let turboScensionExtraUpgradeRolls = 0;
+    let turboLeveler = false;
+    let turboScensionAllAxesUpgrade = false;
+    let turboMeterFromComboMult = 1;
+    let turboMeterDrainMult = 1;
+    let turboOffMeterFillMult = 1;
+    let turboPassiveMeterPerSec = 0;
+    let handUnlockStartingCount = 0n;
+    let comboDiscoveryMilestoneCooldownMult = 1;
+
+    nodeIds.forEach(id => {
+        const def = getNodeById(id);
+        if (!def || !def.grants) return;
+        const g = def.grants;
+        const capBi = ascensionGrantHandUnlockCountToBigInt(g.handUnlockStartingCount);
+        if (capBi > handUnlockStartingCount) handUnlockStartingCount = capBi;
+        if (typeof g.cheapenCap === "number") cheapenCap += g.cheapenCap;
+        if (typeof g.turboScaling === "number") turboScaling += g.turboScaling;
+        if (typeof g.warpOverflow === "number") warpOverflow += g.warpOverflow;
+        if (typeof g.speedCostMult === "number" && g.speedCostMult > 0 && g.speedCostMult <= 1) speedMult *= g.speedCostMult;
+        if (typeof g.comboMultAdd === "number") comboMultAdd += g.comboMultAdd;
+        if (def.finger === "middle" && typeof g.comboEarnedPatternMultAdd === "number" && g.comboEarnedPatternMultAdd > 0) {
+            comboEarnedPatternMult *= 1 + g.comboEarnedPatternMultAdd;
+        }
+        if (def.finger === "middle") {
+            if (g.comboClapExtraRoll === true) comboClapExtraRoll = true;
+            if (g.comboClapChainRolls === true) comboClapChainRolls = true;
+            if (typeof g.comboTimeWarpDelayReduceSec === "number" && g.comboTimeWarpDelayReduceSec > 0) {
+                comboTimeWarpDelayReduceSec += g.comboTimeWarpDelayReduceSec;
+            }
+            if (typeof g.comboTimeWarpDelayReduceMult === "number" && g.comboTimeWarpDelayReduceMult > 1) {
+                comboTimeWarpDelayReduceMult *= g.comboTimeWarpDelayReduceMult;
+            }
+            if (typeof g.comboDiscoveryMilestoneCooldownMult === "number" && g.comboDiscoveryMilestoneCooldownMult > 0 && g.comboDiscoveryMilestoneCooldownMult <= 1) {
+                comboDiscoveryMilestoneCooldownMult *= g.comboDiscoveryMilestoneCooldownMult;
+            }
+        }
+        if (typeof g.comboTurboPointsMult === "number" && g.comboTurboPointsMult > 0) comboTurboPointsMult *= 1 + g.comboTurboPointsMult;
+        if (typeof g.turboBoostComboFillAdd === "number" && g.turboBoostComboFillAdd > 0) turboBoostComboFillAdd += g.turboBoostComboFillAdd;
+        if (typeof g.autoBuyDelayMult === "number" && g.autoBuyDelayMult > 0 && g.autoBuyDelayMult <= 1) autoBuyDelayMult *= g.autoBuyDelayMult;
+        if (typeof g.slowdownCostMult === "number" && g.slowdownCostMult > 0 && g.slowdownCostMult <= 1) slowdownCostMult *= g.slowdownCostMult;
+        if (typeof g.clapCooldownMult === "number" && g.clapCooldownMult > 0 && g.clapCooldownMult <= 1) clapCooldownMult *= g.clapCooldownMult;
+        if (typeof g.clapBonusChanceAdd === "number" && g.clapBonusChanceAdd > 0) clapBonusChanceAdd += g.clapBonusChanceAdd;
+        if (typeof g.clapCheapenBonusChanceAdd === "number" && g.clapCheapenBonusChanceAdd > 0) clapCheapenBonusChanceAdd += g.clapCheapenBonusChanceAdd;
+        if (typeof g.clapSlowdownBonusChanceAdd === "number" && g.clapSlowdownBonusChanceAdd > 0) clapSlowdownBonusChanceAdd += g.clapSlowdownBonusChanceAdd;
+        if (typeof g.clapEssenceProcChanceAdd === "number" && g.clapEssenceProcChanceAdd > 0) clapEssenceProcChanceAdd += g.clapEssenceProcChanceAdd;
+        if (typeof g.clapEssenceMultiplierStepAdd === "number" && g.clapEssenceMultiplierStepAdd > 0) clapEssenceMultiplierStepAdd += g.clapEssenceMultiplierStepAdd;
+        if (def.finger === "thumb" && g.clapCheapenExtraRoll === true) clapCheapenExtraRoll = true;
+        if (def.finger === "thumb" && g.clapCheapenChainRolls === true) clapCheapenChainRolls = true;
+        if (def.finger === "thumb" && g.clapSlowdownExtraRoll === true) clapSlowdownExtraRoll = true;
+        if (def.finger === "thumb" && g.clapSlowdownChainRolls === true) clapSlowdownChainRolls = true;
+        if (typeof g.warpSpawnIntervalMult === "number" && g.warpSpawnIntervalMult > 0 && g.warpSpawnIntervalMult <= 1) {
+            warpSpawnIntervalMult *= g.warpSpawnIntervalMult;
+        }
+        if (def.finger === "pinky" && typeof g.warpManualGrantSeconds === "number" && Number.isFinite(g.warpManualGrantSeconds) && g.warpManualGrantSeconds >= 60) {
+            warpManualGrantSeconds = Math.max(warpManualGrantSeconds, g.warpManualGrantSeconds);
+        }
+        if (def.finger === "pinky" && g.warpAutoBuyAssist === true) warpAutoBuyAssist = true;
+        if (def.finger === "pinky" && g.warpFactor36AllHandsOverflow === true) warpFactor36AllHandsOverflow = true;
+        if (def.finger === "pinky" && typeof g.warpPotencyMaxTiers === "number" && Number.isFinite(g.warpPotencyMaxTiers) && g.warpPotencyMaxTiers > 0) {
+            warpPotencyMaxTiers += Math.floor(g.warpPotencyMaxTiers);
+        }
+        if (def.finger === "pinky" && typeof g.warpClickAscensionEssenceChance === "number" && Number.isFinite(g.warpClickAscensionEssenceChance) && g.warpClickAscensionEssenceChance > 0) {
+            warpClickAscensionEssenceChance += g.warpClickAscensionEssenceChance;
+        }
+        if (def.finger === "pinky" && typeof g.warpOverflowAscensionEssenceChance === "number" && Number.isFinite(g.warpOverflowAscensionEssenceChance) && g.warpOverflowAscensionEssenceChance > 0) {
+            warpOverflowAscensionEssenceChance += g.warpOverflowAscensionEssenceChance;
+        }
+        if (def.finger === "ring" && typeof g.turboScensionActivationCostMult === "number" && g.turboScensionActivationCostMult > 0 && g.turboScensionActivationCostMult <= 1) {
+            turboScensionActivationCostMult *= g.turboScensionActivationCostMult;
+        }
+        if (def.finger === "ring" && typeof g.turboBurnEfficiencyReduce === "number" && g.turboBurnEfficiencyReduce > 0) {
+            turboBurnEfficiencyReduceSum += g.turboBurnEfficiencyReduce;
+        }
+        if (def.finger === "ring" && typeof g.turboTankSizeMultAdd === "number" && g.turboTankSizeMultAdd > 0) {
+            turboTankSizeMult *= 1 + g.turboTankSizeMultAdd;
+        }
+        if (def.finger === "ring" && typeof g.turboBurnRateMultAdd === "number" && g.turboBurnRateMultAdd > 0) {
+            turboBurnRateMult *= 1 + g.turboBurnRateMultAdd;
+        }
+        if (def.finger === "ring" && g.turboScensionDoubleUpgrade === true) turboScensionExtraUpgradeRolls++;
+        if (def.finger === "ring" && g.turboLeveler === true) turboLeveler = true;
+        if (def.finger === "ring" && g.turboScensionAllAxesUpgrade === true) turboScensionAllAxesUpgrade = true;
+        if (def.finger === "ring" && typeof g.turboMeterFromComboMultAdd === "number" && g.turboMeterFromComboMultAdd > 0) {
+            turboMeterFromComboMult *= 1 + g.turboMeterFromComboMultAdd;
+        }
+        if (def.finger === "ring" && typeof g.turboMeterDrainMult === "number" && g.turboMeterDrainMult > 0 && g.turboMeterDrainMult <= 1) {
+            turboMeterDrainMult *= g.turboMeterDrainMult;
+        }
+        if (def.finger === "ring" && typeof g.turboOffMeterFillMultAdd === "number" && g.turboOffMeterFillMultAdd > 0) {
+            turboOffMeterFillMult *= 1 + g.turboOffMeterFillMultAdd;
+        }
+        if (def.finger === "ring" && typeof g.turboPassiveMeterPerSec === "number" && g.turboPassiveMeterPerSec > 0) {
+            turboPassiveMeterPerSec += g.turboPassiveMeterPerSec;
+        }
+    });
+
+    comboEarnedPatternMult = Math.min(ASCENSION_COMBO_EARNED_PATTERN_MULT_CAP, comboEarnedPatternMult);
+    clapBonusChanceAdd = Math.min(0.45, clapBonusChanceAdd);
+    clapCheapenBonusChanceAdd = Math.min(0.9, clapCheapenBonusChanceAdd);
+    clapSlowdownBonusChanceAdd = Math.min(0.75, clapSlowdownBonusChanceAdd);
+    clapEssenceProcChanceAdd = Math.min(0.85, clapEssenceProcChanceAdd);
+    clapEssenceMultiplierStepAdd = Math.min(0.05, clapEssenceMultiplierStepAdd);
+    turboBurnEfficiencyReduceSum = Math.min(ASCENSION_TURBO_BURN_EFFICIENCY_MAX_REDUCE, turboBurnEfficiencyReduceSum);
+
+    return {
+        cheapenCap,
+        turboScaling,
+        warpOverflow,
+        speedMult,
+        comboMultAdd,
+        comboEarnedPatternMult,
+        comboTurboPointsMult,
+        turboBoostComboFillAdd,
+        autoBuyDelayMult,
+        slowdownCostMult,
+        clapCooldownMult,
+        clapBonusChanceAdd,
+        clapCheapenBonusChanceAdd,
+        clapSlowdownBonusChanceAdd,
+        clapEssenceProcChanceAdd,
+        clapEssenceMultiplierStepAdd,
+        clapCheapenExtraRoll,
+        clapCheapenChainRolls,
+        clapSlowdownExtraRoll,
+        clapSlowdownChainRolls,
+        comboClapExtraRoll,
+        comboClapChainRolls,
+        comboTimeWarpDelayReduceSec,
+        comboTimeWarpDelayReduceMult,
+        warpSpawnIntervalMult,
+        warpManualGrantSeconds,
+        warpAutoBuyAssist,
+        warpFactor36AllHandsOverflow,
+        warpPotencyMaxTiers,
+        warpClickAscensionEssenceChance,
+        warpOverflowAscensionEssenceChance,
+        turboScensionActivationCostMult,
+        turboBurnEfficiencyReduceSum,
+        turboTankSizeMult,
+        turboBurnRateMult,
+        turboScensionExtraUpgradeRolls,
+        turboLeveler,
+        turboScensionAllAxesUpgrade,
+        turboMeterFromComboMult,
+        turboMeterDrainMult,
+        turboOffMeterFillMult,
+        turboPassiveMeterPerSec,
+        handUnlockStartingCount,
+        comboDiscoveryMilestoneCooldownMult
+    };
+}
+
+/**
+ * Memoized grant totals for a live node-id list (invalidates when sorted id set changes).
+ * @param {() => string[]} getNodeIds
+ * @param {(id: string) => { finger?: string, grants?: Record<string, unknown> } | undefined} getNodeById
+ */
+export function createMemoizedAscensionGrantTotals(getNodeIds, getNodeById) {
+    let cacheKey = "";
+    let cache = null;
+    return function computeAscensionGrantTotals() {
+        const ids = getNodeIds();
+        const key = ids.length + "|" + ids.slice().sort().join(",");
+        if (cacheKey === key && cache) return cache;
+        cache = computeAscensionGrantTotalsFromNodeIds(ids, getNodeById);
+        cacheKey = key;
+        return cache;
+    };
+}

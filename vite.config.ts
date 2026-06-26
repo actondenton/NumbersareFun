@@ -14,7 +14,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes("legacy-boot")) {
+          if (id.includes("n1-boot-body") || id.includes("game/index")) {
             return "game-legacy";
           }
         },

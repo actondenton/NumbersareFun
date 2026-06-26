@@ -1,4 +1,4 @@
-import { normalizeNumber1BlackHoleStateFromSaveData } from "./number1-black-hole.js";
+import { normalizeNumber1BlackHoleStateFromSaveData } from "./number1/black-hole/number1-black-hole.js";
 import {
     COMBO_ACTIVATION_EDGE_SAVE_VERSION,
     applyAchievementFlags,
@@ -29,7 +29,7 @@ import {
 
 /**
  * Pure Number 1 save hydration: maps raw persisted JSON to normalized fields.
- * Side effects (DOM, hands[] construction, loops) stay in legacy-boot.
+ * Side effects (DOM, hands[] construction, loops) stay in n1-boot-body / load-orchestration.
  *
  * @param {unknown} raw
  * @param {{
@@ -186,7 +186,7 @@ export function normalizeNumber1SaveSnapshot(raw, env) {
     };
 }
 
-/** Matches legacy-boot fixup: active aura rows need a positive appeared timestamp after load. */
+/** Matches n1-boot load fixup: active aura rows need a positive appeared timestamp after load. */
 export function patchTimeWarpAuraAppearedForActiveHands(timeWarpAuraActiveByHand, timeWarpAuraAppearedAtMsByHand, unlockedHands, nowMs = Date.now()) {
     while (timeWarpAuraAppearedAtMsByHand.length < timeWarpAuraActiveByHand.length) {
         timeWarpAuraAppearedAtMsByHand.push(0);

@@ -1,0 +1,41 @@
+---
+description: Require a step-by-step plan before non-trivial code changes; pause for user approval
+alwaysApply: true
+---
+
+# Plan Before Code Changes
+
+Before editing code, decide whether a plan is required.
+
+## Plan is REQUIRED when any of these apply
+
+- The change affects **3 or more files**
+- The change is estimated to exceed **~25 lines** AND introduces **new logic** (not formatting or small edits)
+- The change introduces **new components, modules, or architectural patterns**
+- The requirement is **ambiguous or underspecified**
+
+## When a plan is required
+
+1. Produce a **step-by-step plan before any code changes**
+2. Each step must be:
+   - Small and independently achievable
+   - Scoped to specific files or concerns
+   - Able to produce a meaningful intermediate result
+3. **Ask clarifying questions** if requirements are vague, incomplete, or conflicting
+4. **Pause and wait for user confirmation** before executing the plan
+
+## Execution rules
+
+- Implement only what the **approved plan** covers
+- Do not add unrelated refactors or improvements unless explicitly requested
+
+## Fail-safe
+
+If uncertain about requirements, dependencies, or expected behavior: **stop and ask** — do not guess and proceed.
+
+## Repository: N1 boot layout
+
+- **Do not** add new business logic to `game/index.js` or thin shims
+- N1 orchestration body lives in `number1/n1-boot-body.js` (wired via `createN1Boot().boot()`)
+- `number1/n1-boot.js` is the orchestration spine (domain `wire*` / `create*` delegates)
+- Put new logic in dedicated domain `*-boot.js` modules and wire from `n1-boot-body.js`

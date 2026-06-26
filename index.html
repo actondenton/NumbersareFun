@@ -280,6 +280,46 @@
         <div class="dev-tools-row">
             <button type="button" id="dev-delete-save" class="dev-delete-save-btn">Delete save data…</button>
         </div>
+        <div class="dev-tools-row dev-tools-row--stacked dev-tools-autoplayer-section">
+            <strong class="dev-tools-section-label">Auto-player (balance telemetry)</strong>
+            <p class="dev-tools-hint">In-memory only — export before refresh. Hidden tab affects Phase 5 digest pacing.</p>
+        </div>
+        <div class="dev-tools-row">
+            <label for="dev-autoplayer-persona">Persona:</label>
+            <select id="dev-autoplayer-persona" class="dev-input dev-select">
+                <option value="efficient">Efficient</option>
+                <option value="patient">Patient</option>
+            </select>
+        </div>
+        <div class="dev-tools-row">
+            <label for="dev-autoplayer-stop-at">Stop at phase:</label>
+            <select id="dev-autoplayer-stop-at" class="dev-input dev-select">
+                <option value="">Full arc (Phase 7 epilogue)</option>
+                <option value="1">Phase 1</option>
+                <option value="2">Phase 2</option>
+                <option value="3">Phase 3</option>
+                <option value="4">Phase 4</option>
+                <option value="5">Phase 5</option>
+                <option value="6">Phase 6</option>
+                <option value="7">Phase 7 epilogue (60s)</option>
+            </select>
+        </div>
+        <div class="dev-tools-row">
+            <label><input type="checkbox" id="dev-autoplayer-dismiss-banners" checked /> Auto-dismiss story banners</label>
+        </div>
+        <div class="dev-tools-row dev-tools-autoplayer-buttons">
+            <button type="button" id="dev-autoplayer-start" class="dev-btn">Start</button>
+            <button type="button" id="dev-autoplayer-stop" class="dev-btn">Stop</button>
+            <button type="button" id="dev-autoplayer-pause" class="dev-btn">Pause</button>
+            <button type="button" id="dev-autoplayer-clear" class="dev-btn">Clear session</button>
+        </div>
+        <div class="dev-tools-row dev-tools-autoplayer-buttons">
+            <button type="button" id="dev-autoplayer-export-json" class="dev-btn">Export JSON</button>
+            <button type="button" id="dev-autoplayer-copy-summary" class="dev-btn">Copy summary</button>
+        </div>
+        <div class="dev-tools-row dev-tools-row--stacked">
+            <span id="dev-autoplayer-status" class="dev-autoplayer-status">Auto-player idle.</span>
+        </div>
     </div>
 
     <!-- Story banner (pauses game; shown on major goals) -->

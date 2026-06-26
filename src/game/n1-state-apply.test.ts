@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BLACK_HOLE_EVAPORATION_CAP, BLACK_HOLE_MAX_LEVEL } from "./number1-black-hole.js";
+import { BLACK_HOLE_EVAPORATION_CAP, BLACK_HOLE_MAX_LEVEL } from "./number1/black-hole/number1-black-hole.js";
 import { COMBO_ACTIVATION_EDGE_SAVE_VERSION } from "./n1-save.js";
 import {
     normalizeNumber1SaveSnapshot,
