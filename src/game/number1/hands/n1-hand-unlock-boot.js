@@ -18,6 +18,7 @@ export function wireNumber1HandUnlock(dep) {
         handsRt.hands.push(new HandCounter(run.unlockedHands, HAND_BASE_SPEED, slot));
         dep.checkStoryBanners();
         dep.comboForward.updateEarnedBonusesUI();
+        dep.updateRateDisplay();
         dep.updatePageButtonUnlocks();
         dep.updateSlowdownUpgradeUI();
         dep.updateTimeWarpAuraUI();

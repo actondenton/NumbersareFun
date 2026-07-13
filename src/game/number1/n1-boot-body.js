@@ -1251,7 +1251,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
     const NUMBER_MODULES = buildNumberModulesRegistry(createNumber1ShellRegistryDeps({
         createNumberModule,
         getRawCpsPerHand,
-        getComboMultiplier: comboForward.getComboMultiplier,
+        getComboMultiplier: () => comboForward.getComboMultiplier(),
         getTurboCountMultiplier,
         getNumber1BlackHoleProductionMult,
         longTermObjectives,
@@ -1567,7 +1567,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         getSpeedMultiplier,
         getSlowdownMultiplier,
         formatCount,
-        getComboMultiplier: comboForward.getComboMultiplier,
+        getComboMultiplier: () => comboForward.getComboMultiplier(),
         getTurboCountMultiplier,
         getNumber1BlackHoleProductionMult,
         isSlowdownUnlocked,
@@ -1578,7 +1578,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         getBlackHolePhase,
         getUnlockedHands: () => run.unlockedHands,
         getRawCpsPerHand,
-        getComboMultiplier: comboForward.getComboMultiplier,
+        getComboMultiplier: () => comboForward.getComboMultiplier(),
         getTurboMultiplier: getTurboCountMultiplier,
         getBlackHoleOfflineProductionMult,
         mergeHandEarningsFromDetachedSlice(gainsByHand) {
@@ -1653,9 +1653,9 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         getBlackHoleFurnaceMult,
         getUnlockedHands: () => run.unlockedHands,
         getHandPerHandRawCps,
-        getComboMultiplier: comboForward.getComboMultiplier,
-        getPatternCatalogMultiplier: comboForward.getPatternCatalogMultiplier,
-        getAscensionComboPatternMult: comboForward.getAscensionComboPatternMult,
+        getComboMultiplier: () => comboForward.getComboMultiplier(),
+        getPatternCatalogMultiplier: () => comboForward.getPatternCatalogMultiplier(),
+        getAscensionComboPatternMult: () => comboForward.getAscensionComboPatternMult(),
         getTurboCountMultiplier,
         getTurboCountMultiplierFromMeter,
         getNumber1BlackHoleProductionMult,
@@ -1832,6 +1832,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         addToLog,
         checkStoryBanners: () => story.checkStoryBanners(),
         comboForward,
+        updateRateDisplay,
         updatePageButtonUnlocks,
         updateSlowdownUpgradeUI,
         updateTimeWarpAuraUI
@@ -1856,7 +1857,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
             setTimeWarpUnlockLogged: v => { timewarp.timeWarpUnlockLogged = v; },
             computeAscensionGrantTotals,
             getHandPerHandRawCps,
-            getTimeWarpComboMultiplier: comboForward.getTimeWarpComboMultiplier,
+            getTimeWarpComboMultiplier: () => comboForward.getTimeWarpComboMultiplier(),
             getTurboCountMultiplier,
             getNumber1BlackHoleProductionMult,
             getIncrementalCountEl: () => incrementalEl,
@@ -2040,7 +2041,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
             getTurboMeterMax,
             refreshTotalFromHandEarnings,
             syncBlackHolePhase1Vfx,
-            updateN1GravityCpsStrip,
+            updateRateDisplay,
             checkStoryBanners: () => story.checkStoryBanners()
         },
         offline: {
@@ -2447,7 +2448,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
                 comboForward.updateComboUI();
             }
         },
-        getComboMultiplier: comboForward.getComboMultiplier,
+        getComboMultiplier: () => comboForward.getComboMultiplier(),
         getTurboCountMultiplier,
         getNumber1BlackHoleProductionMult,
         getSlowdownMultiplier,
@@ -2670,7 +2671,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         updateRateDisplay,
         updateSlowdownUpgradeUI,
         updateTimeWarpAuraUI,
-        updateEarnedBonusesUI: comboForward.updateEarnedBonusesUI,
+        updateEarnedBonusesUI: (...args) => comboForward.updateEarnedBonusesUI(...args),
         updatePageButtonUnlocks,
         updateNumber2SidebarUnlockUI,
         maybeShowFirstAscensionIntroOnUnlock,

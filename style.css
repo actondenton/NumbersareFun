@@ -454,26 +454,6 @@ html[data-theme="dark"] .earned-bonuses-placeholder {
     linear-gradient(180deg, rgba(28, 34, 78, 0.94) 0%, rgba(16, 20, 48, 0.98) 100%);
 }
 
-.play-stage::after {
-  content: "";
-  position: absolute;
-  left: 10%;
-  right: 10%;
-  bottom: 12px;
-  height: 5px;
-  border-radius: 999px;
-  pointer-events: none;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 190, 100, 0.25) 22%,
-    rgba(255, 235, 180, 0.5) 50%,
-    rgba(255, 190, 100, 0.25) 78%,
-    transparent
-  );
-  box-shadow: 0 0 12px rgba(255, 210, 120, 0.35);
-}
-
 /* Numerical Mass Accumulator (Phase 1): extra proscenium weight — whole stage reads “new tier” */
 #play-stage:has(#number1-stage-root.bh-phase1-vfx) {
   border-color: rgba(255, 200, 120, 0.92);

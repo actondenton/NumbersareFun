@@ -45,6 +45,7 @@ describe("applyLiveGameLoadTail", () => {
         const handsRestore = vi.fn();
         const setTotalPlayTimeMs = vi.fn();
         const refreshTotal = vi.fn();
+        const updateRateDisplay = vi.fn();
         const checkStoryBanners = vi.fn();
 
         applyLiveGameLoadTail(
@@ -77,7 +78,7 @@ describe("applyLiveGameLoadTail", () => {
                 getTurboMeterMax: () => 100,
                 refreshTotalFromHandEarnings: refreshTotal,
                 syncBlackHolePhase1Vfx: vi.fn(),
-                updateN1GravityCpsStrip: vi.fn(),
+                updateRateDisplay,
                 checkStoryBanners
             }
         );
@@ -85,6 +86,7 @@ describe("applyLiveGameLoadTail", () => {
         expect(setTotalPlayTimeMs).toHaveBeenCalledWith(12000);
         expect(handsRestore).toHaveBeenCalled();
         expect(refreshTotal).toHaveBeenCalled();
+        expect(updateRateDisplay).toHaveBeenCalled();
         expect(checkStoryBanners).toHaveBeenCalled();
     });
 });
