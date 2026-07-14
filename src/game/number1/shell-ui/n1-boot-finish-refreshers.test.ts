@@ -16,10 +16,9 @@ describe("buildNumber1BootFinishRefreshers", () => {
             updatePageButtonUnlocks: () => {},
             updateNumber2SidebarUnlockUI: () => {},
             maybeShowFirstAscensionIntroOnUnlock: () => {},
-            syncPhase1MassFillCssVars: () => {},
-            syncPhase1TesseractCanvasesInRoot: () => {}
+            syncPhase1MassFillCssVars: () => {}
         });
-        expect(refreshers).toHaveLength(12);
+        expect(refreshers).toHaveLength(11);
         refreshers[2]();
         expect(updateTurboBoostUI).toHaveBeenCalledWith({ force: true });
     });

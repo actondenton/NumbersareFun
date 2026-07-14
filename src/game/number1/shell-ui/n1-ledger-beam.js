@@ -3,12 +3,42 @@ const LEDGER_BEAM_TRAVEL_MS = 920;
 const LEDGER_BEAM_HOLD_AT_SINK_MS = 220;
 /** Ledger pop at sink: total time on screen before removal (float-up + fade span this whole window). */
 const LEDGER_BEAM_POP_DISPLAY_MS = 1680;
+/** Clap level pop: 2× combo pop — hold old, reel bonus, then slow fade. */
+const LEDGER_BEAM_CLAP_POP_DISPLAY_MS = 3360;
+const LEDGER_BEAM_CLAP_POP_HOLD_MS = 700;
+const LEDGER_BEAM_CLAP_POP_ROLL_MS = 900;
 const LEDGER_BEAM_CLAP_STAGGER_MS = 90;
 const LEDGER_BEAM_SINK_MAX_DRIFT_PX = 40;
 const LEDGER_BEAM_NOISE_STEPS = 26;
 
 function compactText(el) {
     return el ? el.textContent.replace(/\s+/g, " ").trim() : "";
+}
+
+/** Parse "3 +2" / "3" compact level text → { base, bonus } or null. */
+function parseClapLevelPart(text) {
+    const m = String(text || "")
+        .trim()
+        .match(/^(\d+)\s*(?:\+(\d+))?$/);
+    if (!m) return null;
+    return { base: m[1], bonus: m[2] != null ? Number(m[2]) : 0 };
+}
+
+/**
+ * @returns {{ mode: "bonus", base: string, oldBonus: number, newBonus: number }
+ *   | { mode: "full", oldLabel: string, newLabel: string }}
+ */
+function resolveClapReelParts(oldText, newText) {
+    const oldP = parseClapLevelPart(oldText);
+    const newP = parseClapLevelPart(newText);
+    if (oldP && newP && oldP.base === newP.base) {
+        return { mode: "bonus", base: newP.base, oldBonus: oldP.bonus, newBonus: newP.bonus };
+    }
+    return {
+        mode: "full",
+        oldLabel: String(oldText || "—").trim() || "—",
+        newLabel: String(newText || "—").trim() || "—"
+    };
 }
 
 export function createLedgerBeamVfx(deps) {
@@ -351,6 +381,32 @@ export function createLedgerBeamVfx(deps) {
         win.requestAnimationFrame(frame);
     }
 
+    function appendClapReelLine(doc, wrap, oldLabel, newLabel, basePrefix) {
+        const line = doc.createElement("span");
+        line.className = "ledger-beam-pop-clap-line";
+        if (basePrefix != null && basePrefix !== "") {
+            const baseEl = doc.createElement("span");
+            baseEl.className = "ledger-beam-pop-clap-base";
+            baseEl.textContent = basePrefix;
+            line.appendChild(baseEl);
+        }
+        const reel = doc.createElement("span");
+        reel.className = "ledger-beam-pop-clap-reel";
+        const slot = doc.createElement("span");
+        slot.className = "ledger-beam-pop-clap-slot";
+        const oldEl = doc.createElement("span");
+        oldEl.className = "ledger-beam-pop-clap-old";
+        oldEl.textContent = oldLabel;
+        const newEl = doc.createElement("span");
+        newEl.className = "ledger-beam-pop-clap-new";
+        newEl.textContent = newLabel;
+        slot.appendChild(oldEl);
+        slot.appendChild(newEl);
+        reel.appendChild(slot);
+        line.appendChild(reel);
+        wrap.appendChild(line);
+    }
+
     function ledgerBeamPopOverlay(rect, kind, oldText, newText, popOpts) {
         if (!rect) return;
         popOpts = popOpts || {};
@@ -358,35 +414,79 @@ export function createLedgerBeamVfx(deps) {
         const win = getWindow();
         const layer = ensureLedgerBeamLayer();
         const wrap = doc.createElement("div");
-        wrap.className = "ledger-beam-pop-wrap" + (kind === "clap" ? " ledger-beam-pop-wrap--clap" : "");
-        const ghost = doc.createElement("span");
-        ghost.className = "ledger-beam-pop-ghost";
-        ghost.textContent = oldText || "";
-        const neu = doc.createElement("span");
-        neu.className = "ledger-beam-pop-new";
-        neu.textContent = newText || "";
-        wrap.appendChild(ghost);
-        wrap.appendChild(neu);
-        if (popOpts.deltaText && ledgerBeamPrefersReducedMotion()) {
-            const d = doc.createElement("span");
-            d.className = "ledger-beam-pop-delta";
-            d.textContent = popOpts.deltaText;
-            wrap.appendChild(d);
+        const isClap = kind === "clap";
+        wrap.className = "ledger-beam-pop-wrap" + (isClap ? " ledger-beam-pop-wrap--clap" : "");
+        const reduced = ledgerBeamPrefersReducedMotion();
+        const displayMs = isClap ? LEDGER_BEAM_CLAP_POP_DISPLAY_MS : LEDGER_BEAM_POP_DISPLAY_MS;
+
+        if (isClap) {
+            const parts = resolveClapReelParts(oldText, newText);
+            if (reduced) {
+                const neu = doc.createElement("span");
+                neu.className = "ledger-beam-pop-new";
+                neu.textContent =
+                    parts.mode === "bonus"
+                        ? parts.base + (parts.newBonus > 0 ? " +" + parts.newBonus : "")
+                        : parts.newLabel;
+                wrap.appendChild(neu);
+                if (popOpts.deltaText) {
+                    const d = doc.createElement("span");
+                    d.className = "ledger-beam-pop-delta";
+                    d.textContent = popOpts.deltaText;
+                    wrap.appendChild(d);
+                }
+            } else if (parts.mode === "bonus") {
+                const oldBonusLabel = parts.oldBonus > 0 ? "+" + parts.oldBonus : "\u00a0";
+                const newBonusLabel = parts.newBonus > 0 ? "+" + parts.newBonus : "\u00a0";
+                appendClapReelLine(doc, wrap, oldBonusLabel, newBonusLabel, parts.base + " ");
+            } else {
+                appendClapReelLine(doc, wrap, parts.oldLabel, parts.newLabel, "");
+            }
+        } else {
+            const ghost = doc.createElement("span");
+            ghost.className = "ledger-beam-pop-ghost";
+            ghost.textContent = oldText || "";
+            wrap.appendChild(ghost);
+            const neu = doc.createElement("span");
+            neu.className = "ledger-beam-pop-new";
+            neu.textContent = newText || "";
+            wrap.appendChild(neu);
+            if (popOpts.deltaText && reduced) {
+                const d = doc.createElement("span");
+                d.className = "ledger-beam-pop-delta";
+                d.textContent = popOpts.deltaText;
+                wrap.appendChild(d);
+            }
         }
+
         const ax = popOpts.anchorX != null ? popOpts.anchorX : (rect.left + rect.width * 0.5);
         const ay = popOpts.anchorY != null ? popOpts.anchorY : (rect.top + rect.height * 0.5);
         wrap.style.left = ax + "px";
         wrap.style.top = ay + "px";
         layer.appendChild(wrap);
-        win.setTimeout(() => {
-            wrap.classList.add("ledger-beam-pop-wrap--run");
-            if (!ledgerBeamPrefersReducedMotion()) {
-                wrap.classList.add("ledger-beam-pop-wrap--exit");
-            }
-        }, 10);
+
+        if (isClap && !reduced) {
+            win.setTimeout(() => {
+                wrap.classList.add("ledger-beam-pop-wrap--clap-hold");
+            }, 10);
+            win.setTimeout(() => {
+                wrap.classList.add("ledger-beam-pop-wrap--clap-roll");
+            }, LEDGER_BEAM_CLAP_POP_HOLD_MS);
+            win.setTimeout(() => {
+                wrap.classList.add("ledger-beam-pop-wrap--clap-exit");
+            }, LEDGER_BEAM_CLAP_POP_HOLD_MS + LEDGER_BEAM_CLAP_POP_ROLL_MS);
+        } else {
+            win.setTimeout(() => {
+                wrap.classList.add("ledger-beam-pop-wrap--run");
+                if (!reduced) {
+                    wrap.classList.add("ledger-beam-pop-wrap--exit");
+                }
+            }, 10);
+        }
+
         win.setTimeout(() => {
             if (wrap.parentNode) wrap.parentNode.removeChild(wrap);
-        }, LEDGER_BEAM_POP_DISPLAY_MS);
+        }, displayMs);
     }
 
     function ledgerBeamCreateClapFallbackChip(layer, ev) {

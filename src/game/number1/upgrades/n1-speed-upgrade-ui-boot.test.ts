@@ -4,6 +4,10 @@ import { createSpeedUpgradeUiBoot } from "./n1-speed-upgrade-ui-boot.js";
 
 describe("createSpeedUpgradeUiBoot", () => {
     it("paints afford pulse on speed row when balance covers cost", () => {
+        vi.stubGlobal("requestAnimationFrame", (fn: FrameRequestCallback) => {
+            fn(0);
+            return 1;
+        });
         const container = { classList: { add: vi.fn() } };
         const btn = {
             disabled: true,

@@ -36,11 +36,9 @@ export function createNumber1CheapenBoot(deps) {
         formatUpgradeAffordEtaLine,
         flashSpeedAutobuyToast,
         setBatchedUpgradeUiFlush,
-        updateSpeedUpgradeUI,
-        updateSlowdownUpgradeUI,
-        updateRateDisplay,
+        refreshUpgradeColumnsUi,
         ensureSpeedRows,
-        updateHandUpgradeScrollHint,
+        scheduleHandUpgradeScrollHintUpdate,
         getAutoBuyDelaySeconds
     } = deps;
 
@@ -57,7 +55,7 @@ export function createNumber1CheapenBoot(deps) {
                 if (ref && ref.cheapenWrapEl) ref.cheapenWrapEl.style.display = "none";
                 if (ref && ref.cheapenBtn) ref.cheapenBtn.classList.remove("upgrade-btn--afford-pulse");
             }
-            updateHandUpgradeScrollHint();
+            scheduleHandUpgradeScrollHintUpdate();
             return;
         }
         const unlockedHands = getUnlockedHands();
@@ -149,7 +147,7 @@ export function createNumber1CheapenBoot(deps) {
                 );
             }
         }
-        updateHandUpgradeScrollHint();
+        scheduleHandUpgradeScrollHintUpdate();
     }
 
     function buyCheapenUpgradeForHand(handIndex, confettiOriginEl, opts) {
@@ -185,10 +183,7 @@ export function createNumber1CheapenBoot(deps) {
         if (opts && opts.skipUpgradeDom) {
             setBatchedUpgradeUiFlush(true);
         } else {
-            updateSpeedUpgradeUI();
-            updateCheapenUpgradeUI();
-            updateSlowdownUpgradeUI();
-            updateRateDisplay();
+            refreshUpgradeColumnsUi();
         }
     }
 

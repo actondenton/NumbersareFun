@@ -239,12 +239,20 @@ export function createUpgradeUiController(coreDeps) {
     let upgradeHoldRepeatState = null;
     let upgradeHoldSuppressClickBtn = null;
     let upgradeHoldRepeatTipLogged = false;
+    /** True when at least one hold-repeat purchase skipped upgrade DOM (flush on release). */
+    let upgradeHoldSkippedDom = false;
+    /** @type {null | (() => void)} */
+    let upgradeHoldFlushUi = null;
 
     function stopUpgradeHoldRepeat(setSuppressForClick) {
         if (!upgradeHoldRepeatState) return;
         clearInterval(upgradeHoldRepeatState.intervalId);
         if (setSuppressForClick) upgradeHoldSuppressClickBtn = upgradeHoldRepeatState.buttonEl;
         upgradeHoldRepeatState = null;
+        if (upgradeHoldSkippedDom) {
+            upgradeHoldSkippedDom = false;
+            if (typeof upgradeHoldFlushUi === "function") upgradeHoldFlushUi();
+        }
     }
 
     function flashSpeedAutobuyToast(handIndex, text) {
@@ -448,6 +456,7 @@ export function createUpgradeUiController(coreDeps) {
             ensureTimeWarpArrays,
             isTimeWarpUnlocked
         } = ix;
+        upgradeHoldFlushUi = typeof ix.flushHoldUpgradeUi === "function" ? ix.flushHoldUpgradeUi : null;
 
         if (speedUpgradesContainerEl) {
             speedUpgradesContainerEl.addEventListener("focusin", function(e) {
@@ -477,28 +486,39 @@ export function createUpgradeUiController(coreDeps) {
                 e.preventDefault();
                 stopUpgradeHoldRepeat(false);
                 upgradeHoldSuppressClickBtn = null;
+                upgradeHoldSkippedDom = false;
                 let buyFn;
                 let buyFnHoldRepeat;
+                // Hold repeats skip log + full upgrade DOM; game loop paints at most every UI throttle,
+                // and release flushes once via flushHoldUpgradeUi.
+                const holdOpts = {
+                    silentLog: true,
+                    skipUpgradeDom: true,
+                    confettiHoldRepeatCoalesce: true
+                };
                 if (speedBtn) {
                     buyFn = function () {
                         buySpeedUpgradeForHand(handIndex, { confettiOrigin: btn });
                     };
                     buyFnHoldRepeat = function () {
-                        buySpeedUpgradeForHand(handIndex, { confettiOrigin: btn, confettiHoldRepeatCoalesce: true });
+                        buySpeedUpgradeForHand(handIndex, Object.assign({ confettiOrigin: btn }, holdOpts));
+                        upgradeHoldSkippedDom = true;
                     };
                 } else if (cheapenBtn) {
                     buyFn = function () {
                         buyCheapenUpgradeForHand(handIndex, btn);
                     };
                     buyFnHoldRepeat = function () {
-                        buyCheapenUpgradeForHand(handIndex, btn, { confettiHoldRepeatCoalesce: true });
+                        buyCheapenUpgradeForHand(handIndex, btn, holdOpts);
+                        upgradeHoldSkippedDom = true;
                     };
                 } else {
                     buyFn = function () {
                         buySlowdownUpgradeForHand(handIndex, btn);
                     };
                     buyFnHoldRepeat = function () {
-                        buySlowdownUpgradeForHand(handIndex, btn, { confettiHoldRepeatCoalesce: true });
+                        buySlowdownUpgradeForHand(handIndex, btn, holdOpts);
+                        upgradeHoldSkippedDom = true;
                     };
                 }
                 buyFn();

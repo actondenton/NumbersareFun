@@ -6,7 +6,8 @@ import {
     BLACK_HOLE_PHASE2_COLLAPSE_MAX_TIER,
     BLACK_HOLE_PHASE2_MASS_CAP
 } from "./number1-black-hole.js";
-import { syncPhase1TesseractCanvasesInRoot } from "../../phase1-tesseract-canvas.js";
+import { syncPhase1TesseractCanvasesInRoot, disposePhase1TesseractCanvasesInRoot } from "../../phase1-tesseract-canvas.js";
+import { initNumber1StageAccretionDiskBg } from "../shell-ui/n1-accretion-disk-render.js";
 import { createBlackHolePreviewUi } from "./n1-black-hole-preview-ui.js";
 import { getPhase2CollapseEffectHtml } from "./n1-black-hole-upgrade-preview.js";
 
@@ -37,6 +38,7 @@ import { getPhase2CollapseEffectHtml } from "./n1-black-hole-upgrade-preview.js"
  * @param {() => { finalGain: number }} deps.getAscensionGainBreakdown
  * @param {() => number} deps.getBlackHolePhase
  * @param {(m: number) => string} deps.formatBlackHolePhase1CpsMultForUi
+ * @param {() => number} [deps.getCurrentNumberMode]
  * @param {() => number} [deps.getJetMult]
  * @param {(s: string) => string} [deps.escapeHtml]
  * @param {(n: number) => string} [deps.formatSeconds]
@@ -70,9 +72,48 @@ export function createNumber1BlackHoleUi(deps) {
     let blackHoleStageVfxHeavyLastMs = 0;
     let blackHoleStageVfxLastPhaseForLabel = null;
     let blackHoleStageVfxHtmlAttrDone = false;
+    /** Settled idle digest while arc locked — avoids per-tick class/tesseract work pre-unlock. */
+    const BH_STAGE_VFX_PRE_ARC_IDLE_DIGEST = "pre-arc-idle";
     const BLACK_HOLE_STAGE_VFX_HEAVY_INTERVAL_MS = 100;
     const PHASE5_STAGE_VFX_INTERVAL_MS = 250;
     let blackHoleStageVfxPhase5LastMs = 0;
+
+    function markBlackHoleStageVfxHtmlSynced() {
+        if (blackHoleStageVfxHtmlAttrDone) return;
+        document.documentElement.setAttribute("data-n1-bh-vfx-synced", "");
+        blackHoleStageVfxHtmlAttrDone = true;
+    }
+
+    /** Number 1 play stage is the focused, visible surface (mode switch re-syncs on return). */
+    function isNumber1StageVfxLive() {
+        if (typeof deps.getCurrentNumberMode === "function" && deps.getCurrentNumberMode() !== 1) {
+            return false;
+        }
+        const root = deps.getStageRoot();
+        if (root && root.style && root.style.display === "none") return false;
+        return true;
+    }
+
+    function clearNumber1StageVfxMoodClasses(stageRootEl) {
+        if (!stageRootEl) return;
+        stageRootEl.classList.remove(
+            "bh-phase1-vfx",
+            "bh-phase1-unlock-surge",
+            "bh-phase2-collapse-vfx",
+            "bh-singularity-vfx",
+            "bh-singularity-deep",
+            "bh-phase3-accretion-disk",
+            "bh-phase3-hawking-active",
+            "bh-phase4-wave-active",
+            "bh-phase4-lensing-cadence",
+            "bh-phase4-lensing-auto-tick",
+            "bh-phase4-lensing-manual-burst",
+            "bh-phase5-magnetic-furnace",
+            "bh-phase6-jet-beam",
+            "bh-phase6-jet-active",
+            "bh-phase7-stillness"
+        );
+    }
 
     function queueBlackHoleUiRefresh() {
         if (blackHoleUiRefreshQueued) return;
@@ -260,12 +301,14 @@ export function createNumber1BlackHoleUi(deps) {
         const number1StageRootEl = deps.getStageRoot();
         const number1BlackHoleState = deps.getBlackHoleState();
         if (!number1StageRootEl) {
-            if (!blackHoleStageVfxHtmlAttrDone) {
-                document.documentElement.setAttribute("data-n1-bh-vfx-synced", "");
-                blackHoleStageVfxHtmlAttrDone = true;
-            }
+            markBlackHoleStageVfxHtmlSynced();
             return;
         }
+        if (!isNumber1StageVfxLive()) {
+            markBlackHoleStageVfxHtmlSynced();
+            return;
+        }
+
         const arc = deps.isBlackHoleArcUnlocked();
         const p = ctrl.getBlackHolePhase();
         const now = Date.now();
@@ -274,6 +317,23 @@ export function createNumber1BlackHoleUi(deps) {
         if (incrementalCountLabelEl && blackHoleStageVfxLastPhaseForLabel !== p) {
             blackHoleStageVfxLastPhaseForLabel = p;
             incrementalCountLabelEl.textContent = p === 7 ? "Epilogue Count" : "Total Count";
+        }
+
+        if (!arc) {
+            if (blackHoleStageVfxClassDigest !== BH_STAGE_VFX_PRE_ARC_IDLE_DIGEST) {
+                if (blackHolePhase1SurgeTimerId) {
+                    clearTimeout(blackHolePhase1SurgeTimerId);
+                    blackHolePhase1SurgeTimerId = 0;
+                }
+                clearNumber1StageVfxMoodClasses(number1StageRootEl);
+                number1StageRootEl.style.removeProperty("--bh-lens-period");
+                number1StageRootEl.style.removeProperty("--bh-lens-ripple-delay");
+                syncBlackHolePhase4LensingRipples();
+                disposePhase1TesseractCanvasesInRoot(number1StageRootEl);
+                blackHoleStageVfxClassDigest = BH_STAGE_VFX_PRE_ARC_IDLE_DIGEST;
+            }
+            markBlackHoleStageVfxHtmlSynced();
+            return;
         }
 
         if (arc && p === 5) {
@@ -298,26 +358,24 @@ export function createNumber1BlackHoleUi(deps) {
                     "bh-phase6-jet-active",
                     "bh-phase7-stillness"
                 );
+                disposePhase1TesseractCanvasesInRoot(number1StageRootEl);
                 syncBlackHolePhase4LensingRipples();
             }
             if (phase5DigestChanged || now - blackHoleStageVfxPhase5LastMs >= PHASE5_STAGE_VFX_INTERVAL_MS) {
                 blackHoleStageVfxPhase5LastMs = now;
                 syncBlackHolePhase5ThermalTheme(now);
             }
-            if (!blackHoleStageVfxHtmlAttrDone) {
-                document.documentElement.setAttribute("data-n1-bh-vfx-synced", "");
-                blackHoleStageVfxHtmlAttrDone = true;
-            }
+            markBlackHoleStageVfxHtmlSynced();
             return;
         }
 
-        const massMood = arc && p === 1;
-        const collapseMood = arc && p === 2;
-        const singularityMood = arc && p >= 2 && p <= 6;
-        const hawkingActive = arc && p >= 3 && p < 6 && now <= (number1BlackHoleState.phase3HawkingActiveUntilMs || 0);
-        const waveActive = arc && p >= 4 && p < 6 && now <= (number1BlackHoleState.phase4WaveActiveUntilMs || 0);
-        const jetActive = arc && p === 6 && !!number1BlackHoleState.phase6JetActive;
-        const digestParts = [arc ? 1 : 0, p, massMood ? 1 : 0, collapseMood ? 1 : 0, singularityMood ? 1 : 0, hawkingActive ? 1 : 0, waveActive ? 1 : 0, jetActive ? 1 : 0];
+        const massMood = p === 1;
+        const collapseMood = p === 2;
+        const singularityMood = p >= 2 && p <= 6;
+        const hawkingActive = p >= 3 && p < 6 && now <= (number1BlackHoleState.phase3HawkingActiveUntilMs || 0);
+        const waveActive = p >= 4 && p < 6 && now <= (number1BlackHoleState.phase4WaveActiveUntilMs || 0);
+        const jetActive = p === 6 && !!number1BlackHoleState.phase6JetActive;
+        const digestParts = [1, p, massMood ? 1 : 0, collapseMood ? 1 : 0, singularityMood ? 1 : 0, hawkingActive ? 1 : 0, waveActive ? 1 : 0, jetActive ? 1 : 0];
         const digest = digestParts.join("|");
         const digestChanged = digest !== blackHoleStageVfxClassDigest;
         if (digestChanged) blackHoleStageVfxClassDigest = digest;
@@ -331,22 +389,25 @@ export function createNumber1BlackHoleUi(deps) {
                     blackHolePhase1SurgeTimerId = 0;
                 }
                 number1StageRootEl.classList.remove("bh-phase1-unlock-surge");
+                disposePhase1TesseractCanvasesInRoot(number1StageRootEl);
             }
             number1StageRootEl.classList.toggle("bh-phase1-vfx", massMood);
             number1StageRootEl.classList.toggle("bh-phase2-collapse-vfx", collapseMood);
             number1StageRootEl.classList.toggle("bh-singularity-vfx", singularityMood);
             number1StageRootEl.classList.toggle("bh-singularity-deep", singularityMood);
-            number1StageRootEl.classList.toggle("bh-phase3-accretion-disk", arc && p === 3);
+            number1StageRootEl.classList.toggle("bh-phase3-accretion-disk", p === 3);
             number1StageRootEl.classList.toggle("bh-phase3-hawking-active", hawkingActive);
             number1StageRootEl.classList.toggle("bh-phase4-wave-active", waveActive);
             number1StageRootEl.classList.toggle("bh-phase5-magnetic-furnace", false);
-            number1StageRootEl.classList.toggle("bh-phase6-jet-beam", arc && p === 6);
+            number1StageRootEl.classList.toggle("bh-phase6-jet-beam", p === 6);
             number1StageRootEl.classList.toggle("bh-phase6-jet-active", jetActive);
-            number1StageRootEl.classList.toggle("bh-phase7-stillness", arc && p === 7);
+            number1StageRootEl.classList.toggle("bh-phase7-stillness", p === 7);
+            if (p === 3) initNumber1StageAccretionDiskBg();
             syncBlackHolePhase4LensingRipples();
         }
 
-        if (heavyDue && p <= 1) {
+        // Mount/sync tesseract only while Phase 1 mass VFX is actually live (not pre-arc / phase 0).
+        if (heavyDue && massMood) {
             syncPhase1TesseractCanvasesInRoot(number1StageRootEl);
             deps.syncPhase1MassFillCssVars();
         }
@@ -371,10 +432,7 @@ export function createNumber1BlackHoleUi(deps) {
 
         if (digestChanged) syncBlackHolePhase5ThermalTheme(now);
 
-        if (!blackHoleStageVfxHtmlAttrDone) {
-            document.documentElement.setAttribute("data-n1-bh-vfx-synced", "");
-            blackHoleStageVfxHtmlAttrDone = true;
-        }
+        markBlackHoleStageVfxHtmlSynced();
     }
 
     function triggerBlackHolePhase1CollapseVfx() {

@@ -24,22 +24,26 @@ export function wireNumber1ObjectivesLive(dep) {
         sprayConfettiFrom(objectivesEl);
     }
 
-    function updateObjectives() {
+    /** Memory-only: mark achievements + confetti. Safe to call every tick. */
+    function syncObjectiveAchievements() {
         const wasAchieved = objectives.map(o => o.achieved);
         objectives.forEach(obj => {
             if (dep.run.totalChanges >= obj.goal) obj.achieved = true;
         });
         const justCompleted = objectives.some((o, i) => !wasAchieved[i] && o.achieved);
         if (justCompleted) sprayShortTermConfetti();
+        longTermObjectives.forEach(obj => {
+            if (isObjectiveComplete(obj, dep.run.totalChanges)) obj.achieved = true;
+        });
+    }
+
+    function rebuildObjectiveListsDom() {
         const lastCompleted = objectives.filter(o => o.achieved).pop();
         const nextUncompleted = objectives.find(o => !o.achieved);
         const shortTermToShow = [lastCompleted, nextUncompleted].filter(Boolean);
         dep.objectiveList.innerHTML = "";
         shortTermToShow.forEach(obj => {
             dep.objectiveList.appendChild(renderObjective(obj, dep.run.totalChanges, dep.formatCount));
-        });
-        longTermObjectives.forEach(obj => {
-            if (isObjectiveComplete(obj, dep.run.totalChanges)) obj.achieved = true;
         });
         const longLastCompleted = longTermObjectives.filter(o => o.achieved).pop();
         const longNextUncompleted = longTermObjectives.find(o => !o.achieved);
@@ -48,6 +52,11 @@ export function wireNumber1ObjectivesLive(dep) {
         longTermToShow.forEach(obj => {
             dep.longObjectiveList.appendChild(renderObjective(obj, dep.run.totalChanges, dep.formatCount));
         });
+    }
+
+    function updateObjectives() {
+        syncObjectiveAchievements();
+        rebuildObjectiveListsDom();
         updateMilestoneUI();
     }
 
@@ -91,6 +100,7 @@ export function wireNumber1ObjectivesLive(dep) {
     return {
         objectives,
         longTermObjectives,
+        syncObjectiveAchievements,
         updateObjectives,
         updateMilestoneUI,
         sprayShortTermConfetti

@@ -36,10 +36,8 @@ export function createNumber1SlowdownBoot(deps) {
         formatUpgradeAffordEtaLine,
         flashSpeedAutobuyToast,
         setBatchedUpgradeUiFlush,
-        updateSpeedUpgradeUI,
-        updateCheapenUpgradeUI,
-        updateRateDisplay,
-        updateHandUpgradeScrollHint,
+        refreshUpgradeColumnsUi,
+        scheduleHandUpgradeScrollHintUpdate,
         getAutoBuyDelaySeconds,
         onSlowdownUnlockedFirstUi
     } = deps;
@@ -150,7 +148,7 @@ export function createNumber1SlowdownBoot(deps) {
                 );
             }
         }
-        updateHandUpgradeScrollHint();
+        scheduleHandUpgradeScrollHintUpdate();
     }
 
     function buySlowdownUpgradeForHand(handIndex, originEl, opts) {
@@ -193,10 +191,7 @@ export function createNumber1SlowdownBoot(deps) {
         if (opts && opts.skipUpgradeDom) {
             setBatchedUpgradeUiFlush(true);
         } else {
-            updateSpeedUpgradeUI();
-            updateCheapenUpgradeUI();
-            updateSlowdownUpgradeUIFn();
-            updateRateDisplay();
+            refreshUpgradeColumnsUi();
         }
     }
 

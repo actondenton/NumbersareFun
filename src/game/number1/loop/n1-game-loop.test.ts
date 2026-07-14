@@ -263,6 +263,23 @@ describe("Number 1 game loop helpers", () => {
         expect(calls).toEqual(["background", "black-hole-step", "n2", "combo-milestone"]);
     });
 
+    it("skips BH stage VFX while Number 2 is focused (visible tab)", () => {
+        const calls: string[] = [];
+
+        runNumber1GameLoopStep({
+            tickBackgroundNumberModules: () => calls.push("background"),
+            updateBlackHolePhaseStep: () => calls.push("black-hole-step"),
+            syncBlackHolePhase1Vfx: () => calls.push("vfx"),
+            getCurrentNumberMode: () => 2,
+            shouldRunNumber2Foreground: () => true,
+            runNumber2GameLoopStep: () => calls.push("n2"),
+            processComboDiscoveryMilestoneIfUnlocked: () => calls.push("combo-milestone")
+        } as never);
+
+        expect(calls).toEqual(["background", "black-hole-step", "n2", "combo-milestone"]);
+        expect(calls).not.toContain("vfx");
+    });
+
     it("runs fixed-step catch-up and tracks save playtime in the loop runtime", () => {
         let wallNow = 1000;
         let perfNow = 0;

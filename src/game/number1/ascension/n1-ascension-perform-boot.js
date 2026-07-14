@@ -55,10 +55,11 @@ export function wireNumber1AscensionPerform(dep) {
             run.handEarnings = Array(maxHands).fill(0);
             const ascHandStartFloor = dep.getAscensionHandUnlockStartingCountFloor();
             run.handEarnings[0] = ascHandStartFloor > 0 ? ascHandStartFloor : 1;
-            handsRt.speedLevel = Array(maxHands).fill(0);
-            handsRt.speedBonusLevel = Array(maxHands).fill(0);
-            handsRt.clapDigitPrevious = Array(maxHands).fill(-1);
-            handsRt.clapCooldownUntilMsByHand = Array(maxHands).fill(0);
+            resetLevelArray(handsRt.speedLevel, maxHands);
+            resetLevelArray(handsRt.speedBonusLevel, maxHands);
+            resetLevelArray(handsRt.clapCooldownUntilMsByHand, maxHands);
+            handsRt.clapDigitPrevious.length = maxHands;
+            for (let i = 0; i < maxHands; i++) handsRt.clapDigitPrevious[i] = -1;
             resetLevelArray(upgrades.cheapenLevel, maxHands);
             resetLevelArray(upgrades.cheapenBonusLevel, maxHands);
             resetLevelArray(upgrades.slowdownLevel, maxHands);

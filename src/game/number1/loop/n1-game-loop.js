@@ -266,9 +266,11 @@ export function runNumber1GameLoopStep(deps, opts) {
 
     deps.tickBackgroundNumberModules(dtSec);
     deps.updateBlackHolePhaseStep(dtSec);
-    if (!backgroundTab) deps.syncBlackHolePhase1Vfx();
 
     const mode = deps.getCurrentNumberMode();
+    // Stage VFX only while Number 1 play is the focused surface (mode switch re-syncs on return).
+    if (!backgroundTab && mode === 1) deps.syncBlackHolePhase1Vfx();
+
     if (deps.shouldRunNumber2Foreground(mode)) {
         deps.runNumber2GameLoopStep(dtSec);
         deps.processComboDiscoveryMilestoneIfUnlocked();

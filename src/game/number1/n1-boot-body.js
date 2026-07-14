@@ -49,7 +49,6 @@ import {
 import { HandCounter } from "./hands/n1-hand-counter.js";
 import { GAME_LOOP_MS } from "./loop/n1-game-loop.js";
 import { consumeAscendNumber1Button } from "./ascension/n1-ascension-flow-ui.js";
-import { initNumber1StageAccretionDiskBg } from "./shell-ui/n1-accretion-disk-render.js";
 import { computeNumber1AdaptiveTipMessage } from "./shell-ui/n1-adaptive-tip-message.js";
 import {
     MAX_SLOWDOWN_LEVEL,
@@ -196,6 +195,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
     }
     /** Populated by wireObjectivesLive after BH boot; hoisted wrappers delegate here. */
     const objectivesUiRef = {
+        syncObjectiveAchievements() {},
         updateObjectives() {},
         updateMilestoneUI() {}
     };
@@ -212,7 +212,8 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         applyNumber1DetachedCpsProgress() {
             return 0;
         },
-        tickNumber1BackgroundCps() {}
+        tickNumber1BackgroundCps() {},
+        refreshNumber1CountDisplay() {}
     };
     /** Populated after rate-tick boot; shell registry wires run earlier. */
     const rateTickRef = {
@@ -381,6 +382,12 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
     let updateCheapenUpgradeUI = function() {};
     let updateSlowdownUpgradeUI = function() {};
     let updateTimeWarpAuraUI = function() {};
+    /** One pass over speed/cheapen/compaction columns; scroll-hint coalesces via rAF. */
+    function refreshUpgradeColumnsUi() {
+        updateSpeedUpgradeUI();
+        updateCheapenUpgradeUI();
+        updateSlowdownUpgradeUI();
+    }
     /** Populated after ascMapUi; shell panels need teardown before map UI exists. */
     const ascensionMapFacadeRef = {
         computeAscensionHandLayout() { return { hands: [] }; },
@@ -637,7 +644,8 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
     }
 
     const number1ObjectivesBoot = n1Boot.wireObjectives({
-        flush: () => { updateObjectives(); }
+        flush: () => { updateObjectives(); },
+        syncAchievementsOnly: () => { objectivesUiRef.syncObjectiveAchievements(); }
     });
 
     function getNumber1AscensionPendingBonusEssence() {
@@ -835,6 +843,8 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
                 patchAscensionHubStatsPillsDomIfChanged,
                 renderNumber1BlackHolePanelHtml,
                 isBlackHoleArcUnlocked,
+                getCurrentNumberMode: () =>
+                    typeof window.getCurrentNumberMode === "function" ? window.getCurrentNumberMode() : 1,
                 formatCount,
                 autosaveNow,
                 getAscensionEssence: () => ascension.number1AscensionEssence,
@@ -1589,7 +1599,9 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         refreshTotalsFromHands: refreshTotalFromHandEarnings,
         incrementalEl,
         formatCount,
-        getTotalChanges: () => run.totalChanges
+        getTotalChanges: () => run.totalChanges,
+        getCurrentNumberMode: () =>
+            typeof window.getCurrentNumberMode === "function" ? window.getCurrentNumberMode() : 1
     }));
     const upgradeEtaSmoother = createUpgradeEtaSmoother({ getHandEffectiveCps });
     function bumpUpgradeEtaSmoothPass() {
@@ -1687,7 +1699,8 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         isNumber2Unlocked,
         number2,
         syncBlackHolePhase1Vfx,
-        updateN1GravityCpsStrip
+        updateN1GravityCpsStrip,
+        refreshNumber1CountDisplay: () => detachedCpsRef.refreshNumber1CountDisplay?.()
     });
     n1Boot.wireShellModeSwitch({
         closeInlineMainStagePanels,
@@ -1732,9 +1745,8 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
             formatUpgradeAffordEtaLine,
             flashSpeedAutobuyToast,
             setBatchedUpgradeUiFlush: v => { batchedUpgradeUiFlush = v; },
-            updateSpeedUpgradeUI,
-            updateRateDisplay,
-            updateHandUpgradeScrollHint,
+            refreshUpgradeColumnsUi,
+            scheduleHandUpgradeScrollHintUpdate,
             getAutoBuyDelaySeconds,
             onSlowdownUnlockedFirstUi: () => {
                 if (isSlowdownUnlocked() && !upgrades.slowdownUnlockLogged) {
@@ -1776,9 +1788,9 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
             formatUpgradeAffordEtaLine,
             flashSpeedAutobuyToast,
             setBatchedUpgradeUiFlush: v => { batchedUpgradeUiFlush = v; },
-            updateSpeedUpgradeUI,
+            refreshUpgradeColumnsUi,
             ensureSpeedRows,
-            updateHandUpgradeScrollHint,
+            scheduleHandUpgradeScrollHintUpdate,
             getAutoBuyDelaySeconds
         },
         speed: {
@@ -1806,8 +1818,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
             getSpeedRowRefs: () => speedRowRefs,
             sprayConfettiFrom,
             setBatchedUpgradeUiFlush: v => { batchedUpgradeUiFlush = v; },
-            updateSpeedUpgradeUI,
-            updateRateDisplay,
+            refreshUpgradeColumnsUi,
             flashSpeedAutobuyToast
         }
     });
@@ -2373,12 +2384,12 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         getUnlockedHands: () => run.unlockedHands,
         getHands: () => handsRt.hands,
         computeAscensionGrantTotals,
-        cheapenBonusLevel,
-        slowdownBonusLevel,
-        speedLevel: handsRt.speedLevel,
-        speedBonusLevel: handsRt.speedBonusLevel,
-        clapCooldownUntilMsByHand: handsRt.clapCooldownUntilMsByHand,
-        clapDigitPrevious: handsRt.clapDigitPrevious,
+        getCheapenBonusLevel: () => cheapenBonusLevel,
+        getSlowdownBonusLevel: () => slowdownBonusLevel,
+        getSpeedLevel: () => handsRt.speedLevel,
+        getSpeedBonusLevel: () => handsRt.speedBonusLevel,
+        getClapCooldownUntilMsByHand: () => handsRt.clapCooldownUntilMsByHand,
+        getClapDigitPrevious: () => handsRt.clapDigitPrevious,
         gameplaySimFrozen,
         addToLog,
         markMeaningfulProgress,
@@ -2392,6 +2403,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         ledgerBeamAfterClapBonuses,
         settings: session.settings,
         isPagePanelOpen,
+        isSettingsPanelOpen,
         pagePanelEl,
         getNumber1AscensionClapEssenceMultiplier,
         applyClapEssenceMultiplierProc(step) {
@@ -2459,6 +2471,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         },
         getBatchedUpgradeUiFlush: () => batchedUpgradeUiFlush,
         setBatchedUpgradeUiFlush: v => { batchedUpgradeUiFlush = v; },
+        refreshUpgradeColumnsUi,
         updateTimeWarpAuraUI,
         isGameplayFrozen: () => gameplaySimFrozen(),
         isDocumentHidden: () => typeof document !== "undefined" && document.hidden,
@@ -2509,6 +2522,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         updateSpeedUpgradeUI,
         updateCheapenUpgradeUI,
         updateSlowdownUpgradeUI,
+        refreshUpgradeColumnsUi,
         updateTimeWarpAuraUI,
         updateRateDisplay,
         updateMilestoneUI,
@@ -2516,7 +2530,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         updatePageButtonUnlocks,
         updateNumber2SidebarUnlockUI,
         initInlineRightPanels,
-        initNumber1StageAccretionDiskBg,
+        flushAutobuyDeferredTotalsIfAny,
         loadSettings,
         applyTheme,
         applySettingsToUI,
@@ -2675,8 +2689,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         updatePageButtonUnlocks,
         updateNumber2SidebarUnlockUI,
         maybeShowFirstAscensionIntroOnUnlock,
-        syncPhase1MassFillCssVars,
-        syncPhase1TesseractCanvasesInRoot
+        syncPhase1MassFillCssVars
     }));
 
     /* ---------------------------------------------------------

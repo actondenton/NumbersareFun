@@ -36,6 +36,36 @@ describe("restoreHandsFromSaveSnapshot", () => {
         expect(handsRt.hands).toHaveLength(2);
         expect(created).toEqual([1, 2]);
     });
+
+    it("copies into existing lane arrays without replacing references", () => {
+        const handsRt = createN1HandsStore({ maxHands: 3 });
+        const speedLevelRef = handsRt.speedLevel;
+        const speedBonusRef = handsRt.speedBonusLevel;
+        const clapDigitRef = handsRt.clapDigitPrevious;
+        const clapCdRef = handsRt.clapCooldownUntilMsByHand;
+
+        restoreHandsFromSaveSnapshot(
+            {
+                speedLevel: [3, 0, 1],
+                speedBonusLevel: [1, 2, 0],
+                clapCooldownUntilMsByHand: [9, 8, 7]
+            },
+            {
+                handsRt,
+                run: { unlockedHands: 1 },
+                maxHands: 3,
+                getSpeedRowRefs: () => [{ handMountEl: null }],
+                ensureSpeedRows: () => {},
+                createHandCounter: () => ({})
+            }
+        );
+
+        expect(handsRt.speedLevel).toBe(speedLevelRef);
+        expect(handsRt.speedBonusLevel).toBe(speedBonusRef);
+        expect(handsRt.clapDigitPrevious).toBe(clapDigitRef);
+        expect(handsRt.clapCooldownUntilMsByHand).toBe(clapCdRef);
+        expect(speedBonusRef).toEqual([1, 2, 0]);
+    });
 });
 
 describe("applyLiveGameLoadTail", () => {

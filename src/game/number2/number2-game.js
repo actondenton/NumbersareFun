@@ -279,7 +279,7 @@ export function createNumber2Controller(state, deps) {
             commitRoll({ silent: true, skipAutosave: true, skipStageUI: true });
         }
         if (guard > 0) {
-            updateStageUI();
+            // Stage is display:none while on Number 1 — keep economy only; mode switch refreshes DOM.
             refreshOverviewAndAscensionHubLiveIfOpen();
         }
     }
@@ -312,14 +312,100 @@ export function createNumber2Controller(state, deps) {
         if (kind === "bust") return "<span class=\"n2-token n2-token--bust\" title=\"Bust tokens\">✖ Bust " + n + "</span>";
         return "<span class=\"n2-token\">" + n + "</span>";
     }
-    function updateStageUI() {
+    const NUMBER2_AUTOSAVE_DEBOUNCE_MS = 2000;
+    let number2AutosaveTimerId = 0;
+
+    function scheduleAutosaveDebounced() {
+        if (number2AutosaveTimerId) return;
+        number2AutosaveTimerId = setTimeout(function () {
+            number2AutosaveTimerId = 0;
+            autosaveNow();
+        }, NUMBER2_AUTOSAVE_DEBOUNCE_MS);
+    }
+
+    function renderUpgradeItemHtml(u, now) {
+        now = now || Date.now();
+        const L = getUpgradeLevel(u.id);
+        const maxed = L >= u.maxLevel;
+        const st = {
+            streakDouble: state.streakDouble,
+            streakNothing: state.streakNothing,
+            lifetimeDoubles: state.lifetimeDoubles,
+            lifetimeNothings: state.lifetimeNothings
+        };
+        const unlocked = !u.isUnlocked || u.isUnlocked(st);
+        const cost = getUpgradeCost(u, L);
+        let canBuy = unlocked && !maxed;
+        let costText = "";
+        if (typeof cost === "number") {
+            if (u.category === "boom") {
+                costText = tokenBadgeHtml("boom", cost);
+                canBuy = canBuy && (state.boomTokens || 0) >= cost;
+            } else if (u.category === "bust") {
+                costText = tokenBadgeHtml("bust", cost);
+                canBuy = canBuy && (state.bustTokens || 0) >= cost;
+            } else {
+                costText = formatCount(cost) + " Luck";
+                canBuy = canBuy && (state.luck || 0) >= cost;
+            }
+        } else if (cost && typeof cost === "object") {
+            const boomNeed = Math.max(0, Math.floor(cost.boom || 0));
+            const bustNeed = Math.max(0, Math.floor(cost.bust || 0));
+            costText = tokenBadgeHtml("boom", boomNeed) + " · " + tokenBadgeHtml("bust", bustNeed);
+            canBuy = canBuy && (state.boomTokens || 0) >= boomNeed && (state.bustTokens || 0) >= bustNeed;
+        } else {
+            costText = "Free";
+        }
+        const cls = "number2-upgrade-item" + (maxed ? " number2-upgrade-item--owned" : "") + (!unlocked ? " number2-upgrade-item--locked" : "");
+        const hasAction = u.id === "run_the_table" || u.id === "sandbagging" || u.id === "playing_fair" ||
+            u.id === "hot_streak" || u.id === "gamblers_paradox";
+        let actionHtml = "";
+        if (u.id === "run_the_table") {
+            const cd = Math.max(0, Math.ceil(((state.runTheTableReadyAtMs || 0) - now) / 1000));
+            const active = Math.max(0, Math.ceil(((state.runTheTableUntilMs || 0) - now) / 1000));
+            const enabled = L > 0 && cd <= 0 && active <= 0;
+            actionHtml = "<button type=\"button\" class=\"page-btn number2-action-btn\" data-n2-action=\"run_the_table\"" + (enabled ? "" : " disabled") + ">" +
+                (active > 0 ? "Running (" + active + "s)" : cd > 0 ? "Cooldown (" + cd + "s)" : "Activate") + "</button>";
+        } else if (u.id === "sandbagging") {
+            const cd = Math.max(0, Math.ceil(((state.sandbagReadyAtMs || 0) - now) / 1000));
+            const enabled = L > 0 && cd <= 0 && !state.forceNextNothing;
+            const label = state.forceNextNothing ? "Primed" : cd > 0 ? "Cooldown (" + cd + "s)" : "Force Nothing";
+            actionHtml = "<button type=\"button\" class=\"page-btn number2-action-btn\" data-n2-action=\"sandbagging\"" + (enabled ? "" : " disabled") + ">" + label + "</button>";
+        } else if (u.id === "playing_fair") {
+            const enabled = L > 0;
+            const on = !!state.playingFairActive;
+            const label = "Playing Fair: " + (on ? "ON" : "OFF");
+            const activeCls = on ? " number2-action-btn--active" : "";
+            actionHtml = "<button type=\"button\" class=\"page-btn number2-action-btn" + activeCls + "\" data-n2-action=\"playing_fair\"" + (enabled ? "" : " disabled") + ">" + label + "</button>";
+        } else if (u.id === "hot_streak") {
+            const enabled = L > 0;
+            const on = isUpgradeToggleEnabled("hot_streak");
+            const label = "Hot Streak: " + (on ? "ON" : "OFF");
+            const activeCls = on ? " number2-action-btn--active" : "";
+            actionHtml = "<button type=\"button\" class=\"page-btn number2-action-btn" + activeCls + "\" data-n2-action=\"hot_streak_toggle\"" + (enabled ? "" : " disabled") + ">" + label + "</button>";
+        } else if (u.id === "gamblers_paradox") {
+            const enabled = L > 0;
+            const on = isUpgradeToggleEnabled("gamblers_paradox");
+            const label = "Gambler's Paradox: " + (on ? "ON" : "OFF");
+            const activeCls = on ? " number2-action-btn--active" : "";
+            actionHtml = "<button type=\"button\" class=\"page-btn number2-action-btn" + activeCls + "\" data-n2-action=\"gamblers_paradox_toggle\"" + (enabled ? "" : " disabled") + ">" + label + "</button>";
+        }
+        return "<li class=\"" + cls + "\" data-n2-upgrade-id=\"" + u.id + "\"><div class=\"number2-upgrade-item__head\"><strong>" + u.name + "</strong>" +
+            (maxed ? " <span class=\"number2-tag\">Max</span>" : "") + "</div>" +
+            "<p class=\"number2-upgrade-item__desc\">" + u.description + "</p>" +
+            "<div class=\"number2-upgrade-item__meta\">Level " + L + "/" + u.maxLevel + " · Cost " + costText + (hasAction ? " · Active utility" : "") + "</div>" +
+            (maxed ? "" : "<button type=\"button\" class=\"page-btn number2-buy-btn\" data-n2-upgrade=\"" + u.id + "\"" + (canBuy ? "" : " disabled") + ">Buy</button>") +
+            actionHtml +
+            "</li>";
+    }
+
+    function updateStageReadouts() {
         const totalEl = document.getElementById("number2-total-display");
         const dieA = document.getElementById("number2-die-a");
         const dieB = document.getElementById("number2-die-b");
         const resEl = document.getElementById("number2-roll-result");
         const statsEl = document.getElementById("number2-inline-stats");
         const hintEl = document.getElementById("number2-bg-hint");
-        const listEl = document.getElementById("number2-upgrade-list");
         if (totalEl) totalEl.textContent = formatTotalBig(totalBig());
         if (dieA) {
             dieA.textContent = String(state.lastDieA || 1);
@@ -346,106 +432,88 @@ export function createNumber2Controller(state, deps) {
                 ? "While you play Number 1, Number 2 keeps rolling in the background at a slower rate."
                 : "";
         }
-        if (listEl) {
-            const ups = getUpgrades();
-            const now = Date.now();
-            const rendered = ups.map(u => {
-                const L = getUpgradeLevel(u.id);
-                const maxed = L >= u.maxLevel;
-                const st = {
-                    streakDouble: state.streakDouble,
-                    streakNothing: state.streakNothing,
-                    lifetimeDoubles: state.lifetimeDoubles,
-                    lifetimeNothings: state.lifetimeNothings
-                };
-                const unlocked = !u.isUnlocked || u.isUnlocked(st);
-                const cost = getUpgradeCost(u, L);
-                let canBuy = unlocked && !maxed;
-                let costText = "";
-                if (typeof cost === "number") {
-                    if (u.category === "boom") {
-                        costText = tokenBadgeHtml("boom", cost);
-                        canBuy = canBuy && (state.boomTokens || 0) >= cost;
-                    } else if (u.category === "bust") {
-                        costText = tokenBadgeHtml("bust", cost);
-                        canBuy = canBuy && (state.bustTokens || 0) >= cost;
-                    } else {
-                        costText = formatCount(cost) + " Luck";
-                        canBuy = canBuy && (state.luck || 0) >= cost;
-                    }
-                } else if (cost && typeof cost === "object") {
-                    const boomNeed = Math.max(0, Math.floor(cost.boom || 0));
-                    const bustNeed = Math.max(0, Math.floor(cost.bust || 0));
-                    costText = tokenBadgeHtml("boom", boomNeed) + " · " + tokenBadgeHtml("bust", bustNeed);
-                    canBuy = canBuy && (state.boomTokens || 0) >= boomNeed && (state.bustTokens || 0) >= bustNeed;
-                } else {
-                    costText = "Free";
-                }
-                const cls = "number2-upgrade-item" + (maxed ? " number2-upgrade-item--owned" : "") + (!unlocked ? " number2-upgrade-item--locked" : "");
-                const hasAction = u.id === "run_the_table" || u.id === "sandbagging" || u.id === "playing_fair" ||
-                    u.id === "hot_streak" || u.id === "gamblers_paradox";
-                let actionHtml = "";
-                if (u.id === "run_the_table") {
-                    const cd = Math.max(0, Math.ceil(((state.runTheTableReadyAtMs || 0) - now) / 1000));
-                    const active = Math.max(0, Math.ceil(((state.runTheTableUntilMs || 0) - now) / 1000));
-                    const enabled = L > 0 && cd <= 0 && active <= 0;
-                    actionHtml = "<button type=\"button\" class=\"page-btn number2-action-btn\" data-n2-action=\"run_the_table\"" + (enabled ? "" : " disabled") + ">" +
-                        (active > 0 ? "Running (" + active + "s)" : cd > 0 ? "Cooldown (" + cd + "s)" : "Activate") + "</button>";
-                } else if (u.id === "sandbagging") {
-                    const cd = Math.max(0, Math.ceil(((state.sandbagReadyAtMs || 0) - now) / 1000));
-                    const enabled = L > 0 && cd <= 0 && !state.forceNextNothing;
-                    const label = state.forceNextNothing ? "Primed" : cd > 0 ? "Cooldown (" + cd + "s)" : "Force Nothing";
-                    actionHtml = "<button type=\"button\" class=\"page-btn number2-action-btn\" data-n2-action=\"sandbagging\"" + (enabled ? "" : " disabled") + ">" + label + "</button>";
-                } else if (u.id === "playing_fair") {
-                    const enabled = L > 0;
-                    const on = !!state.playingFairActive;
-                    const label = "Playing Fair: " + (on ? "ON" : "OFF");
-                    const activeCls = on ? " number2-action-btn--active" : "";
-                    actionHtml = "<button type=\"button\" class=\"page-btn number2-action-btn" + activeCls + "\" data-n2-action=\"playing_fair\"" + (enabled ? "" : " disabled") + ">" + label + "</button>";
-                } else if (u.id === "hot_streak") {
-                    const enabled = L > 0;
-                    const on = isUpgradeToggleEnabled("hot_streak");
-                    const label = "Hot Streak: " + (on ? "ON" : "OFF");
-                    const activeCls = on ? " number2-action-btn--active" : "";
-                    actionHtml = "<button type=\"button\" class=\"page-btn number2-action-btn" + activeCls + "\" data-n2-action=\"hot_streak_toggle\"" + (enabled ? "" : " disabled") + ">" + label + "</button>";
-                } else if (u.id === "gamblers_paradox") {
-                    const enabled = L > 0;
-                    const on = isUpgradeToggleEnabled("gamblers_paradox");
-                    const label = "Gambler's Paradox: " + (on ? "ON" : "OFF");
-                    const activeCls = on ? " number2-action-btn--active" : "";
-                    actionHtml = "<button type=\"button\" class=\"page-btn number2-action-btn" + activeCls + "\" data-n2-action=\"gamblers_paradox_toggle\"" + (enabled ? "" : " disabled") + ">" + label + "</button>";
-                }
-                return "<li class=\"" + cls + "\"><div class=\"number2-upgrade-item__head\"><strong>" + u.name + "</strong>" +
-                    (maxed ? " <span class=\"number2-tag\">Max</span>" : "") + "</div>" +
-                    "<p class=\"number2-upgrade-item__desc\">" + u.description + "</p>" +
-                    "<div class=\"number2-upgrade-item__meta\">Level " + L + "/" + u.maxLevel + " · Cost " + costText + (hasAction ? " · Active utility" : "") + "</div>" +
-                    (maxed ? "" : "<button type=\"button\" class=\"page-btn number2-buy-btn\" data-n2-upgrade=\"" + u.id + "\"" + (canBuy ? "" : " disabled") + ">Buy</button>") +
-                    actionHtml +
-                    "</li>";
-            });
-            const bustItems = [];
-            const hybridItems = [];
-            const boomItems = [];
-            getUpgrades().forEach((u, idx) => {
-                const itemHtml = rendered[idx];
-                if (u.category === "bust") bustItems.push(itemHtml);
-                else if (u.category === "hybrid") hybridItems.push(itemHtml);
-                else boomItems.push(itemHtml);
-            });
-            function colHtml(title, items, mod) {
-                return "<section class=\"number2-upgrade-col number2-upgrade-col--" + mod + "\">" +
-                    "<h4 class=\"number2-upgrade-col__title\">" + title + "</h4>" +
-                    "<ul class=\"number2-upgrade-col__list\">" + items.join("") + "</ul>" +
-                    "</section>";
-            }
-            listEl.innerHTML =
-                "<div class=\"number2-upgrade-columns\">" +
-                colHtml("Bust", bustItems, "bust") +
-                colHtml("Combined", hybridItems, "hybrid") +
-                colHtml("Boom", boomItems, "boom") +
-                "</div>";
-        }
     }
+
+    function rebuildUpgradeList() {
+        const listEl = document.getElementById("number2-upgrade-list");
+        if (!listEl) return;
+        const ups = getUpgrades();
+        const now = Date.now();
+        const rendered = ups.map(u => renderUpgradeItemHtml(u, now));
+        const bustItems = [];
+        const hybridItems = [];
+        const boomItems = [];
+        ups.forEach((u, idx) => {
+            const itemHtml = rendered[idx];
+            if (u.category === "bust") bustItems.push(itemHtml);
+            else if (u.category === "hybrid") hybridItems.push(itemHtml);
+            else boomItems.push(itemHtml);
+        });
+        function colHtml(title, items, mod) {
+            return "<section class=\"number2-upgrade-col number2-upgrade-col--" + mod + "\">" +
+                "<h4 class=\"number2-upgrade-col__title\">" + title + "</h4>" +
+                "<ul class=\"number2-upgrade-col__list\">" + items.join("") + "</ul>" +
+                "</section>";
+        }
+        listEl.innerHTML =
+            "<div class=\"number2-upgrade-columns\">" +
+            colHtml("Bust", bustItems, "bust") +
+            colHtml("Combined", hybridItems, "hybrid") +
+            colHtml("Boom", boomItems, "boom") +
+            "</div>";
+    }
+
+    function patchUpgradeRow(id) {
+        const listEl = document.getElementById("number2-upgrade-list");
+        if (!listEl) return false;
+        const u = getUpgradeDef(id);
+        if (!u) return false;
+        const li = listEl.querySelector('[data-n2-upgrade-id="' + id + '"]');
+        if (!li) return false;
+        const tmp = document.createElement("ul");
+        tmp.innerHTML = renderUpgradeItemHtml(u, Date.now());
+        const next = tmp.firstElementChild;
+        if (!next) return false;
+        li.replaceWith(next);
+        return true;
+    }
+
+    function refreshUpgradeBuyAffordButtons() {
+        const listEl = document.getElementById("number2-upgrade-list");
+        if (!listEl) return;
+        listEl.querySelectorAll("button.number2-buy-btn[data-n2-upgrade]").forEach(function (btn) {
+            const id = btn.getAttribute("data-n2-upgrade");
+            const u = getUpgradeDef(id);
+            if (!u) return;
+            const L = getUpgradeLevel(id);
+            if (L >= u.maxLevel) return;
+            const st = {
+                streakDouble: state.streakDouble,
+                streakNothing: state.streakNothing,
+                lifetimeDoubles: state.lifetimeDoubles,
+                lifetimeNothings: state.lifetimeNothings
+            };
+            const unlocked = !u.isUnlocked || u.isUnlocked(st);
+            const cost = getUpgradeCost(u, L);
+            let canBuy = unlocked;
+            if (typeof cost === "number") {
+                if (u.category === "boom") canBuy = canBuy && (state.boomTokens || 0) >= cost;
+                else if (u.category === "bust") canBuy = canBuy && (state.bustTokens || 0) >= cost;
+                else canBuy = canBuy && (state.luck || 0) >= cost;
+            } else if (cost && typeof cost === "object") {
+                const boomNeed = Math.max(0, Math.floor(cost.boom || 0));
+                const bustNeed = Math.max(0, Math.floor(cost.bust || 0));
+                canBuy = canBuy && (state.boomTokens || 0) >= boomNeed && (state.bustTokens || 0) >= bustNeed;
+            }
+            btn.disabled = !canBuy;
+        });
+    }
+
+    function updateStageUI() {
+        updateStageReadouts();
+        rebuildUpgradeList();
+    }
+
     function tryBuyUpgrade(id) {
         const u = getUpgradeDef(id);
         if (!u) return;
@@ -480,8 +548,10 @@ export function createNumber2Controller(state, deps) {
         }
         state.upgradeLevels[id] = L + 1;
         addToLog("Number 2 upgrade: " + u.name + " → level " + (L + 1) + ".", "system");
-        updateStageUI();
-        autosaveNow();
+        updateStageReadouts();
+        if (!patchUpgradeRow(id)) rebuildUpgradeList();
+        refreshUpgradeBuyAffordButtons();
+        scheduleAutosaveDebounced();
         refreshOverviewAndAscensionHubLiveIfOpen();
     }
     function tryActivateUpgradeAction(actionId) {
@@ -521,7 +591,7 @@ export function createNumber2Controller(state, deps) {
             return;
         }
         updateStageUI();
-        autosaveNow();
+        scheduleAutosaveDebounced();
     }
     function renderAscensionShell() {
         const asc2 = getAscension2Export();

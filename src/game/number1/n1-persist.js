@@ -12,6 +12,14 @@ function copyUpgradeLevelsFromSnap(target, snapArr) {
     for (let i = 0; i < target.length; i++) target[i] = snapArr[i] || 0;
 }
 
+/** In-place copy so stale boot closures keep mutating the live array. */
+function copyHandsRtArrayFromSnap(target, snapArr, fillValue = 0) {
+    if (!Array.isArray(target) || !Array.isArray(snapArr)) return;
+    for (let i = 0; i < target.length; i++) {
+        target[i] = i < snapArr.length ? (snapArr[i] ?? fillValue) : fillValue;
+    }
+}
+
 /**
  * Env bag for `normalizeNumber1SaveSnapshot` during load.
  * @param {{
@@ -111,12 +119,12 @@ export function hydrateNumber1RuntimeFromSave(runtime, rawSave, env) {
         timewarp.timeWarpAuraAppearedAtMsByHand = snap.timeWarpAuraAppearedAtMsByHand;
     }
 
-    if (snap.speedLevel) handsRt.speedLevel = snap.speedLevel;
-    if (snap.speedBonusLevel) handsRt.speedBonusLevel = snap.speedBonusLevel;
+    if (snap.speedLevel) copyHandsRtArrayFromSnap(handsRt.speedLevel, snap.speedLevel, 0);
+    if (snap.speedBonusLevel) copyHandsRtArrayFromSnap(handsRt.speedBonusLevel, snap.speedBonusLevel, 0);
     if (snap.clapCooldownUntilMsByHand) {
-        handsRt.clapCooldownUntilMsByHand = snap.clapCooldownUntilMsByHand;
+        copyHandsRtArrayFromSnap(handsRt.clapCooldownUntilMsByHand, snap.clapCooldownUntilMsByHand, 0);
     }
-    handsRt.clapDigitPrevious = Array(handsRt.speedLevel.length).fill(-1);
+    for (let i = 0; i < handsRt.clapDigitPrevious.length; i++) handsRt.clapDigitPrevious[i] = -1;
 
     if (snap.earnedComboNames) {
         replaceEarnedComboNamesFromSnapshot(combo.earnedComboNames, snap.earnedComboNames);

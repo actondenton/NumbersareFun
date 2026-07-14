@@ -27,10 +27,7 @@ export function createNumber1SpeedUpgradeBoot(deps) {
         getSpeedRowRefs,
         sprayConfettiFrom,
         setBatchedUpgradeUiFlush,
-        updateSpeedUpgradeUI,
-        updateCheapenUpgradeUI,
-        updateSlowdownUpgradeUI,
-        updateRateDisplay,
+        refreshUpgradeColumnsUi,
         flashSpeedAutobuyToast
     } = deps;
 
@@ -74,10 +71,7 @@ export function createNumber1SpeedUpgradeBoot(deps) {
         if (opts && opts.skipUpgradeDom) {
             setBatchedUpgradeUiFlush(true);
         } else {
-            updateSpeedUpgradeUI();
-            updateCheapenUpgradeUI();
-            updateSlowdownUpgradeUI();
-            updateRateDisplay();
+            refreshUpgradeColumnsUi();
         }
     }
 

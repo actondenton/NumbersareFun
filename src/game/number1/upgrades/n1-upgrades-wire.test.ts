@@ -23,8 +23,7 @@ describe("wireNumber1UpgradeBoots", () => {
             formatUpgradeAffordEtaLine: () => "",
             flashSpeedAutobuyToast: vi.fn(),
             setBatchedUpgradeUiFlush: vi.fn(),
-            updateSpeedUpgradeUI: vi.fn(),
-            updateRateDisplay: vi.fn(),
+            refreshUpgradeColumnsUi: vi.fn(),
             getAutoBuyDelaySeconds: () => 30,
             getAutoBuyUnlocked: () => false,
             getAutoBuyEnabledByHand: () => false
@@ -45,7 +44,7 @@ describe("wireNumber1UpgradeBoots", () => {
                 setSlowdownBaseLevel: vi.fn(),
                 resetSpeedLevelForCompaction: vi.fn(),
                 getHands: () => [],
-                updateHandUpgradeScrollHint: vi.fn(),
+                scheduleHandUpgradeScrollHintUpdate: vi.fn(),
                 onSlowdownUnlockedFirstUi: vi.fn()
             },
             cheapen: {
@@ -63,7 +62,7 @@ describe("wireNumber1UpgradeBoots", () => {
                 getCheapenEffectText: () => "",
                 setCheapenBaseLevel: vi.fn(),
                 ensureSpeedRows: vi.fn(),
-                updateHandUpgradeScrollHint: vi.fn()
+                scheduleHandUpgradeScrollHintUpdate: vi.fn()
             },
             speed: {
                 ...shared,

@@ -248,9 +248,18 @@ function shouldKeepRafAlive() {
         if (!hostEl || !hostEl.isConnected) continue;
         const st = motionByHost.get(hostEl);
         if (st && st.intersecting === false) continue;
+        if (!isHostEligibleToPaint(hostEl)) continue;
         return true;
     }
     return false;
+}
+
+/** Play-stage hosts only paint while Phase 1 mood class is on; panel hosts always may paint. */
+function isHostEligibleToPaint(hostEl) {
+    if (!hostEl || typeof hostEl.closest !== "function") return true;
+    const stageRoot = hostEl.closest("#number1-stage-root");
+    if (!stageRoot) return true;
+    return stageRoot.classList.contains("bh-phase1-vfx");
 }
 
 function observeHost(hostEl) {
@@ -381,6 +390,7 @@ function frame() {
         }
         const st = motionByHost.get(hostEl);
         if (st && st.intersecting === false) continue;
+        if (!isHostEligibleToPaint(hostEl)) continue;
         paintHost(hostEl);
     }
 
@@ -419,8 +429,23 @@ export function mountPhase1TesseractCanvas(hostEl) {
     requestAnimationFrame(() => {
         const st = motionByHost.get(hostEl);
         if (st && st.intersecting === false) return;
+        if (!isHostEligibleToPaint(hostEl)) return;
         paintHost(hostEl);
     });
+}
+
+/**
+ * Stop RAF for a host and remove its canvas.
+ * @param {Element | null | undefined} hostEl
+ */
+export function unmountPhase1TesseractCanvas(hostEl) {
+    if (!hostEl) return;
+    unobserveHost(hostEl);
+    hosts.delete(hostEl);
+    motionByHost.delete(hostEl);
+    geoByHost.delete(hostEl);
+    const canvas = hostEl.querySelector(":scope > canvas.asc-black-hole__tesseract-canvas");
+    if (canvas && canvas.parentNode) canvas.parentNode.removeChild(canvas);
 }
 
 /**
@@ -430,6 +455,15 @@ export function mountPhase1TesseractCanvas(hostEl) {
 export function syncPhase1TesseractCanvasesInRoot(root) {
     if (!root || !root.querySelectorAll) return;
     root.querySelectorAll(".asc-black-hole__tesseract").forEach(el => mountPhase1TesseractCanvas(el));
+}
+
+/**
+ * Dispose all tesseract canvases under `root` (leave Phase 1 / hide stage).
+ * @param {ParentNode | null | undefined} root
+ */
+export function disposePhase1TesseractCanvasesInRoot(root) {
+    if (!root || !root.querySelectorAll) return;
+    root.querySelectorAll(".asc-black-hole__tesseract").forEach(el => unmountPhase1TesseractCanvas(el));
 }
 
 /**

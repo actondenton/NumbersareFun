@@ -2549,6 +2549,15 @@ html[data-theme="dark"] .upgrade-btn.turbo-scension-upgrade-btn.upgrade-btn--aff
   width: 100%;
   background: linear-gradient(90deg, rgba(60, 200, 110, 0.55), rgba(100, 240, 150, 0.62));
 }
+/* Cheapen progress is already green; shared maxed fill looked like "full afford". Mute chrome + fill instead. */
+.speed-upgrade-row .cheapen-upgrade-btn.upgrade-btn-maxed {
+  background: #d5e0d6;
+  border-color: #8a9e8a;
+  color: #5c705c;
+}
+.upgrade-btn.cheapen-upgrade-btn.upgrade-btn-maxed .upgrade-btn-fill {
+  background: linear-gradient(90deg, rgba(95, 125, 100, 0.32), rgba(115, 140, 120, 0.38));
+}
 .speed-upgrade-row .speed-autobuy-stack {
   display: flex;
   flex-direction: column;
@@ -7171,9 +7180,9 @@ html[data-theme="light"] .number1-stage-disk-bg .number1-stage-disk-hero.asc-bla
     transform-origin: 50% 50%;
     backface-visibility: hidden;
     filter: drop-shadow(0 0 5px rgba(90, 200, 255, 0.32));
-    animation: bh-lens-ring-cadence var(--bh-lens-period, 45s) cubic-bezier(0.12, 0.62, 0.28, 1) infinite;
-    animation-delay: var(--bh-lens-ripple-delay, 0s);
-    will-change: transform;
+    /* Animation + will-change only while Phase 4 cadence is live (see below). */
+    animation: none;
+    will-change: auto;
 }
 .number1-stage-lensing-ring-stroke {
     fill: none;
@@ -7181,13 +7190,18 @@ html[data-theme="light"] .number1-stage-disk-bg .number1-stage-disk-hero.asc-bla
     stroke-width: 2.25px;
     vector-effect: non-scaling-stroke;
 }
-.number1-stage-lensing-ring:nth-child(2) {
+.number1-stage-root.bh-phase4-lensing-cadence .number1-stage-lensing-ring {
+    animation: bh-lens-ring-cadence var(--bh-lens-period, 45s) cubic-bezier(0.12, 0.62, 0.28, 1) infinite;
+    animation-delay: var(--bh-lens-ripple-delay, 0s);
+    will-change: transform;
+}
+.number1-stage-root.bh-phase4-lensing-cadence .number1-stage-lensing-ring:nth-child(2) {
     animation-delay: calc(var(--bh-lens-ripple-delay, 0s) + 0.22 * var(--bh-lens-period, 45s));
 }
-.number1-stage-lensing-ring:nth-child(3) {
+.number1-stage-root.bh-phase4-lensing-cadence .number1-stage-lensing-ring:nth-child(3) {
     animation-delay: calc(var(--bh-lens-ripple-delay, 0s) + 0.44 * var(--bh-lens-period, 45s));
 }
-.number1-stage-lensing-ring:nth-child(4) {
+.number1-stage-root.bh-phase4-lensing-cadence .number1-stage-lensing-ring:nth-child(4) {
     animation-delay: calc(var(--bh-lens-ripple-delay, 0s) + 0.66 * var(--bh-lens-period, 45s));
 }
 .number1-stage-root.bh-phase4-lensing-auto-tick .number1-stage-lensing-ring-stroke {
@@ -7247,6 +7261,22 @@ html[data-theme="light"] .number1-stage-root.bh-phase4-lensing-manual-burst .num
 }
 .number1-stage-root.bh-phase2-collapse-vfx .number1-stage-collapse-bg {
     opacity: 0.78;
+}
+
+/* Idle play-stage BG layers: kill inherited CSS animation cost while opacity-hidden.
+   Ascension-panel copies of the same classes are unaffected (outside #number1-stage-root). */
+#number1-stage-root:not(.bh-phase1-vfx) .number1-stage-mass-bg,
+#number1-stage-root:not(.bh-phase1-vfx) .number1-stage-mass-bg *,
+#number1-stage-root:not(.bh-phase2-collapse-vfx) .number1-stage-collapse-bg,
+#number1-stage-root:not(.bh-phase2-collapse-vfx) .number1-stage-collapse-bg *,
+#number1-stage-root:not(.bh-phase3-accretion-disk) .number1-stage-disk-bg,
+#number1-stage-root:not(.bh-phase3-accretion-disk) .number1-stage-disk-bg *,
+#number1-stage-root:not(.bh-phase4-lensing-cadence) .number1-stage-lensing-ripples,
+#number1-stage-root:not(.bh-phase4-lensing-cadence) .number1-stage-lensing-ripples *,
+#number1-stage-root:not(.bh-phase5-magnetic-furnace) .number1-stage-coronal-cage,
+#number1-stage-root:not(.bh-phase5-magnetic-furnace) .number1-stage-coronal-cage * {
+    animation: none !important;
+    will-change: auto !important;
 }
 .number1-stage-root.bh-phase1-vfx::before {
     inset: -12% -5%;
@@ -7637,7 +7667,6 @@ html[data-theme="light"] .number1-stage-root.bh-singularity-vfx.bh-phase3-accret
 }
 .number1-stage-coronal-cage__loop--a {
     transform: translate(-50%, -50%) rotate(-18deg);
-    animation: bh-phase5-loop-rock-a 22s ease-in-out infinite;
 }
 .number1-stage-coronal-cage__loop--b {
     width: min(78%, 24rem);
@@ -7646,7 +7675,6 @@ html[data-theme="light"] .number1-stage-root.bh-singularity-vfx.bh-phase3-accret
     box-shadow:
         inset 0 0 0 1px rgba(var(--bh-phase5-cool), 0.38),
         0 0 18px rgba(var(--bh-phase5-cool), 0.13);
-    animation: bh-phase5-loop-rock-b 31s ease-in-out infinite reverse;
 }
 .number1-stage-coronal-cage__loop--c {
     width: min(118%, 36rem);
@@ -7657,10 +7685,16 @@ html[data-theme="light"] .number1-stage-root.bh-singularity-vfx.bh-phase3-accret
     box-shadow:
         inset 0 0 0 1px rgba(var(--bh-phase5-furnace), 0.32),
         0 0 28px rgba(var(--bh-phase5-prime), 0.1);
-    animation: bh-phase5-loop-rock-c 38s ease-in-out infinite;
+}
+.number1-stage-root.bh-phase5-magnetic-furnace .number1-stage-coronal-cage__loop--a {
+    animation: bh-phase5-loop-rock-a 22s ease-in-out infinite;
+}
+.number1-stage-root.bh-phase5-magnetic-furnace .number1-stage-coronal-cage__loop--b {
+    animation: bh-phase5-loop-rock-b 31s ease-in-out infinite reverse;
 }
 .number1-stage-root.bh-phase5-magnetic-furnace .number1-stage-coronal-cage__loop--c {
     opacity: 0.45;
+    animation: bh-phase5-loop-rock-c 38s ease-in-out infinite;
 }
 .number1-stage-coronal-cage__polar {
     position: absolute;
@@ -7708,11 +7742,15 @@ html[data-theme="light"] .number1-stage-root.bh-singularity-vfx.bh-phase3-accret
     opacity: 0;
     filter: blur(0.55px);
     mix-blend-mode: screen;
+}
+.number1-stage-root.bh-phase5-magnetic-furnace .number1-stage-coronal-cage__spark {
     animation: bh-phase5-spark-opacity 5.8s ease-in-out infinite;
 }
 .number1-stage-coronal-cage__spark--nw {
     left: 4%;
     transform: rotate(-18deg);
+}
+.number1-stage-root.bh-phase5-magnetic-furnace .number1-stage-coronal-cage__spark--nw {
     animation-delay: -1.8s;
 }
 .number1-stage-coronal-cage__spark--ne {
@@ -7720,6 +7758,8 @@ html[data-theme="light"] .number1-stage-root.bh-singularity-vfx.bh-phase3-accret
     top: 24%;
     width: 48%;
     transform: rotate(14deg);
+}
+.number1-stage-root.bh-phase5-magnetic-furnace .number1-stage-coronal-cage__spark--ne {
     animation-delay: -3.9s;
 }
 .number1-stage-root.bh-singularity-vfx.bh-phase5-magnetic-furnace::before {
@@ -8844,11 +8884,62 @@ html[data-theme="light"] .ledger-beam-pop-wrap--clap .ledger-beam-pop-delta {
     color: #ffb74d;
     text-shadow: 0 0 10px rgba(255, 145, 60, 0.65);
 }
+.ledger-beam-pop-wrap--clap .ledger-beam-pop-clap-line,
+.ledger-beam-pop-wrap--clap .ledger-beam-pop-clap-base,
+.ledger-beam-pop-wrap--clap .ledger-beam-pop-clap-old,
+.ledger-beam-pop-wrap--clap .ledger-beam-pop-clap-new {
+    color: #ffb74d;
+    text-shadow: 0 0 10px rgba(255, 145, 60, 0.65);
+}
+.ledger-beam-pop-clap-line {
+    display: inline-flex;
+    align-items: center;
+    opacity: 0;
+    transform: translateY(14px);
+}
+.ledger-beam-pop-wrap--clap-hold .ledger-beam-pop-clap-line {
+    animation: ledger-beam-pop-clap-hold-in 0.38s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.ledger-beam-pop-clap-reel {
+    display: inline-block;
+    height: 1.2em;
+    overflow: hidden;
+    vertical-align: bottom;
+    min-width: 1.4em;
+}
+.ledger-beam-pop-clap-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+    transform: translateY(0);
+}
+.ledger-beam-pop-wrap--clap-roll .ledger-beam-pop-clap-slot {
+    transform: translateY(-50%);
+}
+.ledger-beam-pop-clap-old,
+.ledger-beam-pop-clap-new {
+    display: block;
+    height: 1.2em;
+    line-height: 1.2em;
+}
+.ledger-beam-pop-wrap--clap-exit {
+    /* Starts after hold+roll (~1600ms); spans ~LEDGER_BEAM_CLAP_POP_DISPLAY leftover (~1700ms). */
+    animation: ledger-beam-pop-wrap-exit 1700ms forwards;
+}
+@keyframes ledger-beam-pop-clap-hold-in {
+    0% { opacity: 0; transform: translateY(14px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
 .ledger-beam-pop-wrap:not(.ledger-beam-pop-wrap--clap) .ledger-beam-pop-new {
     color: #9aa0ff;
     text-shadow: 0 0 10px rgba(120, 140, 255, 0.55);
 }
-html[data-theme="light"] .ledger-beam-pop-wrap--clap .ledger-beam-pop-new {
+html[data-theme="light"] .ledger-beam-pop-wrap--clap .ledger-beam-pop-new,
+html[data-theme="light"] .ledger-beam-pop-wrap--clap .ledger-beam-pop-clap-line,
+html[data-theme="light"] .ledger-beam-pop-wrap--clap .ledger-beam-pop-clap-base,
+html[data-theme="light"] .ledger-beam-pop-wrap--clap .ledger-beam-pop-clap-old,
+html[data-theme="light"] .ledger-beam-pop-wrap--clap .ledger-beam-pop-clap-new {
     color: #e65100;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
 }
@@ -8939,7 +9030,8 @@ html[data-theme="light"] .ledger-beam-sink-flash {
     }
 }
 @media (prefers-reduced-motion: reduce) {
-    .ledger-beam-pop-wrap--exit {
+    .ledger-beam-pop-wrap--exit,
+    .ledger-beam-pop-wrap--clap-exit {
         animation: none;
         opacity: 1;
         transform: translate(-50%, -50%);
@@ -8949,6 +9041,15 @@ html[data-theme="light"] .ledger-beam-sink-flash {
         animation: none;
         opacity: 1;
         transform: none;
+    }
+    .ledger-beam-pop-clap-line {
+        opacity: 1;
+        transform: none;
+        animation: none;
+    }
+    .ledger-beam-pop-clap-slot {
+        transition: none;
+        transform: translateY(-50%);
     }
     .ledger-beam-pop-ghost {
         display: none;

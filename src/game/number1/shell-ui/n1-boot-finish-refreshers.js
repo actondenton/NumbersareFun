@@ -16,7 +16,7 @@ export function buildNumber1BootFinishRefreshers(dep) {
         dep.updatePageButtonUnlocks,
         dep.updateNumber2SidebarUnlockUI,
         dep.maybeShowFirstAscensionIntroOnUnlock,
-        dep.syncPhase1MassFillCssVars,
-        () => dep.syncPhase1TesseractCanvasesInRoot(document.body)
+        dep.syncPhase1MassFillCssVars
+        // Phase 1 tesseract canvases mount only while mass VFX is live (syncBlackHolePhase1Vfx / panel open).
     ];
 }

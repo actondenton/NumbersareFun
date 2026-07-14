@@ -115,10 +115,29 @@ describe("number2 controller", () => {
         expect(state.luck).toBe(1);
     });
 
+    it("background ticks accrue without updating stage DOM while on Number 1", () => {
+        const getElementById = vi.fn(() => null);
+        vi.stubGlobal("document", { getElementById });
+        const state = createNumber2State();
+        state.started = true;
+        const refreshOverview = vi.fn();
+        const controller = makeController(state, {
+            getCurrentNumberMode: () => 1,
+            refreshOverviewAndAscensionPanelsIfOpen: refreshOverview,
+            refreshGlobalOverviewPanelIfOpen: refreshOverview
+        });
+        state.bgTickCarry = 2;
+        controller.tickBackground(0.01);
+        expect(state.bgTickCarry).toBeLessThan(2);
+        expect(getElementById).not.toHaveBeenCalledWith("number2-total-display");
+        expect(refreshOverview).toHaveBeenCalled();
+    });
+
     it("buys upgrades through injected upgrade definitions", () => {
         stubDocument();
         const addToLog = vi.fn();
         const autosaveNow = vi.fn();
+        vi.useFakeTimers();
         const state = createNumber2State();
         state.boomTokens = 3;
         const controller = makeController(state, {
@@ -139,8 +158,11 @@ describe("number2 controller", () => {
 
         expect(state.upgradeLevels.hot_streak).toBe(1);
         expect(state.boomTokens).toBe(1);
+        expect(autosaveNow).not.toHaveBeenCalled();
+        vi.advanceTimersByTime(2100);
         expect(autosaveNow).toHaveBeenCalledOnce();
         expect(addToLog).toHaveBeenCalledWith(expect.stringContaining("Hot Streak"), "system");
+        vi.useRealTimers();
     });
 
     it("starts Number 2 once when switching to its mode", () => {

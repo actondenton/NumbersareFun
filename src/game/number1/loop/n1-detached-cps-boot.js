@@ -23,10 +23,18 @@ export function createNumber1DetachedCpsBoot(dep) {
 
     function tickNumber1BackgroundCps(dtSec) {
         applyNumber1DetachedCpsProgress(dtSec);
+        const mode = typeof dep.getCurrentNumberMode === "function" ? dep.getCurrentNumberMode() : 1;
+        // Count label lives on the Number 1 stage; skip DOM while focused elsewhere (mode switch refreshes).
+        if (mode === 1 && dep.incrementalEl) {
+            dep.incrementalEl.textContent = dep.formatCount(dep.getTotalChanges());
+        }
+    }
+
+    function refreshNumber1CountDisplay() {
         if (dep.incrementalEl) {
             dep.incrementalEl.textContent = dep.formatCount(dep.getTotalChanges());
         }
     }
 
-    return { applyNumber1DetachedCpsProgress, tickNumber1BackgroundCps };
+    return { applyNumber1DetachedCpsProgress, tickNumber1BackgroundCps, refreshNumber1CountDisplay };
 }

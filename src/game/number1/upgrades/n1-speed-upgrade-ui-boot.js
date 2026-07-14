@@ -330,7 +330,7 @@ export function createSpeedUpgradeUiBoot(dep) {
         }
 
         if (dep.getTotalChanges() >= 100) dep.setAutoBuyUnlocked(true);
-        updateHandUpgradeScrollHint();
+        scheduleHandUpgradeScrollHintUpdate();
     }
 
     return {

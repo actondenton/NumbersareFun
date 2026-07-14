@@ -1,11 +1,10 @@
 /**
- * Number 1 / Number 2 play-stage visibility when switching number mode (Phase 21c).
- *
  * @param {{
  *   isNumber2Unlocked: () => boolean,
  *   number2: { updateStageUI: () => void },
  *   syncBlackHolePhase1Vfx: () => void,
- *   updateN1GravityCpsStrip: () => void
+ *   updateN1GravityCpsStrip: () => void,
+ *   refreshNumber1CountDisplay?: () => void
  * }} dep
  */
 export function createSyncPlayStageForNumberMode(dep) {
@@ -24,6 +23,7 @@ export function createSyncPlayStageForNumberMode(dep) {
             n2.setAttribute("aria-hidden", "true");
             dep.syncBlackHolePhase1Vfx();
             dep.updateN1GravityCpsStrip();
+            if (typeof dep.refreshNumber1CountDisplay === "function") dep.refreshNumber1CountDisplay();
         }
     };
 }

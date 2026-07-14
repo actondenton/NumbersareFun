@@ -45,7 +45,7 @@ export function renderAccretionDiskHeroInnerHtml() {
     );
 }
 
-/** One-time play-stage accretion disk background (Phase 21c). */
+/** Fill play-stage accretion disk BG once (idempotent). Call on first Phase 3. */
 export function initNumber1StageAccretionDiskBg() {
     const wrap = document.getElementById("number1-stage-disk-bg");
     if (!wrap || wrap.dataset.diskBgInit === "1") return;

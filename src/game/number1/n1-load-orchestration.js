@@ -24,13 +24,21 @@ export function applyHydratedSnapshotToLiveGame(snap, ctx) {
  *   createHandCounter: (handNum: number, slot: Element | null | undefined) => unknown
  * }} ctx
  */
+function copyHandsRtArrayInPlace(target, source, fillValue = 0) {
+    if (!Array.isArray(target)) return;
+    const src = Array.isArray(source) ? source : [];
+    for (let i = 0; i < target.length; i++) {
+        target[i] = i < src.length ? (src[i] ?? fillValue) : fillValue;
+    }
+}
+
 export function restoreHandsFromSaveSnapshot(snap, ctx) {
     const { handsRt, run, maxHands, getSpeedRowRefs, ensureSpeedRows, createHandCounter } = ctx;
 
-    if (snap.speedLevel) handsRt.speedLevel = snap.speedLevel;
-    handsRt.speedBonusLevel = snap.speedBonusLevel;
-    handsRt.clapDigitPrevious = Array(maxHands).fill(-1);
-    handsRt.clapCooldownUntilMsByHand = snap.clapCooldownUntilMsByHand;
+    if (snap.speedLevel) copyHandsRtArrayInPlace(handsRt.speedLevel, snap.speedLevel, 0);
+    copyHandsRtArrayInPlace(handsRt.speedBonusLevel, snap.speedBonusLevel, 0);
+    for (let i = 0; i < handsRt.clapDigitPrevious.length; i++) handsRt.clapDigitPrevious[i] = -1;
+    copyHandsRtArrayInPlace(handsRt.clapCooldownUntilMsByHand, snap.clapCooldownUntilMsByHand, 0);
 
     ensureSpeedRows();
     const speedRowRefs = getSpeedRowRefs();

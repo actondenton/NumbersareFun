@@ -7,6 +7,8 @@ const UI_UPDATE_THROTTLE_MS = 150;
  */
 export function buildNumber1GameLoopWireDep(dep) {
     let lastUIUpdateMs = 0;
+    /** True when play-column upgrade DOM was skipped (other Number / panel); flush once on return. */
+    let loopUiNeedsFlushOnReturn = false;
 
     return {
         onTickApplyWired: step => {
@@ -16,12 +18,12 @@ export function buildNumber1GameLoopWireDep(dep) {
             getUnlockedHands: dep.getUnlockedHands,
             getHands: dep.getHands,
             computeAscensionGrantTotals: dep.computeAscensionGrantTotals,
-            cheapenBonusLevel: dep.cheapenBonusLevel,
-            slowdownBonusLevel: dep.slowdownBonusLevel,
-            speedLevel: dep.speedLevel,
-            speedBonusLevel: dep.speedBonusLevel,
-            clapCooldownUntilMsByHand: dep.clapCooldownUntilMsByHand,
-            clapDigitPrevious: dep.clapDigitPrevious,
+            getCheapenBonusLevel: dep.getCheapenBonusLevel,
+            getSlowdownBonusLevel: dep.getSlowdownBonusLevel,
+            getSpeedLevel: dep.getSpeedLevel,
+            getSpeedBonusLevel: dep.getSpeedBonusLevel,
+            getClapCooldownUntilMsByHand: dep.getClapCooldownUntilMsByHand,
+            getClapDigitPrevious: dep.getClapDigitPrevious,
             gameplaySimFrozen: dep.gameplaySimFrozen,
             addToLog: dep.addToLog,
             markMeaningfulProgress: dep.markMeaningfulProgress,
@@ -88,17 +90,34 @@ export function buildNumber1GameLoopWireDep(dep) {
             getSlowdownMultiplier: dep.getSlowdownMultiplier,
             runAutobuyStep: dep.runAutobuyStep,
             flushLoopUi: (totalTicks, backgroundTab) => {
-                if (backgroundTab || (totalTicks <= 0 && !dep.getBatchedUpgradeUiFlush())) return;
+                if (backgroundTab || (totalTicks <= 0 && !dep.getBatchedUpgradeUiFlush() && !loopUiNeedsFlushOnReturn)) {
+                    return;
+                }
+                const mode = typeof dep.getCurrentNumberMode === "function" ? dep.getCurrentNumberMode() : 1;
+                const pageOpen = typeof dep.isPagePanelOpen === "function" && dep.isPagePanelOpen();
+                const settingsOpen = typeof dep.isSettingsPanelOpen === "function" && dep.isSettingsPanelOpen();
+                // Upgrade column is hidden while any page/settings panel is open, or on Number 2.
+                if (mode !== 1 || pageOpen || settingsOpen) {
+                    loopUiNeedsFlushOnReturn = true;
+                    return;
+                }
                 const now = Date.now();
-                if (now - lastUIUpdateMs >= UI_UPDATE_THROTTLE_MS || dep.getBatchedUpgradeUiFlush()) {
-                    if (now - lastUIUpdateMs >= UI_UPDATE_THROTTLE_MS) lastUIUpdateMs = now;
-                    if (dep.getBatchedUpgradeUiFlush()) dep.setBatchedUpgradeUiFlush(false);
+                // Panel-return forces a paint; batched hold/autobuy respects the throttle so a
+                // 10Hz hold-repeat does not rebuild upgrade columns every game-loop tick.
+                const forceReturn = loopUiNeedsFlushOnReturn;
+                if (!forceReturn && now - lastUIUpdateMs < UI_UPDATE_THROTTLE_MS) return;
+                lastUIUpdateMs = now;
+                loopUiNeedsFlushOnReturn = false;
+                if (dep.getBatchedUpgradeUiFlush()) dep.setBatchedUpgradeUiFlush(false);
+                if (typeof dep.refreshUpgradeColumnsUi === "function") {
+                    dep.refreshUpgradeColumnsUi();
+                } else {
                     dep.updateSpeedUpgradeUI();
                     dep.updateCheapenUpgradeUI();
                     dep.updateSlowdownUpgradeUI();
-                    dep.updateTimeWarpAuraUI();
-                    dep.updateRateDisplay({ throttleCpsHeadline: true });
                 }
+                dep.updateTimeWarpAuraUI();
+                dep.updateRateDisplay({ throttleCpsHeadline: true });
             }
         },
         loopRuntime: {

@@ -21,12 +21,12 @@ export function createNumber1ClapTick(deps) {
         getUnlockedHands,
         getHands,
         computeAscensionGrantTotals,
-        cheapenBonusLevel,
-        slowdownBonusLevel,
-        speedLevel,
-        speedBonusLevel,
-        clapCooldownUntilMsByHand,
-        clapDigitPrevious,
+        getCheapenBonusLevel,
+        getSlowdownBonusLevel,
+        getSpeedLevel,
+        getSpeedBonusLevel,
+        getClapCooldownUntilMsByHand,
+        getClapDigitPrevious,
         gameplaySimFrozen,
         addToLog,
         markMeaningfulProgress,
@@ -44,6 +44,26 @@ export function createNumber1ClapTick(deps) {
         getNumber1AscensionClapEssenceMultiplier,
         applyClapEssenceMultiplierProc
     } = deps;
+
+    /** Live lane arrays — must re-resolve each use (load/ascension may replace handsRt arrays). */
+    function speedLevels() {
+        return getSpeedLevel();
+    }
+    function speedBonusLevels() {
+        return getSpeedBonusLevel();
+    }
+    function clapCooldowns() {
+        return getClapCooldownUntilMsByHand();
+    }
+    function clapDigitsPrev() {
+        return getClapDigitPrevious();
+    }
+    function cheapenBonusLevels() {
+        return getCheapenBonusLevel();
+    }
+    function slowdownBonusLevels() {
+        return getSlowdownBonusLevel();
+    }
 
     function getClapCooldownMs() {
         return getClapCooldownMsFromTotals(computeAscensionGrantTotals());
@@ -72,15 +92,17 @@ export function createNumber1ClapTick(deps) {
     function grantClapBonusCheapenLevelForHand(handIndex) {
         const unlockedHands = getUnlockedHands();
         if (handIndex < 0 || handIndex >= unlockedHands) return;
+        const cheapenBonusLevel = cheapenBonusLevels();
         cheapenBonusLevel[handIndex] = (cheapenBonusLevel[handIndex] || 0) + 1;
     }
     function grantClapBonusSlowdownLevelForHand(handIndex) {
         const unlockedHands = getUnlockedHands();
         const handsArr = getHands();
         if (handIndex < 0 || handIndex >= unlockedHands) return;
+        const slowdownBonusLevel = slowdownBonusLevels();
         slowdownBonusLevel[handIndex] = (slowdownBonusLevel[handIndex] || 0) + 1;
         // Same functional reset behavior as buying a Compaction level: purchased speed levels are reset.
-        speedLevel[handIndex] = 0;
+        speedLevels()[handIndex] = 0;
         const h = handsArr[handIndex];
         if (h) h.tickAccBig = 0n;
     }
@@ -96,6 +118,7 @@ export function createNumber1ClapTick(deps) {
     }
     function rollClapSpeedBonusesForPairHands(a, b, bonusHandsOneIndexed, logIfNeitherMiss) {
         const handsArr = getHands();
+        const speedBonusLevel = speedBonusLevels();
         let bonusA = false;
         let bonusB = false;
         if (Math.random() < getClapBonusChance()) {
@@ -171,6 +194,8 @@ export function createNumber1ClapTick(deps) {
         if (!isClappingUnlocked() || gameplaySimFrozen()) return;
         const clapLedgerSnapBefore = snapshotHandLedgerBonusDisplays();
         const nowMs = Date.now();
+        const clapCooldownUntilMsByHand = clapCooldowns();
+        const clapDigitPrevious = clapDigitsPrev();
         function handOffClapCooldown(handIndex) {
             const until = clapCooldownUntilMsByHand[handIndex] || 0;
             return nowMs >= until;

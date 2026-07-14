@@ -22,6 +22,7 @@ export function finishNumber1ShellBoot(dep) {
         updateSpeedUpgradeUI,
         updateCheapenUpgradeUI,
         updateSlowdownUpgradeUI,
+        refreshUpgradeColumnsUi,
         updateTimeWarpAuraUI,
         updateRateDisplay,
         updateMilestoneUI,
@@ -29,7 +30,7 @@ export function finishNumber1ShellBoot(dep) {
         updatePageButtonUnlocks,
         updateNumber2SidebarUnlockUI,
         initInlineRightPanels,
-        initNumber1StageAccretionDiskBg,
+        flushAutobuyDeferredTotalsIfAny,
         loadSettings,
         applyTheme,
         applySettingsToUI,
@@ -50,7 +51,17 @@ export function finishNumber1ShellBoot(dep) {
         ensureTimeWarpArrays,
         isTimeWarpUnlocked,
         timeWarpAuraActiveByHand: timewarp.timeWarpAuraActiveByHand,
-        playTimeWarpScreenEffect
+        playTimeWarpScreenEffect,
+        flushHoldUpgradeUi() {
+            if (typeof flushAutobuyDeferredTotalsIfAny === "function") flushAutobuyDeferredTotalsIfAny();
+            if (typeof refreshUpgradeColumnsUi === "function") refreshUpgradeColumnsUi();
+            else {
+                updateSpeedUpgradeUI();
+                updateCheapenUpgradeUI();
+                updateSlowdownUpgradeUI();
+            }
+            // Rate/fit stays on the game loop — holds already update the count via deferred totals.
+        }
     });
     initTopCountRowFitObservers();
     updateSpeedUpgradeUI();
@@ -64,7 +75,7 @@ export function finishNumber1ShellBoot(dep) {
     updatePageButtonUnlocks();
     updateNumber2SidebarUnlockUI();
     initInlineRightPanels();
-    initNumber1StageAccretionDiskBg();
+    // Accretion disk stage BG is lazy-inited on first Phase 3 VFX sync.
     loadSettings();
     applyTheme();
     applySettingsToUI();

@@ -34,10 +34,7 @@ describe("createNumber1SpeedUpgradeBoot", () => {
             getSpeedRowRefs: () => [] as never[],
             sprayConfettiFrom: () => {},
             setBatchedUpgradeUiFlush: () => {},
-            updateSpeedUpgradeUI: () => {},
-            updateCheapenUpgradeUI: () => {},
-            updateSlowdownUpgradeUI: () => {},
-            updateRateDisplay: () => {},
+            refreshUpgradeColumnsUi: () => {},
             flashSpeedAutobuyToast: (i: number) => buys.push(i)
         });
         countdown[0] = 0.02;
