@@ -160,6 +160,80 @@
   --naf-n2-action-active-shadow: 0 0 0 1px rgba(255, 167, 38, 0.35), 0 0 10px rgba(255, 152, 0, 0.35);
   --naf-asc2-node-bg: linear-gradient(145deg, rgba(48, 36, 28, 0.55), rgba(28, 22, 18, 0.75));
   --naf-asc2-node-border: rgba(200, 160, 80, 0.35);
+  --naf-play-stage-border: #c9a227;
+  --naf-play-stage-shadow: inset 0 0 120px rgba(0, 0, 0, 0.5), inset 0 16px 90px rgba(255, 248, 220, 0.07), 0 14px 40px rgba(0, 0, 0, 0.38);
+  --naf-play-stage-bg: radial-gradient(ellipse 90% 50% at 50% -8%, rgba(255, 245, 220, 0.24) 0%, transparent 58%), radial-gradient(ellipse 130% 75% at 50% 115%, rgba(10, 21, 61, 0.7) 0%, transparent 48%), linear-gradient(180deg, rgba(28, 34, 78, 0.94) 0%, rgba(16, 20, 48, 0.98) 100%);
+  --naf-top-count-bg: rgba(12, 16, 38, 0.72);
+  --naf-top-count-border: rgba(201, 162, 39, 0.4);
+  --naf-top-count-shadow: 0 6px 24px rgba(0, 0, 0, 0.28);
+  --naf-hud-count-shadow: 0 0 10px rgba(108, 124, 255, 0.45), 0 0 24px rgba(108, 124, 255, 0.25);
+  --naf-hud-rate-shadow: 0 0 8px rgba(108, 124, 255, 0.35), 0 0 18px rgba(108, 124, 255, 0.2);
+  --naf-turbo-btn-border: rgba(140, 160, 255, 0.45);
+  --naf-turbo-btn-bg: rgba(40, 48, 90, 0.85);
+  --naf-turbo-btn-fg: #dde4ff;
+  --naf-turbo-btn-border-hover: rgba(170, 190, 255, 0.65);
+  --naf-turbo-btn-bg-hover: rgba(52, 60, 110, 0.92);
+  --naf-turbo-btn-fill: linear-gradient(90deg, rgba(100, 110, 220, 0.5), rgba(160, 175, 255, 0.58));
+  --naf-turbo-btn-disabled-fg: rgba(221, 228, 255, 0.5);
+  --naf-turbo-btn-disabled-border: rgba(140, 160, 255, 0.25);
+  --naf-turbo-btn-disabled-bg: rgba(40, 48, 90, 0.5);
+  --naf-turbo-btn-disabled-fill-opacity: 0.55;
+  --naf-turbo-btn-disabled-label-opacity: 0.72;
+  --naf-turbo-tip-bg: #071914;
+  --naf-turbo-tip-fg: #a8e4cb;
+  --naf-turbo-tip-border: #358066;
+  --naf-turbo-tip-shadow: 0 12px 32px rgba(0, 0, 0, 0.72);
+  --naf-grav-mass-border: rgba(255, 210, 150, 0.55);
+  --naf-grav-mass-bg: linear-gradient(120deg, rgba(62, 38, 22, 0.78) 0%, rgba(48, 28, 58, 0.68) 100%);
+  --naf-grav-mass-shadow: 0 0 20px rgba(255, 200, 120, 0.22), inset 0 1px 0 rgba(255, 240, 200, 0.1);
+  --naf-grav-void-border: rgba(130, 100, 220, 0.38);
+  --naf-grav-void-bg: linear-gradient(125deg, rgba(16, 10, 32, 0.65) 0%, rgba(8, 12, 26, 0.5) 100%);
+  --naf-grav-void-shadow: 0 0 16px rgba(90, 60, 180, 0.14);
+  --naf-bh-tier1: #8ecf9f;
+  --naf-bh-tier1-shadow: 0 0 6px rgba(100, 200, 130, 0.35);
+  --naf-bh-tier2: #9ec5ff;
+  --naf-bh-tier2-shadow: 0 0 7px rgba(120, 170, 255, 0.38);
+  --naf-bh-tier3: #ffe495;
+  --naf-bh-tier3-shadow: 0 0 8px rgba(255, 220, 120, 0.42);
+  --naf-asc-tab-active-shadow: 0 0 0 2px rgba(156, 39, 176, 0.45);
+  --naf-bh-preview-hint-bg: rgba(12, 10, 22, 0.94);
+  --naf-bh-preview-hint-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  --naf-bh-preview-hint-visible-opacity: 0.92;
+  --naf-map-viewport-bg: #2b2d39;
+  --naf-map-viewport-border: rgba(100, 110, 160, 0.28);
+  --naf-map-detail-bg: rgba(16, 20, 34, 0.84);
+  --naf-map-detail-border: rgba(100, 110, 160, 0.38);
+  --naf-map-detail-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  --naf-map-hand-fg: #e0b0ff;
+  --naf-map-hand-opacity: 0.28;
+  --naf-map-hand-shadow: 0 0 12px rgba(224, 176, 255, 0.22);
+  --naf-map-col-rule: rgba(120, 130, 180, 0.22);
+  --naf-map-edge-muted-opacity: 0.22;
+  --naf-map-debug-line: rgba(180, 190, 220, 0.12);
+  --naf-map-edge-velocity: #64b5f6;
+  --naf-map-edge-cheapen: #d4a84a;
+  --naf-map-edge-combo: #4dd0c4;
+  --naf-map-edge-speed: #64b5f6;
+  --naf-map-edge-turbo: #ce93d8;
+  --naf-map-edge-warp: #4dd0e1;
+  --naf-map-edge-clap: #ffb74d;
+  --naf-map-edge-synergy: #ffd54f;
+  --naf-ledger-micro: rgba(186, 214, 255, 0.96);
+  --naf-ledger-micro-shadow: 0 0 8px rgba(96, 130, 220, 0.85);
+  --naf-ledger-micro-clap: rgba(255, 228, 190, 0.98);
+  --naf-ledger-micro-clap-shadow: 0 0 8px rgba(255, 150, 64, 0.8);
+  --naf-ledger-chip-bg: rgba(35, 28, 20, 0.92);
+  --naf-ledger-chip-border: rgba(255, 180, 100, 0.55);
+  --naf-ledger-chip-fg: #ffd9a8;
+  --naf-ledger-chip-shadow: 0 0 18px rgba(255, 140, 60, 0.35);
+  --naf-ledger-pop-delta: #a7f5c8;
+  --naf-ledger-pop-delta-shadow: 0 0 8px rgba(120, 220, 170, 0.45);
+  --naf-ledger-pop-clap-delta: #ffe0b2;
+  --naf-ledger-pop-clap-delta-shadow: 0 0 8px rgba(255, 160, 80, 0.45);
+  --naf-ledger-pop-clap: #ffb74d;
+  --naf-ledger-pop-clap-shadow: 0 0 10px rgba(255, 145, 60, 0.65);
+  --naf-ledger-pop-new: #9aa0ff;
+  --naf-ledger-pop-new-shadow: 0 0 10px rgba(120, 140, 255, 0.55);
 }
 
 html[data-theme="light"] {
@@ -320,6 +394,80 @@ html[data-theme="light"] {
   --naf-n2-action-active-shadow: 0 0 0 1px rgba(255, 171, 64, 0.35), 0 0 8px rgba(255, 171, 64, 0.3);
   --naf-asc2-node-bg: linear-gradient(145deg, #fff9f0, #f3e8d8);
   --naf-asc2-node-border: rgba(160, 120, 60, 0.35);
+  --naf-play-stage-border: #b9962f;
+  --naf-play-stage-shadow: inset 0 0 80px rgba(0, 0, 0, 0.1), inset 0 12px 70px rgba(255, 255, 255, 0.3), 0 12px 30px rgba(30, 40, 70, 0.14);
+  --naf-play-stage-bg: radial-gradient(ellipse 90% 50% at 50% -8%, rgba(255, 255, 255, 0.8) 0%, transparent 58%), radial-gradient(ellipse 120% 70% at 50% 115%, rgba(190, 203, 236, 0.5) 0%, transparent 48%), linear-gradient(180deg, rgba(225, 232, 250, 0.97) 0%, rgba(208, 218, 243, 0.98) 100%);
+  --naf-top-count-bg: rgba(255, 255, 255, 0.9);
+  --naf-top-count-border: rgba(163, 136, 44, 0.45);
+  --naf-top-count-shadow: 0 4px 16px rgba(35, 45, 75, 0.12);
+  --naf-hud-count-shadow: 0 0 8px rgba(92, 107, 192, 0.22);
+  --naf-hud-rate-shadow: 0 0 6px rgba(92, 107, 192, 0.18);
+  --naf-turbo-btn-border: rgba(90, 104, 160, 0.35);
+  --naf-turbo-btn-bg: rgba(255, 255, 255, 0.88);
+  --naf-turbo-btn-fg: #2a3358;
+  --naf-turbo-btn-border-hover: rgba(80, 95, 180, 0.42);
+  --naf-turbo-btn-bg-hover: rgba(238, 242, 255, 0.96);
+  --naf-turbo-btn-fill: linear-gradient(90deg, rgba(92, 107, 192, 0.34), rgba(129, 140, 248, 0.44));
+  --naf-turbo-btn-disabled-fg: rgba(42, 51, 88, 0.48);
+  --naf-turbo-btn-disabled-border: rgba(90, 104, 160, 0.22);
+  --naf-turbo-btn-disabled-bg: rgba(232, 236, 248, 0.95);
+  --naf-turbo-btn-disabled-fill-opacity: 0.5;
+  --naf-turbo-btn-disabled-label-opacity: 0.65;
+  --naf-turbo-tip-bg: #f4fbf7;
+  --naf-turbo-tip-fg: #0d281f;
+  --naf-turbo-tip-border: #2a6b52;
+  --naf-turbo-tip-shadow: 0 12px 28px rgba(15, 40, 30, 0.22);
+  --naf-grav-mass-border: rgba(220, 150, 70, 0.55);
+  --naf-grav-mass-bg: linear-gradient(120deg, rgba(255, 252, 240, 0.98) 0%, rgba(255, 236, 210, 0.95) 100%);
+  --naf-grav-mass-shadow: 0 0 18px rgba(255, 190, 100, 0.28);
+  --naf-grav-void-border: rgba(120, 90, 190, 0.32);
+  --naf-grav-void-bg: linear-gradient(125deg, rgba(248, 244, 255, 0.96) 0%, rgba(235, 230, 250, 0.9) 100%);
+  --naf-grav-void-shadow: 0 0 16px rgba(90, 60, 180, 0.14);
+  --naf-bh-tier1: #2e7d32;
+  --naf-bh-tier1-shadow: none;
+  --naf-bh-tier2: #1565c0;
+  --naf-bh-tier2-shadow: none;
+  --naf-bh-tier3: #f9a825;
+  --naf-bh-tier3-shadow: 0 0 4px rgba(249, 168, 37, 0.35);
+  --naf-asc-tab-active-shadow: 0 0 0 2px rgba(123, 31, 162, 0.35);
+  --naf-bh-preview-hint-bg: rgba(255, 255, 255, 0.96);
+  --naf-bh-preview-hint-shadow: 0 4px 14px rgba(40, 30, 80, 0.12);
+  --naf-bh-preview-hint-visible-opacity: 0.88;
+  --naf-map-viewport-bg: #f2f4fb;
+  --naf-map-viewport-border: #c8d0e6;
+  --naf-map-detail-bg: rgba(255, 255, 255, 0.7);
+  --naf-map-detail-border: rgba(160, 170, 200, 0.5);
+  --naf-map-detail-shadow: 0 6px 22px rgba(60, 70, 100, 0.12);
+  --naf-map-hand-fg: #6a5080;
+  --naf-map-hand-opacity: 0.38;
+  --naf-map-hand-shadow: none;
+  --naf-map-col-rule: rgba(70, 80, 120, 0.2);
+  --naf-map-edge-muted-opacity: 0.3;
+  --naf-map-debug-line: rgba(80, 90, 120, 0.18);
+  --naf-map-edge-velocity: #1565c0;
+  --naf-map-edge-cheapen: #b8860b;
+  --naf-map-edge-combo: #00897b;
+  --naf-map-edge-speed: #1565c0;
+  --naf-map-edge-turbo: #7b1fa2;
+  --naf-map-edge-warp: #00838f;
+  --naf-map-edge-clap: #ef6c00;
+  --naf-map-edge-synergy: #f9a825;
+  --naf-ledger-micro: rgba(50, 72, 130, 0.92);
+  --naf-ledger-micro-shadow: 0 0 4px rgba(180, 200, 255, 0.65);
+  --naf-ledger-micro-clap: rgba(130, 60, 0, 0.92);
+  --naf-ledger-micro-clap-shadow: 0 0 4px rgba(255, 200, 120, 0.55);
+  --naf-ledger-chip-bg: rgba(255, 252, 248, 0.96);
+  --naf-ledger-chip-border: rgba(200, 120, 40, 0.5);
+  --naf-ledger-chip-fg: #8d4a00;
+  --naf-ledger-chip-shadow: 0 2px 10px rgba(180, 100, 30, 0.18);
+  --naf-ledger-pop-delta: #2e7d4a;
+  --naf-ledger-pop-delta-shadow: none;
+  --naf-ledger-pop-clap-delta: #c65100;
+  --naf-ledger-pop-clap-delta-shadow: none;
+  --naf-ledger-pop-clap: #e65100;
+  --naf-ledger-pop-clap-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  --naf-ledger-pop-new: #3949ab;
+  --naf-ledger-pop-new-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   --curtain-blue: #9aa9d9;
   --curtain-blue-light: #c1ccf0;
   --curtain-blue-dark: #7d8dbf;
@@ -404,61 +552,6 @@ html[data-theme="light"] .pages-shell .page-btn.page-btn--ascension-ready {
     animation: none;
   }
 }
-html[data-theme="light"] .play-stage {
-  border-color: #b9962f;
-  box-shadow:
-    inset 0 0 80px rgba(0, 0, 0, 0.1),
-    inset 0 12px 70px rgba(255, 255, 255, 0.3),
-    0 12px 30px rgba(30, 40, 70, 0.14);
-  background:
-    radial-gradient(ellipse 90% 50% at 50% -8%, rgba(255, 255, 255, 0.8) 0%, transparent 58%),
-    radial-gradient(ellipse 120% 70% at 50% 115%, rgba(190, 203, 236, 0.5) 0%, transparent 48%),
-    linear-gradient(180deg, rgba(225, 232, 250, 0.97) 0%, rgba(208, 218, 243, 0.98) 100%);
-}
-html[data-theme="light"] .top-count-row {
-  background: rgba(255, 255, 255, 0.9);
-  border-color: rgba(163, 136, 44, 0.45);
-  box-shadow: 0 4px 16px rgba(35, 45, 75, 0.12);
-}
-html[data-theme="light"] .incremental-count {
-  text-shadow: 0 0 8px rgba(92, 107, 192, 0.22);
-}
-html[data-theme="light"] .incremental-rate-value {
-  text-shadow: 0 0 6px rgba(92, 107, 192, 0.18);
-}
-html[data-theme="light"] .turbo-scension-upgrade-btn {
-  border-color: rgba(90, 104, 160, 0.35);
-  background: rgba(255, 255, 255, 0.88);
-  color: #2a3358;
-}
-html[data-theme="light"] .turbo-scension-upgrade-btn:hover:not(:disabled) {
-  background: rgba(238, 242, 255, 0.96);
-  border-color: rgba(80, 95, 180, 0.42);
-}
-html[data-theme="light"] .upgrade-btn.turbo-scension-upgrade-btn .upgrade-btn-fill {
-  background: linear-gradient(90deg, rgba(92, 107, 192, 0.34), rgba(129, 140, 248, 0.44));
-}
-html[data-theme="light"] .turbo-scension-upgrade-btn:disabled {
-  color: rgba(42, 51, 88, 0.48);
-  border-color: rgba(90, 104, 160, 0.22);
-  background: rgba(232, 236, 248, 0.95);
-}
-html[data-theme="light"] .turbo-scension-upgrade-btn:disabled .upgrade-btn-fill {
-  opacity: 0.5;
-}
-html[data-theme="light"] .turbo-scension-upgrade-btn:disabled .upgrade-btn-label {
-  opacity: 0.65;
-}
-html[data-theme="light"] .turbo-scension-tooltip-host .upgrade-details-tooltip {
-  background-color: #f4fbf7;
-  background: #f4fbf7;
-  color: #0d281f;
-  border-color: #2a6b52;
-  box-shadow: 0 12px 28px rgba(15, 40, 30, 0.22);
-}
-html[data-theme="light"] .page-panel.page-panel--inline {
-  background: transparent;
-}
 
 /* Dark mode contrast pass (keep dark surfaces, raise text readability) */
 /* Short / long objectives: base rule uses #ddd for legacy; light theme overrides. Dark must match other top-right cards. */
@@ -536,15 +629,9 @@ html[data-theme="dark"] .earned-bonuses-placeholder {
   margin: 8px 0 28px;
   padding: 18px 22px 28px;
   border-radius: 16px;
-  border: 3px solid #c9a227;
-  box-shadow:
-    inset 0 0 120px rgba(0, 0, 0, 0.5),
-    inset 0 16px 90px rgba(255, 248, 220, 0.07),
-    0 14px 40px rgba(0, 0, 0, 0.38);
-  background:
-    radial-gradient(ellipse 90% 50% at 50% -8%, rgba(255, 245, 220, 0.24) 0%, transparent 58%),
-    radial-gradient(ellipse 130% 75% at 50% 115%, rgba(10, 21, 61, 0.7) 0%, transparent 48%),
-    linear-gradient(180deg, rgba(28, 34, 78, 0.94) 0%, rgba(16, 20, 48, 0.98) 100%);
+  border: 3px solid var(--naf-play-stage-border);
+  box-shadow: var(--naf-play-stage-shadow);
+  background: var(--naf-play-stage-bg);
 }
 
 /* Numerical Mass Accumulator (Phase 1): extra proscenium weight — whole stage reads “new tier” */
@@ -812,10 +899,10 @@ html[data-dev-n1-stage-bg-motion="off"] #number1-stage-root .number1-stage-coron
   padding: 10px 20px;
   min-width: 200px;
   box-sizing: border-box;
-  background: rgba(12, 16, 38, 0.72);
-  border: 1px solid rgba(201, 162, 39, 0.4);
+  background: var(--naf-top-count-bg);
+  border: 1px solid var(--naf-top-count-border);
   border-radius: 10px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.28);
+  box-shadow: var(--naf-top-count-shadow);
   font-family: var(--font-gameplay);
   overflow: hidden;
   transition: border-color 0.4s ease, box-shadow 0.45s ease, background 0.45s ease;
@@ -946,9 +1033,7 @@ html[data-dev-n1-stage-bg-motion="off"] #number1-stage-root .number1-stage-coron
   line-height: 1.1;
 
   color: var(--naf-text-hud-count);
-  text-shadow:
-    0 0 10px rgba(108, 124, 255, 0.45),
-    0 0 24px rgba(108, 124, 255, 0.25);
+  text-shadow: var(--naf-hud-count-shadow);
 
   /* Prevent layout jitter as digits grow */
   white-space: nowrap;
@@ -973,9 +1058,7 @@ html[data-dev-n1-stage-bg-motion="off"] #number1-stage-root .number1-stage-coron
   font-weight: 400;
   line-height: 1.1;
   color: var(--naf-text-hud-rate);
-  text-shadow:
-    0 0 8px rgba(108, 124, 255, 0.35),
-    0 0 18px rgba(108, 124, 255, 0.2);
+  text-shadow: var(--naf-hud-rate-shadow);
   white-space: nowrap;
   max-width: 100%;
 }
@@ -1003,26 +1086,15 @@ html[data-dev-n1-stage-bg-motion="off"] #number1-stage-root .number1-stage-coron
   text-align: left;
 }
 .n1-gravity-cps-strip--mass .n1-gravity-cps-strip__inner {
-  border-color: rgba(255, 210, 150, 0.55);
-  background: linear-gradient(120deg, rgba(62, 38, 22, 0.78) 0%, rgba(48, 28, 58, 0.68) 100%);
-  box-shadow:
-    0 0 20px rgba(255, 200, 120, 0.22),
-    inset 0 1px 0 rgba(255, 240, 200, 0.1);
+  border-color: var(--naf-grav-mass-border);
+  background: var(--naf-grav-mass-bg);
+  box-shadow: var(--naf-grav-mass-shadow);
 }
 .n1-gravity-cps-strip--void .n1-gravity-cps-strip__inner {
-  border-color: rgba(130, 100, 220, 0.38);
-  background: linear-gradient(125deg, rgba(16, 10, 32, 0.65) 0%, rgba(8, 12, 26, 0.5) 100%);
-  box-shadow: 0 0 16px rgba(90, 60, 180, 0.14);
+  border-color: var(--naf-grav-void-border);
+  background: var(--naf-grav-void-bg);
+  box-shadow: var(--naf-grav-void-shadow);
   padding: 0.36rem 0.58rem;
-}
-html[data-theme="light"] .n1-gravity-cps-strip--mass .n1-gravity-cps-strip__inner {
-  border-color: rgba(220, 150, 70, 0.55);
-  background: linear-gradient(120deg, rgba(255, 252, 240, 0.98) 0%, rgba(255, 236, 210, 0.95) 100%);
-  box-shadow: 0 0 18px rgba(255, 190, 100, 0.28);
-}
-html[data-theme="light"] .n1-gravity-cps-strip--void .n1-gravity-cps-strip__inner {
-  border-color: rgba(120, 90, 190, 0.32);
-  background: linear-gradient(125deg, rgba(248, 244, 255, 0.96) 0%, rgba(235, 230, 250, 0.9) 100%);
 }
 .n1-gravity-cps-strip__glyph {
   flex-shrink: 0;
@@ -1262,9 +1334,9 @@ html[data-theme="light"] .n1-bh-visual__core {
   margin: 0;
   font-family: var(--font-gameplay);
   border-radius: 4px;
-  border: 1px solid rgba(140, 160, 255, 0.45);
-  background: rgba(40, 48, 90, 0.85);
-  color: #dde4ff;
+  border: 1px solid var(--naf-turbo-btn-border);
+  background: var(--naf-turbo-btn-bg);
+  color: var(--naf-turbo-btn-fg);
   cursor: pointer;
   white-space: nowrap;
   text-align: center;
@@ -1281,24 +1353,24 @@ html[data-theme="light"] .n1-bh-visual__core {
   gap: 1px;
 }
 .upgrade-btn.turbo-scension-upgrade-btn .upgrade-btn-fill {
-  background: linear-gradient(90deg, rgba(100, 110, 220, 0.5), rgba(160, 175, 255, 0.58));
+  background: var(--naf-turbo-btn-fill);
 }
 .turbo-scension-upgrade-btn:hover:not(:disabled) {
-  border-color: rgba(170, 190, 255, 0.65);
-  background: rgba(52, 60, 110, 0.92);
+  border-color: var(--naf-turbo-btn-border-hover);
+  background: var(--naf-turbo-btn-bg-hover);
 }
 .turbo-scension-upgrade-btn:disabled {
   opacity: 1;
   cursor: not-allowed;
-  color: rgba(221, 228, 255, 0.5);
-  border-color: rgba(140, 160, 255, 0.25);
-  background: rgba(40, 48, 90, 0.5);
+  color: var(--naf-turbo-btn-disabled-fg);
+  border-color: var(--naf-turbo-btn-disabled-border);
+  background: var(--naf-turbo-btn-disabled-bg);
 }
 .turbo-scension-upgrade-btn:disabled .upgrade-btn-fill {
-  opacity: 0.55;
+  opacity: var(--naf-turbo-btn-disabled-fill-opacity);
 }
 .turbo-scension-upgrade-btn:disabled .upgrade-btn-label {
-  opacity: 0.72;
+  opacity: var(--naf-turbo-btn-disabled-label-opacity);
 }
 
 .turbo-scension-levels {
@@ -1508,16 +1580,16 @@ html[data-theme="light"] .n1-bh-visual__core {
 
 /* Phase 2 collapse → Turbo UI tier accents (Photon shell / Ergosphere coupling) */
 .bh-tier-accent--1 {
-  color: #8ecf9f !important;
-  text-shadow: 0 0 6px rgba(100, 200, 130, 0.35);
+  color: var(--naf-bh-tier1) !important;
+  text-shadow: var(--naf-bh-tier1-shadow);
 }
 .bh-tier-accent--2 {
-  color: #9ec5ff !important;
-  text-shadow: 0 0 7px rgba(120, 170, 255, 0.38);
+  color: var(--naf-bh-tier2) !important;
+  text-shadow: var(--naf-bh-tier2-shadow);
 }
 .bh-tier-accent--3 {
-  color: #ffe495 !important;
-  text-shadow: 0 0 8px rgba(255, 220, 120, 0.42);
+  color: var(--naf-bh-tier3) !important;
+  text-shadow: var(--naf-bh-tier3-shadow);
   animation: bh-tier-accent-pulse 2.8s ease-in-out infinite;
 }
 @keyframes bh-tier-accent-pulse {
@@ -1530,19 +1602,6 @@ html[data-theme="light"] .n1-bh-visual__core {
     opacity: 0.9;
     filter: brightness(1.1);
   }
-}
-html[data-theme="light"] .bh-tier-accent--1 {
-  color: #2e7d32 !important;
-  text-shadow: none;
-}
-html[data-theme="light"] .bh-tier-accent--2 {
-  color: #1565c0 !important;
-  text-shadow: none;
-}
-html[data-theme="light"] .bh-tier-accent--3 {
-  color: #f9a825 !important;
-  text-shadow: 0 0 4px rgba(249, 168, 37, 0.35);
-  animation: bh-tier-accent-pulse 2.8s ease-in-out infinite;
 }
 
 /* Fire-themed rate when turbo boost is on */
@@ -2344,10 +2403,11 @@ html[data-theme="dark"] .slowdown-upgrade-btn .upgrade-btn-level {
 }
 .turbo-scension-tooltip-host .upgrade-details-tooltip {
   font-size: 2em;
-  background-color: #071914;
-  background: #071914;
-  border-color: #358066;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.72);
+  background-color: var(--naf-turbo-tip-bg);
+  background: var(--naf-turbo-tip-bg);
+  color: var(--naf-turbo-tip-fg);
+  border-color: var(--naf-turbo-tip-border);
+  box-shadow: var(--naf-turbo-tip-shadow);
 }
 .upgrade-tooltip-line {
   display: block;
@@ -4545,10 +4605,7 @@ html[data-theme="dark"] .story-review-panel {
     padding: 6px 14px;
 }
 .ascension-number-tab--active {
-    box-shadow: 0 0 0 2px rgba(156, 39, 176, 0.45);
-}
-html[data-theme="light"] .ascension-number-tab--active {
-    box-shadow: 0 0 0 2px rgba(123, 31, 162, 0.35);
+    box-shadow: var(--naf-asc-tab-active-shadow);
 }
 .ascension-page-body {
     min-height: 0;
@@ -6213,19 +6270,12 @@ html[data-theme="light"] .asc-black-hole {
   text-align: center;
   padding: 0.25rem 0.4rem;
   border-radius: 6px;
-  background: rgba(12, 10, 22, 0.94);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
-}
-html[data-theme="light"] .page-btn--bh-preview .asc-bh-preview-btn__hint {
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 4px 14px rgba(40, 30, 80, 0.12);
+  background: var(--naf-bh-preview-hint-bg);
+  box-shadow: var(--naf-bh-preview-hint-shadow);
 }
 .page-btn--bh-preview-hint-visible .asc-bh-preview-btn__hint {
   visibility: visible;
-  opacity: 0.92;
-}
-html[data-theme="light"] .page-btn--bh-preview-hint-visible .asc-bh-preview-btn__hint {
-  opacity: 0.88;
+  opacity: var(--naf-bh-preview-hint-visible-opacity);
 }
 .asc-black-hole__p2-row .page-btn--bh-preview .asc-bh-preview-btn__hint {
   font-size: 0.62rem;
@@ -6292,8 +6342,8 @@ html[data-theme="light"] .page-btn--bh-preview-hint-visible .asc-bh-preview-btn_
     height: clamp(300px, 48vh, 400px);
     border-radius: 12px;
     overflow: hidden;
-    background: #2b2d39;
-    border: 1px solid rgba(100, 110, 160, 0.28);
+    background: var(--naf-map-viewport-bg);
+    border: 1px solid var(--naf-map-viewport-border);
     margin-top: 0.35rem;
 }
 .ascension-map-viewport--collapse {
@@ -6348,16 +6398,11 @@ html[data-theme="light"] .ascension-map-viewport--collapse::after {
 .ascension-map-detail-panel-inner {
     padding: 10px 12px;
     border-radius: 10px;
-    border: 1px solid rgba(100, 110, 160, 0.38);
-    background: rgba(16, 20, 34, 0.84);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--naf-map-detail-border);
+    background: var(--naf-map-detail-bg);
+    box-shadow: var(--naf-map-detail-shadow);
     height: 100%;
     overflow: auto;
-}
-html[data-theme="light"] .ascension-map-detail-panel-inner {
-    background: rgba(255, 255, 255, 0.7);
-    border-color: rgba(160, 170, 200, 0.5);
-    box-shadow: 0 6px 22px rgba(60, 70, 100, 0.12);
 }
 .ascension-map-detail-kicker {
     font-size: 11px;
@@ -6383,10 +6428,6 @@ html[data-theme="light"] .ascension-map-detail-panel-inner {
     font-weight: 500;
     opacity: 0.88;
     letter-spacing: 0.02em;
-}
-html[data-theme="light"] .ascension-map-viewport {
-    background: #f2f4fb;
-    border-color: #c8d0e6;
 }
 .ascension-map-pan-zoom {
     width: 100%;
@@ -6531,19 +6572,14 @@ html[data-theme="light"] .ascension-map-viewport {
     transform: translate(-50%, -50%);
     margin: 0;
     font-family: "VT323", ui-monospace, monospace;
-    opacity: 0.28;
     pointer-events: none;
     line-height: 1;
     user-select: none;
     white-space: pre;
     font-size: clamp(10px, 1.9vw, 18px);
-    color: #e0b0ff;
-    text-shadow: 0 0 12px rgba(224, 176, 255, 0.22);
-}
-html[data-theme="light"] .ascension-hand-backdrop {
-    color: #6a5080;
-    opacity: 0.38;
-    text-shadow: none;
+    color: var(--naf-map-hand-fg);
+    opacity: var(--naf-map-hand-opacity);
+    text-shadow: var(--naf-map-hand-shadow);
 }
 .ascension-map-svg {
     position: absolute;
@@ -6554,12 +6590,9 @@ html[data-theme="light"] .ascension-hand-backdrop {
     display: block;
 }
 .ascension-map-svg .asc-map-col-rule {
-    stroke: rgba(120, 130, 180, 0.22);
+    stroke: var(--naf-map-col-rule);
     stroke-width: 0.09;
     vector-effect: non-scaling-stroke;
-}
-html[data-theme="light"] .ascension-map-svg .asc-map-col-rule {
-    stroke: rgba(70, 80, 120, 0.2);
 }
 .ascension-map-svg .asc-map-edge {
     fill: none;
@@ -6575,11 +6608,8 @@ html[data-theme="light"] .ascension-map-svg .asc-map-col-rule {
     stroke-width: 0.9;
 }
 .ascension-map-svg .asc-map-edge--muted {
-    opacity: 0.22;
+    opacity: var(--naf-map-edge-muted-opacity);
     stroke-width: 0.4;
-}
-html[data-theme="light"] .ascension-map-svg .asc-map-edge--muted {
-    opacity: 0.3;
 }
 .ascension-map-debug-svg {
     position: absolute;
@@ -6591,7 +6621,7 @@ html[data-theme="light"] .ascension-map-svg .asc-map-edge--muted {
     z-index: 2;
 }
 .asc-map-debug-line {
-    stroke: rgba(180, 190, 220, 0.12);
+    stroke: var(--naf-map-debug-line);
     stroke-width: 0.08;
     vector-effect: non-scaling-stroke;
 }
@@ -6605,57 +6635,30 @@ html[data-theme="light"] .ascension-map-svg .asc-map-edge--muted {
     stroke: rgba(180, 230, 255, 0.45);
     stroke-width: 0.05;
 }
-html[data-theme="light"] .asc-map-debug-line {
-    stroke: rgba(80, 90, 120, 0.18);
-}
 .asc-map-edge--velocity {
-    stroke: #64b5f6;
+    stroke: var(--naf-map-edge-velocity);
 }
 .asc-map-edge--cheapen {
-    stroke: #d4a84a;
+    stroke: var(--naf-map-edge-cheapen);
 }
 .asc-map-edge--combo {
-    stroke: #4dd0c4;
+    stroke: var(--naf-map-edge-combo);
 }
 .asc-map-edge--speed {
-    stroke: #64b5f6;
+    stroke: var(--naf-map-edge-speed);
 }
 .asc-map-edge--turbo {
-    stroke: #ce93d8;
+    stroke: var(--naf-map-edge-turbo);
 }
 .asc-map-edge--warp {
-    stroke: #4dd0e1;
+    stroke: var(--naf-map-edge-warp);
 }
 .asc-map-edge--clap {
-    stroke: #ffb74d;
+    stroke: var(--naf-map-edge-clap);
 }
 .asc-map-edge--synergy {
-    stroke: #ffd54f;
+    stroke: var(--naf-map-edge-synergy);
     opacity: 0.88;
-}
-html[data-theme="light"] .asc-map-edge--velocity {
-    stroke: #1565c0;
-}
-html[data-theme="light"] .asc-map-edge--cheapen {
-    stroke: #b8860b;
-}
-html[data-theme="light"] .asc-map-edge--combo {
-    stroke: #00897b;
-}
-html[data-theme="light"] .asc-map-edge--speed {
-    stroke: #1565c0;
-}
-html[data-theme="light"] .asc-map-edge--turbo {
-    stroke: #7b1fa2;
-}
-html[data-theme="light"] .asc-map-edge--warp {
-    stroke: #00838f;
-}
-html[data-theme="light"] .asc-map-edge--clap {
-    stroke: #ef6c00;
-}
-html[data-theme="light"] .asc-map-edge--synergy {
-    stroke: #f9a825;
 }
 /* Overlay the SVG 1:1 (meet letterbox matches syncAscensionMapNodeDomPositions). Pass-through hit area so pan works on empty map. */
 .ascension-map-nodes-layer {
@@ -8593,21 +8596,13 @@ html[data-theme="light"] .number1-stage-root.bh-phase7-stillness .top-count-row 
     pointer-events: none;
     z-index: 100051;
     letter-spacing: 0.02em;
-    color: rgba(186, 214, 255, 0.96);
-    text-shadow: 0 0 8px rgba(96, 130, 220, 0.85);
+    color: var(--naf-ledger-micro);
+    text-shadow: var(--naf-ledger-micro-shadow);
     font-variant-numeric: tabular-nums;
 }
 .ledger-beam-micro--clap {
-    color: rgba(255, 228, 190, 0.98);
-    text-shadow: 0 0 8px rgba(255, 150, 64, 0.8);
-}
-html[data-theme="light"] .ledger-beam-micro {
-    color: rgba(50, 72, 130, 0.92);
-    text-shadow: 0 0 4px rgba(180, 200, 255, 0.65);
-}
-html[data-theme="light"] .ledger-beam-micro--clap {
-    color: rgba(130, 60, 0, 0.92);
-    text-shadow: 0 0 4px rgba(255, 200, 120, 0.55);
+    color: var(--naf-ledger-micro-clap);
+    text-shadow: var(--naf-ledger-micro-clap-shadow);
 }
 .ledger-beam-fallback-chip {
     position: fixed;
@@ -8622,16 +8617,10 @@ html[data-theme="light"] .ledger-beam-micro--clap {
     font-variant-numeric: tabular-nums;
     pointer-events: none;
     white-space: nowrap;
-    background: rgba(35, 28, 20, 0.92);
-    border: 1px solid rgba(255, 180, 100, 0.55);
-    color: #ffd9a8;
-    box-shadow: 0 0 18px rgba(255, 140, 60, 0.35);
-}
-html[data-theme="light"] .ledger-beam-fallback-chip {
-    background: rgba(255, 252, 248, 0.96);
-    border-color: rgba(200, 120, 40, 0.5);
-    color: #8d4a00;
-    box-shadow: 0 2px 10px rgba(180, 100, 30, 0.18);
+    background: var(--naf-ledger-chip-bg);
+    border: 1px solid var(--naf-ledger-chip-border);
+    color: var(--naf-ledger-chip-fg);
+    box-shadow: var(--naf-ledger-chip-shadow);
 }
 .ledger-beam-pop-wrap {
     position: fixed;
@@ -8652,33 +8641,26 @@ html[data-theme="light"] .ledger-beam-fallback-chip {
     font-size: 1.36rem;
     font-weight: 800;
     letter-spacing: 0.04em;
-    color: #a7f5c8;
-    text-shadow: 0 0 8px rgba(120, 220, 170, 0.45);
+    color: var(--naf-ledger-pop-delta);
+    text-shadow: var(--naf-ledger-pop-delta-shadow);
 }
 .ledger-beam-pop-wrap--clap {
     font-size: 3.12rem;
 }
 .ledger-beam-pop-wrap--clap .ledger-beam-pop-delta {
-    color: #ffe0b2;
-    text-shadow: 0 0 8px rgba(255, 160, 80, 0.45);
-}
-html[data-theme="light"] .ledger-beam-pop-delta {
-    color: #2e7d4a;
-    text-shadow: none;
-}
-html[data-theme="light"] .ledger-beam-pop-wrap--clap .ledger-beam-pop-delta {
-    color: #c65100;
+    color: var(--naf-ledger-pop-clap-delta);
+    text-shadow: var(--naf-ledger-pop-clap-delta-shadow);
 }
 .ledger-beam-pop-wrap--clap .ledger-beam-pop-new {
-    color: #ffb74d;
-    text-shadow: 0 0 10px rgba(255, 145, 60, 0.65);
+    color: var(--naf-ledger-pop-clap);
+    text-shadow: var(--naf-ledger-pop-clap-shadow);
 }
 .ledger-beam-pop-wrap--clap .ledger-beam-pop-clap-line,
 .ledger-beam-pop-wrap--clap .ledger-beam-pop-clap-base,
 .ledger-beam-pop-wrap--clap .ledger-beam-pop-clap-old,
 .ledger-beam-pop-wrap--clap .ledger-beam-pop-clap-new {
-    color: #ffb74d;
-    text-shadow: 0 0 10px rgba(255, 145, 60, 0.65);
+    color: var(--naf-ledger-pop-clap);
+    text-shadow: var(--naf-ledger-pop-clap-shadow);
 }
 .ledger-beam-pop-clap-line {
     display: inline-flex;
@@ -8721,20 +8703,8 @@ html[data-theme="light"] .ledger-beam-pop-wrap--clap .ledger-beam-pop-delta {
     100% { opacity: 1; transform: translateY(0); }
 }
 .ledger-beam-pop-wrap:not(.ledger-beam-pop-wrap--clap) .ledger-beam-pop-new {
-    color: #9aa0ff;
-    text-shadow: 0 0 10px rgba(120, 140, 255, 0.55);
-}
-html[data-theme="light"] .ledger-beam-pop-wrap--clap .ledger-beam-pop-new,
-html[data-theme="light"] .ledger-beam-pop-wrap--clap .ledger-beam-pop-clap-line,
-html[data-theme="light"] .ledger-beam-pop-wrap--clap .ledger-beam-pop-clap-base,
-html[data-theme="light"] .ledger-beam-pop-wrap--clap .ledger-beam-pop-clap-old,
-html[data-theme="light"] .ledger-beam-pop-wrap--clap .ledger-beam-pop-clap-new {
-    color: #e65100;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
-}
-html[data-theme="light"] .ledger-beam-pop-wrap:not(.ledger-beam-pop-wrap--clap) .ledger-beam-pop-new {
-    color: #3949ab;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    color: var(--naf-ledger-pop-new);
+    text-shadow: var(--naf-ledger-pop-new-shadow);
 }
 .ledger-beam-pop-ghost {
     opacity: 0;
