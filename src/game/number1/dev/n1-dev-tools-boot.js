@@ -25,7 +25,7 @@ export function collectN1DevToolsDomRefs() {
 }
 
 /**
- * Builds the dep object for {@link wireNumber1DevTools}.
+ * Builds the dep object for {@link attachN1DevTools}.
  *
  * @param {object} dep
  */

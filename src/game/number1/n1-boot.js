@@ -1,10 +1,10 @@
 import { hydrateNumber1RuntimeFromSave } from "./n1-persist.js";
 import { applyHydratedSnapshotToLiveGame, restoreHandsFromSaveSnapshot } from "./n1-load-orchestration.js";
-import { wireNumber1DevTools } from "./dev/n1-dev-boot.js";
+import { attachN1DevTools } from "./dev/n1-dev-tools.js";
 import { createNumber1BlackHoleBoot } from "./black-hole/n1-black-hole-boot.js";
 import { wireNumber1Combinations } from "./combos/n1-combinations-wire.js";
 import { wireNumber1Story } from "./story/n1-story-wire.js";
-import { wireNumber1Objectives } from "./objectives/n1-objectives-wire.js";
+import { createNumber1ObjectivesBoot } from "./objectives/n1-objectives-boot.js";
 import { wireNumber1UpgradeBoots } from "./upgrades/n1-upgrades-wire.js";
 import { wireNumber1TimeWarpBoot } from "./upgrades/n1-timewarp-boot-wire.js";
 import { wireNumber1TurboBoot } from "./upgrades/n1-turbo-boot-wire.js";
@@ -68,9 +68,8 @@ export function createN1Boot(deps) {
             applyHydratedSnapshotToLiveGame(snap, { applyLiveGameLoad: snap => applyLiveGameLoad(snap) });
             return true;
         },
-        /** Phase 4+ domain wiring drain target. */
         wireDevTools(devDeps) {
-            wireNumber1DevTools(devDeps);
+            attachN1DevTools(devDeps);
         },
         /** Phase 9+ loop registration. */
         startGameLoop(loopRuntime) {
@@ -96,9 +95,8 @@ export function createN1Boot(deps) {
         wireStory(dep, storyBannerBridge) {
             return wireNumber1Story(dep, storyBannerBridge);
         },
-        /** Phase 18c+: objectives DOM flush boot (achievement flags live on objectives store). */
         wireObjectives(dep) {
-            return wireNumber1Objectives(dep);
+            return createNumber1ObjectivesBoot(dep);
         },
         /** Phase 21a: speed / cheapen / slowdown upgrade boots. */
         wireUpgrades(dep) {

@@ -2,7 +2,6 @@ import { ASCENSION_1_REQUIRED_TOTAL } from "../ascension/n1-ascension.js";
 import { HandCounter } from "../hands/n1-hand-counter.js";
 import { HAND_BASE_SPEED } from "../hands/n1-hands.js";
 import { createNumber1BlackHoleDevPhasePreset } from "../black-hole/number1-black-hole.js";
-import { formatCount } from "../shell-ui/n1-format.js";
 
 const DEV_SESSION_N1_STAGE_BG_STATIC = "numbersarefun_dev_n1_stage_bg_static";
 
@@ -13,7 +12,6 @@ function expandLegacyBootDevToolsDeps(raw) {
     return {
         devToolsLoadTimeMs: raw.devToolsLoadTimeMs,
         els: raw.els,
-        autoplayer: raw.autoplayer,
         ...g
     };
 }
@@ -306,115 +304,5 @@ export function attachN1DevTools(depsRaw) {
             const val = parseInt(els.devAddAscensionEssenceInput.value, 10) || 0;
             deps.addAscensionEssenceDev(val);
         });
-    }
-
-    const autoplayer = deps.autoplayer;
-
-    function formatAutoplayerStatusLine(status) {
-        if (!status || !status.sessionId) {
-            return "Auto-player idle.";
-        }
-        const stateLabel = status.running ? (status.paused ? "paused" : "running") : "stopped";
-        return (
-            stateLabel +
-            " · " +
-            status.personaId +
-            " · BH phase " +
-            status.blackHolePhase +
-            " · ascensions " +
-            status.ascensions +
-            " · clicks " +
-            status.simulatedClicks +
-            " · " +
-            status.sessionWallSec +
-            "s · peak " +
-            formatCount(status.runPeakTotal || 0)
-        );
-    }
-
-    function refreshAutoplayerStatus() {
-        if (!els.devAutoplayerStatus || !autoplayer) return;
-        els.devAutoplayerStatus.textContent = formatAutoplayerStatusLine(autoplayer.getStatus());
-    }
-
-    if (autoplayer) {
-        autoplayer.setStatusListener(refreshAutoplayerStatus);
-
-        if (els.devAutoplayerStartBtn) {
-            els.devAutoplayerStartBtn.addEventListener("click", () => {
-                const personaEl = els.devAutoplayerPersonaSelect;
-                const stopAtEl = els.devAutoplayerStopAtSelect;
-                const dismissEl = els.devAutoplayerDismissBannersCheckbox;
-                autoplayer.start({
-                    personaId: personaEl ? personaEl.value : "efficient",
-                    stopAtPhase: stopAtEl && stopAtEl.value !== "" ? stopAtEl.value : null,
-                    autoDismissStoryBanners: dismissEl ? !!dismissEl.checked : true
-                });
-                if (typeof deps.addToLog === "function") {
-                    deps.addToLog("Dev auto-player started.", "warning");
-                }
-                refreshAutoplayerStatus();
-            });
-        }
-
-        if (els.devAutoplayerStopBtn) {
-            els.devAutoplayerStopBtn.addEventListener("click", () => {
-                autoplayer.stop();
-                if (typeof deps.addToLog === "function") {
-                    deps.addToLog("Dev auto-player stopped.", "warning");
-                }
-                refreshAutoplayerStatus();
-            });
-        }
-
-        if (els.devAutoplayerPauseBtn) {
-            els.devAutoplayerPauseBtn.addEventListener("click", () => {
-                if (autoplayer.isPaused()) {
-                    autoplayer.resume();
-                } else if (autoplayer.isRunning()) {
-                    autoplayer.pause();
-                }
-                refreshAutoplayerStatus();
-            });
-        }
-
-        if (els.devAutoplayerClearBtn) {
-            els.devAutoplayerClearBtn.addEventListener("click", () => {
-                autoplayer.clearSession();
-                refreshAutoplayerStatus();
-            });
-        }
-
-        if (els.devAutoplayerExportJsonBtn) {
-            els.devAutoplayerExportJsonBtn.addEventListener("click", () => {
-                if (!autoplayer.getStatus().sessionId) {
-                    if (typeof deps.addToLog === "function") {
-                        deps.addToLog("Dev auto-player: no session to export.", "warning");
-                    }
-                    return;
-                }
-                autoplayer.downloadJson();
-            });
-        }
-
-        if (els.devAutoplayerCopySummaryBtn) {
-            els.devAutoplayerCopySummaryBtn.addEventListener("click", async () => {
-                if (!autoplayer.getStatus().sessionId) {
-                    if (typeof deps.addToLog === "function") {
-                        deps.addToLog("Dev auto-player: no session to summarize.", "warning");
-                    }
-                    return;
-                }
-                const ok = await autoplayer.copySummaryToClipboard();
-                if (typeof deps.addToLog === "function") {
-                    deps.addToLog(
-                        ok ? "Dev auto-player summary copied to clipboard." : "Copy failed — use Export JSON.",
-                        "warning"
-                    );
-                }
-            });
-        }
-
-        refreshAutoplayerStatus();
     }
 }

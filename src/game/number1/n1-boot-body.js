@@ -85,7 +85,6 @@ import {
 import { escapeHtml, renderStoryArchiveHtml as renderStoryArchiveHtmlForState } from "./story/n1-story.js";
 import { createLedgerBeamVfx } from "./shell-ui/n1-ledger-beam.js";
 import { createCombinationsForwardRefHolder, createNumber1CombinationsWireDeps } from "./combos/n1-combinations-wire.js";
-import { createNumber1StoryWireDeps } from "./story/n1-story-wire.js";
 import { createNumber1ComboNearMissAccess } from "./combos/n1-combo-near-miss-access.js";
 import {
     COMBOS,
@@ -2115,7 +2114,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
     const storyReviewListEl = document.getElementById("story-review-list");
     const storyReviewCloseBtn = document.getElementById("story-review-close");
 
-    const number1StoryBannerBoot = n1Boot.wireStory(createNumber1StoryWireDeps({
+    const number1StoryBannerBoot = n1Boot.wireStory({
         story,
         storyBanners,
         storyBannerOverlayEl,
@@ -2133,7 +2132,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         getNumber1BlackHoleState: () => blackHole.number1BlackHoleState,
         startAscensionMapCollapseTransition,
         refreshStoryArchiveSectionIfOpen
-    }), storyBannerBridge);
+    }, storyBannerBridge);
     const {
         getStoryBannerById,
         hasUnlockedStoryBanner,

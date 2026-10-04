@@ -17,10 +17,3 @@ export function wireNumber1Story(dep, storyBannerBridge) {
     }
     return boot;
 }
-
-/**
- * @param {Parameters<typeof createNumber1StoryBannerBoot>[0]} ctx
- */
-export function createNumber1StoryWireDeps(ctx) {
-    return ctx;
-}

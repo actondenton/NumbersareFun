@@ -3,24 +3,23 @@ import {
     createNumber1LoopRuntime,
     runNumber1GameLoopStep
 } from "./n1-game-loop.js";
-import { assembleNumber1GameLoopStepDeps } from "./n1-game-loop-step-deps.js";
 import { createNumber1ClapTick } from "./n1-clap-tick.js";
 import { createNumber1TurboGameLoopStep } from "../upgrades/n1-turbo-game-loop-step.js";
 import { createNumber1TickApplyStep } from "./n1-tick-apply-step.js";
 import { HAND_BASE_SPEED } from "../hands/n1-hands.js";
+import { BLACK_HOLE_EVAPORATION_CAP } from "../black-hole/number1-black-hole.js";
 
 const SAME_SPEED_HAND_ALIGN_INTERVAL_MS = 1000;
 const OVERVIEW_PANEL_LIVE_PATCH_MS = 1000;
 
 /**
- * Clap tick, turbo step, tick-apply, loop runtime, and step-deps assembly (Phase 21c).
+ * Clap tick, turbo step, tick-apply, loop runtime, and step-deps assembly.
  *
  * @param {{
  *   clap: Parameters<typeof createNumber1ClapTick>[0],
  *   turboStep: Parameters<typeof createNumber1TurboGameLoopStep>[0],
  *   tickApply: Parameters<typeof createNumber1TickApplyStep>[0],
- *   loopStep: Omit<Parameters<typeof assembleNumber1GameLoopStepDeps>[0],
- *     "maybeAlignSameSpeedHandPhasesFromWallClock" | "processClappingThisTick" | "updateTurboStep" | "applyTickGains" | "flushAutobuyDeferredTotalsIfAny">,
+ *   loopStep: Record<string, unknown>,
  *   loopRuntime: Omit<Parameters<typeof createNumber1LoopRuntime>[0], "runGameLoopStep" | "patchOverviewIfNeeded"> & {
  *     patchOverviewIfNeeded?: (nowOverview: number, ctx: { lastOverviewUpdateMs: number, overviewPatchMs: number }) => void
  *   },
@@ -48,14 +47,16 @@ export function wireNumber1GameLoop(dep) {
         });
     }
 
-    const number1GameLoopStepDeps = assembleNumber1GameLoopStepDeps({
+    const number1GameLoopStepDeps = {
         ...dep.loopStep,
+        handBaseSpeed: HAND_BASE_SPEED,
+        tickCap: BLACK_HOLE_EVAPORATION_CAP,
         maybeAlignSameSpeedHandPhasesFromWallClock,
         processClappingThisTick: number1ClapTick.processClappingThisTick,
         updateTurboStep: number1TurboGameLoopStep.updateTurboStep,
         applyTickGains: number1TickApplyStep.applyTickGains,
         flushAutobuyDeferredTotalsIfAny: number1TickApplyStep.flushAutobuyDeferredTotalsIfAny
-    });
+    };
 
     function runGameLoopStep(opts) {
         runNumber1GameLoopStep(number1GameLoopStepDeps, opts);

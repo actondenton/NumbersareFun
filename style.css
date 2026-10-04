@@ -3291,17 +3291,6 @@ html[data-theme="light"] .page-btn.page-btn--new-bonus-pulse {
     line-height: 1.35;
 }
 
-.dev-tools-autoplayer-buttons {
-    flex-wrap: wrap;
-    gap: 0.35rem;
-}
-
-.dev-autoplayer-status {
-    font-size: 0.8rem;
-    line-height: 1.4;
-    word-break: break-word;
-}
-
 .dev-input {
     width: 100px;
     padding: 4px 6px;

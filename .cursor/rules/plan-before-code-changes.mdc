@@ -33,9 +33,10 @@ Before editing code, decide whether a plan is required.
 
 If uncertain about requirements, dependencies, or expected behavior: **stop and ask** — do not guess and proceed.
 
-## Repository: N1 boot layout
+## Repository: N1 layout (slim target)
 
 - **Do not** add new business logic to `game/index.js` or thin shims
-- N1 orchestration body lives in `number1/n1-boot-body.js` (wired via `createN1Boot().boot()`)
-- `number1/n1-boot.js` is the orchestration spine (domain `wire*` / `create*` delegates)
-- Put new logic in dedicated domain `*-boot.js` modules and wire from `n1-boot-body.js`
+- Prefer a shared game context (`g` / state + install hooks) over large hand-built dep bags and forward-reference stubs
+- Domain logic lives in dedicated modules under `number1/` (rules / systems / ui). Composition root is `n1-boot-body.js` today; `n1-boot.js` may shrink or go away as wiring consolidates
+- Avoid new identity `wire*` / `*-boot-wire.js` pass-throughs — call the real factory from the composition root
+- Keep pure rules (black hole, combos, ascension, save normalize) well-tested; do not add tests that only assert wiring forwards
