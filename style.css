@@ -8869,6 +8869,9 @@ html[data-theme="light"] .ledger-beam-fallback-chip {
     color: #a7f5c8;
     text-shadow: 0 0 8px rgba(120, 220, 170, 0.45);
 }
+.ledger-beam-pop-wrap--clap {
+    font-size: 3.12rem;
+}
 .ledger-beam-pop-wrap--clap .ledger-beam-pop-delta {
     color: #ffe0b2;
     text-shadow: 0 0 8px rgba(255, 160, 80, 0.45);

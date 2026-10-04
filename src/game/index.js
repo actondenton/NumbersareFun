@@ -14,7 +14,7 @@ const n1Boot = createN1Boot({ runtime, dom });
 export const gameShell = n1Boot.boot();
 
 installGameShellAutosave({
-    autosaveNow: () => gameShell.autosaveNow(),
+    autosaveNow: opts => gameShell.autosaveNow(opts),
     intervalMs: AUTOSAVE_INTERVAL_MS
 });
 

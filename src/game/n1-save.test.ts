@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
     AUTOSAVE_INTERVAL_MS,
     COMBO_ACTIVATION_EDGE_SAVE_VERSION,
@@ -32,13 +32,16 @@ import {
     parseNumber1AscensionEssenceFromSaveValue,
     readSaveData,
     replaceArrayContents,
-    writeSaveData
+    writeSaveData,
+    writeSaveDataYielding,
+    scheduleBackgroundSaveWrite,
+    resetBackgroundSaveWriteStateForTests
 } from "./n1-save.js";
 
 describe("Number 1 save helpers", () => {
     it("exports stable save keys and version constants", () => {
         expect(SAVE_KEY).toBe("naf.save.v2");
-        expect(AUTOSAVE_INTERVAL_MS).toBe(10000);
+        expect(AUTOSAVE_INTERVAL_MS).toBe(20000);
         expect(COMBO_ACTIVATION_EDGE_SAVE_VERSION).toBe(2);
     });
 
@@ -79,6 +82,30 @@ describe("Number 1 save helpers", () => {
 
         store.set(SAVE_KEY, "{bad json");
         expect(readSaveData(storage)).toBeNull();
+    });
+
+    it("scheduleBackgroundSaveWrite spreads build, stringify, and setItem across macrotasks", async () => {
+        const store = new Map();
+        const storage = {
+            getItem: (key: string) => store.get(key) ?? null,
+            setItem: (key: string, value: string) => { store.set(key, value); }
+        };
+        resetBackgroundSaveWriteStateForTests();
+        vi.stubGlobal("requestIdleCallback", (cb: () => void) => {
+            cb();
+            return 1;
+        });
+
+        scheduleBackgroundSaveWrite(storage, () => ({ savedAt: 42 }));
+        expect(store.has(SAVE_KEY)).toBe(false);
+        await new Promise(r => setTimeout(r, 0));
+        expect(store.has(SAVE_KEY)).toBe(false);
+        await new Promise(r => setTimeout(r, 0));
+        expect(store.has(SAVE_KEY)).toBe(false);
+        await new Promise(r => setTimeout(r, 0));
+        expect(readSaveData(storage)).toEqual({ savedAt: 42 });
+
+        vi.unstubAllGlobals();
     });
 
     it("collects module saves and creates the aggregate save DTO", () => {

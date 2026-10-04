@@ -58,4 +58,64 @@ describe("wireNumber1SaveLoad", () => {
         expect(storage.setItem).toHaveBeenCalled();
         expect(typeof loadTail).toBe("function");
     });
+
+    it("background autosave defers setItem across the save pipeline", async () => {
+        vi.stubGlobal("requestIdleCallback", (cb: () => void) => {
+            cb();
+            return 1;
+        });
+        const storage = {
+            getItem: vi.fn(),
+            setItem: vi.fn(),
+            removeItem: vi.fn()
+        };
+        const runtime = createNumber1Runtime({ maxHands: 5 });
+        const session = runtime.session;
+        const wire = wireNumber1SaveLoad(
+            {
+                registerLiveGameLoad() {},
+                applyLoadedSave: vi.fn(() => true)
+            },
+            {
+                runtime,
+                session,
+                storage,
+                saveExtra: () => ({}),
+                hydrateCtx: {
+                    maxHands: 5,
+                    ascensionTreeVersionExpected: 1,
+                    comboActivationEdgeVersion: 1,
+                    blackHoleMaxLevel: 10,
+                    blackHoleEvaporationCap: 100,
+                    comboDiscoveryCooldownBaseMs: 1000,
+                    comboDiscoveryCooldownMinMs: 100,
+                    session,
+                    ascension: runtime.ascension,
+                    autobuy: runtime.autobuy
+                },
+                loadTailCtx: { runtime, maxHands: 5 },
+                offline: {
+                    tickBackgroundNumberModules: vi.fn(),
+                    updateBlackHolePhaseStep: vi.fn(),
+                    getBlackHolePhase: () => 1,
+                    getRawCpsPerHand: () => [1],
+                    applyDetachedCpsProgress: () => 100,
+                    run: runtime.run,
+                    blackHole: runtime.blackHole,
+                    formatCount: n => String(n),
+                    syncBlackHolePhase1Vfx: vi.fn(),
+                    offlineSummaryBodyEl: null,
+                    offlineSummaryPanelEl: null
+                }
+            }
+        );
+
+        wire.autosaveNow({ background: true });
+        expect(storage.setItem).not.toHaveBeenCalled();
+        await new Promise(r => setTimeout(r, 0));
+        await new Promise(r => setTimeout(r, 0));
+        await new Promise(r => setTimeout(r, 0));
+        expect(storage.setItem).toHaveBeenCalled();
+        vi.unstubAllGlobals();
+    });
 });

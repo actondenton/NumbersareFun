@@ -1,5 +1,6 @@
 export const SAVE_KEY = "naf.save.v2";
-export const AUTOSAVE_INTERVAL_MS = 10000;
+/** Interval autosave — spaced to reduce periodic main-thread pressure (manual saves unchanged). */
+export const AUTOSAVE_INTERVAL_MS = 20000;
 
 /** Save/load: activation counts are edge-based (combo appears after being absent); version mismatch clears counts on load. */
 export const COMBO_ACTIVATION_EDGE_SAVE_VERSION = 2;
@@ -22,6 +23,101 @@ export function writeSaveData(storage, state, key = SAVE_KEY) {
     } catch (_) {
         return false;
     }
+}
+
+/**
+ * Stringify on the current turn; defer localStorage.setItem one macrotask so a
+ * game frame can run between the two costs (interval autosave only).
+ */
+export function writeSaveDataYielding(storage, state, key = SAVE_KEY) {
+    try {
+        const raw = JSON.stringify(state);
+        setTimeout(() => {
+            try {
+                storage?.setItem?.(key, raw);
+            } catch (_) {
+                /* ignore quota / private-mode failures */
+            }
+        }, 0);
+        return true;
+    } catch (_) {
+        return false;
+    }
+}
+
+let backgroundSaveInFlight = false;
+let backgroundSaveRerun = false;
+
+function deferMacrotask(fn) {
+    setTimeout(fn, 0);
+}
+
+function deferWhenIdle(fn) {
+    if (typeof requestIdleCallback === "function") {
+        requestIdleCallback(fn, { timeout: 5000 });
+    } else {
+        deferMacrotask(fn);
+    }
+}
+
+/**
+ * Spread build → stringify → setItem across idle + macrotasks so interval autosave
+ * does not hitch a single frame. Coalesces overlapping requests into one follow-up.
+ *
+ * @param {Storage | null | undefined} storage
+ * @param {() => object} getState
+ * @param {string} [key]
+ */
+export function scheduleBackgroundSaveWrite(storage, getState, key = SAVE_KEY) {
+    if (!storage || typeof getState !== "function") return;
+    if (backgroundSaveInFlight) {
+        backgroundSaveRerun = true;
+        return;
+    }
+    backgroundSaveInFlight = true;
+
+    function finish() {
+        backgroundSaveInFlight = false;
+        if (backgroundSaveRerun) {
+            backgroundSaveRerun = false;
+            scheduleBackgroundSaveWrite(storage, getState, key);
+        }
+    }
+
+    deferWhenIdle(() => {
+        deferMacrotask(() => {
+            let state;
+            try {
+                state = getState();
+            } catch (_) {
+                finish();
+                return;
+            }
+            deferMacrotask(() => {
+                let raw;
+                try {
+                    raw = JSON.stringify(state);
+                } catch (_) {
+                    finish();
+                    return;
+                }
+                deferMacrotask(() => {
+                    try {
+                        storage.setItem(key, raw);
+                    } catch (_) {
+                        /* ignore quota / private-mode failures */
+                    }
+                    finish();
+                });
+            });
+        });
+    });
+}
+
+/** Test-only reset for coalesce flags. */
+export function resetBackgroundSaveWriteStateForTests() {
+    backgroundSaveInFlight = false;
+    backgroundSaveRerun = false;
 }
 
 export function collectNumberModulesSaveState(numberModules) {

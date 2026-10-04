@@ -169,8 +169,8 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         },
         applyOfflineProgress() {}
     };
-    function autosaveNow() {
-        saveWireRef.autosaveNow();
+    function autosaveNow(opts) {
+        saveWireRef.autosaveNow(opts);
     }
     function getSaveState(savedAt) {
         return saveWireRef.getSaveState(savedAt);

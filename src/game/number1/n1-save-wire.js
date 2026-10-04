@@ -1,4 +1,4 @@
-import { writeSaveData } from "../n1-save.js";
+import { writeSaveData, scheduleBackgroundSaveWrite } from "../n1-save.js";
 import { applyLiveGameLoadTail } from "./n1-load-orchestration.js";
 import { createNumber1HydrateEnv, createNumber1SaveState } from "./n1-persist.js";
 
@@ -39,8 +39,12 @@ export function wireNumber1SaveLoad(n1Boot, dep) {
         return createNumber1SaveState(savedAt, dep.runtime, dep.saveExtra());
     }
 
-    function autosaveNow() {
+    function autosaveNow(opts) {
         if (dep.session.suppressAutosave || !storage) return;
+        if (opts && opts.background) {
+            scheduleBackgroundSaveWrite(storage, () => getSaveState(Date.now()));
+            return;
+        }
         writeSaveData(storage, getSaveState(Date.now()));
     }
 
