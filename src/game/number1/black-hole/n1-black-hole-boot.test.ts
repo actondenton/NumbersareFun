@@ -21,7 +21,7 @@ vi.mock("./n1-black-hole-ui.js", () => ({
 }));
 
 describe("createNumber1BlackHoleBoot", () => {
-    it("wires controller + UI bridge and exposes aligned slowdown cap + phase readout", () => {
+    it("wires controller + UI bridge without a pass-through façade", () => {
         const boot = createNumber1BlackHoleBoot({
             maxSlowdownLevelBase: 100,
             rootDocument: null,
@@ -84,8 +84,9 @@ describe("createNumber1BlackHoleBoot", () => {
                 };
             }
         });
-        expect(boot.getBlackHolePhase()).toBe(1);
+        expect(boot.controller.getBlackHolePhase()).toBe(1);
         expect(boot.getMaxSlowdownLevelCap()).toBe(102);
-        expect(typeof boot.queueBlackHoleUiRefresh).toBe("function");
+        expect(typeof boot.bhUiBridge.queueBlackHoleUiRefresh).toBe("function");
+        expect(typeof boot.registerSyncBhCollapseTurboTierAccents).toBe("function");
     });
 });

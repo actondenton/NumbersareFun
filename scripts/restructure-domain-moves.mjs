@@ -16,14 +16,12 @@ const MOVES = {
     "number1-black-hole.test.ts": "number1/black-hole/number1-black-hole.test.ts",
     "n1-black-hole-boot.js": "number1/black-hole/n1-black-hole-boot.js",
     "n1-black-hole-boot.test.ts": "number1/black-hole/n1-black-hole-boot.test.ts",
-    "n1-black-hole-tier-accent.js": "number1/black-hole/n1-black-hole-tier-accent.js",
     "n1-black-hole-tier-accent.test.ts": "number1/black-hole/n1-black-hole-tier-accent.test.ts",
     "n1-black-hole-upgrade-preview.js": "number1/black-hole/n1-black-hole-upgrade-preview.js",
     "n1-black-hole-upgrade-preview.test.ts": "number1/black-hole/n1-black-hole-upgrade-preview.test.ts",
     "n1-black-hole-ui.js": "number1/black-hole/n1-black-hole-ui.js",
     "n1-black-hole-controller.js": "number1/black-hole/n1-black-hole-controller.js",
     "n1-black-hole-spend-sim.js": "number1/black-hole/n1-black-hole-spend-sim.js",
-    "n1-black-hole-preview-ui.js": "number1/black-hole/n1-black-hole-preview-ui.js",
 
     // Phase 6 — combos
     "n1-combos.js": "number1/combos/n1-combos.js",

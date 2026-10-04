@@ -20,7 +20,6 @@ import {
     getBlackHolePhotonShellLevelerTooltipSuffix,
 } from "./black-hole/number1-black-hole.js";
 import { createApplyHandSacrifice } from "./black-hole/n1-hand-sacrifice.js";
-import { getPhase2CollapseEffectHtml } from "./black-hole/n1-black-hole-upgrade-preview.js";
 import { createAscensionMapUi } from "./ascension/n1-ascension-map-ui.js";
 import {
     createNumber2Controller,
@@ -697,6 +696,12 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
     });
     const {
         controller: number1BlackHoleCtl,
+        bhUiBridge,
+        syncPhase1MassFillCssVars,
+        getMaxSlowdownLevelCap,
+        registerSyncBhCollapseTurboTierAccents
+    } = number1BlackHoleBoot;
+    const {
         getBlackHolePhase,
         useBlackHolePlayerTerminology,
         getArcEssenceMultiplierBonusPhraseLower,
@@ -726,12 +731,10 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         getBlackHolePhase6TrackLevel,
         getBlackHolePhase6TrackCost,
         getBlackHolePhase1FillRatio,
-        syncPhase1MassFillCssVars,
         getBlackHolePhase1RunCpsMult,
         formatBlackHolePhase1CpsMultForUi,
         getBlackHolePhase1AscensionEssenceMult,
         getBlackHolePhase1SlowdownCapBonus,
-        getMaxSlowdownLevelCap,
         getBlackHoleWaveIntervalSec,
         getBlackHoleHawkingMult,
         getBlackHoleWaveMult,
@@ -751,18 +754,6 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         getBlackHoleOfflineTimedBuffAverageMult,
         getBlackHoleOfflineProductionMult,
         getNumber1BlackHoleProductionMult,
-        queueBlackHoleUiRefresh,
-        syncBlackHolePhase4LensingRipples,
-        pulseBlackHoleLensingManualBurst,
-        pulseBlackHoleLensingAutoTick,
-        syncBlackHolePhase1Vfx,
-        triggerBlackHolePhase1CollapseVfx,
-        patchBlackHolePhase1PanelLiveDom,
-        patchBlackHolePhase2PanelLiveDom,
-        patchBlackHolePhase3PanelLiveDom,
-        refreshBlackHolePanelLiveDomIfOpen,
-        bindBlackHoleUpgradePreviewListeners,
-        afterBlackHolePanelMounted,
         completeBlackHolePhaseTransition,
         tryBuyBlackHolePhase2CollapseUpgrade,
         tryBuyBlackHolePhase3DiskUpgrade,
@@ -774,9 +765,22 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         sacrificeNextHandToFurnace,
         chooseBlackHoleFurnaceMutation,
         tryToggleJet,
-        updateBlackHolePhaseStep,
-        registerSyncBhCollapseTurboTierAccents
-    } = number1BlackHoleBoot;
+        updateBlackHolePhaseStep
+    } = number1BlackHoleCtl;
+    const {
+        queueBlackHoleUiRefresh,
+        syncBlackHolePhase4LensingRipples,
+        pulseBlackHoleLensingManualBurst,
+        pulseBlackHoleLensingAutoTick,
+        syncBlackHolePhase1Vfx,
+        triggerBlackHolePhase1CollapseVfx,
+        patchBlackHolePhase1PanelLiveDom,
+        patchBlackHolePhase2PanelLiveDom,
+        patchBlackHolePhase3PanelLiveDom,
+        refreshBlackHolePanelLiveDomIfOpen,
+        bindBlackHoleUpgradePreviewListeners,
+        afterBlackHolePanelMounted
+    } = bhUiBridge;
     g.install(createAscensionReadyChrome({
         isNumber1AscensionReady,
         computeNumber1AscensionGainBreakdown,

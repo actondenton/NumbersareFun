@@ -4,7 +4,7 @@ import {
     BH_TIER_ACCENT_CLASSES,
     applyBlackHoleTierAccentClass,
     getBlackHoleTierAccentClass
-} from "./n1-black-hole-tier-accent.js";
+} from "./n1-bh-collapse-turbo-tier-accents.js";
 
 function makeMockEl() {
     const classes = new Set<string>();

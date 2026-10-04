@@ -1,20 +1,31 @@
-import { applyBlackHoleTierAccentClass } from "./n1-black-hole-tier-accent.js";
 import {
     getBlackHoleErgosphereActivationsTooltipSuffix,
     getBlackHolePhotonShellLevelerTooltipSuffix
 } from "./number1-black-hole.js";
 import { TURBO_ACTIVATIONS_LINE_TOOLTIP, TURBO_LEVELER_LINE_TOOLTIP } from "../upgrades/n1-turbo.js";
 
+/** Tier accent classes for Phase 2 collapse tracks that buff Turbo UI (Photon shell, Ergosphere). */
+export const BH_TIER_ACCENT_CLASSES = ["bh-tier-accent--1", "bh-tier-accent--2", "bh-tier-accent--3"];
+
+/** @param {number} tier Owned collapse tier (1–3). */
+export function getBlackHoleTierAccentClass(tier) {
+    const t = Math.floor(Number(tier) || 0);
+    if (t <= 0) return "";
+    if (t === 1) return "bh-tier-accent--1";
+    if (t === 2) return "bh-tier-accent--2";
+    return "bh-tier-accent--3";
+}
+
+/** @param {Element | null | undefined} el */
+export function applyBlackHoleTierAccentClass(el, tier) {
+    if (!el) return;
+    for (let i = 0; i < BH_TIER_ACCENT_CLASSES.length; i++) el.classList.remove(BH_TIER_ACCENT_CLASSES[i]);
+    const next = getBlackHoleTierAccentClass(tier);
+    if (next) el.classList.add(next);
+}
+
 /**
  * Sync Photon/Ergosphere tier accent colors on Turbo UI after BH collapse upgrades.
- *
- * @deps {object} blackHoleState - number1BlackHoleState
- * @deps {function} getGrantTotals - () => import("../ascension/n1-ascension-grant-totals.js").GrantTotals
- * @deps {HTMLElement | null} turboBoostActivationsEl
- * @deps {HTMLElement | null} turboBoostToggleLabelEl
- * @deps {HTMLElement | null} turboScensionLevelerLineEl
- * @deps {function} setUpgradeTooltipText - (el, text) => void
- * FORBIDDEN: deps.runtime
  *
  * @param {object} deps
  * @returns {() => void}

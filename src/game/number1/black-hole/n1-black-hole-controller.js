@@ -49,9 +49,7 @@ export function createNumber1BlackHoleController(deps) {
     const isArcUnlocked = deps.isArcUnlocked;
     const hasAscended = deps.hasAscended;
 
-    function getBlackHolePhase() {
-        return clampBlackHolePhaseRule(getS().phase);
-    }
+    const getBlackHolePhase = () => clampBlackHolePhaseRule(getS().phase);
 
     function useBlackHolePlayerTerminology() {
         return getBlackHolePhase() >= 2;
@@ -117,33 +115,19 @@ export function createNumber1BlackHoleController(deps) {
         return false;
     }
 
-    function getBlackHolePhase2CollapseMassTier() {
-        return getBlackHolePhase2CollapseMassTierRule(getS());
-    }
+    const getBlackHolePhase2CollapseMassTier = () => getBlackHolePhase2CollapseMassTierRule(getS());
 
-    function getBlackHolePhase2CollapsePhotonTier() {
-        return getBlackHolePhase2CollapsePhotonTierRule(getS());
-    }
+    const getBlackHolePhase2CollapsePhotonTier = () => getBlackHolePhase2CollapsePhotonTierRule(getS());
 
-    function getBlackHolePhase2CollapseErgosphereTier() {
-        return getBlackHolePhase2CollapseErgosphereTierRule(getS());
-    }
+    const getBlackHolePhase2CollapseErgosphereTier = () => getBlackHolePhase2CollapseErgosphereTierRule(getS());
 
-    function isBlackHolePhase2MassPourUnlocked() {
-        return isBlackHolePhase2MassPourUnlockedRule(getS());
-    }
+    const isBlackHolePhase2MassPourUnlocked = () => isBlackHolePhase2MassPourUnlockedRule(getS());
 
-    function getBlackHolePhase2MassCouplingAscensionEssenceBonus() {
-        return getBlackHolePhase2MassCouplingAscensionEssenceBonusRule(getS());
-    }
+    const getBlackHolePhase2MassCouplingAscensionEssenceBonus = () => getBlackHolePhase2MassCouplingAscensionEssenceBonusRule(getS());
 
-    function getBlackHolePhase2CollapseUpgradeCost(track) {
-        return getBlackHolePhase2CollapseUpgradeCostRule(getS(), track);
-    }
+    const getBlackHolePhase2CollapseUpgradeCost = (track) => getBlackHolePhase2CollapseUpgradeCostRule(getS(), track);
 
-    function getBlackHolePhase2CostAtLevel(L) {
-        return getBlackHolePhase2CostAtLevelRule(L, 1);
-    }
+    const getBlackHolePhase2CostAtLevel = (L) => getBlackHolePhase2CostAtLevelRule(L, 1);
 
     function getBlackHolePhase2MassMult() {
         const s = getS();
@@ -178,69 +162,43 @@ export function createNumber1BlackHoleController(deps) {
         return Math.max(0, after - before);
     }
 
-    function getBlackHolePhase3UpgradeFrac() {
-        return getBlackHolePhase3UpgradeFracRule(getS(), getBlackHolePhase());
-    }
+    const getBlackHolePhase3UpgradeFrac = () => getBlackHolePhase3UpgradeFracRule(getS(), getBlackHolePhase());
 
-    function getBlackHolePhase4NextCostEssenceForWave(w) {
-        return getBlackHolePhase4NextCostEssenceForWaveRule(w);
-    }
+    const getBlackHolePhase4NextCostEssenceForWave = (w) => getBlackHolePhase4NextCostEssenceForWaveRule(w);
 
     function getBlackHolePhase4NextCostEssence() {
         return getBlackHolePhase4NextCostEssenceForWave(getS().phase4WaveLevel || 0);
     }
 
-    function getBlackHolePhase6NextJetUpgradeCostEssence() {
-        return getBlackHolePhase6NextJetUpgradeCostEssenceRule(getS());
-    }
+    const getBlackHolePhase6NextJetUpgradeCostEssence = () => getBlackHolePhase6NextJetUpgradeCostEssenceRule(getS());
 
-    function getBlackHolePhase3TrackLevel(track) {
-        return getBlackHolePhase3TrackLevelRule(getS(), track);
-    }
+    const getBlackHolePhase3TrackLevel = (track) => getBlackHolePhase3TrackLevelRule(getS(), track);
 
-    function getBlackHolePhase3TrackCost(track) {
-        return getBlackHolePhase3TrackCostRule(getS(), track);
-    }
+    const getBlackHolePhase3TrackCost = (track) => getBlackHolePhase3TrackCostRule(getS(), track);
 
     function syncBlackHolePhase3LegacyLevel() {
         syncNumber1BlackHolePhase3LegacyLevel(getS());
     }
 
-    function isBlackHolePhase3Complete() {
-        return isBlackHolePhase3CompleteRule(getS());
-    }
+    const isBlackHolePhase3Complete = () => isBlackHolePhase3CompleteRule(getS());
 
-    function getBlackHolePhase6TrackLevel(track) {
-        return getBlackHolePhase6TrackLevelRule(getS(), track);
-    }
+    const getBlackHolePhase6TrackLevel = (track) => getBlackHolePhase6TrackLevelRule(getS(), track);
 
-    function getBlackHolePhase6TrackCost(track) {
-        return getBlackHolePhase6TrackCostRule(getS(), track);
-    }
+    const getBlackHolePhase6TrackCost = (track) => getBlackHolePhase6TrackCostRule(getS(), track);
 
-    function getBlackHolePhase1FillRatio() {
-        return getBlackHolePhase1FillRatioRule(getS());
-    }
+    const getBlackHolePhase1FillRatio = () => getBlackHolePhase1FillRatioRule(getS());
 
-    function getBlackHolePhase1RunCpsMult() {
-        return getBlackHolePhase1RunCpsMultRule(getS());
-    }
+    const getBlackHolePhase1RunCpsMult = () => getBlackHolePhase1RunCpsMultRule(getS());
 
     function formatBlackHolePhase1CpsMultForUi(m) {
         return formatBlackHoleMultForUi(m);
     }
 
-    function getBlackHolePhase1AscensionEssenceMult() {
-        return getBlackHolePhase1AscensionEssenceMultRule(getS());
-    }
+    const getBlackHolePhase1AscensionEssenceMult = () => getBlackHolePhase1AscensionEssenceMultRule(getS());
 
-    function getBlackHolePhase1SlowdownCapBonus() {
-        return getBlackHolePhase1SlowdownCapBonusRule(getS());
-    }
+    const getBlackHolePhase1SlowdownCapBonus = () => getBlackHolePhase1SlowdownCapBonusRule(getS());
 
-    function getBlackHoleWaveIntervalSec() {
-        return getBlackHoleWaveIntervalSecRule(getS());
-    }
+    const getBlackHoleWaveIntervalSec = () => getBlackHoleWaveIntervalSecRule(getS());
 
     function getBlackHoleHawkingMult() {
         const p = getBlackHolePhase();
@@ -259,9 +217,7 @@ export function createNumber1BlackHoleController(deps) {
         return Date.now() <= (getS().phase4WaveActiveUntilMs || 0) ? BLACK_HOLE_PHASE4_WAVE_BOOST_MULT : 1;
     }
 
-    function getBlackHolePhase5ShorterOrbitMult() {
-        return getBlackHolePhase5ShorterOrbitMultRule(getS());
-    }
+    const getBlackHolePhase5ShorterOrbitMult = () => getBlackHolePhase5ShorterOrbitMultRule(getS());
 
     function getBlackHoleNextDigestDurationMs() {
         return Math.max(60 * 1000, Math.floor(BLACK_HOLE_DIGEST_BASE_MS * getBlackHolePhase5ShorterOrbitMult()));
@@ -272,37 +228,23 @@ export function createNumber1BlackHoleController(deps) {
         return Number.isFinite(raw) && raw > 0 ? raw : getBlackHoleNextDigestDurationMs();
     }
 
-    function getBlackHolePhase5MutationLevel(kind) {
-        return getBlackHolePhase5MutationLevelRule(getS(), kind);
-    }
+    const getBlackHolePhase5MutationLevel = (kind) => getBlackHolePhase5MutationLevelRule(getS(), kind);
 
-    function getBlackHolePhase5HotterCoreMult() {
-        return getBlackHolePhase5HotterCoreMultRule(getS());
-    }
+    const getBlackHolePhase5HotterCoreMult = () => getBlackHolePhase5HotterCoreMultRule(getS());
 
-    function getBlackHolePhase5DigestProgressAt(nowMs) {
-        return getBlackHolePhase5DigestProgressAtRule(getS(), nowMs, getBlackHolePhase5DigestDurationMsSafe());
-    }
+    const getBlackHolePhase5DigestProgressAt = (nowMs) => getBlackHolePhase5DigestProgressAtRule(getS(), nowMs, getBlackHolePhase5DigestDurationMsSafe());
 
     function getBlackHolePhase5DigestProgress() {
         return getBlackHolePhase5DigestProgressAt(Date.now());
     }
 
-    function getBlackHolePhase5DigestCurve(progress) {
-        return getBlackHolePhase5DigestCurveRule(progress);
-    }
+    const getBlackHolePhase5DigestCurve = (progress) => getBlackHolePhase5DigestCurveRule(progress);
 
-    function getBlackHolePhase5EffectiveFurnacePower() {
-        return getBlackHolePhase5EffectiveFurnacePowerRule(getS(), getBlackHolePhase(), getBlackHolePhase5DigestProgress());
-    }
+    const getBlackHolePhase5EffectiveFurnacePower = () => getBlackHolePhase5EffectiveFurnacePowerRule(getS(), getBlackHolePhase(), getBlackHolePhase5DigestProgress());
 
-    function getBlackHoleFurnaceEssenceBonus() {
-        return getBlackHoleFurnaceEssenceBonusRule(getS(), getBlackHolePhase(), getBlackHolePhase5EffectiveFurnacePower());
-    }
+    const getBlackHoleFurnaceEssenceBonus = () => getBlackHoleFurnaceEssenceBonusRule(getS(), getBlackHolePhase(), getBlackHolePhase5EffectiveFurnacePower());
 
-    function getBlackHoleFurnaceMult() {
-        return getBlackHoleFurnaceMultRule(getS(), getBlackHolePhase(), getBlackHolePhase5EffectiveFurnacePower());
-    }
+    const getBlackHoleFurnaceMult = () => getBlackHoleFurnaceMultRule(getS(), getBlackHolePhase(), getBlackHolePhase5EffectiveFurnacePower());
 
     function getBlackHoleJetMult() {
         const s = getS();
