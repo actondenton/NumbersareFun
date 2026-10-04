@@ -1,6 +1,47 @@
 :root {
   /* PRD: pixel-art feel for gameplay; menus/settings use body font below */
   --font-gameplay: "VT323", "Courier New", Courier, monospace;
+
+  /* Shell semantic tokens (dark defaults; light remaps below) */
+  --naf-bg-page: #0f1326;
+  --naf-bg-sidebar: #222;
+  --naf-bg-surface: rgba(20, 22, 35, 0.95);
+  --naf-bg-objectives: rgba(20, 22, 35, 0.95);
+  --naf-border-subtle: #333;
+  --naf-sidebar-border: transparent;
+  --naf-text-primary: #e7ecff;
+  --naf-text-card: #e3e8fb;
+  --naf-accent: #9aa0ff;
+  --naf-nav-bg: #444;
+  --naf-nav-fg: #fff;
+  --naf-nav-bg-hover: #666;
+  --naf-btn-page-bg: #2c2f44;
+  --naf-btn-page-fg: #ddd;
+  --naf-btn-page-border: #444a6d;
+  --naf-btn-page-bg-hover: #3a3f5a;
+}
+
+html[data-theme="light"] {
+  --naf-bg-page: #f4f6fb;
+  --naf-bg-sidebar: #e6e9f5;
+  --naf-bg-surface: rgba(245, 247, 255, 0.96);
+  --naf-bg-objectives: #eef2fc;
+  --naf-border-subtle: #c9d1e8;
+  --naf-sidebar-border: #cfd5eb;
+  --naf-text-primary: #1f2433;
+  --naf-text-card: #222a44;
+  --naf-accent: #5c6bc0;
+  --naf-nav-bg: #d7ddef;
+  --naf-nav-fg: #1d2742;
+  --naf-nav-bg-hover: #c4cde6;
+  --naf-btn-page-bg: #e8ebf7;
+  --naf-btn-page-fg: #1f2742;
+  --naf-btn-page-border: #bcc6e6;
+  --naf-btn-page-bg-hover: #dbe2f4;
+  --curtain-blue: #9aa9d9;
+  --curtain-blue-light: #c1ccf0;
+  --curtain-blue-dark: #7d8dbf;
+  --curtain-shadow: #5f6e9b;
 }
 
 body {
@@ -15,31 +56,10 @@ body {
   overflow-anchor: none;
   padding-left: 75px;
   padding-top: 60px;
+  background: var(--naf-bg-page);
+  color: var(--naf-text-primary);
 }
 
-html[data-theme="light"] body {
-  background: #f4f6fb;
-  color: #1f2433;
-}
-html[data-theme="light"] #sidebar {
-  background: #e6e9f5;
-  border-right: 1px solid #cfd5eb;
-}
-html[data-theme="light"] .nav-btn {
-  background: #d7ddef;
-  color: #1d2742;
-}
-html[data-theme="light"] .nav-btn:hover {
-  background: #c4cde6;
-}
-html[data-theme="light"] .pages-shell .page-btn {
-  background: #e8ebf7;
-  color: #1f2742;
-  border-color: #bcc6e6;
-}
-html[data-theme="light"] .pages-shell .page-btn:hover {
-  background: #dbe2f4;
-}
 /* Sidebar Ascension nav: show "Ascension: …" when ready; slightly smaller type so layout stays one line like peers */
 .pages-shell .page-btn.page-btn--ascension-ready[data-page="ascension"] {
   font-size: 0.74rem;
@@ -195,17 +215,9 @@ html[data-theme="light"] .speed-upgrade-level,
 html[data-theme="light"] .speed-upgrade-balance-cost {
   color: #2a3153;
 }
-html[data-theme="light"] #objectives,
-html[data-theme="light"] #long-objectives {
-  background: #eef2fc;
-  color: #222a44;
-}
-html[data-theme="light"] .combo-earned-bonuses-section,
-html[data-theme="light"] .milestone-box,
-html[data-theme="light"] .settings-panel,
 html[data-theme="light"] .story-review-panel {
-  background: rgba(245, 247, 255, 0.96);
-  border-color: #c9d1e8;
+  background: var(--naf-bg-surface);
+  border-color: var(--naf-border-subtle);
   color: #24304a;
 }
 html[data-theme="light"] .combo-earned-bonuses-intro {
@@ -325,10 +337,6 @@ html[data-theme="light"] .ambient-message-ticker__item--system {
 }
 
 /* Dark mode contrast pass (keep dark surfaces, raise text readability) */
-html[data-theme="dark"] body {
-  background: #0f1326;
-  color: #e7ecff;
-}
 html[data-theme="dark"] #top-right,
 html[data-theme="dark"] #top-right h3,
 html[data-theme="dark"] #top-right li,
@@ -336,12 +344,6 @@ html[data-theme="dark"] #top-right p {
   color: #e3e8fb;
 }
 /* Short / long objectives: base rule uses #ddd for legacy; light theme overrides. Dark must match other top-right cards. */
-html[data-theme="dark"] #objectives,
-html[data-theme="dark"] #long-objectives {
-  background: rgba(20, 22, 35, 0.95);
-  border: 1px solid #333;
-  color: #e3e8fb;
-}
 html[data-theme="dark"] #objectives h3,
 html[data-theme="dark"] #long-objectives h3 {
   color: #9aa0ff;
@@ -2789,12 +2791,6 @@ CURTAINS
   --curtain-blue-dark: #132b7a;
   --curtain-shadow: #0a153d;
 }
-html[data-theme="light"] {
-  --curtain-blue: #9aa9d9;
-  --curtain-blue-light: #c1ccf0;
-  --curtain-blue-dark: #7d8dbf;
-  --curtain-shadow: #5f6e9b;
-}
 
 /* =========================
    Curtain Container
@@ -2939,7 +2935,8 @@ html[data-theme="light"] {
     top: 0;
     width: 80px;
     height: 100%;
-    background: #222;
+    background: var(--naf-bg-sidebar);
+    border-right: 1px solid var(--naf-sidebar-border);
     padding-top: 40px;
 }
 
@@ -2947,14 +2944,14 @@ html[data-theme="light"] {
     width: 60px;
     margin: 10px;
     padding: 10px;
-    background: #444;
-    color: white;
+    background: var(--naf-nav-bg);
+    color: var(--naf-nav-fg);
     border: none;
     cursor: pointer;
 }
 
 .nav-btn:hover {
-    background: #666;
+    background: var(--naf-nav-bg-hover);
 }
 
 .nav-btn--soon {
@@ -2984,14 +2981,15 @@ html[data-theme="light"] {
 
 .milestone-box {
     margin-top: 12px;
-    background: rgba(20, 22, 35, 0.95);
-    border: 1px solid #333;
+    background: var(--naf-bg-surface);
+    border: 1px solid var(--naf-border-subtle);
     border-radius: 8px;
     padding: 10px;
+    color: var(--naf-text-card);
 }
 .milestone-title {
     font-size: 0.8rem;
-    color: #9aa0ff;
+    color: var(--naf-accent);
     margin-bottom: 6px;
 }
 .milestone-text {
@@ -3026,15 +3024,15 @@ html[data-theme="light"] {
 .page-btn {
     width: 100%;
     padding: 8px;
-    background: #2c2f44;
-    color: #ddd;
-    border: 1px solid #444a6d;
+    background: var(--naf-btn-page-bg);
+    color: var(--naf-btn-page-fg);
+    border: 1px solid var(--naf-btn-page-border);
     border-radius: 6px;
     cursor: pointer;
     font-size: 0.8rem;
 }
 .page-btn:hover {
-    background: #3a3f5a;
+    background: var(--naf-btn-page-bg-hover);
 }
 
 .page-btn.page-btn--new-bonus-pulse {
@@ -3077,9 +3075,12 @@ html[data-theme="light"] .page-btn.page-btn--new-bonus-pulse {
 }
 
 /* Objectives */
-#objectives {
+#objectives,
+#long-objectives {
     margin-top: 20px;
-    background: #ddd;
+    background: var(--naf-bg-objectives);
+    border: 1px solid var(--naf-border-subtle);
+    color: var(--naf-text-card);
     padding: 10px;
     border-radius: 8px;
 }
@@ -3109,14 +3110,15 @@ html[data-theme="light"] .page-btn.page-btn--new-bonus-pulse {
 .combo-earned-bonuses-section {
     margin: 18px 0 20px 0;
     padding: 12px 14px;
-    background: rgba(20, 22, 35, 0.88);
+    background: var(--naf-bg-surface);
     border-radius: 8px;
-    border: 1px solid #333;
+    border: 1px solid var(--naf-border-subtle);
+    color: var(--naf-text-card);
 }
 .combo-earned-bonuses-heading {
     margin: 0 0 6px 0;
     font-size: 1rem;
-    color: #9aa0ff;
+    color: var(--naf-accent);
 }
 .combo-discovery-milestone-ui {
     margin: 0 0 12px 0;
@@ -3610,11 +3612,11 @@ html[data-theme="light"] .speed-level-bonus {
     right: 230px;
     z-index: 100002;
     width: 280px;
-    background: rgba(20, 22, 35, 0.98);
-    border: 1px solid #333;
+    background: var(--naf-bg-surface);
+    border: 1px solid var(--naf-border-subtle);
     border-radius: 10px;
     padding: 14px;
-    color: #ddd;
+    color: var(--naf-text-card);
 }
 .settings-panel.settings-panel--inline {
     position: relative;
@@ -5008,97 +5010,6 @@ html[data-theme="light"] .asc-black-hole--phase1 .asc-black-hole__title {
     height: 100%;
     pointer-events: none;
 }
-.asc-black-hole__tesseract span {
-    position: absolute;
-    display: block;
-    pointer-events: none;
-}
-.asc-black-hole__tesseract-frame {
-    --frame-tilt: 13deg;
-    --frame-swing-a: 7deg;
-    --frame-swing-b: 9deg;
-    border: 1px solid rgba(255, 228, 170, 0.5);
-    border-radius: 2px;
-    box-shadow:
-        inset 0 0 8px rgba(255, 255, 255, 0.2),
-        0 0 10px rgba(255, 245, 220, 0.28);
-    transform: skewY(-13deg) rotate(var(--frame-tilt));
-    transform-origin: 50% 50%;
-}
-.asc-black-hole__tesseract-frame--outer {
-    --frame-tilt: 12deg;
-    --frame-swing-a: 8deg;
-    --frame-swing-b: 11deg;
-    inset: 0.15rem 0.05rem 0.7rem 0.25rem;
-    border-color: rgba(255, 255, 255, 0.72);
-    animation: asc-mass-tesseract-frame-cw 290s ease-in-out infinite alternate;
-}
-.asc-black-hole__tesseract-frame--mid {
-    --frame-tilt: 16deg;
-    --frame-swing-a: 6deg;
-    --frame-swing-b: 10deg;
-    inset: 0.72rem 1.35rem 1.02rem 1.55rem;
-    border-color: rgba(215, 232, 255, 0.6);
-    animation: asc-mass-tesseract-frame-ccw 360s ease-in-out infinite alternate;
-}
-.asc-black-hole__tesseract-frame--inner {
-    --frame-tilt: 9deg;
-    --frame-swing-a: 9deg;
-    --frame-swing-b: 7deg;
-    inset: 1.28rem 2.65rem 1.45rem 2.8rem;
-    border-color: rgba(255, 230, 178, 0.54);
-    animation: asc-mass-tesseract-frame-cw 430s ease-in-out infinite alternate-reverse;
-}
-.asc-black-hole__tesseract-frame--core {
-    --frame-tilt: 18deg;
-    --frame-swing-a: 7deg;
-    --frame-swing-b: 12deg;
-    inset: 1.82rem 3.78rem 1.82rem 3.96rem;
-    border-color: rgba(190, 180, 255, 0.48);
-    animation: asc-mass-tesseract-frame-ccw 310s ease-in-out infinite alternate-reverse;
-}
-.asc-black-hole__tesseract-edge {
-    left: var(--x);
-    top: var(--y);
-    width: var(--w);
-    height: 1px;
-    background: linear-gradient(90deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.72), rgba(155, 205, 255, 0.22));
-    box-shadow: 0 0 8px rgba(255, 255, 255, 0.45);
-    transform: rotate(var(--r));
-    transform-origin: 0 50%;
-}
-.asc-black-hole__tesseract-edge--a { --x: 3%; --y: 8%; --w: 19%; --r: 16deg; }
-.asc-black-hole__tesseract-edge--b { --x: 84%; --y: 19%; --w: 11%; --r: -139deg; }
-.asc-black-hole__tesseract-edge--c { --x: 8%; --y: 80%; --w: 19%; --r: -14deg; }
-.asc-black-hole__tesseract-edge--d { --x: 89%; --y: 75%; --w: 13%; --r: -158deg; }
-.asc-black-hole__tesseract-edge--e { --x: 22%; --y: 17%; --w: 17%; --r: 17deg; }
-.asc-black-hole__tesseract-edge--f { --x: 71%; --y: 25%; --w: 15%; --r: -142deg; }
-.asc-black-hole__tesseract-edge--g { --x: 25%; --y: 70%; --w: 17%; --r: -17deg; }
-.asc-black-hole__tesseract-edge--h { --x: 74%; --y: 67%; --w: 16%; --r: -160deg; }
-.asc-black-hole__tesseract-edge--i { --x: 39%; --y: 26%; --w: 14%; --r: 18deg; }
-.asc-black-hole__tesseract-edge--j { --x: 60%; --y: 31%; --w: 15%; --r: -143deg; }
-.asc-black-hole__tesseract-edge--k { --x: 42%; --y: 61%; --w: 13%; --r: -18deg; }
-.asc-black-hole__tesseract-edge--l { --x: 61%; --y: 58%; --w: 15%; --r: -160deg; }
-.asc-black-hole__tesseract-node {
-    left: var(--x);
-    top: var(--y);
-    width: 0.32rem;
-    height: 0.32rem;
-    margin: -0.16rem 0 0 -0.16rem;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.92);
-    box-shadow:
-        0 0 6px rgba(255, 255, 255, 0.9),
-        0 0 15px rgba(185, 210, 255, 0.55);
-}
-.asc-black-hole__tesseract-node--a { --x: 4%; --y: 8%; }
-.asc-black-hole__tesseract-node--b { --x: 92%; --y: 21%; }
-.asc-black-hole__tesseract-node--c { --x: 8%; --y: 82%; }
-.asc-black-hole__tesseract-node--d { --x: 88%; --y: 75%; }
-.asc-black-hole__tesseract-node--e { --x: 39%; --y: 26%; }
-.asc-black-hole__tesseract-node--f { --x: 62%; --y: 31%; }
-.asc-black-hole__tesseract-node--g { --x: 43%; --y: 62%; }
-.asc-black-hole__tesseract-node--h { --x: 63%; --y: 58%; }
 .asc-black-hole__numeral-dust {
     position: absolute;
     inset: 0;
@@ -6182,7 +6093,6 @@ html[data-theme="light"] .asc-black-hole__mass-meter-track {
     .asc-black-hole--phase1,
     .asc-black-hole__mass-geometry::before,
     .asc-black-hole__tesseract,
-    .asc-black-hole__tesseract-frame,
     .asc-black-hole__numeral-dust span,
     .asc-black-hole__collapse-core,
     .asc-black-hole__collapse-shard,
@@ -8232,22 +8142,6 @@ html[data-theme="light"] .number1-stage-root.bh-phase7-stillness .top-count-row 
     48% {
         opacity: 0.86;
         filter: drop-shadow(0 0 14px rgba(180, 210, 255, 0.42));
-    }
-}
-@keyframes asc-mass-tesseract-frame-cw {
-    0% {
-        transform: skewY(-13deg) rotate(calc(var(--frame-tilt) - var(--frame-swing-a)));
-    }
-    100% {
-        transform: skewY(-13deg) rotate(calc(var(--frame-tilt) + var(--frame-swing-b)));
-    }
-}
-@keyframes asc-mass-tesseract-frame-ccw {
-    0% {
-        transform: skewY(-13deg) rotate(calc(var(--frame-tilt) + var(--frame-swing-a)));
-    }
-    100% {
-        transform: skewY(-13deg) rotate(calc(var(--frame-tilt) - var(--frame-swing-b)));
     }
 }
 @keyframes asc-mass-numeral-infall {
