@@ -2,12 +2,27 @@
  * Coalesces objective + milestone DOM work when many updates stack in one turn.
  * Memory achievement sync can run every schedule; DOM is throttled / skipped while hidden.
  *
- * @param {{
- *   flush: () => void,
- *   syncAchievementsOnly?: () => void
- * }} deps
+ * Accepts either the shared game context `g` (uses `updateObjectives` /
+ * `syncObjectiveAchievements`) or an explicit `{ flush, syncAchievementsOnly }` bag.
+ *
+ * @param {object} gOrDeps
  */
-export function createNumber1ObjectivesBoot(deps) {
+export function createNumber1ObjectivesBoot(gOrDeps) {
+    const flush =
+        typeof gOrDeps.flush === "function"
+            ? gOrDeps.flush
+            : () => {
+                  gOrDeps.updateObjectives();
+              };
+    const syncAchievementsOnly =
+        typeof gOrDeps.syncAchievementsOnly === "function"
+            ? gOrDeps.syncAchievementsOnly
+            : () => {
+                  if (typeof gOrDeps.syncObjectiveAchievements === "function") {
+                      gOrDeps.syncObjectiveAchievements();
+                  }
+              };
+
     let rafId = 0;
     let trailingTimerId = 0;
     let lastDomFlushMs = 0;
@@ -15,11 +30,11 @@ export function createNumber1ObjectivesBoot(deps) {
 
     function runDomFlush() {
         lastDomFlushMs = Date.now();
-        deps.flush();
+        flush();
     }
 
     function syncMemoryOnly() {
-        if (typeof deps.syncAchievementsOnly === "function") deps.syncAchievementsOnly();
+        syncAchievementsOnly();
     }
 
     function scheduleObjectiveDomFlush() {

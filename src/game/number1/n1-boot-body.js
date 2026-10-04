@@ -162,6 +162,7 @@ import { finishNumber1ShellBoot } from "./shell-ui/n1-shell-finish-boot.js";
 import { attachN1DevTools } from "./dev/n1-dev-tools.js";
 import { buildN1DevToolsWireDep } from "./dev/n1-dev-tools-boot.js";
 import { buildNumber1BootFinishRefreshers } from "./shell-ui/n1-boot-finish-refreshers.js";
+import { createN1GameContext } from "./n1-game-context.js";
 
 /**
  * Number 1 orchestration body (composition root).
@@ -196,224 +197,55 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
     const objectivesRt = n1Rt.objectives;
     const session = n1Rt.session;
     const gameplaySimFrozen = createGameplaySimFrozen(session);
-    /** Populated by wireSaveLoad after turbo wire; hoisted wrappers delegate here. */
-    const saveWireRef = {
-        autosaveNow() {},
-        getSaveState() {
-            return {};
-        },
-        applyLoadedState() {
-            return false;
-        },
-        applyOfflineProgress() {}
-    };
-    function autosaveNow(opts) {
-        saveWireRef.autosaveNow(opts);
-    }
-    function getSaveState(savedAt) {
-        return saveWireRef.getSaveState(savedAt);
-    }
-    function applyLoadedState(data) {
-        return saveWireRef.applyLoadedState(data);
-    }
-    function applyOfflineProgress(offlineMs, opts) {
-        return saveWireRef.applyOfflineProgress(offlineMs, opts);
-    }
-    /** Populated by wireHandUnlock after upgrade boots; hoisted wrappers delegate here. */
-    const handUnlockRef = {
-        unlockHand() {},
-        checkUnlockHands() {},
-        initFirstHand() {}
-    };
-    function unlockHand() {
-        handUnlockRef.unlockHand();
-    }
-    function checkUnlockHands() {
-        handUnlockRef.checkUnlockHands();
-    }
-    /** Populated by wireObjectivesLive after BH boot; hoisted wrappers delegate here. */
-    const objectivesUiRef = {
-        syncObjectiveAchievements() {},
-        updateObjectives() {},
-        updateMilestoneUI() {}
-    };
-    function updateObjectives() {
-        objectivesUiRef.updateObjectives();
-    }
-    function updateMilestoneUI() {
-        objectivesUiRef.updateMilestoneUI();
-    }
+    const g = createN1GameContext(runtime, dom);
+    /** Late-bound methods — domains `g.install` real impls; early closures call through bind. */
+    const autosaveNow = g.bind("autosaveNow");
+    const getSaveState = g.bind("getSaveState", () => ({}));
+    const applyLoadedState = g.bind("applyLoadedState", () => false);
+    const applyOfflineProgress = g.bind("applyOfflineProgress");
+    const unlockHand = g.bind("unlockHand");
+    const checkUnlockHands = g.bind("checkUnlockHands");
+    const initFirstHand = g.bind("initFirstHand");
+    const updateObjectives = g.bind("updateObjectives");
+    const updateMilestoneUI = g.bind("updateMilestoneUI");
+    const syncObjectiveAchievements = g.bind("syncObjectiveAchievements");
     let longTermObjectives = [];
     let storyBanners = [];
-    /** Populated by wireDetachedCps after rate-tick boot. */
-    const detachedCpsRef = {
-        applyNumber1DetachedCpsProgress() {
-            return 0;
-        },
-        tickNumber1BackgroundCps() {},
-        refreshNumber1CountDisplay() {}
-    };
-    /** Populated after rate-tick boot; shell registry wires run earlier. */
-    const rateTickRef = {
-        getRawCpsPerHand() {
-            return [];
-        }
-    };
-    function getRawCpsPerHand() {
-        return rateTickRef.getRawCpsPerHand();
-    }
-    function applyNumber1DetachedCpsProgress(dtSec) {
-        return detachedCpsRef.applyNumber1DetachedCpsProgress(dtSec);
-    }
-    function tickNumber1BackgroundCps(dtSec) {
-        detachedCpsRef.tickNumber1BackgroundCps(dtSec);
-    }
-    /** Populated by wireMilestoneUnlocks after upgrade boots. */
-    const milestoneUnlockRef = {
-        syncUnlocksWithTotalCount() {}
-    };
-    /** Run whenever `totalChanges` changes so milestone gates cannot desync (load, offline, dev tools, etc.). */
-    function syncUnlocksWithTotalCount() {
-        milestoneUnlockRef.syncUnlocksWithTotalCount();
-    }
-    /** Populated by wireAscensionFlow after ascension perform boot. */
-    const ascensionFlowRef = {
-        beginNumber1AscensionFlow() {},
-        maybeShowFirstAscensionIntroOnUnlock() {}
-    };
-    function beginNumber1AscensionFlow() {
-        ascensionFlowRef.beginNumber1AscensionFlow();
-    }
-    function maybeShowFirstAscensionIntroOnUnlock() {
-        ascensionFlowRef.maybeShowFirstAscensionIntroOnUnlock();
-    }
+    const applyNumber1DetachedCpsProgress = g.bind("applyNumber1DetachedCpsProgress", () => 0);
+    const tickNumber1BackgroundCps = g.bind("tickNumber1BackgroundCps");
+    const refreshNumber1CountDisplay = g.bind("refreshNumber1CountDisplay");
+    const getRawCpsPerHand = g.bind("getRawCpsPerHand", () => []);
+    const syncUnlocksWithTotalCount = g.bind("syncUnlocksWithTotalCount");
+    const beginNumber1AscensionFlow = g.bind("beginNumber1AscensionFlow");
+    const maybeShowFirstAscensionIntroOnUnlock = g.bind("maybeShowFirstAscensionIntroOnUnlock");
     let ascensionConfirmOverlayEl = null;
-    /** Populated by createAscensionHubRender after ascension grant helpers exist. */
-    const ascensionHubRenderRef = {
-        renderAscensionHubGrantsHtml() { return ""; },
-        renderAscensionHubStatsPillsHtml() { return ""; },
-        patchAscensionHubStatsPillsDomIfChanged() {}
-    };
-    function renderAscensionHubGrantsHtml() {
-        return ascensionHubRenderRef.renderAscensionHubGrantsHtml();
-    }
-    function renderAscensionHubStatsPillsHtml() {
-        return ascensionHubRenderRef.renderAscensionHubStatsPillsHtml();
-    }
-    function patchAscensionHubStatsPillsDomIfChanged() {
-        ascensionHubRenderRef.patchAscensionHubStatsPillsDomIfChanged();
-    }
-    /** Populated by createBlackHolePanelRender after black hole boot. */
-    const blackHolePanelRenderRef = {
-        renderNumber1BlackHolePanelHtml() { return ""; }
-    };
-    function renderNumber1BlackHolePanelHtml() {
-        return blackHolePanelRenderRef.renderNumber1BlackHolePanelHtml();
-    }
-    /** Populated by createAscensionPageRender after ascension map wrappers exist. */
-    const ascensionPageRenderRef = {
-        getNumber1AscendControlLivePatchDigest() { return ""; },
-        renderNumber1AscendControlHtml() { return ""; },
-        renderAscensionUpgradesHtml() { return ""; },
-        renderAscensionPageHtml() { return ""; }
-    };
-    function getNumber1AscendControlLivePatchDigest() {
-        return ascensionPageRenderRef.getNumber1AscendControlLivePatchDigest();
-    }
-    function renderNumber1AscendControlHtml(livePatchDigest) {
-        return ascensionPageRenderRef.renderNumber1AscendControlHtml(livePatchDigest);
-    }
-    function renderAscensionUpgradesHtml() {
-        return ascensionPageRenderRef.renderAscensionUpgradesHtml();
-    }
-    function renderAscensionPageHtml() {
-        return ascensionPageRenderRef.renderAscensionPageHtml();
-    }
-    /** Populated by wireAscensionNodeActions before ascension page render wire. */
-    const ascensionNodeActionsRef = {
-        normalizeAscensionNodeIds() {},
-        tryBuyAscensionNode() {},
-        isAscensionMapCollapseTransitionActive() { return false; },
-        startAscensionMapCollapseTransition() {},
-        respecNumber1AscensionSkillTrees() {},
-        respecNumber1AscensionFinger() {}
-    };
-    function normalizeAscensionNodeIds() {
-        ascensionNodeActionsRef.normalizeAscensionNodeIds();
-    }
-    function tryBuyAscensionNode(id) {
-        ascensionNodeActionsRef.tryBuyAscensionNode(id);
-    }
-    function isAscensionMapCollapseTransitionActive() {
-        return ascensionNodeActionsRef.isAscensionMapCollapseTransitionActive();
-    }
-    function startAscensionMapCollapseTransition() {
-        ascensionNodeActionsRef.startAscensionMapCollapseTransition();
-    }
-    function respecNumber1AscensionSkillTrees() {
-        ascensionNodeActionsRef.respecNumber1AscensionSkillTrees();
-    }
-    function respecNumber1AscensionFinger(finger) {
-        ascensionNodeActionsRef.respecNumber1AscensionFinger(finger);
-    }
-    /** Populated after ascension gain helpers; objectives live wire needs hoisted delegate. */
-    const ascensionReadyChromeRef = {
-        updateAscensionReadyChrome() {}
-    };
-    function updateAscensionReadyChrome() {
-        ascensionReadyChromeRef.updateAscensionReadyChrome();
-    }
-    /** Populated after ascension ready chrome; number-2 shell wire needs hoisted delegate. */
-    const pageButtonUnlocksRef = {
-        updatePageButtonUnlocks() {}
-    };
-    function updatePageButtonUnlocks() {
-        pageButtonUnlocksRef.updatePageButtonUnlocks();
-    }
-    /** BH wire runs before grant accessors; hoisted delegate for turbo meter cap. */
-    const ascensionGrantAccessorsRef = {
-        getTurboMeterMax() { return 0; }
-    };
-    function getTurboMeterMax() {
-        return ascensionGrantAccessorsRef.getTurboMeterMax();
-    }
-    /** NUMBER_MODULES registry uses multiplier before turbo runtime wire. */
-    const turboRuntimeRef = {
-        getTurboCountMultiplier() { return 1; },
-        tryTurboLevelerPurchases() {}
-    };
-    function getTurboCountMultiplier() {
-        return turboRuntimeRef.getTurboCountMultiplier();
-    }
-    function tryTurboLevelerPurchases() {
-        turboRuntimeRef.tryTurboLevelerPurchases();
-    }
-    /** Turbo runtime wire uses UI refresh before turbo UI boot wires. */
-    const turboUiRef = {
-        updateTurboBoostUI() {}
-    };
-    function updateTurboBoostUI(opts) {
-        turboUiRef.updateTurboBoostUI(opts);
-    }
-    /** Grant accessors / upgrade wires run before speed UI boot wires. */
-    const speedUpgradeUiRef = {
-        updateSpeedUpgradeUI() {},
-        updateHandUpgradeScrollHint() {},
-        scheduleHandUpgradeScrollHintUpdate() {},
-        handScrollHintHasUpgradeReason() { return false; }
-    };
-    function updateSpeedUpgradeUI() {
-        speedUpgradeUiRef.updateSpeedUpgradeUI();
-    }
-    function updateHandUpgradeScrollHint() {
-        speedUpgradeUiRef.updateHandUpgradeScrollHint();
-    }
-    function scheduleHandUpgradeScrollHintUpdate() {
-        speedUpgradeUiRef.scheduleHandUpgradeScrollHintUpdate();
-    }
-    function handScrollHintHasUpgradeReason(handIndex) {
-        return speedUpgradeUiRef.handScrollHintHasUpgradeReason(handIndex);
-    }
+    const renderAscensionHubGrantsHtml = g.bind("renderAscensionHubGrantsHtml", () => "");
+    const renderAscensionHubStatsPillsHtml = g.bind("renderAscensionHubStatsPillsHtml", () => "");
+    const patchAscensionHubStatsPillsDomIfChanged = g.bind("patchAscensionHubStatsPillsDomIfChanged");
+    const renderNumber1BlackHolePanelHtml = g.bind("renderNumber1BlackHolePanelHtml", () => "");
+    const getNumber1AscendControlLivePatchDigest = g.bind("getNumber1AscendControlLivePatchDigest", () => "");
+    const renderNumber1AscendControlHtml = g.bind("renderNumber1AscendControlHtml", () => "");
+    const renderAscensionUpgradesHtml = g.bind("renderAscensionUpgradesHtml", () => "");
+    const renderAscensionPageHtml = g.bind("renderAscensionPageHtml", () => "");
+    const normalizeAscensionNodeIds = g.bind("normalizeAscensionNodeIds");
+    const tryBuyAscensionNode = g.bind("tryBuyAscensionNode");
+    const isAscensionMapCollapseTransitionActive = g.bind(
+        "isAscensionMapCollapseTransitionActive",
+        () => false
+    );
+    const startAscensionMapCollapseTransition = g.bind("startAscensionMapCollapseTransition");
+    const respecNumber1AscensionSkillTrees = g.bind("respecNumber1AscensionSkillTrees");
+    const respecNumber1AscensionFinger = g.bind("respecNumber1AscensionFinger");
+    const updateAscensionReadyChrome = g.bind("updateAscensionReadyChrome");
+    const updatePageButtonUnlocks = g.bind("updatePageButtonUnlocks");
+    const getTurboMeterMax = g.bind("getTurboMeterMax", () => 0);
+    const getTurboCountMultiplier = g.bind("getTurboCountMultiplier", () => 1);
+    const tryTurboLevelerPurchases = g.bind("tryTurboLevelerPurchases");
+    const updateTurboBoostUI = g.bind("updateTurboBoostUI");
+    const updateSpeedUpgradeUI = g.bind("updateSpeedUpgradeUI");
+    const updateHandUpgradeScrollHint = g.bind("updateHandUpgradeScrollHint");
+    const scheduleHandUpgradeScrollHintUpdate = g.bind("scheduleHandUpgradeScrollHintUpdate");
+    const handScrollHintHasUpgradeReason = g.bind("handScrollHintHasUpgradeReason", () => false);
     let tryUnlockTurboIfEligible = () => {};
     let syncTurboBoostToggleDomFromBoot = () => {};
     /** Grant accessors / ascension wires run before upgrade UI boot wires. */
@@ -426,53 +258,20 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         updateCheapenUpgradeUI();
         updateSlowdownUpgradeUI();
     }
-    /** Populated after ascMapUi; shell panels need teardown before map UI exists. */
-    const ascensionMapFacadeRef = {
-        computeAscensionHandLayout() { return { hands: [] }; },
-        renderAscensionMapColumnGuidesSvg() { return ""; },
-        renderAscensionMapEdgesSvg() { return ""; },
-        syncAscensionMapNodeDomPositions() {},
-        ascensionResolveNodeIdAtClient() { return null; },
-        updateAscensionMapDetailPanel() {},
-        setAscensionMapSelectedNode() {},
-        teardownAscensionMapPanZoom() {},
-        initAscensionMapPanZoom() {},
-        renderAscensionMapDebugOverlaySvg() { return ""; },
-        getAscensionMapViewBoxHeight() { return 0; },
-        getAscensionNodePurchaseCost() { return 0; },
-        ascensionNodePrereqsMet() { return false; },
-        getAscensionEssenceInvestedInNodes() { return 0; }
-    };
-    function computeAscensionHandLayout() {
-        return ascensionMapFacadeRef.computeAscensionHandLayout();
-    }
-    function renderAscensionMapColumnGuidesSvg(vbH) {
-        return ascensionMapFacadeRef.renderAscensionMapColumnGuidesSvg(vbH);
-    }
-    function renderAscensionMapEdgesSvg(layout) {
-        return ascensionMapFacadeRef.renderAscensionMapEdgesSvg(layout);
-    }
-    function syncAscensionMapNodeDomPositions() {
-        ascensionMapFacadeRef.syncAscensionMapNodeDomPositions();
-    }
-    function ascensionResolveNodeIdAtClient(clientX, clientY) {
-        return ascensionMapFacadeRef.ascensionResolveNodeIdAtClient(clientX, clientY);
-    }
-    function updateAscensionMapDetailPanel() {
-        ascensionMapFacadeRef.updateAscensionMapDetailPanel();
-    }
-    function setAscensionMapSelectedNode(id, skipIfSame) {
-        ascensionMapFacadeRef.setAscensionMapSelectedNode(id, skipIfSame);
-    }
-    function teardownAscensionMapPanZoom() {
-        ascensionMapFacadeRef.teardownAscensionMapPanZoom();
-    }
-    function initAscensionMapPanZoom() {
-        ascensionMapFacadeRef.initAscensionMapPanZoom();
-    }
-    function renderAscensionMapDebugOverlaySvg() {
-        return ascensionMapFacadeRef.renderAscensionMapDebugOverlaySvg();
-    }
+    const computeAscensionHandLayout = g.bind("computeAscensionHandLayout", () => ({ hands: [] }));
+    const renderAscensionMapColumnGuidesSvg = g.bind("renderAscensionMapColumnGuidesSvg", () => "");
+    const renderAscensionMapEdgesSvg = g.bind("renderAscensionMapEdgesSvg", () => "");
+    const syncAscensionMapNodeDomPositions = g.bind("syncAscensionMapNodeDomPositions");
+    const ascensionResolveNodeIdAtClient = g.bind("ascensionResolveNodeIdAtClient", () => null);
+    const updateAscensionMapDetailPanel = g.bind("updateAscensionMapDetailPanel");
+    const setAscensionMapSelectedNode = g.bind("setAscensionMapSelectedNode");
+    const teardownAscensionMapPanZoom = g.bind("teardownAscensionMapPanZoom");
+    const initAscensionMapPanZoom = g.bind("initAscensionMapPanZoom");
+    const renderAscensionMapDebugOverlaySvg = g.bind("renderAscensionMapDebugOverlaySvg", () => "");
+    g.bind("getAscensionMapViewBoxHeight", () => 0);
+    const getAscensionNodePurchaseCost = g.bind("getAscensionNodePurchaseCost", () => 0);
+    const ascensionNodePrereqsMet = g.bind("ascensionNodePrereqsMet", () => false);
+    const getAscensionEssenceInvestedInNodes = g.bind("getAscensionEssenceInvestedInNodes", () => 0);
     const maxHands = run.maxHands;
     function isTimeWarpUnlocked() {
         return timewarp.number1TimeWarpBoot
@@ -564,12 +363,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
     }
     const comboForward = createCombinationsForwardRefHolder();
     let combinationsBoot = null;
-    /** Populated by wireLoop; load tail ctx holds this ref so late assignment is visible. */
-    const loopRuntimeRef = {
-        setTotalPlayTimeMs() {},
-        resetSavePlayWallClock() {},
-        getTotalPlayTimeMs() { return 0; }
-    };
+    /** Assigned by wireLoop; play-time methods also installed onto `g`. */
     let number1LoopRuntime;
 
     const shellPanels = createShellPanelsUi({
@@ -653,17 +447,9 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         getMinPDouble: () => typeof NUMBER2_P_DOUBLE_MIN === "number" ? NUMBER2_P_DOUBLE_MIN : 0.05,
         getMaxPDouble: () => typeof NUMBER2_P_DOUBLE_MAX === "number" ? NUMBER2_P_DOUBLE_MAX : 0.95
     });
-    const number2ShellRef = {
-        reconcileNumber2LockState() {},
-        updateNumber2SidebarUnlockUI() {}
-    };
-    function reconcileNumber2LockState() {
-        number2ShellRef.reconcileNumber2LockState();
-    }
-    function updateNumber2SidebarUnlockUI() {
-        number2ShellRef.updateNumber2SidebarUnlockUI();
-    }
-    Object.assign(number2ShellRef, createNumber2ShellBoot({
+    const reconcileNumber2LockState = g.bind("reconcileNumber2LockState");
+    const updateNumber2SidebarUnlockUI = g.bind("updateNumber2SidebarUnlockUI");
+    g.install(createNumber2ShellBoot({
         number2,
         isNumber2Unlocked,
         updatePageButtonUnlocks
@@ -681,10 +467,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         logTickerRt.clearActionLogBacklogOnAscension();
     }
 
-    const number1ObjectivesBoot = createNumber1ObjectivesBoot({
-        flush: () => { updateObjectives(); },
-        syncAchievementsOnly: () => { objectivesUiRef.syncObjectiveAchievements(); }
-    });
+    const number1ObjectivesBoot = createNumber1ObjectivesBoot(g);
 
     function getNumber1AscensionPendingBonusEssence() {
         return getNumber1AscensionPendingBonusEssenceFromValue(ascension.number1AscensionPendingBonusEssence);
@@ -762,18 +545,9 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         hasAscended: () => ascension.number1HasAscended,
         getAscensionTreeExport: () => ASCENSION_TREE_EXPORT
     });
-    Object.assign(ascensionMapFacadeRef, createAscensionMapFacade(ascMapUi, {
+    g.install(createAscensionMapFacade(ascMapUi, {
         getNumber1AscensionNodeIds: () => ascension.number1AscensionNodeIds
     }));
-    function getAscensionNodePurchaseCost(id) {
-        return ascensionMapFacadeRef.getAscensionNodePurchaseCost(id);
-    }
-    function getAscensionEssenceInvestedInNodes() {
-        return ascensionMapFacadeRef.getAscensionEssenceInvestedInNodes();
-    }
-    function ascensionNodePrereqsMet(id) {
-        return ascensionMapFacadeRef.ascensionNodePrereqsMet(id);
-    }
     function getAscensionPurchaseChainInfoToNode(id) {
         return ascMapUi.getAscensionPurchaseChainInfoToNode(id);
     }
@@ -810,18 +584,10 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         showStoryBanner() {},
         showStoryBannerById() {}
     };
-    const storyBannerLookupRef = {
-        getStoryBannerById() { return null; },
-        showStoryBanner() {}
-    };
-    /** Forwarding ref: real implementations assigned after rate-display UI factory runs. */
-    const rateDisplayUiRef = {
-        updateRateDisplay() {},
-        updateN1GravityCpsStrip() {}
-    };
-    function updateRateDisplay(opts) {
-        rateDisplayUiRef.updateRateDisplay(opts);
-    }
+    g.bind("getStoryBannerById", () => null);
+    g.bind("showStoryBanner");
+    const updateRateDisplay = g.bind("updateRateDisplay");
+    const updateN1GravityCpsStrip = g.bind("updateN1GravityCpsStrip");
     const number1BlackHoleBoot = createNumber1BlackHoleBoot({
         maxSlowdownLevelBase: MAX_SLOWDOWN_LEVEL,
         rootDocument: typeof document !== "undefined" ? document : null,
@@ -855,8 +621,8 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
                 enterBlackHolePhase7GameplayReset,
                 formatSeconds,
                 phase5StokeMinRemainingMs: BLACK_HOLE_PHASE5_STOKE_MIN_REMAINING_MS,
-                updateRateDisplay: opts => rateDisplayUiRef.updateRateDisplay(opts),
-                updateN1GravityCpsStrip: () => rateDisplayUiRef.updateN1GravityCpsStrip(),
+                updateRateDisplay: opts => g.updateRateDisplay(opts),
+                updateN1GravityCpsStrip: () => g.updateN1GravityCpsStrip(),
                 refreshAscensionPanelIfOpen,
                 triggerBlackHolePhase1CollapseVfx: () => bhUiBridge.triggerBlackHolePhase1CollapseVfx?.(),
                 showStoryBannerById: id => storyBannerBridge.showStoryBannerById(id),
@@ -1011,7 +777,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         updateBlackHolePhaseStep,
         registerSyncBhCollapseTurboTierAccents
     } = number1BlackHoleBoot;
-    Object.assign(ascensionReadyChromeRef, createAscensionReadyChrome({
+    g.install(createAscensionReadyChrome({
         isNumber1AscensionReady,
         computeNumber1AscensionGainBreakdown,
         getNumber1AscensionEssenceFormulaTotal,
@@ -1022,12 +788,12 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         ascensionPageBtn,
         getNumber1HasAscended: () => ascension.number1HasAscended
     }));
-    Object.assign(pageButtonUnlocksRef, createPageButtonUnlocksBoot({
+    g.install(createPageButtonUnlocksBoot({
         combinationsPageBtn,
         getUnlockedHands: () => run.unlockedHands,
         updateAscensionReadyChrome
     }));
-    Object.assign(blackHolePanelRenderRef, createNumber1BlackHolePanelRender({
+    g.install(createNumber1BlackHolePanelRender({
         getNumber1HasAscended: () => ascension.number1HasAscended,
         isBlackHoleArcUnlocked,
         getBlackHolePhase,
@@ -1106,7 +872,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         getNumber1AscensionPendingBonusEssence,
         updateAscensionReadyChrome
     });
-    Object.assign(objectivesUiRef, objectivesLive);
+    g.install(objectivesLive);
     longTermObjectives = objectivesLive.longTermObjectives;
     const {
         ascensionAutobuyDefaultOnForNewHands,
@@ -1124,7 +890,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         getTurboCountMultiplierMax,
         getTimeWarpOverflowRatio,
         getTimeWarpAuraSpawnSpanMaxSec
-    } = Object.assign(ascensionGrantAccessorsRef, createAscensionGrantAccessorsBoot({
+    } = g.install(createAscensionGrantAccessorsBoot({
         ascensionPurchasedSet,
         computeAscensionGrantTotals,
         getAutobuy: () => autobuy,
@@ -1160,7 +926,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         getTurboLevelerNextPointCost,
         getTurboScensionUpgradeActivationEtaHint,
         tryTurboScensionActivationUpgrade
-    } = Object.assign(turboRuntimeRef, createTurboRuntimeBoot({
+    } = g.install(createTurboRuntimeBoot({
         computeAscensionGrantTotals,
         getTurbo: () => turbo,
         getTurboMeterMax,
@@ -1182,7 +948,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
     /** Default gap between catalog “Discovered combo” milestones; reduced by middle `comboDiscoveryMilestoneCooldownMult` (× each, min 0.1s). */
     const COMBO_DISCOVERY_MILESTONE_COOLDOWN_BASE_MS = 60000;
     const COMBO_DISCOVERY_MILESTONE_COOLDOWN_MIN_MS = 100;
-    Object.assign(ascensionHubRenderRef, createAscensionHubRender({
+    g.install(createAscensionHubRender({
         getNumber1HasAscended: () => ascension.number1HasAscended,
         getNumber1AscensionNodeIds: () => ascension.number1AscensionNodeIds,
         getAscensionMapNodeById: () => ASCENSION_MAP_NODE_BY_ID,
@@ -1211,7 +977,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         getBlackHolePhase1RunCpsMult,
         getNumber1AscensionEssence: () => ascension.number1AscensionEssence
     }));
-    Object.assign(ascensionNodeActionsRef, wireNumber1AscensionNodeActions({
+    g.install(wireNumber1AscensionNodeActions({
         getNumber1HasAscended: () => ascension.number1HasAscended,
         getNumber1AscensionNodeIds: () => ascension.number1AscensionNodeIds,
         setNumber1AscensionNodeIds: ids => { ascension.number1AscensionNodeIds = ids; },
@@ -1250,8 +1016,8 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         getAscensionMapCollapseTimerId: () => ascension.ascensionMapCollapseTimerId,
         setAscensionMapCollapseTimerId: v => { ascension.ascensionMapCollapseTimerId = v; },
         getStoryBannerOverlayEl: () => document.getElementById("story-banner-overlay"),
-        getStoryBannerById: id => storyBannerLookupRef.getStoryBannerById(id),
-        showStoryBanner: (banner, opts) => storyBannerLookupRef.showStoryBanner(banner, opts),
+        getStoryBannerById: id => g.getStoryBannerById(id),
+        showStoryBanner: (banner, opts) => g.showStoryBanner(banner, opts),
         ensureBlackHoleArcStarted,
         refreshAscensionPanelIfOpen
     }));
@@ -1259,7 +1025,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     }
     /** Fingerprint ascend-control copy + affordances for ~1 Hz incremental patch (avoid outerHTML churn). */
-    Object.assign(ascensionPageRenderRef, createAscensionPageRender({
+    g.install(createAscensionPageRender({
         getNumber1AscensionEssence: () => ascension.number1AscensionEssence,
         getNumber1HasAscended: () => ascension.number1HasAscended,
         getUnlockedHands: () => run.unlockedHands,
@@ -1277,7 +1043,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         getNumber1AscensionNodeIds: () => ascension.number1AscensionNodeIds,
         getAscensionMapNodeById: () => ASCENSION_MAP_NODE_BY_ID,
         computeAscensionHandLayout,
-        getAscensionMapViewBoxHeight: () => ascensionMapFacadeRef.getAscensionMapViewBoxHeight(),
+        getAscensionMapViewBoxHeight: () => g.getAscensionMapViewBoxHeight(),
         getAscensionTreeExport: () => ASCENSION_TREE_EXPORT,
         getAscensionMapNodes: () => ASCENSION_MAP_NODES,
         ascensionNodePrereqsMet,
@@ -1419,6 +1185,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         setAutoBuyEnabledForHand
     });
     const speedRowRefs = upgradeDom.speedRowRefs;
+    g.getSpeedRowRefs = () => speedRowRefs;
     const handsBoot = {
         restoreFromSaveSnapshot(snap) {
             restoreHandsFromSaveSnapshot(snap, {
@@ -1472,7 +1239,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
     function setUpgradeButtonProgress(btn, progress01) {
         upgradeDom.setUpgradeButtonProgress(btn, progress01);
     }
-    Object.assign(turboUiRef, createTurboUiBoot({
+    g.install(createTurboUiBoot({
         getTurbo: () => turbo,
         isTurboScensionUnlocked,
         getTurboMeterMax,
@@ -1625,23 +1392,14 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         isSlowdownUnlocked,
         getTurboBoostUnlocked: () => turbo.turboBoostUnlocked
     });
-    rateTickRef.getRawCpsPerHand = wireGetRawCpsPerHand;
-    Object.assign(detachedCpsRef, createNumber1DetachedCpsBoot({
+    g.getRawCpsPerHand = wireGetRawCpsPerHand;
+    g.install(createNumber1DetachedCpsBoot(g, {
         getBlackHolePhase,
-        getUnlockedHands: () => run.unlockedHands,
-        getRawCpsPerHand,
         getComboMultiplier: () => comboForward.getComboMultiplier(),
-        getTurboMultiplier: getTurboCountMultiplier,
         getBlackHoleOfflineProductionMult,
-        mergeHandEarningsFromDetachedSlice(gainsByHand) {
-            for (let i = 0; i < run.unlockedHands; i++) {
-                run.handEarnings[i] = (run.handEarnings[i] || 0) + (gainsByHand[i] || 0);
-            }
-        },
         refreshTotalsFromHands: refreshTotalFromHandEarnings,
         incrementalEl,
         formatCount,
-        getTotalChanges: () => run.totalChanges,
         getCurrentNumberMode: () =>
             typeof window.getCurrentNumberMode === "function" ? window.getCurrentNumberMode() : 1
     }));
@@ -1734,15 +1492,15 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         refreshCombinationsHandStatusIfOpen,
         scheduleFitTopCountRow
     });
-    rateDisplayUiRef.updateRateDisplay = wireUpdateRateDisplay;
-    rateDisplayUiRef.updateN1GravityCpsStrip = updateN1GravityCpsStrip;
+    g.updateRateDisplay = wireUpdateRateDisplay;
+    g.updateN1GravityCpsStrip = updateN1GravityCpsStrip;
 
     const syncPlayStageForNumberMode = createSyncPlayStageForNumberMode({
         isNumber2Unlocked,
         number2,
         syncBlackHolePhase1Vfx,
         updateN1GravityCpsStrip,
-        refreshNumber1CountDisplay: () => detachedCpsRef.refreshNumber1CountDisplay?.()
+        refreshNumber1CountDisplay: () => g.refreshNumber1CountDisplay?.()
     });
     wireNumber1ShellModeSwitch({
         closeInlineMainStagePanels,
@@ -1873,7 +1631,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
     maybeAutoBuySlowdown = upgradesWire.maybeAutoBuySlowdown;
     updateSlowdownUpgradeUI = upgradesWire.updateSlowdownUpgradeUI;
 
-    Object.assign(handUnlockRef, wireNumber1HandUnlock({
+    g.install(wireNumber1HandUnlock({
         run,
         maxHands,
         handsRt,
@@ -1890,7 +1648,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         updateSlowdownUpgradeUI,
         updateTimeWarpAuraUI
     }));
-    handUnlockRef.initFirstHand();
+    initFirstHand();
 
     const timeWarpWire = wireNumber1TimeWarpBoot({
         timewarp,
@@ -1975,7 +1733,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
     } = timeWarpWire;
     updateTimeWarpAuraUI = timeWarpWire.updateTimeWarpAuraUI;
 
-    Object.assign(speedUpgradeUiRef, createSpeedUpgradeUiBoot({
+    g.install(createSpeedUpgradeUiBoot({
         bumpUpgradeEtaSmoothPass,
         getTotalChanges: () => run.totalChanges,
         upgradeContainer,
@@ -2036,7 +1794,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
     tryUnlockTurboIfEligible = number1TurboBoot.tryUnlockTurboIfEligible;
     syncTurboBoostToggleDomFromBoot = number1TurboBoot.syncTurboBoostToggleDom;
 
-    milestoneUnlockRef.syncUnlocksWithTotalCount = createSyncUnlocksWithTotalCount({
+    g.syncUnlocksWithTotalCount = createSyncUnlocksWithTotalCount({
         run,
         autobuy,
         upgrades,
@@ -2053,7 +1811,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         addToLog
     });
 
-    Object.assign(saveWireRef, n1Boot.wireSaveLoad({
+    g.install(n1Boot.wireSaveLoad({
         runtime: n1Rt,
         session,
         storage: typeof localStorage !== "undefined" ? localStorage : null,
@@ -2062,7 +1820,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
             adaptiveLastHintAtMs: logTickerRt.getAdaptiveLastHintAtMs(),
             numberModulesState: collectNumberModulesSaveState(NUMBER_MODULES),
             ascensionTreeVersion: ASCENSION_TREE_VERSION,
-            totalPlayTimeMs: number1LoopRuntime.getTotalPlayTimeMs()
+            totalPlayTimeMs: typeof g.getTotalPlayTimeMs === "function" ? g.getTotalPlayTimeMs() : 0
         }),
         hydrateCtx: {
             maxHands,
@@ -2080,7 +1838,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
             runtime: n1Rt,
             maxHands,
             handsBoot,
-            loopRuntime: loopRuntimeRef,
+            loopRuntime: g,
             logTickerRt,
             numberModules: NUMBER_MODULES,
             tryTurboLevelerPurchases,
@@ -2182,7 +1940,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         checkStoryBanners,
         showStoryBanner
     } = number1StoryBannerBoot;
-    Object.assign(storyBannerLookupRef, { getStoryBannerById, showStoryBanner });
+    g.install({ getStoryBannerById, showStoryBanner });
     const { showDeleteSaveConfirmDialog } = wireNumber1ShellDomListeners({
         session,
         menuBtn,
@@ -2373,7 +2131,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         refreshOverviewAndAscensionPanelsIfOpen
     });
 
-    Object.assign(ascensionFlowRef, wireNumber1AscensionFlow({
+    g.install(wireNumber1AscensionFlow({
         ascensionReadyCtaEl,
         getAscensionGainBreakdown: () => computeNumber1AscensionGainBreakdown(getNumber1AscensionEssenceFormulaTotal()),
         getTotalChanges: () => run.totalChanges,
@@ -2391,7 +2149,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         autosaveNow,
         performNumber1Ascension
     }));
-    ascensionConfirmOverlayEl = ascensionFlowRef.ascensionConfirmOverlayEl;
+    ascensionConfirmOverlayEl = g.ascensionConfirmOverlayEl;
 
     const ledgerBeamVfx = createLedgerBeamVfx({
         window,
@@ -2539,7 +2297,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         }
     }));
     number1LoopRuntime = gameLoopWire.number1LoopRuntime;
-    Object.assign(loopRuntimeRef, number1LoopRuntime);
+    g.install(number1LoopRuntime);
 
     number1LoopRuntime.start();
     gameLoopWire.attachVisibilityOfflineTracking();

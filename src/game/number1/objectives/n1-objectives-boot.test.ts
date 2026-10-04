@@ -38,6 +38,17 @@ describe("createNumber1ObjectivesBoot", () => {
         expect(calls).toEqual(["memory"]);
     });
 
+    it("reads updateObjectives / syncObjectiveAchievements from shared g", () => {
+        vi.stubGlobal("document", { hidden: true });
+        const calls: string[] = [];
+        const boot = createNumber1ObjectivesBoot({
+            updateObjectives: () => calls.push("flush"),
+            syncObjectiveAchievements: () => calls.push("memory")
+        });
+        boot.scheduleObjectiveDomFlush();
+        expect(calls).toEqual(["memory"]);
+    });
+
     it("throttles DOM flush and keeps memory sync on the trailing path", () => {
         vi.useFakeTimers();
         vi.setSystemTime(1_000);
