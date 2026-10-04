@@ -19,6 +19,36 @@
   --naf-btn-page-fg: #ddd;
   --naf-btn-page-border: #444a6d;
   --naf-btn-page-bg-hover: #3a3f5a;
+  --naf-bg-hand-row: transparent;
+  --naf-bg-hand-status: rgba(12, 16, 36, 0.75);
+  --naf-border-hand-status: rgba(130, 140, 210, 0.35);
+  --naf-text-hand-k: #b8c4f0;
+  --naf-text-hand-v: #f2f4ff;
+  --naf-text-hand-formula: #c5cde8;
+  --naf-border-hand-formula: rgba(255, 255, 255, 0.12);
+  --naf-text-hand-compact: #e8ecff;
+  --naf-text-turbo-meta: #c8d4f8;
+  --naf-text-upgrade-label: #dce4ff;
+  --naf-text-muted: #aaa;
+  --naf-text-list: #ccc;
+  --naf-text-queued: #ffcc80;
+  --naf-text-log-toggle: #888;
+  --naf-text-log-toggle-hover: #aaa;
+  --naf-bg-modal: #1b1f3a;
+  --naf-border-modal: #333;
+  --naf-text-modal: #ddd;
+  --naf-overlay-scrim: rgba(0, 0, 0, 0.75);
+  --naf-danger-bg: rgba(70, 20, 20, 0.65);
+  --naf-danger-bg-hover: rgba(100, 28, 28, 0.8);
+  --naf-danger-fg: #ffcdd2;
+  --naf-danger-border: rgba(211, 47, 47, 0.55);
+  --naf-danger-hint: #888;
+  --naf-text-story-muted: #cdd3ff;
+  --naf-bg-story-summary: rgba(154, 160, 255, 0.08);
+  --naf-border-story-summary: rgba(154, 160, 255, 0.28);
+  --naf-text-story-body: #ccc;
+  --naf-text-story-locked: #8f94b5;
+  --naf-border-story-item: #333;
 }
 
 html[data-theme="light"] {
@@ -38,6 +68,36 @@ html[data-theme="light"] {
   --naf-btn-page-fg: #1f2742;
   --naf-btn-page-border: #bcc6e6;
   --naf-btn-page-bg-hover: #dbe2f4;
+  --naf-bg-hand-row: rgba(255, 255, 255, 0.62);
+  --naf-bg-hand-status: rgba(245, 247, 255, 0.92);
+  --naf-border-hand-status: rgba(90, 104, 160, 0.28);
+  --naf-text-hand-k: #5a6494;
+  --naf-text-hand-v: #1c243c;
+  --naf-text-hand-formula: #4a5578;
+  --naf-border-hand-formula: rgba(80, 90, 130, 0.2);
+  --naf-text-hand-compact: #283152;
+  --naf-text-turbo-meta: #4a5680;
+  --naf-text-upgrade-label: #2a3153;
+  --naf-text-muted: #4a5578;
+  --naf-text-list: #2a3153;
+  --naf-text-queued: #e65100;
+  --naf-text-log-toggle: #55608a;
+  --naf-text-log-toggle-hover: #3f4c78;
+  --naf-bg-modal: #f6f8ff;
+  --naf-border-modal: #c3cee9;
+  --naf-text-modal: #26314e;
+  --naf-overlay-scrim: rgba(33, 43, 72, 0.35);
+  --naf-danger-bg: rgba(255, 235, 238, 0.95);
+  --naf-danger-bg-hover: #ffebee;
+  --naf-danger-fg: #b71c1c;
+  --naf-danger-border: rgba(198, 40, 40, 0.45);
+  --naf-danger-hint: #5a6488;
+  --naf-text-story-muted: #4a5578;
+  --naf-bg-story-summary: rgba(76, 100, 200, 0.08);
+  --naf-border-story-summary: rgba(76, 100, 200, 0.22);
+  --naf-text-story-body: #4c5576;
+  --naf-text-story-locked: #7a829e;
+  --naf-border-story-item: rgba(55, 65, 95, 0.22);
   --curtain-blue: #9aa9d9;
   --curtain-blue-light: #c1ccf0;
   --curtain-blue-dark: #7d8dbf;
@@ -149,17 +209,6 @@ html[data-theme="light"] .incremental-rate-value {
 html[data-theme="light"] .incremental-rate-label {
   color: #4a5688;
 }
-html[data-theme="light"] .multiplier-display,
-html[data-theme="light"] .turbo-boost-label,
-html[data-theme="light"] .turbo-boost-toggle-label {
-  color: #35406a;
-}
-html[data-theme="light"] .turbo-boost-activations {
-  color: #4a5680;
-}
-html[data-theme="light"] .turbo-scension-level-line {
-  color: #4a5680;
-}
 html[data-theme="light"] .turbo-scension-upgrade-btn {
   border-color: rgba(90, 104, 160, 0.35);
   background: rgba(255, 255, 255, 0.88);
@@ -190,38 +239,15 @@ html[data-theme="light"] .turbo-scension-tooltip-host .upgrade-details-tooltip {
   border-color: #2a6b52;
   box-shadow: 0 12px 28px rgba(15, 40, 30, 0.22);
 }
-html[data-theme="light"] .hand-upgrade-row {
-  background: rgba(255, 255, 255, 0.62);
-}
-html[data-theme="light"] .hand-status-block {
-  background: rgba(245, 247, 255, 0.92);
-  border-color: rgba(90, 104, 160, 0.28);
-}
-html[data-theme="light"] .hand-status-k {
-  color: #5a6494;
-}
-html[data-theme="light"] .hand-status-v {
-  color: #1c243c;
-}
-html[data-theme="light"] .hand-status-formula {
-  color: #4a5578;
-  border-top-color: rgba(80, 90, 130, 0.2);
-}
-html[data-theme="light"] .hand-status-compact {
-  color: #283152;
-}
-html[data-theme="light"] .speed-upgrade-label,
-html[data-theme="light"] .speed-upgrade-level,
-html[data-theme="light"] .speed-upgrade-balance-cost {
-  color: #2a3153;
-}
 html[data-theme="light"] .story-review-panel {
   background: var(--naf-bg-surface);
   border-color: var(--naf-border-subtle);
   color: #24304a;
 }
-html[data-theme="light"] .combo-earned-bonuses-intro {
-  color: #4a5578;
+html[data-theme="light"] .story-banner-modal {
+  background: var(--naf-bg-modal);
+  border-color: var(--naf-border-modal);
+  color: var(--naf-text-modal);
 }
 html[data-theme="light"] .combo-discovery-milestone-ui {
   background: rgba(230, 234, 255, 0.92);
@@ -237,22 +263,6 @@ html[data-theme="light"] .combo-discovery-milestone-bar-track {
 html[data-theme="light"] .combo-discovery-milestone-bar-fill {
   background: linear-gradient(180deg, #5c6bc0 0%, #3949ab 100%);
 }
-html[data-theme="light"] .story-review-summary {
-  background: rgba(76, 100, 200, 0.08);
-  border-color: rgba(76, 100, 200, 0.22);
-  color: #4a5578;
-}
-html[data-theme="light"] .story-review-item {
-  border-bottom-color: rgba(55, 65, 95, 0.22);
-}
-html[data-theme="light"] .story-review-item-body {
-  color: #4c5576;
-}
-html[data-theme="light"] .story-review-item--locked .story-review-item-title,
-html[data-theme="light"] .story-review-item--locked .story-review-item-body,
-html[data-theme="light"] .story-review-locked-tag {
-  color: #7a829e;
-}
 html[data-theme="light"] .story-review-replay {
   background: rgba(76, 175, 80, 0.12);
   color: #2e7d32;
@@ -264,41 +274,9 @@ html[data-theme="light"] .story-log-section {
 html[data-theme="light"] .story-log-heading {
   color: #4a5578;
 }
-html[data-theme="light"] #earned-bonuses-list {
-  color: #2a3153;
-}
-html[data-theme="light"] #earned-bonuses-list li.earned-bonus-item-queued {
-  color: #e65100;
-}
-html[data-theme="light"] .settings-delete-save-block {
-  border-top-color: rgba(60, 70, 100, 0.2);
-}
-html[data-theme="light"] .settings-delete-save-btn {
-  background: rgba(255, 235, 238, 0.95);
-  color: #b71c1c;
-  border-color: rgba(198, 40, 40, 0.45);
-}
-html[data-theme="light"] .settings-delete-save-btn:hover {
-  background: #ffebee;
-}
-html[data-theme="light"] .settings-delete-save-hint {
-  color: #5a6488;
-}
-html[data-theme="light"] .story-banner-modal,
-html[data-theme="light"] .offline-summary-modal,
-html[data-theme="light"] .page-modal {
-  background: #f6f8ff;
-  border-color: #c3cee9;
-  color: #26314e;
-}
 html[data-theme="light"] .story-banner-title,
 html[data-theme="light"] .story-banner-body {
   color: #25314d;
-}
-html[data-theme="light"] .page-panel,
-html[data-theme="light"] .story-banner-overlay,
-html[data-theme="light"] .offline-summary-panel {
-  background: rgba(33, 43, 72, 0.35);
 }
 html[data-theme="light"] .page-panel.page-panel--inline {
   background: transparent;
@@ -325,29 +303,13 @@ html[data-theme="light"] .action-log {
     inset 0 0 18px rgba(255, 255, 255, 0.65),
     0 8px 22px rgba(60, 70, 110, 0.12);
 }
-html[data-theme="light"] .action-log-toggle {
-  color: #55608a;
-}
-html[data-theme="light"] .action-log-toggle:hover {
-  color: #3f4c78;
-}
 html[data-theme="light"] .action-log .action-log-lines .action-log-line.action-log-cat-system,
 html[data-theme="light"] .ambient-message-ticker__item--system {
   color: #546e7a;
 }
 
 /* Dark mode contrast pass (keep dark surfaces, raise text readability) */
-html[data-theme="dark"] #top-right,
-html[data-theme="dark"] #top-right h3,
-html[data-theme="dark"] #top-right li,
-html[data-theme="dark"] #top-right p {
-  color: #e3e8fb;
-}
 /* Short / long objectives: base rule uses #ddd for legacy; light theme overrides. Dark must match other top-right cards. */
-html[data-theme="dark"] #objectives h3,
-html[data-theme="dark"] #long-objectives h3 {
-  color: #9aa0ff;
-}
 html[data-theme="dark"] .hand-upgrade-row,
 html[data-theme="dark"] .speed-upgrade-row,
 html[data-theme="dark"] .upgrade-row-cheapen,
@@ -386,29 +348,6 @@ html[data-theme="dark"] .hand-slot .hand {
   text-shadow:
     0 0 8px rgba(160, 182, 255, 0.45),
     0 0 18px rgba(96, 120, 220, 0.3);
-}
-html[data-theme="dark"] .hand-status-block {
-  background: rgba(12, 16, 36, 0.75);
-  border-color: rgba(130, 140, 210, 0.35);
-}
-html[data-theme="dark"] .hand-status-k {
-  color: #b8c4f0;
-}
-html[data-theme="dark"] .hand-status-v {
-  color: #f2f4ff;
-}
-html[data-theme="dark"] .hand-status-formula {
-  color: #c5cde8;
-  border-top-color: rgba(255, 255, 255, 0.12);
-}
-html[data-theme="dark"] .hand-status-compact {
-  color: #e8ecff;
-}
-html[data-theme="dark"] .turbo-boost-activations {
-  color: #c8d4f8;
-}
-html[data-theme="dark"] .turbo-scension-level-line {
-  color: #c8d4f8;
 }
 html[data-theme="dark"] .page-btn,
 html[data-theme="dark"] .settings-close,
@@ -880,7 +819,7 @@ html[data-theme="light"] .ascension-ready-banner__sub strong {
 
 .multiplier-display {
   font-size: 0.85rem;
-  color: #b8c5ff;
+  color: var(--naf-text-turbo-meta);
   margin-top: 4px;
 }
 
@@ -1315,7 +1254,7 @@ html[data-theme="light"] .n1-bh-visual__core {
   font-size: 0.7rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #c8cff8;
+  color: var(--naf-text-turbo-meta);
 }
 
 .turbo-boost-gauge {
@@ -1376,11 +1315,14 @@ html[data-theme="light"] .n1-bh-visual__core {
 .turbo-boost-activations {
   font-size: 0.78rem;
   font-weight: 600;
-  color: #a8b4e8;
+  color: var(--naf-text-turbo-meta);
   letter-spacing: 0.03em;
   text-align: center;
   max-width: 140px;
   line-height: 1.25;
+}
+.turbo-scension-level-line {
+  color: var(--naf-text-turbo-meta);
 }
 
 .turbo-boost-toggle-wrap {
@@ -1423,7 +1365,7 @@ html[data-theme="light"] .n1-bh-visual__core {
 }
 .turbo-boost-toggle-label {
   font-size: 0.75rem;
-  color: #9aa0ff;
+  color: var(--naf-text-turbo-meta);
   min-width: 24px;
 }
 
@@ -1675,6 +1617,7 @@ html[data-theme="light"] .upgrade-scroll-hint--pulse {
   font-family: var(--font-gameplay);
   min-width: 0;
   max-width: 100%;
+  background: var(--naf-bg-hand-row);
   padding: 10px 14px;
   border-radius: 10px;
   /* Helps native scrollIntoView / focus; jump uses explicit scrollBy with matching margins */
@@ -1793,8 +1736,8 @@ html[data-theme="light"] .hand-slot-main .hand-slot-hand-label {
   font-family: var(--font-gameplay);
   font-size: 0.85rem;
   line-height: 1.35;
-  background: rgba(16, 20, 38, 0.96);
-  border: 1px solid rgba(154, 160, 255, 0.32);
+  background: var(--naf-bg-hand-status);
+  border: 1px solid var(--naf-border-hand-status);
   box-sizing: border-box;
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
   z-index: 20;
@@ -1834,12 +1777,12 @@ html[data-theme="light"] .hand-slot-main .hand-slot-hand-label {
   margin-bottom: 3px;
 }
 .hand-status-k {
-  color: #98a3d4;
+  color: var(--naf-text-hand-k);
   font-size: 0.78rem;
   letter-spacing: 0.03em;
 }
 .hand-status-v {
-  color: #e8ecff;
+  color: var(--naf-text-hand-v);
   font-weight: 600;
   text-align: right;
   word-break: break-word;
@@ -1847,16 +1790,16 @@ html[data-theme="light"] .hand-slot-main .hand-slot-hand-label {
 .hand-status-formula {
   margin-top: 6px;
   padding-top: 6px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--naf-border-hand-formula);
   font-size: 0.72rem;
-  color: #aeb8ea;
+  color: var(--naf-text-hand-formula);
   line-height: 1.4;
   word-break: break-word;
 }
 .hand-status-compact {
   display: none;
   font-size: 0.8rem;
-  color: #dce2ff;
+  color: var(--naf-text-hand-compact);
   line-height: 1.35;
   word-break: break-word;
 }
@@ -2217,7 +2160,7 @@ html[data-theme="dark"] .slowdown-upgrade-btn .upgrade-btn-level {
     0 1px 2px rgba(0, 0, 0, 0.95);
 }
 .speed-upgrade-balance-cost {
-  color: #b8c5ff;
+  color: var(--naf-text-upgrade-label);
   font-size: 14px;
 }
 .upgrade-row-cheapen {
@@ -2365,9 +2308,12 @@ html[data-theme="dark"] .slowdown-upgrade-btn .upgrade-btn-level {
 }
 .speed-upgrade-label {
   font-weight: 600;
-  color: #9aa0ff;
+  color: var(--naf-text-upgrade-label);
   font-size: 13px;
   white-space: nowrap;
+}
+.speed-upgrade-level {
+  color: var(--naf-text-upgrade-label);
 }
 .speed-upgrade-effect { color: #8bc34a; font-size: 13px; }
 .speed-upgrade-btn {
@@ -3084,6 +3030,16 @@ html[data-theme="light"] .page-btn.page-btn--new-bonus-pulse {
     padding: 10px;
     border-radius: 8px;
 }
+#objectives h3,
+#long-objectives h3 {
+    color: var(--naf-accent);
+}
+#top-right,
+#top-right h3,
+#top-right li,
+#top-right p {
+    color: var(--naf-text-card);
+}
 
 /* Short-term objective completion confetti */
 .confetti-container {
@@ -3151,13 +3107,13 @@ html[data-theme="light"] .page-btn.page-btn--new-bonus-pulse {
     margin: 0 0 10px 0;
     font-size: 0.82rem;
     line-height: 1.4;
-    color: #aaa;
+    color: var(--naf-text-muted);
 }
 #earned-bonuses-list {
     margin: 0;
     padding-left: 18px;
     font-size: 0.85rem;
-    color: #ccc;
+    color: var(--naf-text-list);
     max-height: min(42vh, 320px);
     overflow-y: auto;
 }
@@ -3183,7 +3139,7 @@ html[data-theme="light"] .page-btn.page-btn--new-bonus-pulse {
     font-style: italic;
 }
 #earned-bonuses-list li.earned-bonus-item-queued {
-    color: #ffcc80;
+    color: var(--naf-text-queued);
     font-style: italic;
     font-weight: 600;
 }
@@ -3445,7 +3401,7 @@ html[data-theme="light"] .speed-level-bonus {
     position: fixed;
     inset: 0;
     z-index: 100003;
-    background: rgba(0, 0, 0, 0.85);
+    background: var(--naf-overlay-scrim);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -3533,16 +3489,16 @@ html[data-theme="light"] .speed-level-bonus {
 .story-review-summary {
     margin: 0 0 14px 0;
     padding: 8px 10px;
-    border: 1px solid rgba(154, 160, 255, 0.28);
+    border: 1px solid var(--naf-border-story-summary);
     border-radius: 8px;
-    background: rgba(154, 160, 255, 0.08);
-    color: #cdd3ff;
+    background: var(--naf-bg-story-summary);
+    color: var(--naf-text-story-muted);
     font-size: 0.82rem;
 }
 .story-review-item {
     margin-bottom: 16px;
     padding-bottom: 12px;
-    border-bottom: 1px solid #333;
+    border-bottom: 1px solid var(--naf-border-story-item);
 }
 .story-review-item--locked {
     opacity: 0.66;
@@ -3562,10 +3518,12 @@ html[data-theme="light"] .speed-level-bonus {
     font-size: 0.68rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
+}
+.story-review-item-kicker {
     color: #8d93d9;
 }
 .story-review-locked-tag {
-    color: #8f8f9f;
+    color: var(--naf-text-story-locked);
 }
 .story-review-item-title {
     display: block;
@@ -3576,12 +3534,12 @@ html[data-theme="light"] .speed-level-bonus {
 .story-review-item-body {
     margin: 0;
     font-size: 0.85rem;
-    color: #ccc;
+    color: var(--naf-text-story-body);
     line-height: 1.5;
 }
 .story-review-item--locked .story-review-item-title,
 .story-review-item--locked .story-review-item-body {
-    color: #8f94b5;
+    color: var(--naf-text-story-locked);
 }
 .story-review-replay {
     padding: 4px 10px;
@@ -3654,26 +3612,26 @@ html[data-theme="light"] .settings-panel .settings-subheading {
 .settings-delete-save-block {
     margin-top: 14px;
     padding-top: 12px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid var(--naf-border-subtle);
 }
 .settings-delete-save-btn {
     width: 100%;
     padding: 8px 10px;
-    border: 1px solid rgba(211, 47, 47, 0.55);
+    border: 1px solid var(--naf-danger-border);
     border-radius: 6px;
-    background: rgba(70, 20, 20, 0.65);
-    color: #ffcdd2;
+    background: var(--naf-danger-bg);
+    color: var(--naf-danger-fg);
     font-size: 0.82rem;
     cursor: pointer;
     font-family: inherit;
 }
 .settings-delete-save-btn:hover {
-    background: rgba(100, 28, 28, 0.8);
+    background: var(--naf-danger-bg-hover);
 }
 .settings-delete-save-hint {
     margin: 8px 0 0 0;
     font-size: 0.72rem;
-    color: #888;
+    color: var(--naf-danger-hint);
     line-height: 1.35;
 }
 .dev-delete-save-btn {
@@ -3715,16 +3673,16 @@ html[data-theme="light"] .settings-panel .settings-subheading {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.75);
+    background: var(--naf-overlay-scrim);
 }
 .offline-summary-modal {
     width: 380px;
     max-width: 90vw;
-    background: #1b1f3a;
-    border: 1px solid #333;
+    background: var(--naf-bg-modal);
+    border: 1px solid var(--naf-border-modal);
     border-radius: 10px;
     padding: 16px;
-    color: #ddd;
+    color: var(--naf-text-modal);
 }
 .offline-summary-close {
     margin-top: 12px;
@@ -3743,7 +3701,7 @@ html[data-theme="light"] .settings-panel .settings-subheading {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.75);
+    background: var(--naf-overlay-scrim);
 }
 .page-panel.page-panel--inline {
     position: relative;
@@ -3759,11 +3717,11 @@ html[data-theme="light"] .settings-panel .settings-subheading {
     max-height: 82vh;
     overflow-y: auto;
     scrollbar-gutter: stable;
-    background: #1b1f3a;
-    border: 1px solid #333;
+    background: var(--naf-bg-modal);
+    border: 1px solid var(--naf-border-modal);
     border-radius: 10px;
     padding: 16px;
-    color: #ddd;
+    color: var(--naf-text-modal);
 }
 .page-modal.page-modal--messages {
     width: min(760px, 94vw);
@@ -4486,12 +4444,12 @@ html[data-theme="light"] .combo-hand-status-compact {
     padding: 2px 8px;
     font-size: 11px;
     background: transparent;
-    color: #888;
+    color: var(--naf-text-log-toggle);
     border: none;
     cursor: pointer;
 }
 .action-log-toggle:hover {
-    color: #aaa;
+    color: var(--naf-text-log-toggle-hover);
 }
 
 @media (prefers-reduced-motion: reduce) {
