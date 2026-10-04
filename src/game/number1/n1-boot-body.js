@@ -114,8 +114,6 @@ import {
     createMemoizedAscensionGrantTotals
 } from "./ascension/n1-ascension-grant-totals.js";
 import { createOverviewPanelDelegates } from "./shell-ui/n1-overview-panel-delegates.js";
-import { createNumber1Runtime } from "./state/n1-runtime.js";
-import { collectNumber1DomRefs } from "./shell-ui/n1-dom-refs.js";
 import { createNumberModule } from "../core/number-module-interface.js";
 import { createNumber1ShellRegistryDeps } from "./n1-shell-registry-deps.js";
 import {
@@ -123,12 +121,53 @@ import {
     getUnlockedNumberModules as getUnlockedNumberModulesFromRegistry,
     tickBackgroundNumberModules as tickBackgroundNumberModulesFromRegistry
 } from "../shell-registry.js";
+import { restoreHandsFromSaveSnapshot } from "./n1-load-orchestration.js";
+import { createGameplaySimFrozen } from "./session/n1-gameplay-sim-freeze.js";
+import { createNumber2ShellBoot } from "./shell-ui/n1-number2-shell-boot.js";
+import { createNumber1ObjectivesBoot } from "./objectives/n1-objectives-boot.js";
+import { createAscensionMapFacade } from "./ascension/n1-ascension-map-facade.js";
+import { createNumber1BlackHoleBoot } from "./black-hole/n1-black-hole-boot.js";
+import { createAscensionReadyChrome } from "./ascension/n1-ascension-ready-chrome.js";
+import { createPageButtonUnlocksBoot } from "./shell-ui/n1-page-button-unlocks-boot.js";
+import { createNumber1BlackHolePanelRender } from "./black-hole/n1-black-hole-panel-render.js";
+import { wireNumber1ObjectivesLive } from "./objectives/n1-objectives-live-boot.js";
+import { createAscensionGrantAccessorsBoot } from "./ascension/n1-ascension-grant-accessors-boot.js";
+import { createTurboRuntimeBoot } from "./upgrades/n1-turbo-runtime-boot.js";
+import { createAscensionHubRender } from "./ascension/n1-ascension-hub-render.js";
+import { wireNumber1AscensionNodeActions } from "./ascension/n1-ascension-node-actions-boot.js";
+import { createAscensionPageRender } from "./ascension/n1-ascension-page-render.js";
+import { createGlobalOverviewBoot } from "./shell-ui/n1-global-overview-cards.js";
+import { createMessageStoryLogPageBoot } from "./shell-ui/n1-message-story-log-page.js";
+import { createPagePanelBoot } from "./shell-ui/n1-page-panel-boot.js";
+import { createTurboUiBoot } from "./upgrades/n1-turbo-ui-boot.js";
+import { createNumber1DetachedCpsBoot } from "./loop/n1-detached-cps-boot.js";
+import { createNumber1SettingsBoot } from "./shell-ui/n1-settings-boot.js";
+import { createSyncPlayStageForNumberMode, wireNumber1ShellModeSwitch } from "./shell-ui/n1-shell-mode-boot.js";
+import { wireNumber1UpgradeBoots } from "./upgrades/n1-upgrades-wire.js";
+import { wireNumber1HandUnlock } from "./hands/n1-hand-unlock-boot.js";
+import { wireNumber1TimeWarpBoot } from "./upgrades/n1-timewarp-boot-wire.js";
+import { createSpeedUpgradeUiBoot } from "./upgrades/n1-speed-upgrade-ui-boot.js";
+import { createNumber1TurboBoot } from "./upgrades/n1-turbo-boot.js";
+import { createSyncUnlocksWithTotalCount } from "./loop/n1-milestone-unlocks-boot.js";
+import { createNumber1StoryBanners } from "./story/n1-story-banners-catalog.js";
+import { wireNumber1Story } from "./story/n1-story-wire.js";
+import { wireNumber1ShellDomListeners } from "./shell-ui/n1-shell-dom-listeners-boot.js";
+import { wireNumber1Combinations } from "./combos/n1-combinations-wire.js";
+import { createOverviewAscensionPanelsRefresh } from "./ascension/n1-overview-ascension-panels.js";
+import { wireNumber1AscensionPerform } from "./ascension/n1-ascension-perform-boot.js";
+import { wireNumber1AscensionFlow } from "./ascension/n1-ascension-flow-boot.js";
+import { wireNumber1GameLoop } from "./loop/n1-game-loop-boot.js";
+import { buildNumber1GameLoopWireDep } from "./loop/n1-game-loop-wire-deps.js";
+import { finishNumber1ShellBoot } from "./shell-ui/n1-shell-finish-boot.js";
+import { attachN1DevTools } from "./dev/n1-dev-tools.js";
+import { buildN1DevToolsWireDep } from "./dev/n1-dev-tools-boot.js";
+import { buildNumber1BootFinishRefreshers } from "./shell-ui/n1-boot-finish-refreshers.js";
 
 /**
- * Number 1 orchestration body (wired from {@link createN1Boot#boot}).
+ * Number 1 orchestration body (composition root).
  *
  * @param {{
- *   n1Boot: ReturnType<typeof import("./n1-boot.js").createN1Boot>,
+ *   n1Boot: { wireSaveLoad: Function, registerLiveGameLoad?: Function, applyLoadedSave?: Function },
  *   runtime: ReturnType<typeof import("./state/n1-runtime.js").createNumber1Runtime>,
  *   dom: ReturnType<typeof import("./shell-ui/n1-dom-refs.js").collectNumber1DomRefs>
  * }} ctx
@@ -156,7 +195,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
     const story = n1Rt.story;
     const objectivesRt = n1Rt.objectives;
     const session = n1Rt.session;
-    const gameplaySimFrozen = n1Boot.createGameplaySimFrozen(session);
+    const gameplaySimFrozen = createGameplaySimFrozen(session);
     /** Populated by wireSaveLoad after turbo wire; hoisted wrappers delegate here. */
     const saveWireRef = {
         autosaveNow() {},
@@ -624,7 +663,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
     function updateNumber2SidebarUnlockUI() {
         number2ShellRef.updateNumber2SidebarUnlockUI();
     }
-    Object.assign(number2ShellRef, n1Boot.wireNumber2Shell({
+    Object.assign(number2ShellRef, createNumber2ShellBoot({
         number2,
         isNumber2Unlocked,
         updatePageButtonUnlocks
@@ -642,7 +681,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         logTickerRt.clearActionLogBacklogOnAscension();
     }
 
-    const number1ObjectivesBoot = n1Boot.wireObjectives({
+    const number1ObjectivesBoot = createNumber1ObjectivesBoot({
         flush: () => { updateObjectives(); },
         syncAchievementsOnly: () => { objectivesUiRef.syncObjectiveAchievements(); }
     });
@@ -723,7 +762,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         hasAscended: () => ascension.number1HasAscended,
         getAscensionTreeExport: () => ASCENSION_TREE_EXPORT
     });
-    Object.assign(ascensionMapFacadeRef, n1Boot.createAscensionMapFacade(ascMapUi, {
+    Object.assign(ascensionMapFacadeRef, createAscensionMapFacade(ascMapUi, {
         getNumber1AscensionNodeIds: () => ascension.number1AscensionNodeIds
     }));
     function getAscensionNodePurchaseCost(id) {
@@ -783,7 +822,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
     function updateRateDisplay(opts) {
         rateDisplayUiRef.updateRateDisplay(opts);
     }
-    const number1BlackHoleBoot = n1Boot.wireBlackHole({
+    const number1BlackHoleBoot = createNumber1BlackHoleBoot({
         maxSlowdownLevelBase: MAX_SLOWDOWN_LEVEL,
         rootDocument: typeof document !== "undefined" ? document : null,
         getBlackHoleControllerDeps(bhUiBridge) {
@@ -972,7 +1011,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         updateBlackHolePhaseStep,
         registerSyncBhCollapseTurboTierAccents
     } = number1BlackHoleBoot;
-    Object.assign(ascensionReadyChromeRef, n1Boot.createAscensionReadyChrome({
+    Object.assign(ascensionReadyChromeRef, createAscensionReadyChrome({
         isNumber1AscensionReady,
         computeNumber1AscensionGainBreakdown,
         getNumber1AscensionEssenceFormulaTotal,
@@ -983,12 +1022,12 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         ascensionPageBtn,
         getNumber1HasAscended: () => ascension.number1HasAscended
     }));
-    Object.assign(pageButtonUnlocksRef, n1Boot.createPageButtonUnlocksBoot({
+    Object.assign(pageButtonUnlocksRef, createPageButtonUnlocksBoot({
         combinationsPageBtn,
         getUnlockedHands: () => run.unlockedHands,
         updateAscensionReadyChrome
     }));
-    Object.assign(blackHolePanelRenderRef, n1Boot.createBlackHolePanelRender({
+    Object.assign(blackHolePanelRenderRef, createNumber1BlackHolePanelRender({
         getNumber1HasAscended: () => ascension.number1HasAscended,
         isBlackHoleArcUnlocked,
         getBlackHolePhase,
@@ -1029,7 +1068,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         getBlackHolePhase6TrackCost,
         getTotalProductionMultLabelForPanel
     }));
-    const objectivesLive = n1Boot.wireObjectivesLive({
+    const objectivesLive = wireNumber1ObjectivesLive({
         catalog: {
             ascension,
             run,
@@ -1085,7 +1124,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         getTurboCountMultiplierMax,
         getTimeWarpOverflowRatio,
         getTimeWarpAuraSpawnSpanMaxSec
-    } = Object.assign(ascensionGrantAccessorsRef, n1Boot.createAscensionGrantAccessorsBoot({
+    } = Object.assign(ascensionGrantAccessorsRef, createAscensionGrantAccessorsBoot({
         ascensionPurchasedSet,
         computeAscensionGrantTotals,
         getAutobuy: () => autobuy,
@@ -1121,7 +1160,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         getTurboLevelerNextPointCost,
         getTurboScensionUpgradeActivationEtaHint,
         tryTurboScensionActivationUpgrade
-    } = Object.assign(turboRuntimeRef, n1Boot.createTurboRuntimeBoot({
+    } = Object.assign(turboRuntimeRef, createTurboRuntimeBoot({
         computeAscensionGrantTotals,
         getTurbo: () => turbo,
         getTurboMeterMax,
@@ -1143,7 +1182,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
     /** Default gap between catalog “Discovered combo” milestones; reduced by middle `comboDiscoveryMilestoneCooldownMult` (× each, min 0.1s). */
     const COMBO_DISCOVERY_MILESTONE_COOLDOWN_BASE_MS = 60000;
     const COMBO_DISCOVERY_MILESTONE_COOLDOWN_MIN_MS = 100;
-    Object.assign(ascensionHubRenderRef, n1Boot.createAscensionHubRender({
+    Object.assign(ascensionHubRenderRef, createAscensionHubRender({
         getNumber1HasAscended: () => ascension.number1HasAscended,
         getNumber1AscensionNodeIds: () => ascension.number1AscensionNodeIds,
         getAscensionMapNodeById: () => ASCENSION_MAP_NODE_BY_ID,
@@ -1172,7 +1211,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         getBlackHolePhase1RunCpsMult,
         getNumber1AscensionEssence: () => ascension.number1AscensionEssence
     }));
-    Object.assign(ascensionNodeActionsRef, n1Boot.wireAscensionNodeActions({
+    Object.assign(ascensionNodeActionsRef, wireNumber1AscensionNodeActions({
         getNumber1HasAscended: () => ascension.number1HasAscended,
         getNumber1AscensionNodeIds: () => ascension.number1AscensionNodeIds,
         setNumber1AscensionNodeIds: ids => { ascension.number1AscensionNodeIds = ids; },
@@ -1220,7 +1259,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     }
     /** Fingerprint ascend-control copy + affordances for ~1 Hz incremental patch (avoid outerHTML churn). */
-    Object.assign(ascensionPageRenderRef, n1Boot.createAscensionPageRender({
+    Object.assign(ascensionPageRenderRef, createAscensionPageRender({
         getNumber1AscensionEssence: () => ascension.number1AscensionEssence,
         getNumber1HasAscended: () => ascension.number1HasAscended,
         getUnlockedHands: () => run.unlockedHands,
@@ -1285,7 +1324,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
             tickNumber1BackgroundCps
         });
     }
-    const { renderGlobalOverview } = n1Boot.createGlobalOverviewBoot({
+    const { renderGlobalOverview } = createGlobalOverviewBoot({
         formatCount,
         getUnlockedNumberModules,
         computeNumber1AscensionGainBreakdown,
@@ -1301,7 +1340,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         renderMessageAndStoryLogPageHtml,
         refreshStoryArchiveSectionIfOpen,
         scrollMessageLogPanelToBottom
-    } = n1Boot.createMessageStoryLogPageBoot({
+    } = createMessageStoryLogPageBoot({
         logTickerRt,
         escapeHtml,
         renderStoryArchiveHtmlForState,
@@ -1315,7 +1354,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         logTickerRt.refreshMessageLogPanelIfOpen();
     }
 
-    const { showPagePanel } = n1Boot.createPagePanelBoot({
+    const { showPagePanel } = createPagePanelBoot({
         pagePanelEl,
         pagePanelTitleEl,
         pagePanelBodyEl,
@@ -1380,14 +1419,18 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         setAutoBuyEnabledForHand
     });
     const speedRowRefs = upgradeDom.speedRowRefs;
-    const handsBoot = n1Boot.wireHands({
-        handsRt,
-        run,
-        maxHands,
-        getSpeedRowRefs: () => speedRowRefs,
-        ensureSpeedRows,
-        createHandCounter: (handNum, slot) => new HandCounter(handNum, HAND_BASE_SPEED, slot)
-    });
+    const handsBoot = {
+        restoreFromSaveSnapshot(snap) {
+            restoreHandsFromSaveSnapshot(snap, {
+                handsRt,
+                run,
+                maxHands,
+                getSpeedRowRefs: () => speedRowRefs,
+                ensureSpeedRows,
+                createHandCounter: (handNum, slot) => new HandCounter(handNum, HAND_BASE_SPEED, slot)
+            });
+        }
+    };
     /** When autobuy / warp-assist skips per-purchase upgrade DOM, flush once this step (or with the normal throttle). */
     let batchedUpgradeUiFlush = false;
     function flashSpeedAutobuyToast(handIndex, text) {
@@ -1429,7 +1472,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
     function setUpgradeButtonProgress(btn, progress01) {
         upgradeDom.setUpgradeButtonProgress(btn, progress01);
     }
-    Object.assign(turboUiRef, n1Boot.createTurboUiBoot({
+    Object.assign(turboUiRef, createTurboUiBoot({
         getTurbo: () => turbo,
         isTurboScensionUnlocked,
         getTurboMeterMax,
@@ -1583,7 +1626,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         getTurboBoostUnlocked: () => turbo.turboBoostUnlocked
     });
     rateTickRef.getRawCpsPerHand = wireGetRawCpsPerHand;
-    Object.assign(detachedCpsRef, n1Boot.wireDetachedCps({
+    Object.assign(detachedCpsRef, createNumber1DetachedCpsBoot({
         getBlackHolePhase,
         getUnlockedHands: () => run.unlockedHands,
         getRawCpsPerHand,
@@ -1620,7 +1663,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         loadSettings,
         persistSettings,
         applySettingsToUI
-    } = n1Boot.wireSettings({
+    } = createNumber1SettingsBoot({
         session,
         storage: typeof localStorage !== "undefined" ? localStorage : null,
         settingsThemeDarkEl,
@@ -1694,14 +1737,14 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
     rateDisplayUiRef.updateRateDisplay = wireUpdateRateDisplay;
     rateDisplayUiRef.updateN1GravityCpsStrip = updateN1GravityCpsStrip;
 
-    const syncPlayStageForNumberMode = n1Boot.createSyncPlayStage({
+    const syncPlayStageForNumberMode = createSyncPlayStageForNumberMode({
         isNumber2Unlocked,
         number2,
         syncBlackHolePhase1Vfx,
         updateN1GravityCpsStrip,
         refreshNumber1CountDisplay: () => detachedCpsRef.refreshNumber1CountDisplay?.()
     });
-    n1Boot.wireShellModeSwitch({
+    wireNumber1ShellModeSwitch({
         closeInlineMainStagePanels,
         syncPlayStageForNumberMode,
         number2,
@@ -1710,7 +1753,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
     });
 
     const sprayConfettiFrom = createConfettiSprayer();
-    const upgradesWire = n1Boot.wireUpgrades({
+    const upgradesWire = wireNumber1UpgradeBoots({
         slowdown: {
             getBlackHolePhase,
             getUnlockedHands: () => run.unlockedHands,
@@ -1830,7 +1873,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
     maybeAutoBuySlowdown = upgradesWire.maybeAutoBuySlowdown;
     updateSlowdownUpgradeUI = upgradesWire.updateSlowdownUpgradeUI;
 
-    Object.assign(handUnlockRef, n1Boot.wireHandUnlock({
+    Object.assign(handUnlockRef, wireNumber1HandUnlock({
         run,
         maxHands,
         handsRt,
@@ -1849,7 +1892,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
     }));
     handUnlockRef.initFirstHand();
 
-    const timeWarpWire = n1Boot.wireTimeWarp({
+    const timeWarpWire = wireNumber1TimeWarpBoot({
         timewarp,
         boot: {
             getTotalChanges: () => run.totalChanges,
@@ -1932,7 +1975,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
     } = timeWarpWire;
     updateTimeWarpAuraUI = timeWarpWire.updateTimeWarpAuraUI;
 
-    Object.assign(speedUpgradeUiRef, n1Boot.createSpeedUpgradeUiBoot({
+    Object.assign(speedUpgradeUiRef, createSpeedUpgradeUiBoot({
         bumpUpgradeEtaSmoothPass,
         getTotalChanges: () => run.totalChanges,
         upgradeContainer,
@@ -1970,7 +2013,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         upgradeScrollHintJumpsEl
     }));
 
-    const turboWire = n1Boot.wireTurbo({
+    const number1TurboBoot = createNumber1TurboBoot({
         turboScensionUpgradeBtn,
         turboBoostEnabledCheckbox,
         turboBoostToggleLabelEl,
@@ -1990,10 +2033,10 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         formatCount,
         checkStoryBanners: () => story.checkStoryBanners()
     });
-    tryUnlockTurboIfEligible = turboWire.tryUnlockTurboIfEligible;
-    syncTurboBoostToggleDomFromBoot = turboWire.syncTurboBoostToggleDomFromBoot;
+    tryUnlockTurboIfEligible = number1TurboBoot.tryUnlockTurboIfEligible;
+    syncTurboBoostToggleDomFromBoot = number1TurboBoot.syncTurboBoostToggleDom;
 
-    milestoneUnlockRef.syncUnlocksWithTotalCount = n1Boot.wireMilestoneUnlocks({
+    milestoneUnlockRef.syncUnlocksWithTotalCount = createSyncUnlocksWithTotalCount({
         run,
         autobuy,
         upgrades,
@@ -2070,7 +2113,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
     }));
 
     /* ---------------------------------------------------------
-       HAND CLASS (loop runtime wired later via n1Boot.wireLoop)
+       HAND CLASS (loop runtime wired later via wireNumber1GameLoop)
     --------------------------------------------------------- */
     /* ---------------------------------------------------------
        HAND MANAGEMENT
@@ -2098,7 +2141,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
     const deleteSaveYesBtn = document.getElementById("delete-save-yes");
     const settingsDeleteSaveBtn = document.getElementById("settings-delete-save");
 
-    storyBanners = n1Boot.createStoryBanners({
+    storyBanners = createNumber1StoryBanners({
         run,
         ascension,
         formatCount,
@@ -2114,7 +2157,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
     const storyReviewListEl = document.getElementById("story-review-list");
     const storyReviewCloseBtn = document.getElementById("story-review-close");
 
-    const number1StoryBannerBoot = n1Boot.wireStory({
+    const number1StoryBannerBoot = wireNumber1Story({
         story,
         storyBanners,
         storyBannerOverlayEl,
@@ -2140,7 +2183,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         showStoryBanner
     } = number1StoryBannerBoot;
     Object.assign(storyBannerLookupRef, { getStoryBannerById, showStoryBanner });
-    const { showDeleteSaveConfirmDialog } = n1Boot.wireShellDomListeners({
+    const { showDeleteSaveConfirmDialog } = wireNumber1ShellDomListeners({
         session,
         menuBtn,
         settingsPanelEl,
@@ -2208,7 +2251,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
     /* ---------------------------------------------------------
        HAND COMBOS (poker-style: hand values 1–10, bonuses stack)
     --------------------------------------------------------- */
-    combinationsBoot = n1Boot.wireCombinations(createNumber1CombinationsWireDeps({
+    combinationsBoot = wireNumber1Combinations(createNumber1CombinationsWireDeps({
         forward: comboForward,
         combo,
         run,
@@ -2244,7 +2287,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
     const showComboBubble = combinationsBoot.showComboBubble;
 
     /* Overview + ascension page panel refresh / live patch (implementation in n1-overview-ascension-panels). */
-    Object.assign(overviewAscPanelDelegates, n1Boot.wireOverviewAscensionPanels({
+    Object.assign(overviewAscPanelDelegates, createOverviewAscensionPanelsRefresh({
         getPagePanelEl: () => pagePanelEl,
         getPagePanelBodyEl: () => pagePanelBodyEl,
         getAscensionPageActiveNumber: () => ascension.ascensionPageActiveNumber,
@@ -2277,7 +2320,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         getNumber2State: () => number2State
     }));
 
-    const { performNumber1Ascension } = n1Boot.wireAscensionPerform({
+    const { performNumber1Ascension } = wireNumber1AscensionPerform({
         isNumber1AscensionReady,
         clearActionLogBacklogOnAscension,
         getAscensionGainBreakdown: () => computeNumber1AscensionGainBreakdown(getNumber1AscensionEssenceFormulaTotal()),
@@ -2330,7 +2373,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         refreshOverviewAndAscensionPanelsIfOpen
     });
 
-    Object.assign(ascensionFlowRef, n1Boot.wireAscensionFlow({
+    Object.assign(ascensionFlowRef, wireNumber1AscensionFlow({
         ascensionReadyCtaEl,
         getAscensionGainBreakdown: () => computeNumber1AscensionGainBreakdown(getNumber1AscensionEssenceFormulaTotal()),
         getTotalChanges: () => run.totalChanges,
@@ -2375,7 +2418,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         ledgerBeamVfx.afterClapBonuses(beforeSnap);
     }
 
-    const gameLoopWire = n1Boot.wireLoop(n1Boot.buildGameLoopWireDep({
+    const gameLoopWire = wireNumber1GameLoop(buildNumber1GameLoopWireDep({
         onTickApplyWired: step => {
             flushAutobuyDeferredTotalsIfAny = step.flushAutobuyDeferredTotalsIfAny;
             markAutobuyDeferredTotalsPending = step.markAutobuyDeferredTotalsPending;
@@ -2498,14 +2541,14 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
     number1LoopRuntime = gameLoopWire.number1LoopRuntime;
     Object.assign(loopRuntimeRef, number1LoopRuntime);
 
-    n1Boot.startGameLoop(number1LoopRuntime);
+    number1LoopRuntime.start();
     gameLoopWire.attachVisibilityOfflineTracking();
 
     logTickerRt.startPeriodicAmbientAndAdaptive({
         shouldSkipAmbientRandomTicker: gameplaySimFrozen
     });
 
-    n1Boot.finishShellBoot({
+    finishNumber1ShellBoot({
         upgradeDom,
         onWindowScrollResizeForUpgrades,
         addToLog,
@@ -2540,7 +2583,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         number2
     });
 
-    n1Boot.wireDevTools(n1Boot.buildDevToolsWireDep({
+    attachN1DevTools(buildN1DevToolsWireDep({
         devToolsLoadTimeMs,
         displayTotalPlaySeconds: () => number1LoopRuntime.getDisplayTotalPlayTimeMs(),
         getBlackHolePhase,
@@ -2677,7 +2720,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         autosaveNow
     }));
 
-    n1Boot.finishBootRefresh(n1Boot.buildBootFinishRefreshers({
+    buildNumber1BootFinishRefreshers({
         updateObjectives,
         updateMilestoneUI,
         updateTurboBoostUI,
@@ -2689,7 +2732,7 @@ export function runNumber1Boot({ n1Boot, runtime, dom }) {
         updateNumber2SidebarUnlockUI,
         maybeShowFirstAscensionIntroOnUnlock,
         syncPhase1MassFillCssVars
-    }));
+    }).forEach(fn => fn());
 
     /* ---------------------------------------------------------
        Hand milestones: checkUnlockHands() via syncUnlocksWithTotalCount → refreshTotalFromHandEarnings()
